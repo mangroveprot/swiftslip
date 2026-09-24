@@ -1,0 +1,163 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --font-display: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.968 0.008 85);
+  --foreground: oklch(0.24 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.02 250);
+  --primary: oklch(0.33 0.09 250);
+  --primary-foreground: oklch(0.99 0.005 85);
+  --secondary: oklch(0.93 0.012 85);
+  --secondary-foreground: oklch(0.3 0.03 250);
+  --muted: oklch(0.94 0.01 85);
+  --muted-foreground: oklch(0.52 0.02 250);
+  --accent: oklch(0.62 0.13 45);
+  --accent-foreground: oklch(0.99 0.005 85);
+  --destructive: oklch(0.52 0.19 27);
+  --destructive-foreground: oklch(0.99 0.005 85);
+  --border: oklch(0.86 0.012 85);
+  --input: oklch(0.86 0.012 85);
+  --ring: oklch(0.33 0.09 250);
+  --paper: oklch(1 0 0);
+  --ink: oklch(0.2 0.02 250);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: 0;
+  }
+}
+
+@utility field {
+  width: 100%;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  padding: 0.25rem 0.25rem;
+  outline: none;
+}
+
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+  cursor: pointer;
+}
+
+@utility btn-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+@utility btn-accent {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+@utility btn-outline {
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-foreground);
+}
+
+@utility inp {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--color-background);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  color: var(--color-foreground);
+  outline: none;
+}
+
+@utility lbl {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 14mm;
+  }
+}
