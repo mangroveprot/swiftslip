@@ -6,9 +6,9 @@ import type { Role, SessionUser } from "@/shared/types";
 export async function verifyPassword(password: string): Promise<SessionUser | null> {
   const { data: row } = await getDb()
     .from("access_codes")
-    .select("role,label")
+    .select("id,role,label")
     .eq("password_hash", hashPassword(password))
     .maybeSingle();
   if (!row) return null;
-  return { role: row.role as Role, label: row.label };
+  return { id: row.id as string, role: row.role as Role, label: row.label };
 }

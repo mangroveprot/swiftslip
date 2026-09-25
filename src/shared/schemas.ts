@@ -80,3 +80,10 @@ export const importBiometricInput = z.object({
   mimeType: z.string(),
   base64: z.string().min(1),
 });
+
+export const employeeProfileSchema = z.object({
+  emp_no: z.string(),
+  full_name: z.string(),
+  designation: z.string(),
+  area: z.string(),
+});

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Clock } from "lucide-react";
 
 import { APP } from "@/config/app";
 import { roleLabel, visibleNavItems } from "./nav-items";
@@ -20,12 +21,16 @@ export function Sidebar({
   return (
     <div className="flex h-full flex-col border-r border-white/40 bg-glass backdrop-blur-xl">
       <div className="px-6 py-6">
-        <Link to="/records" className="text-2xl" style={{ fontFamily: "var(--font-display)" }}>
-          {APP.name}
+        <Link to="/records" className="block">
+          <img
+            src={APP.mindbridgeLogoPath}
+            alt="Mindbridge"
+            className="h-8 w-auto object-contain"
+          />
+          <span className="text-2xl" style={{ fontFamily: "var(--font-display)" }}>
+            {APP.name}
+          </span>
         </Link>
-        <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          Attendance forms
-        </p>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
@@ -37,9 +42,7 @@ export function Sidebar({
               title="Coming soon"
             >
               {item.label}
-              <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider">
-                Soon
-              </span>
+              <Clock className="size-4 shrink-0 text-muted-foreground/60" aria-label="Coming soon" />
             </span>
           ) : (
             <Link

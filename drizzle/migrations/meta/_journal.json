@@ -22,6 +22,20 @@
       "when": 1790210498917,
       "tag": "0002_create_dtr_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790300000000,
+      "tag": "0003_employee_signature",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790400000000,
+      "tag": "0004_profiles_and_record_owner",
+      "breakpoints": true
     }
   ]
 }

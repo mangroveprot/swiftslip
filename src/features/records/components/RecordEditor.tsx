@@ -1,4 +1,6 @@
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
@@ -150,11 +152,21 @@ export function RecordEditor({ id }: { id: string }) {
   return (
     <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:h-auto print:overflow-visible print:p-0">
       <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            Attendance
-          </p>
-          <h1 className="text-2xl font-semibold leading-tight">Daily Time Record</h1>
+        <div className="flex items-start gap-2">
+          <Link
+            to="/records"
+            className="btn btn-outline mt-0.5 size-9 shrink-0 p-0"
+            aria-label="Back to time records"
+            title="Back to time records"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+          </Link>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              Attendance
+            </p>
+            <h1 className="text-2xl font-semibold leading-tight">Daily Time Record</h1>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canEdit ? (

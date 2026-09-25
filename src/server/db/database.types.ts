@@ -87,6 +87,7 @@ export type Database = {
           id: string
           month: number
           name: string
+          owner_id: string | null
           period: string
           updated_at: string
           year: number
@@ -101,6 +102,7 @@ export type Database = {
           id?: string
           month?: number
           name?: string
+          owner_id?: string | null
           period?: string
           updated_at?: string
           year?: number
@@ -115,11 +117,55 @@ export type Database = {
           id?: string
           month?: number
           name?: string
+          owner_id?: string | null
           period?: string
           updated_at?: string
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dtr_records_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          access_code_id: string
+          area: string
+          designation: string
+          emp_no: string
+          full_name: string
+          updated_at: string
+        }
+        Insert: {
+          access_code_id: string
+          area?: string
+          designation?: string
+          emp_no?: string
+          full_name?: string
+          updated_at?: string
+        }
+        Update: {
+          access_code_id?: string
+          area?: string
+          designation?: string
+          emp_no?: string
+          full_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_access_code_id_fkey"
+            columns: ["access_code_id"]
+            isOneToOne: true
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dtr_template: {
         Row: {

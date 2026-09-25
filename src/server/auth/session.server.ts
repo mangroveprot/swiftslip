@@ -3,7 +3,7 @@ import { useSession } from "@tanstack/react-start/server";
 import { getServerConfig } from "@/config/env.server";
 import type { Role, SessionUser } from "@/shared/types";
 
-type SessionData = { role?: Role; label?: string };
+type SessionData = { id?: string; role?: Role; label?: string };
 
 function appSession() {
   const { session, isProd } = getServerConfig();
@@ -17,7 +17,7 @@ function appSession() {
 
 export async function startSession(user: SessionUser) {
   const session = await appSession();
-  await session.update({ role: user.role, label: user.label });
+  await session.update({ id: user.id, role: user.role, label: user.label });
 }
 
 export async function endSession() {
@@ -27,8 +27,12 @@ export async function endSession() {
 
 export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await appSession();
-  if (!session.data.role) return null;
-  return { role: session.data.role, label: session.data.label ?? "" };
+  if (!session.data.role || !session.data.id) return null;
+  return {
+    id: session.data.id,
+    role: session.data.role,
+    label: session.data.label ?? "",
+  };
 }
 
 export async function requireUser(): Promise<SessionUser> {

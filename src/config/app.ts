@@ -9,6 +9,7 @@ export const APP = {
   name: "SwiftSlip",
   tagline: "Daily time records, simplified.",
   logoPath: "/dtr-logo.png",
+  mindbridgeLogoPath: "/mindbridge_logo.webp",
   faviconPath: "/favicon.png",
 } as const;
 

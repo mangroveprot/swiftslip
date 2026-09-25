@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppChangeRestDayRouteImport } from './routes/_app/change-rest-day'
 import { Route as AppChangeTimeScheduleRouteImport } from './routes/_app/change-time-schedule'
+import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppRecordsIndexRouteImport } from './routes/_app/records/index'
 import { Route as AppRecordsIdRouteImport } from './routes/_app/records/$id'
 
@@ -41,6 +42,11 @@ const AppChangeTimeScheduleRoute = AppChangeTimeScheduleRouteImport.update({
   path: '/change-time-schedule',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRecordsIndexRoute = AppRecordsIndexRouteImport.update({
   id: '/records/',
   path: '/records/',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AppAdminRoute
   '/change-rest-day': typeof AppChangeRestDayRoute
   '/change-time-schedule': typeof AppChangeTimeScheduleRoute
+  '/profile': typeof AppProfileRoute
   '/records/$id': typeof AppRecordsIdRoute
   '/records/': typeof AppRecordsIndexRoute
 }
@@ -65,6 +72,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AppAdminRoute
   '/change-rest-day': typeof AppChangeRestDayRoute
   '/change-time-schedule': typeof AppChangeTimeScheduleRoute
+  '/profile': typeof AppProfileRoute
   '/records/$id': typeof AppRecordsIdRoute
   '/records': typeof AppRecordsIndexRoute
 }
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/_app/admin': typeof AppAdminRoute
   '/_app/change-rest-day': typeof AppChangeRestDayRoute
   '/_app/change-time-schedule': typeof AppChangeTimeScheduleRoute
+  '/_app/profile': typeof AppProfileRoute
   '/_app/records/$id': typeof AppRecordsIdRoute
   '/_app/records/': typeof AppRecordsIndexRoute
 }
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/change-rest-day'
     | '/change-time-schedule'
+    | '/profile'
     | '/records/$id'
     | '/records/'
   fileRoutesByTo: FileRoutesByTo
@@ -93,6 +103,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/change-rest-day'
     | '/change-time-schedule'
+    | '/profile'
     | '/records/$id'
     | '/records'
   id:
@@ -102,6 +113,7 @@ export interface FileRouteTypes {
     | '/_app/admin'
     | '/_app/change-rest-day'
     | '/_app/change-time-schedule'
+    | '/_app/profile'
     | '/_app/records/$id'
     | '/_app/records/'
   fileRoutesById: FileRoutesById
@@ -148,6 +160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChangeTimeScheduleRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/records/': {
       id: '/_app/records/'
       path: '/records'
@@ -169,6 +188,7 @@ interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppChangeRestDayRoute: typeof AppChangeRestDayRoute
   AppChangeTimeScheduleRoute: typeof AppChangeTimeScheduleRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppRecordsIdRoute: typeof AppRecordsIdRoute
   AppRecordsIndexRoute: typeof AppRecordsIndexRoute
 }
@@ -177,6 +197,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
   AppChangeRestDayRoute: AppChangeRestDayRoute,
   AppChangeTimeScheduleRoute: AppChangeTimeScheduleRoute,
+  AppProfileRoute: AppProfileRoute,
   AppRecordsIdRoute: AppRecordsIdRoute,
   AppRecordsIndexRoute: AppRecordsIndexRoute,
 }

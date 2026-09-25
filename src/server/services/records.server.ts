@@ -1,17 +1,23 @@
 import { getDb } from "@/server/db/client.server";
 import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
 
-export async function listRecords() {
+export async function listRecords(ownerId: string) {
   const { data } = await getDb()
     .from("dtr_records")
     .select("id,name,emp_no,designation,area,month,year,period,updated_at")
+    .eq("owner_id", ownerId)
     .order("updated_at", { ascending: false });
   return data ?? [];
 }
 
-export async function getRecord(id: string) {
+export async function getRecord(id: string, ownerId: string) {
   const db = getDb();
-  const { data: record } = await db.from("dtr_records").select("*").eq("id", id).maybeSingle();
+  const { data: record } = await db
+    .from("dtr_records")
+    .select("*")
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
   if (!record) throw new Error("Record not found.");
   const { data: entries } = await db
     .from("dtr_entries")
@@ -24,17 +30,42 @@ export async function getRecord(id: string) {
   };
 }
 
-export async function createRecord(input: { month: number; year: number; period: Period }) {
+export async function createRecord(
+  ownerId: string,
+  input: {
+    month: number;
+    year: number;
+    period: Period;
+    emp_no?: string;
+    name?: string;
+    designation?: string;
+    area?: string;
+  },
+) {
   const { data: row, error } = await getDb()
     .from("dtr_records")
-    .insert({ month: input.month, year: input.year, period: input.period })
+    .insert({
+      owner_id: ownerId,
+      month: input.month,
+      year: input.year,
+      period: input.period,
+      emp_no: input.emp_no ?? "",
+      name: input.name ?? "",
+      designation: input.designation ?? "",
+      area: input.area ?? "",
+    })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
   return { id: row.id as string };
 }
 
-export async function saveRecord(id: string, header: DtrHeader, entries: DtrEntry[]) {
+export async function saveRecord(
+  id: string,
+  ownerId: string,
+  header: DtrHeader,
+  entries: DtrEntry[],
+) {
   const db = getDb();
   const payload = {
     emp_no: header.emp_no,
@@ -49,13 +80,24 @@ export async function saveRecord(id: string, header: DtrHeader, entries: DtrEntr
     updated_at: new Date().toISOString(),
   };
 
-  let { error } = await db.from("dtr_records").update(payload).eq("id", id);
+  let { data: updated, error } = await db
+    .from("dtr_records")
+    .update(payload)
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .select("id");
   // Databases that haven't run migration 0003 don't have this column yet.
   if (error?.message?.includes("employee_signature")) {
     const { employee_signature: _sig, ...withoutSignature } = payload;
-    ({ error } = await db.from("dtr_records").update(withoutSignature).eq("id", id));
+    ({ data: updated, error } = await db
+      .from("dtr_records")
+      .update(withoutSignature)
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .select("id"));
   }
   if (error) throw new Error(error.message);
+  if (!updated?.length) throw new Error("Record not found.");
 
   await db.from("dtr_entries").delete().eq("record_id", id);
   if (entries.length) {
@@ -66,6 +108,13 @@ export async function saveRecord(id: string, header: DtrHeader, entries: DtrEntr
   }
 }
 
-export async function deleteRecord(id: string) {
-  await getDb().from("dtr_records").delete().eq("id", id);
+export async function deleteRecord(id: string, ownerId: string) {
+  const { data, error } = await getDb()
+    .from("dtr_records")
+    .delete()
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Record not found.");
 }

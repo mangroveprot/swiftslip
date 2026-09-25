@@ -27,8 +27,15 @@ export function AppShell({ session, children }: { session: SessionUser; children
       </aside>
 
       <header className="no-print flex items-center justify-between border-b border-white/40 bg-glass px-4 py-3 backdrop-blur-xl md:hidden">
-        <span className="text-xl" style={{ fontFamily: "var(--font-display)" }}>
-          {APP.name}
+        <span className="flex items-center gap-2">
+          <img
+            src={APP.mindbridgeLogoPath}
+            alt="Mindbridge"
+            className="h-7 w-auto object-contain"
+          />
+          <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+            {APP.name}
+          </span>
         </span>
         <button className="btn btn-outline" onClick={() => setMenuOpen((v) => !v)}>
           {menuOpen ? "Close" : "Menu"}

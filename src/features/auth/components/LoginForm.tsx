@@ -36,7 +36,16 @@ export function LoginForm() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
-        <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">{APP.name}</p>
+        <div className="mb-1">
+          <img
+            src={APP.mindbridgeLogoPath}
+            alt="Mindbridge"
+            className="h-12 w-auto object-contain"
+          />
+          <p className="mt-1 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+            {APP.name}
+          </p>
+        </div>
         <h1 className="mt-2 text-4xl font-semibold">Daily Time Records</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Enter your access password. Administrator passwords unlock editing, importing and
