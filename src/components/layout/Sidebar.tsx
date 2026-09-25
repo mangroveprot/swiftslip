@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 
+import { APP } from "@/config/app";
 import { roleLabel, visibleNavItems } from "./nav-items";
-import type { Role } from "@/lib/dtr-shared";
+import type { Role } from "@/shared/types";
 
 export function Sidebar({
   role,
@@ -17,12 +18,14 @@ export function Sidebar({
   const items = visibleNavItems(role);
 
   return (
-    <div className="flex h-full flex-col border-r bg-card">
+    <div className="flex h-full flex-col border-r border-white/40 bg-glass backdrop-blur-xl">
       <div className="px-6 py-6">
         <Link to="/records" className="text-2xl" style={{ fontFamily: "var(--font-display)" }}>
-          SwiftSlip
+          {APP.name}
         </Link>
-        <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">Attendance forms</p>
+        <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          Attendance forms
+        </p>
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
@@ -34,15 +37,20 @@ export function Sidebar({
               title="Coming soon"
             >
               {item.label}
-              <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider">Soon</span>
+              <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider">
+                Soon
+              </span>
             </span>
           ) : (
             <Link
               key={item.to}
               to={item.to}
               onClick={onNavigate}
-              className="block rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              activeProps={{ className: "block rounded-md bg-secondary px-3 py-2 text-sm text-foreground" }}
+              className="block rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
+              activeProps={{
+                className:
+                  "block rounded-md bg-accent-tint px-3 py-2 text-sm font-medium text-accent-tint-foreground",
+              }}
             >
               <span className="block">{item.label}</span>
               <span className="block text-[11px] text-muted-foreground">{item.note}</span>
@@ -55,7 +63,9 @@ export function Sidebar({
         <div>
           <p className="font-medium">{label || roleLabel(role)}</p>
           {label && label !== roleLabel(role) ? (
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">{roleLabel(role)}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              {roleLabel(role)}
+            </p>
           ) : null}
         </div>
         <button className="btn btn-outline w-full" onClick={onSignOut}>

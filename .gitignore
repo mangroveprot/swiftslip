@@ -30,4 +30,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment (only .env.example is committed)
 .env
+.env.*
+!.env.example

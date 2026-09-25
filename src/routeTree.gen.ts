@@ -10,67 +10,73 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as ChangeRestDayRouteImport } from './routes/change-rest-day'
-import { Route as ChangeTimeScheduleRouteImport } from './routes/change-time-schedule'
-import { Route as RecordsIndexRouteImport } from './routes/records.index'
-import { Route as RecordsIdRouteImport } from './routes/records.$id'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppAdminRouteImport } from './routes/_app/admin'
+import { Route as AppChangeRestDayRouteImport } from './routes/_app/change-rest-day'
+import { Route as AppChangeTimeScheduleRouteImport } from './routes/_app/change-time-schedule'
+import { Route as AppRecordsIndexRouteImport } from './routes/_app/records/index'
+import { Route as AppRecordsIdRouteImport } from './routes/_app/records/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppAdminRoute = AppAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const ChangeRestDayRoute = ChangeRestDayRouteImport.update({
+const AppChangeRestDayRoute = AppChangeRestDayRouteImport.update({
   id: '/change-rest-day',
   path: '/change-rest-day',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const ChangeTimeScheduleRoute = ChangeTimeScheduleRouteImport.update({
+const AppChangeTimeScheduleRoute = AppChangeTimeScheduleRouteImport.update({
   id: '/change-time-schedule',
   path: '/change-time-schedule',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const RecordsIndexRoute = RecordsIndexRouteImport.update({
+const AppRecordsIndexRoute = AppRecordsIndexRouteImport.update({
   id: '/records/',
   path: '/records/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const RecordsIdRoute = RecordsIdRouteImport.update({
+const AppRecordsIdRoute = AppRecordsIdRouteImport.update({
   id: '/records/$id',
   path: '/records/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
-  '/change-rest-day': typeof ChangeRestDayRoute
-  '/change-time-schedule': typeof ChangeTimeScheduleRoute
-  '/records/$id': typeof RecordsIdRoute
-  '/records/': typeof RecordsIndexRoute
+  '/admin': typeof AppAdminRoute
+  '/change-rest-day': typeof AppChangeRestDayRoute
+  '/change-time-schedule': typeof AppChangeTimeScheduleRoute
+  '/records/$id': typeof AppRecordsIdRoute
+  '/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
-  '/change-rest-day': typeof ChangeRestDayRoute
-  '/change-time-schedule': typeof ChangeTimeScheduleRoute
-  '/records/$id': typeof RecordsIdRoute
-  '/records': typeof RecordsIndexRoute
+  '/admin': typeof AppAdminRoute
+  '/change-rest-day': typeof AppChangeRestDayRoute
+  '/change-time-schedule': typeof AppChangeTimeScheduleRoute
+  '/records/$id': typeof AppRecordsIdRoute
+  '/records': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
-  '/change-rest-day': typeof ChangeRestDayRoute
-  '/change-time-schedule': typeof ChangeTimeScheduleRoute
-  '/records/$id': typeof RecordsIdRoute
-  '/records/': typeof RecordsIndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/admin': typeof AppAdminRoute
+  '/_app/change-rest-day': typeof AppChangeRestDayRoute
+  '/_app/change-time-schedule': typeof AppChangeTimeScheduleRoute
+  '/_app/records/$id': typeof AppRecordsIdRoute
+  '/_app/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -92,20 +98,17 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/admin'
-    | '/change-rest-day'
-    | '/change-time-schedule'
-    | '/records/$id'
-    | '/records/'
+    | '/_app'
+    | '/_app/admin'
+    | '/_app/change-rest-day'
+    | '/_app/change-time-schedule'
+    | '/_app/records/$id'
+    | '/_app/records/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
-  ChangeRestDayRoute: typeof ChangeRestDayRoute
-  ChangeTimeScheduleRoute: typeof ChangeTimeScheduleRoute
-  RecordsIdRoute: typeof RecordsIdRoute
-  RecordsIndexRoute: typeof RecordsIndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -117,51 +120,72 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/admin': {
+      id: '/_app/admin'
       path: '/admin'
       fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/change-rest-day': {
-      id: '/change-rest-day'
+    '/_app/change-rest-day': {
+      id: '/_app/change-rest-day'
       path: '/change-rest-day'
       fullPath: '/change-rest-day'
-      preLoaderRoute: typeof ChangeRestDayRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppChangeRestDayRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/change-time-schedule': {
-      id: '/change-time-schedule'
+    '/_app/change-time-schedule': {
+      id: '/_app/change-time-schedule'
       path: '/change-time-schedule'
       fullPath: '/change-time-schedule'
-      preLoaderRoute: typeof ChangeTimeScheduleRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppChangeTimeScheduleRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/records/': {
-      id: '/records/'
+    '/_app/records/': {
+      id: '/_app/records/'
       path: '/records'
       fullPath: '/records/'
-      preLoaderRoute: typeof RecordsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppRecordsIndexRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/records/$id': {
-      id: '/records/$id'
+    '/_app/records/$id': {
+      id: '/_app/records/$id'
       path: '/records/$id'
       fullPath: '/records/$id'
-      preLoaderRoute: typeof RecordsIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppRecordsIdRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppAdminRoute: typeof AppAdminRoute
+  AppChangeRestDayRoute: typeof AppChangeRestDayRoute
+  AppChangeTimeScheduleRoute: typeof AppChangeTimeScheduleRoute
+  AppRecordsIdRoute: typeof AppRecordsIdRoute
+  AppRecordsIndexRoute: typeof AppRecordsIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAdminRoute: AppAdminRoute,
+  AppChangeRestDayRoute: AppChangeRestDayRoute,
+  AppChangeTimeScheduleRoute: AppChangeTimeScheduleRoute,
+  AppRecordsIdRoute: AppRecordsIdRoute,
+  AppRecordsIndexRoute: AppRecordsIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
-  ChangeRestDayRoute: ChangeRestDayRoute,
-  ChangeTimeScheduleRoute: ChangeTimeScheduleRoute,
-  RecordsIdRoute: RecordsIdRoute,
-  RecordsIndexRoute: RecordsIndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

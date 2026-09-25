@@ -1,4 +1,4 @@
-import type { Role } from "@/lib/dtr-shared";
+import type { Role } from "@/shared/types";
 
 export type NavItem = {
   label: string;
