@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import { requireAdmin } from "@/server/auth/session.server";
+import { requireAdmin, requireUser } from "@/server/auth/session.server";
 import * as accessCodes from "@/server/services/access-codes.server";
-import { idInput, upsertCodeInput } from "@/shared/schemas";
+import { changePasswordInput, idInput, upsertCodeInput } from "@/shared/schemas";
 
 export const listCodes = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdmin();
@@ -22,5 +22,14 @@ export const deleteCode = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin();
     await accessCodes.deleteAccessCode(data.id);
+    return { ok: true as const };
+  });
+
+/** Any signed-in user changes the password of the access code they're using. */
+export const changeMyPassword = createServerFn({ method: "POST" })
+  .validator(changePasswordInput)
+  .handler(async ({ data }) => {
+    const user = await requireUser();
+    await accessCodes.changeOwnPassword(user.id, data.currentPassword, data.newPassword);
     return { ok: true as const };
   });

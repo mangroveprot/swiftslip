@@ -71,9 +71,22 @@ export const upsertCodeInput = z.object({
   id: id.optional(),
   label: z.string(),
   role: roleSchema,
-  // Length is checked in the service so the user gets a friendly message.
-  password: z.string(),
+  // Optional when editing (blank = keep the current password). Required when
+  // creating a new one — that and the length check happen in the service so
+  // the user gets a friendly message either way.
+  password: z.string().optional(),
 });
+
+export const changePasswordInput = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password."),
+    newPassword: z.string().min(4, "New password must be at least 4 characters."),
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, {
+    message: "New passwords don't match.",
+    path: ["confirmPassword"],
+  });
 
 export const importBiometricInput = z.object({
   filename: z.string(),

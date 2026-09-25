@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileDown, Printer, Save as SaveIcon, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
@@ -174,9 +174,12 @@ export function RecordEditor({ id }: { id: string }) {
               <button
                 className="btn btn-accent"
                 disabled={busy}
+                aria-label="Import from biometric record"
+                title="Upload a scanned or photographed biometric log (PDF or image) to auto-fill the days below"
                 onClick={() => fileRef.current?.click()}
               >
-                Import from biometric record
+                <Upload className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Import from biometric record</span>
               </button>
               <input
                 ref={fileRef}
@@ -189,21 +192,38 @@ export function RecordEditor({ id }: { id: string }) {
                   e.target.value = "";
                 }}
               />
-              <button className="btn btn-primary" disabled={busy} onClick={() => onSave()}>
-                Save
+              <button
+                className="btn btn-primary"
+                disabled={busy}
+                aria-label="Save"
+                title="Save your changes to this time record"
+                onClick={() => onSave()}
+              >
+                <SaveIcon className="size-4" aria-hidden="true" />
+                <span className="hidden sm:inline">Save</span>
               </button>
             </>
           ) : null}
-          <button type="button" className="btn btn-outline" onClick={() => window.print()}>
-            Print / Save as PDF
+          <button
+            type="button"
+            className="btn btn-outline"
+            aria-label="Print or save as PDF"
+            title='Open the print dialog — choose "Save as PDF" as the destination to export a PDF'
+            onClick={() => window.print()}
+          >
+            <Printer className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Print / Save as PDF</span>
           </button>
           <button
             type="button"
             className="btn btn-outline"
             disabled={busy}
+            aria-label="Download Word"
+            title="Download this time record as a Word (.doc) file"
             onClick={() => download()}
           >
-            Download Word
+            <FileDown className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Download Word</span>
           </button>
           {status ? <span className="text-sm text-muted-foreground">{status}</span> : null}
         </div>

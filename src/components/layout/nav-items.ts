@@ -11,10 +11,10 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Daily Time Record", to: "/records", note: "DTR sheet" },
-  { label: "My Profile", to: "/profile", note: "Employee details" },
   { label: "Change Time Schedule", to: "/change-time-schedule", note: "Notice form", soon: true },
   { label: "Change Rest Day", to: "/change-rest-day", note: "Notice form", soon: true },
   { label: "Template & Access", to: "/admin", note: "Administrator only", adminOnly: true },
+  { label: "My Account", to: "/profile", note: "Employee details" },
 ];
 
 export function visibleNavItems(role: Role | undefined) {

@@ -3,10 +3,16 @@ export function TextField({
   label,
   value,
   onChange,
+  type = "text",
+  placeholder,
+  autoComplete,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  type?: "text" | "password";
+  placeholder?: string;
+  autoComplete?: string;
 }) {
   return (
     <label className="block">
@@ -14,8 +20,11 @@ export function TextField({
         {label}
       </span>
       <input
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
         className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
       />
     </label>

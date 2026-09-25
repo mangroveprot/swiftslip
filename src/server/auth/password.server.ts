@@ -8,3 +8,8 @@ import { createHash } from "node:crypto";
 export function hashPassword(password: string): string {
   return createHash("sha256").update(password, "utf8").digest("hex");
 }
+
+/** Checks a plaintext password against a stored `password_hash` row. */
+export function verifyPasswordHash(password: string, hash: string): boolean {
+  return hashPassword(password) === hash;
+}
