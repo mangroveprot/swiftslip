@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import { NotFound } from "@/components/common/NotFound";
 import { RouteError } from "@/components/common/RouteError";
+import { Toaster } from "@/components/ui/sonner";
 import { APP } from "@/config/app";
 import appCss from "../styles.css?url";
 
@@ -58,6 +59,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Toaster position="top-right" richColors closeButton />
     </QueryClientProvider>
   );
 }

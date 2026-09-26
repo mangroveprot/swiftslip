@@ -2,21 +2,20 @@ import { useState } from "react";
 
 import { changeMyPassword } from "@/api/access-codes.functions";
 import { TextField } from "@/components/common/FormField";
+import { toast } from "@/lib/toast";
 
 export function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const strength = passwordStrength(newPassword);
   const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   async function onSubmit() {
-    setStatus(null);
     if (newPassword !== confirmPassword) {
-      setStatus({ kind: "error", text: "New passwords don't match." });
+      toast.error("New passwords don't match.");
       return;
     }
     setBusy(true);
@@ -25,12 +24,9 @@ export function ChangePasswordForm() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setStatus({ kind: "ok", text: "Password updated." });
+      toast.success("Password updated");
     } catch (e) {
-      setStatus({
-        kind: "error",
-        text: e instanceof Error ? e.message : "Could not update password.",
-      });
+      toast.error(e instanceof Error ? e.message : "Could not update password.");
     } finally {
       setBusy(false);
     }
@@ -86,13 +82,6 @@ export function ChangePasswordForm() {
           >
             {busy ? "Updating…" : "Update password"}
           </button>
-          {status ? (
-            <span
-              className={`text-sm ${status.kind === "ok" ? "text-muted-foreground" : "text-destructive"}`}
-            >
-              {status.text}
-            </span>
-          ) : null}
         </div>
       </div>
     </section>

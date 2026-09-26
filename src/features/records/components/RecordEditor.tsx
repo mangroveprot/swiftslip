@@ -7,6 +7,7 @@ import { importBiometricFile } from "@/api/biometric-import.functions";
 import { saveRecord } from "@/api/records.functions";
 import { useSession } from "@/features/auth/use-session";
 import { templateQueryOptions } from "@/features/template/queries";
+import { toast } from "@/lib/toast";
 import { MONTHS, daysForPeriod } from "@/shared/period";
 import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
 import { APP } from "@/config/app";
@@ -28,7 +29,6 @@ export function RecordEditor({ id }: { id: string }) {
 
   const [header, setHeader] = useState<DtrHeader | null>(null);
   const [rows, setRows] = useState<Record<number, DtrEntry>>({});
-  const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
 
   const employeeOptions = useMemo(() => {
@@ -83,12 +83,7 @@ export function RecordEditor({ id }: { id: string }) {
   const setCell = (day: number, patch: Partial<DtrEntry>) =>
     setRows({ ...rows, [day]: { ...row(day), ...patch } });
 
-  function flash(message: string, ms = 2000) {
-    setStatus(message);
-    setTimeout(() => setStatus(""), ms);
-  }
-
-  async function onSave(next?: Record<number, DtrEntry>, nextHeader?: DtrHeader) {
+  async function onSave(next?: Record<number, DtrEntry>, nextHeader?: DtrHeader, silent = false) {
     const h = nextHeader ?? header;
     if (!h) return;
     const entries = Object.values(next ?? rows)
@@ -97,9 +92,9 @@ export function RecordEditor({ id }: { id: string }) {
     setBusy(true);
     try {
       await saveRecord({ data: { id, header: h, entries } });
-      flash("Saved");
+      if (!silent) toast.success("Saved");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Save failed.");
+      toast.error(e instanceof Error ? e.message : "Save failed.");
     } finally {
       setBusy(false);
     }
@@ -108,7 +103,7 @@ export function RecordEditor({ id }: { id: string }) {
   async function onFile(file: File) {
     if (!header) return;
     setBusy(true);
-    setStatus("Reading the biometric record…");
+    const toastId = toast.loading("Reading the biometric record…");
     try {
       const log = await importBiometricFile({
         data: {
@@ -120,10 +115,12 @@ export function RecordEditor({ id }: { id: string }) {
       const merged = applyImportedLog(log, header, rows);
       setHeader(merged.header);
       setRows(merged.rows);
-      await onSave(merged.rows, merged.header);
-      setStatus(`Imported ${merged.count} day${merged.count === 1 ? "" : "s"}`);
+      await onSave(merged.rows, merged.header, /* silent */ true);
+      toast.success(`Imported ${merged.count} day${merged.count === 1 ? "" : "s"}`, {
+        id: toastId,
+      });
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Import failed.");
+      toast.error(e instanceof Error ? e.message : "Import failed.", { id: toastId });
     } finally {
       setBusy(false);
     }
@@ -132,7 +129,7 @@ export function RecordEditor({ id }: { id: string }) {
   async function download() {
     if (!header || !template) return;
     setBusy(true);
-    setStatus("Preparing Word file…");
+    const toastId = toast.loading("Preparing Word file…");
     try {
       await downloadDtrWord({
         template,
@@ -141,9 +138,9 @@ export function RecordEditor({ id }: { id: string }) {
         entryFor: row,
         fileName: `${APP.name}_${header.name || "record"}_${MONTHS[header.month - 1]}_${header.year}.doc`,
       });
-      flash("Word file downloaded");
+      toast.success("Word file downloaded", { id: toastId });
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Word download failed.");
+      toast.error(e instanceof Error ? e.message : "Word download failed.", { id: toastId });
     } finally {
       setBusy(false);
     }
@@ -225,7 +222,6 @@ export function RecordEditor({ id }: { id: string }) {
             <FileDown className="size-4" aria-hidden="true" />
             <span className="hidden sm:inline">Download Word</span>
           </button>
-          {status ? <span className="text-sm text-muted-foreground">{status}</span> : null}
         </div>
       </div>
 
@@ -246,7 +242,7 @@ export function RecordEditor({ id }: { id: string }) {
             onCellChange={setCell}
             onClear={() => {
               setRows({});
-              flash("Entries cleared");
+              toast.success("Entries cleared");
             }}
             canEdit={canEdit}
             busy={busy}

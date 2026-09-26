@@ -1,11 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { Clock, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { createRecord, deleteRecord } from "@/api/records.functions";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { templateQueryOptions } from "@/features/template/queries";
+import { toast } from "@/lib/toast";
+import { useNow } from "@/lib/use-now";
 import { MONTHS, periodLabel, periodRange } from "@/shared/period";
+import { relativeTime } from "@/shared/time";
 import type { Period } from "@/shared/types";
 import { recordsQueryOptions } from "../queries";
 
@@ -16,6 +20,7 @@ type RecordRow = {
   month: number;
   year: number;
   period: string;
+  updated_at: string;
 };
 
 type Status = "upcoming" | "active" | "closing" | "closed";
@@ -26,25 +31,42 @@ export function RecordsList() {
   const { data: records } = useQuery(recordsQueryOptions());
   const { data: template } = useQuery(templateQueryOptions());
   const [busy, setBusy] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<RecordRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const now = useNow();
 
   async function newRecord() {
     setBusy(true);
-    const now = new Date();
-    const { id } = await createRecord({
-      data: {
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
-        period: (template?.default_period ?? "first_half") as Period,
-      },
-    });
-    setBusy(false);
-    navigate({ to: "/records/$id", params: { id } });
+    try {
+      const today = new Date();
+      const { id } = await createRecord({
+        data: {
+          month: today.getMonth() + 1,
+          year: today.getFullYear(),
+          period: (template?.default_period ?? "first_half") as Period,
+        },
+      });
+      navigate({ to: "/records/$id", params: { id } });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create a new record.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  async function onDelete(id: string) {
-    if (!confirm("Delete this record?")) return;
-    await deleteRecord({ data: { id } });
-    qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey });
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleteBusy(true);
+    try {
+      await deleteRecord({ data: { id: pendingDelete.id } });
+      await qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey });
+      toast.success(`Deleted "${pendingDelete.name || "Untitled record"}"`);
+      setPendingDelete(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete that record.");
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   return (
@@ -55,7 +77,7 @@ export function RecordsList() {
           <h1 className="mt-1 text-4xl">Time records</h1>
         </div>
         <button className="btn btn-primary" disabled={busy} onClick={newRecord}>
-          New record
+          {busy ? "Creating…" : "New record"}
         </button>
       </div>
 
@@ -65,7 +87,8 @@ export function RecordsList() {
             <RecordCard
               key={r.id}
               record={r as RecordRow}
-              onDelete={() => onDelete(r.id)}
+              now={now}
+              onDelete={() => setPendingDelete(r as RecordRow)}
             />
           ))}
         </div>
@@ -74,15 +97,27 @@ export function RecordsList() {
           No records yet.
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && !deleteBusy && setPendingDelete(null)}
+        title={`Delete "${pendingDelete?.name || "Untitled record"}"?`}
+        description="This permanently removes the record and all its daily entries. This can't be undone."
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onConfirm={confirmDelete}
+      />
     </main>
   );
 }
 
 function RecordCard({
   record: r,
+  now,
   onDelete,
 }: {
   record: RecordRow;
+  now: Date;
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
@@ -147,6 +182,15 @@ function RecordCard({
         <p className="mt-3 text-xs text-foreground">
           {MONTHS[r.month - 1]} {r.year} · {periodLabel(r.period as Period, r.month, r.year)}
         </p>
+        {r.updated_at ? (
+          <p
+            className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"
+            title={new Date(r.updated_at).toLocaleString()}
+          >
+            <Clock className="size-3" aria-hidden="true" />
+            Updated {relativeTime(r.updated_at, now)}
+          </p>
+        ) : null}
       </div>
 
       <RecordThumbnail status={status} hasName={Boolean(r.name)} />

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { saveMyProfile } from "@/api/profile.functions";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/features/auth/use-session";
+import { toast } from "@/lib/toast";
 import type { EmployeeProfile } from "@/shared/types";
 import { profileQueryOptions } from "../queries";
 import { ChangePasswordForm } from "./ChangePasswordForm";
@@ -28,7 +29,6 @@ export function ProfileForm() {
   const { data } = useQuery(profileQueryOptions());
   const [form, setForm] = useState<EmployeeProfile>(empty);
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("");
 
   useEffect(() => {
     if (data) setForm(data);
@@ -41,15 +41,13 @@ export function ProfileForm() {
 
   async function onSave() {
     setBusy(true);
-    setStatus("");
     try {
       const saved = await saveMyProfile({ data: form });
       setForm(saved);
       await qc.invalidateQueries({ queryKey: profileQueryOptions().queryKey });
-      setStatus("Profile saved");
-      setTimeout(() => setStatus(""), 2000);
+      toast.success("Profile saved");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Save failed.");
+      toast.error(e instanceof Error ? e.message : "Save failed.");
     } finally {
       setBusy(false);
     }
@@ -103,7 +101,6 @@ export function ProfileForm() {
           <button className="btn btn-primary" disabled={busy} onClick={onSave}>
             {busy ? "Saving…" : "Save profile"}
           </button>
-          {status ? <span className="text-sm text-muted-foreground">{status}</span> : null}
         </div>
       </section>
 

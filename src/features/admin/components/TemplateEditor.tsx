@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { saveTemplate } from "@/api/template.functions";
 import { TextField } from "@/components/common/FormField";
 import { templateQueryOptions } from "@/features/template/queries";
+import { toast } from "@/lib/toast";
 import { PERIOD_LABELS } from "@/shared/period";
 import type { DtrTemplate, Period } from "@/shared/types";
 
 export function TemplateEditor() {
   const { data } = useQuery(templateQueryOptions());
   const [form, setForm] = useState<DtrTemplate | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (data) setForm(data);
@@ -94,13 +95,20 @@ export function TemplateEditor() {
       </div>
       <button
         className="btn btn-primary mt-6"
+        disabled={busy}
         onClick={async () => {
-          await saveTemplate({ data: form });
-          setSaved(true);
-          setTimeout(() => setSaved(false), 2000);
+          setBusy(true);
+          try {
+            await saveTemplate({ data: form });
+            toast.success("Template saved");
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Could not save the template.");
+          } finally {
+            setBusy(false);
+          }
         }}
       >
-        {saved ? "Saved" : "Save template"}
+        {busy ? "Saving…" : "Save template"}
       </button>
     </section>
   );
