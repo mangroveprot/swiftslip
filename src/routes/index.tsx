@@ -5,13 +5,15 @@ import { sessionQueryOptions } from "@/features/auth/queries";
 import { seo, pageTitle } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
-  // Already signed in? Skip the login page.
+  // Already signed in? Skip the login page — admins land on the screen chooser.
   beforeLoad: async ({ context }) => {
     const session = await context.queryClient.ensureQueryData({
       ...sessionQueryOptions(),
       revalidateIfStale: true,
     });
-    if (session) throw redirect({ to: "/records" });
+    if (session) {
+      throw redirect({ to: session.role === "admin" ? "/choose" : "/records" });
+    }
   },
   head: () =>
     seo({

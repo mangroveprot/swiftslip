@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Clock } from "lucide-react";
+import { Clock, LayoutGrid } from "lucide-react";
 
 import { APP } from "@/config/app";
 import { roleLabel, visibleNavItems } from "./nav-items";
@@ -71,6 +71,12 @@ export function Sidebar({
             </p>
           ) : null}
         </div>
+        {role === "admin" ? (
+          <Link to="/choose" onClick={onNavigate} className="btn btn-outline w-full">
+            <LayoutGrid className="size-4" aria-hidden="true" />
+            Switch app
+          </Link>
+        ) : null}
         <button className="btn btn-outline w-full" onClick={onSignOut}>
           Sign out
         </button>

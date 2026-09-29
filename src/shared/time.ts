@@ -1,4 +1,21 @@
 /**
+ * Formats a 24-hour "HH:MM" time string (as produced by <input type="time">)
+ * into a friendly 12-hour clock, e.g. "13:30" -> "1:30 PM". Values that aren't
+ * a valid HH:MM (including empty or legacy free text) are returned unchanged so
+ * nothing is ever lost.
+ */
+export function formatTime12h(value: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return value;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return value;
+  const period = h < 12 ? "AM" : "PM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m[2]} ${period}`;
+}
+
+/**
  * Formats an ISO timestamp as a short relative string, Twitter/Slack-style:
  * "Just now", "5m ago", "3h ago", "6d ago", then falls back to a plain date
  * once it's far enough in the past that "ago" stops being useful.

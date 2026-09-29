@@ -83,10 +83,11 @@ export function RecordsList() {
 
       {records && records.length > 0 ? (
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {records.map((r) => (
+          {records.map((r, i) => (
             <RecordCard
               key={r.id}
               record={r as RecordRow}
+              index={i}
               now={now}
               onDelete={() => setPendingDelete(r as RecordRow)}
             />
@@ -113,10 +114,12 @@ export function RecordsList() {
 
 function RecordCard({
   record: r,
+  index,
   now,
   onDelete,
 }: {
   record: RecordRow;
+  index: number;
   now: Date;
   onDelete: () => void;
 }) {
@@ -144,7 +147,8 @@ function RecordCard({
           navigate({ to: "/records/$id", params: { id: r.id } });
         }
       }}
-      className="flex cursor-pointer gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40"
+      style={{ animationDelay: `${Math.min(index, 12) * 55}ms`, animationFillMode: "both" }}
+      className="flex cursor-pointer gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">

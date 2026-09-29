@@ -106,7 +106,13 @@
   padding: 0.4rem 0.85rem;
   font-size: 0.8125rem;
   font-weight: 500;
-  transition: opacity 0.15s ease;
+  transition:
+    background-color 0.18s ease-in-out,
+    border-color 0.18s ease-in-out,
+    color 0.18s ease-in-out,
+    box-shadow 0.18s ease-in-out,
+    opacity 0.18s ease-in-out,
+    transform 0.12s ease-in-out;
   cursor: pointer;
 }
 
@@ -147,6 +153,84 @@
   color: var(--color-muted-foreground);
 }
 
+/* ── Motion ───────────────────────────────────────────────────────────────
+   Small, consistent ease-in-out transitions so every interactive element
+   feels smooth — hovers, focus rings, presses, colour changes. All animation
+   is switched off automatically when the user prefers reduced motion; the
+   hover/focus *states* below still apply, they just won't animate. */
+@media (prefers-reduced-motion: no-preference) {
+  a,
+  button,
+  summary,
+  label,
+  [role="button"],
+  [role="link"],
+  input,
+  select,
+  textarea,
+  .btn,
+  .inp,
+  .field {
+    transition:
+      background-color 0.18s ease-in-out,
+      border-color 0.18s ease-in-out,
+      color 0.18s ease-in-out,
+      box-shadow 0.18s ease-in-out,
+      opacity 0.18s ease-in-out,
+      transform 0.12s ease-in-out;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+/* ── Zoom cards ─────────────────────────────────────────────────────────
+   Big "pick a screen" cards (the /choose picker) lift and zoom on hover —
+   slower and roomier than the 0.12s default above, so choosing feels
+   deliberate rather than twitchy. Unlayered on purpose: the `a` rule above
+   is unlayered too, so only a plain class like this can override it (a
+   Tailwind transition utility would lose to it). */
+@media (prefers-reduced-motion: no-preference) {
+  .zoom-card {
+    transition:
+      scale 0.3s ease-out,
+      translate 0.3s ease-out,
+      box-shadow 0.3s ease-out,
+      border-color 0.3s ease-out,
+      background-color 0.3s ease-out,
+      color 0.3s ease-out;
+  }
+
+  .zoom-card:active {
+    scale: 0.99;
+  }
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-accent:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--color-muted);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inp:focus,
+.field:focus {
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring) 22%, transparent);
+}
+
 @media print {
   body {
     background: #fff;
@@ -175,5 +259,8 @@
   @page {
     size: A4 portrait;
     margin: 14mm;
+    /* The company template keeps only a little space above the logo, so use a
+       smaller top margin than the sides/bottom for print. */
+    margin-top: 6mm;
   }
 }

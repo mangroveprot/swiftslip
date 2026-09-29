@@ -12,7 +12,9 @@ Keep route files **thin**: metadata, guards, and a component imported from
 | File | URL | Notes |
 | --- | --- | --- |
 | `__root.tsx` | — | html shell + providers; preserve `<Outlet />` |
-| `index.tsx` | `/` | login; redirects to `/records` when signed in |
+| `index.tsx` | `/` | login; signed in → `/choose` (admin) or `/records` (staff) |
+| `choose.tsx` | `/choose` | admin-only app picker; own chrome (no `_app` shell) |
+| `rgc-asset-inventory.tsx` | `/rgc-asset-inventory` | admin-only placeholder for the future inventory app |
 | `_app.tsx` | — | **pathless layout**: auth guard + `AppShell` |
 | `_app/records/index.tsx` | `/records` | |
 | `_app/records/$id.tsx` | `/records/:id` | dynamic (bare `$`, no braces) |

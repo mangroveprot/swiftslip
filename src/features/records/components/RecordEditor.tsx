@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileDown, Printer, Save as SaveIcon, Upload } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Check, FileDown, Loader2, Printer, Save as SaveIcon, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
-import { saveRecord } from "@/api/records.functions";
+import { deleteRecord, saveRecord } from "@/api/records.functions";
 import { useSession } from "@/features/auth/use-session";
 import { templateQueryOptions } from "@/features/template/queries";
 import { toast } from "@/lib/toast";
@@ -18,10 +18,35 @@ import { DailyEntriesTable } from "./DailyEntriesTable";
 import { DtrPreview } from "./DtrPreview";
 import { RecordHeaderFields, type EmployeeOption } from "./RecordHeaderFields";
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+/** The daily entries worth persisting — a row counts only if it has any value. */
+function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
+  return Object.values(map)
+    .filter((e) => e.time_in || e.time_out || e.schedule || e.remarks)
+    .sort((a, b) => a.day - b.day);
+}
+
+/**
+ * A record the user hasn't actually filled in: no entries, signature, certifier,
+ * and no identity fields (name / emp_no). Typing a name or employee number counts
+ * as meaningful content worth keeping, even without any daily entries.
+ */
+function isBlankRecord(header: DtrHeader, entries: DtrEntry[]): boolean {
+  return (
+    entries.length === 0 &&
+    !header.employee_signature &&
+    !header.certified_by?.trim() &&
+    !header.name?.trim() &&
+    !header.emp_no?.trim()
+  );
+}
+
 export function RecordEditor({ id }: { id: string }) {
   const session = useSession();
   const canEdit = Boolean(session);
   const fileRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
 
   const { data } = useQuery(recordQueryOptions(id));
   const { data: template } = useQuery(templateQueryOptions());
@@ -30,6 +55,20 @@ export function RecordEditor({ id }: { id: string }) {
   const [header, setHeader] = useState<DtrHeader | null>(null);
   const [rows, setRows] = useState<Record<number, DtrEntry>>({});
   const [busy, setBusy] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+
+  // Serialized snapshot of what's already persisted, so we only save real changes.
+  const savedSnapshotRef = useRef<string>("");
+  // Skip auto-save until the server data has been loaded into local state.
+  const hydratedRef = useRef(false);
+  // Whether the record arrived empty — only those get discarded when left untouched.
+  const wasBlankOnLoadRef = useRef(false);
+  // The user deliberately committed this record (clicked Save / imported a file).
+  // Once set, the record is never auto-discarded on leave, even if it looks blank.
+  const keptRef = useRef(false);
+  // Latest state, read by the unmount handler without re-subscribing it.
+  const latestRef = useRef({ header, rows, canEdit });
+  latestRef.current = { header, rows, canEdit };
 
   const employeeOptions = useMemo(() => {
     const map = new Map<string, EmployeeOption>();
@@ -48,7 +87,7 @@ export function RecordEditor({ id }: { id: string }) {
     const r = data.record as DtrHeader & { employee_signature?: string };
     const localSig =
       typeof window !== "undefined" ? (localStorage.getItem(`dtr-sig:${id}`) ?? "") : "";
-    setHeader({
+    const nextHeader: DtrHeader = {
       emp_no: r.emp_no,
       name: r.name,
       designation: r.designation,
@@ -58,10 +97,19 @@ export function RecordEditor({ id }: { id: string }) {
       period: r.period as Period,
       certified_by: r.certified_by,
       employee_signature: r.employee_signature || localSig || "",
-    });
+    };
     const map: Record<number, DtrEntry> = {};
     for (const e of data.entries) map[e.day] = e;
+    setHeader(nextHeader);
     setRows(map);
+
+    const entries = buildEntries(map);
+    savedSnapshotRef.current = JSON.stringify({ header: nextHeader, entries });
+    wasBlankOnLoadRef.current = isBlankRecord(nextHeader, entries);
+    // A record that already holds content is one the user meant to keep — lock that
+    // in now so clearing a field later can never trigger the untouched-scaffold delete.
+    if (!wasBlankOnLoadRef.current) keptRef.current = true;
+    hydratedRef.current = true;
   }, [data, id]);
 
   // Keep a local backup of the signature so it survives a failed save.
@@ -70,6 +118,55 @@ export function RecordEditor({ id }: { id: string }) {
     if (header.employee_signature) localStorage.setItem(`dtr-sig:${id}`, header.employee_signature);
     else localStorage.removeItem(`dtr-sig:${id}`);
   }, [header?.employee_signature, id]);
+
+  // Auto-save: after edits settle, persist quietly in the background.
+  useEffect(() => {
+    if (!hydratedRef.current || !header || !canEdit) return;
+    const entries = buildEntries(rows);
+    const snapshot = JSON.stringify({ header, entries });
+    if (snapshot === savedSnapshotRef.current) return;
+    const timer = setTimeout(() => {
+      setSaveStatus("saving");
+      saveRecord({ data: { id, header, entries } })
+        .then(() => {
+          savedSnapshotRef.current = snapshot;
+          if (!isBlankRecord(header, entries)) keptRef.current = true;
+          setSaveStatus("saved");
+        })
+        .catch(() => setSaveStatus("error"));
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [header, rows, canEdit, id]);
+
+  // Let the "Saved" confirmation linger briefly, then return the button to its
+  // default Save icon/label.
+  useEffect(() => {
+    if (saveStatus !== "saved") return;
+    const timer = setTimeout(() => setSaveStatus("idle"), 2000);
+    return () => clearTimeout(timer);
+  }, [saveStatus]);
+
+  // On leaving: discard an untouched new record, or flush any unsaved changes.
+  useEffect(() => {
+    return () => {
+      const { header: h, rows: r, canEdit: editable } = latestRef.current;
+      if (!editable || !h) return;
+      const entries = buildEntries(r);
+      if (wasBlankOnLoadRef.current && !keptRef.current && isBlankRecord(h, entries)) {
+        void deleteRecord({ data: { id } })
+          .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
+          .catch(() => {});
+        return;
+      }
+      const snapshot = JSON.stringify({ header: h, entries });
+      if (snapshot !== savedSnapshotRef.current) {
+        void saveRecord({ data: { id, header: h, entries } })
+          .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
+          .catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (!header || !template) {
     return <main className="p-10 text-sm text-muted-foreground">Loading sheet…</main>;
@@ -83,17 +180,26 @@ export function RecordEditor({ id }: { id: string }) {
   const setCell = (day: number, patch: Partial<DtrEntry>) =>
     setRows({ ...rows, [day]: { ...row(day), ...patch } });
 
-  async function onSave(next?: Record<number, DtrEntry>, nextHeader?: DtrHeader, silent = false) {
-    const h = nextHeader ?? header;
-    if (!h) return;
-    const entries = Object.values(next ?? rows)
-      .filter((e) => e.time_in || e.time_out || e.schedule || e.remarks)
-      .sort((a, b) => a.day - b.day);
+  // Single place that writes to the server and records what's now persisted.
+  // Once a record has held real content, mark it kept so it's never auto-discarded
+  // later — even if the user then clears it back to blank.
+  async function persist(h: DtrHeader, entries: DtrEntry[]) {
+    await saveRecord({ data: { id, header: h, entries } });
+    savedSnapshotRef.current = JSON.stringify({ header: h, entries });
+    if (!isBlankRecord(h, entries)) keptRef.current = true;
+  }
+
+  async function onSave() {
+    if (!header) return;
+    const entries = buildEntries(rows);
     setBusy(true);
+    setSaveStatus("saving");
     try {
-      await saveRecord({ data: { id, header: h, entries } });
-      if (!silent) toast.success("Saved");
+      await persist(header, entries);
+      setSaveStatus("saved");
+      toast.success("Saved");
     } catch (e) {
+      setSaveStatus("error");
       toast.error(e instanceof Error ? e.message : "Save failed.");
     } finally {
       setBusy(false);
@@ -115,7 +221,8 @@ export function RecordEditor({ id }: { id: string }) {
       const merged = applyImportedLog(log, header, rows);
       setHeader(merged.header);
       setRows(merged.rows);
-      await onSave(merged.rows, merged.header, /* silent */ true);
+      await persist(merged.header, buildEntries(merged.rows));
+      setSaveStatus("saved");
       toast.success(`Imported ${merged.count} day${merged.count === 1 ? "" : "s"}`, {
         id: toastId,
       });
@@ -192,12 +299,28 @@ export function RecordEditor({ id }: { id: string }) {
               <button
                 className="btn btn-primary"
                 disabled={busy}
-                aria-label="Save"
+                aria-label={
+                  saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
+                }
                 title="Save your changes to this time record"
                 onClick={() => onSave()}
               >
-                <SaveIcon className="size-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Save</span>
+                {saveStatus === "saving" ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : saveStatus === "saved" ? (
+                  <Check className="size-4" aria-hidden="true" />
+                ) : (
+                  <SaveIcon className="size-4" aria-hidden="true" />
+                )}
+                <span className="hidden sm:inline">
+                  {saveStatus === "saving"
+                    ? "Saving…"
+                    : saveStatus === "saved"
+                      ? "Saved"
+                      : saveStatus === "error"
+                        ? "Save failed"
+                        : "Save"}
+                </span>
               </button>
             </>
           ) : null}

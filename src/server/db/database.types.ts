@@ -167,6 +167,103 @@ export type Database = {
           },
         ]
       }
+      ob_forms: {
+        Row: {
+          approved_by: string
+          approved_via_viber: boolean
+          created_at: string
+          date_filed: string
+          date_of_ob: string
+          department: string
+          employee_name: string
+          employee_signature: string
+          id: string
+          id_number: string
+          owner_id: string | null
+          position: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string
+          approved_via_viber?: boolean
+          created_at?: string
+          date_filed?: string
+          date_of_ob?: string
+          department?: string
+          employee_name?: string
+          employee_signature?: string
+          id?: string
+          id_number?: string
+          owner_id?: string | null
+          position?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string
+          approved_via_viber?: boolean
+          created_at?: string
+          date_filed?: string
+          date_of_ob?: string
+          department?: string
+          employee_name?: string
+          employee_signature?: string
+          id?: string
+          id_number?: string
+          owner_id?: string | null
+          position?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ob_forms_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ob_entries: {
+        Row: {
+          form_id: string
+          from_place: string
+          id: string
+          idx: number
+          purpose: string
+          time_departure: string
+          time_return: string
+          to_place: string
+        }
+        Insert: {
+          form_id: string
+          from_place?: string
+          id?: string
+          idx: number
+          purpose?: string
+          time_departure?: string
+          time_return?: string
+          to_place?: string
+        }
+        Update: {
+          form_id?: string
+          from_place?: string
+          id?: string
+          idx?: number
+          purpose?: string
+          time_departure?: string
+          time_return?: string
+          to_place?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ob_entries_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "ob_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dtr_template: {
         Row: {
           certified_by_label: string

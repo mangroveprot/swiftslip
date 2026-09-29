@@ -95,7 +95,9 @@ File-based (TanStack Router). URLs are unchanged:
 ```
 routes/
 ├── __root.tsx                 html shell, providers, 404 + error UI
-├── index.tsx                  /                 login (redirects to /records if signed in)
+├── index.tsx                  /                 login (signed in: admin → /choose, staff → /records)
+├── choose.tsx                 /choose           admin-only app picker (SwiftSlip / RGC Asset Inventory)
+├── rgc-asset-inventory.tsx    /rgc-asset-inventory   admin-only placeholder page, own chrome
 ├── _app.tsx                   pathless layout: auth guard + AppShell for everything below
 └── _app/
     ├── records/index.tsx      /records

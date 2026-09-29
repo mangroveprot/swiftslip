@@ -11,10 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as ChooseRouteImport } from './routes/choose'
+import { Route as RgcAssetInventoryRouteImport } from './routes/rgc-asset-inventory'
 import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppChangeRestDayRouteImport } from './routes/_app/change-rest-day'
 import { Route as AppChangeTimeScheduleRouteImport } from './routes/_app/change-time-schedule'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as AppOfficialBusinessIndexRouteImport } from './routes/_app/official-business/index'
+import { Route as AppOfficialBusinessIdRouteImport } from './routes/_app/official-business/$id'
 import { Route as AppRecordsIndexRouteImport } from './routes/_app/records/index'
 import { Route as AppRecordsIdRouteImport } from './routes/_app/records/$id'
 
@@ -25,6 +29,16 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChooseRoute = ChooseRouteImport.update({
+  id: '/choose',
+  path: '/choose',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RgcAssetInventoryRoute = RgcAssetInventoryRouteImport.update({
+  id: '/rgc-asset-inventory',
+  path: '/rgc-asset-inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppAdminRoute = AppAdminRouteImport.update({
@@ -47,6 +61,17 @@ const AppProfileRoute = AppProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOfficialBusinessIndexRoute =
+  AppOfficialBusinessIndexRouteImport.update({
+    id: '/official-business/',
+    path: '/official-business/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppOfficialBusinessIdRoute = AppOfficialBusinessIdRouteImport.update({
+  id: '/official-business/$id',
+  path: '/official-business/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRecordsIndexRoute = AppRecordsIndexRouteImport.update({
   id: '/records/',
   path: '/records/',
@@ -60,67 +85,93 @@ const AppRecordsIdRoute = AppRecordsIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/choose': typeof ChooseRoute
+  '/rgc-asset-inventory': typeof RgcAssetInventoryRoute
   '/admin': typeof AppAdminRoute
   '/change-rest-day': typeof AppChangeRestDayRoute
   '/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/profile': typeof AppProfileRoute
+  '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/official-business/': typeof AppOfficialBusinessIndexRoute
   '/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/choose': typeof ChooseRoute
+  '/rgc-asset-inventory': typeof RgcAssetInventoryRoute
   '/admin': typeof AppAdminRoute
   '/change-rest-day': typeof AppChangeRestDayRoute
   '/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/profile': typeof AppProfileRoute
+  '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/official-business': typeof AppOfficialBusinessIndexRoute
   '/records': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/choose': typeof ChooseRoute
+  '/rgc-asset-inventory': typeof RgcAssetInventoryRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/change-rest-day': typeof AppChangeRestDayRoute
   '/_app/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/_app/profile': typeof AppProfileRoute
+  '/_app/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/_app/records/$id': typeof AppRecordsIdRoute
+  '/_app/official-business/': typeof AppOfficialBusinessIndexRoute
   '/_app/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/choose'
+    | '/rgc-asset-inventory'
     | '/admin'
     | '/change-rest-day'
     | '/change-time-schedule'
     | '/profile'
+    | '/official-business/$id'
     | '/records/$id'
+    | '/official-business/'
     | '/records/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/choose'
+    | '/rgc-asset-inventory'
     | '/admin'
     | '/change-rest-day'
     | '/change-time-schedule'
     | '/profile'
+    | '/official-business/$id'
     | '/records/$id'
+    | '/official-business'
     | '/records'
   id:
     | '__root__'
     | '/'
     | '/_app'
+    | '/choose'
+    | '/rgc-asset-inventory'
     | '/_app/admin'
     | '/_app/change-rest-day'
     | '/_app/change-time-schedule'
     | '/_app/profile'
+    | '/_app/official-business/$id'
     | '/_app/records/$id'
+    | '/_app/official-business/'
     | '/_app/records/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  ChooseRoute: typeof ChooseRoute
+  RgcAssetInventoryRoute: typeof RgcAssetInventoryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -137,6 +188,20 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/choose': {
+      id: '/choose'
+      path: '/choose'
+      fullPath: '/choose'
+      preLoaderRoute: typeof ChooseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rgc-asset-inventory': {
+      id: '/rgc-asset-inventory'
+      path: '/rgc-asset-inventory'
+      fullPath: '/rgc-asset-inventory'
+      preLoaderRoute: typeof RgcAssetInventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/admin': {
@@ -167,6 +232,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/official-business/': {
+      id: '/_app/official-business/'
+      path: '/official-business'
+      fullPath: '/official-business/'
+      preLoaderRoute: typeof AppOfficialBusinessIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/official-business/$id': {
+      id: '/_app/official-business/$id'
+      path: '/official-business/$id'
+      fullPath: '/official-business/$id'
+      preLoaderRoute: typeof AppOfficialBusinessIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/records/': {
       id: '/_app/records/'
       path: '/records'
@@ -189,7 +268,9 @@ interface AppRouteChildren {
   AppChangeRestDayRoute: typeof AppChangeRestDayRoute
   AppChangeTimeScheduleRoute: typeof AppChangeTimeScheduleRoute
   AppProfileRoute: typeof AppProfileRoute
+  AppOfficialBusinessIdRoute: typeof AppOfficialBusinessIdRoute
   AppRecordsIdRoute: typeof AppRecordsIdRoute
+  AppOfficialBusinessIndexRoute: typeof AppOfficialBusinessIndexRoute
   AppRecordsIndexRoute: typeof AppRecordsIndexRoute
 }
 
@@ -198,7 +279,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppChangeRestDayRoute: AppChangeRestDayRoute,
   AppChangeTimeScheduleRoute: AppChangeTimeScheduleRoute,
   AppProfileRoute: AppProfileRoute,
+  AppOfficialBusinessIdRoute: AppOfficialBusinessIdRoute,
   AppRecordsIdRoute: AppRecordsIdRoute,
+  AppOfficialBusinessIndexRoute: AppOfficialBusinessIndexRoute,
   AppRecordsIndexRoute: AppRecordsIndexRoute,
 }
 
@@ -207,6 +290,8 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  ChooseRoute: ChooseRoute,
+  RgcAssetInventoryRoute: RgcAssetInventoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

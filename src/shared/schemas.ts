@@ -67,6 +67,39 @@ export const dtrTemplateSchema = z.object({
   }),
 });
 
+export const createObFormInput = z.object({
+  // Client passes its local "today" (YYYY-MM-DD) so Date Filed defaults correctly
+  // for the user's timezone rather than the server's.
+  date_filed: z.string().optional(),
+});
+
+export const obFormSchema = z.object({
+  id_number: z.string(),
+  employee_name: z.string(),
+  department: z.string(),
+  position: z.string(),
+  date_filed: z.string(),
+  date_of_ob: z.string(),
+  approved_by: z.string(),
+  approved_via_viber: z.boolean().default(false),
+  employee_signature: z.string().default(""),
+});
+
+export const obEntrySchema = z.object({
+  idx: z.number().int().min(0).max(50),
+  from_place: z.string(),
+  to_place: z.string(),
+  purpose: z.string(),
+  time_departure: z.string(),
+  time_return: z.string(),
+});
+
+export const saveObFormInput = z.object({
+  id,
+  form: obFormSchema,
+  entries: z.array(obEntrySchema).max(50),
+});
+
 export const upsertCodeInput = z.object({
   id: id.optional(),
   label: z.string(),
@@ -92,6 +125,15 @@ export const importBiometricInput = z.object({
   filename: z.string(),
   mimeType: z.string(),
   base64: z.string().min(1),
+});
+
+// AI help for the OB itinerary "Purpose(s)" field.
+export const obPurposeInput = z.object({
+  mode: z.enum(["generate", "enhance"]),
+  // For "generate": the user's rough context / instructions. For "enhance": ignored.
+  context: z.string().max(2000).default(""),
+  // The current Purpose text (the thing to enhance, or extra context to generate from).
+  current: z.string().max(4000).default(""),
 });
 
 export const employeeProfileSchema = z.object({
