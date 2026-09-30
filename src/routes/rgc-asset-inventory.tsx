@@ -1,13 +1,15 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { AssetInventoryPlaceholder } from "@/features/inventory/components/AssetInventoryPlaceholder";
+import { InventoryLayout } from "@/features/inventory/components/InventoryLayout";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { pageTitle, seo } from "@/lib/seo";
 
 /**
- * RGC Asset Inventory — placeholder page (feature not built yet).
- * Outside `_app` on purpose: the inventory app will have its own chrome.
- * Admin-only, like the chooser that links to it — staff get sent to their records.
+ * RGC Asset Inventory — admin-gated shell with its own chrome (sidebar +
+ * gradient header), outside `_app` on purpose. Child routes provide the
+ * pages: index (assets), reports, settings.
+ *
+ * `beforeLoad` here gates every nested route, exactly like before.
  */
 export const Route = createFileRoute("/rgc-asset-inventory")({
   beforeLoad: async ({ context }) => {
@@ -21,7 +23,7 @@ export const Route = createFileRoute("/rgc-asset-inventory")({
   head: () =>
     seo({
       title: pageTitle("RGC Asset Inventory"),
-      description: "RGC Asset Inventory — coming soon.",
+      description: "REGASCO deployed assets inventory — branches, floors, and reports.",
     }),
-  component: AssetInventoryPlaceholder,
+  component: InventoryLayout,
 });

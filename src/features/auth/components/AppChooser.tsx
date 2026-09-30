@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Boxes, Clock, LogOut } from "lucide-react";
+import { ArrowRight, Clock, LogOut } from "lucide-react";
 
 import { signOut } from "@/api/auth.functions";
 import { APP } from "@/config/app";
@@ -90,15 +90,11 @@ export function AppChooser() {
           <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:260ms] flex`}>
             <Link to="/rgc-asset-inventory" className={CARD_CLASS}>
               <span>
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg border border-dashed bg-background text-muted-foreground motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
-                  <Boxes className="size-5" aria-hidden="true" />
+                <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                  <img src="/inventory/logo.webp" alt="" className="h-7 w-7 object-contain" />
                 </span>
                 <span className="mt-3 flex flex-wrap items-center gap-1.5">
                   <span className="text-base font-semibold">RGC Asset Inventory</span>
-                  <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <Clock className="size-3" aria-hidden="true" />
-                    Coming soon
-                  </span>
                 </span>
                 <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
                   Track company assets, issuances and assignments. This module is being built — the

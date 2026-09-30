@@ -17,6 +17,9 @@ import { Route as AppAdminRouteImport } from './routes/_app/admin'
 import { Route as AppChangeRestDayRouteImport } from './routes/_app/change-rest-day'
 import { Route as AppChangeTimeScheduleRouteImport } from './routes/_app/change-time-schedule'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as RgcAssetInventoryIndexRouteImport } from './routes/rgc-asset-inventory.index'
+import { Route as RgcAssetInventoryReportsRouteImport } from './routes/rgc-asset-inventory.reports'
+import { Route as RgcAssetInventorySettingsRouteImport } from './routes/rgc-asset-inventory.settings'
 import { Route as AppOfficialBusinessIndexRouteImport } from './routes/_app/official-business/index'
 import { Route as AppOfficialBusinessIdRouteImport } from './routes/_app/official-business/$id'
 import { Route as AppRecordsIndexRouteImport } from './routes/_app/records/index'
@@ -61,6 +64,23 @@ const AppProfileRoute = AppProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
+const RgcAssetInventoryIndexRoute = RgcAssetInventoryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RgcAssetInventoryRoute,
+} as any)
+const RgcAssetInventoryReportsRoute =
+  RgcAssetInventoryReportsRouteImport.update({
+    id: '/reports',
+    path: '/reports',
+    getParentRoute: () => RgcAssetInventoryRoute,
+  } as any)
+const RgcAssetInventorySettingsRoute =
+  RgcAssetInventorySettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => RgcAssetInventoryRoute,
+  } as any)
 const AppOfficialBusinessIndexRoute =
   AppOfficialBusinessIndexRouteImport.update({
     id: '/official-business/',
@@ -86,11 +106,14 @@ const AppRecordsIdRoute = AppRecordsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/choose': typeof ChooseRoute
-  '/rgc-asset-inventory': typeof RgcAssetInventoryRoute
+  '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/admin': typeof AppAdminRoute
   '/change-rest-day': typeof AppChangeRestDayRoute
   '/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/profile': typeof AppProfileRoute
+  '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
+  '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
+  '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/records/$id': typeof AppRecordsIdRoute
   '/official-business/': typeof AppOfficialBusinessIndexRoute
@@ -99,11 +122,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/choose': typeof ChooseRoute
-  '/rgc-asset-inventory': typeof RgcAssetInventoryRoute
   '/admin': typeof AppAdminRoute
   '/change-rest-day': typeof AppChangeRestDayRoute
   '/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/profile': typeof AppProfileRoute
+  '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
+  '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
+  '/rgc-asset-inventory': typeof RgcAssetInventoryIndexRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/records/$id': typeof AppRecordsIdRoute
   '/official-business': typeof AppOfficialBusinessIndexRoute
@@ -114,11 +139,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/choose': typeof ChooseRoute
-  '/rgc-asset-inventory': typeof RgcAssetInventoryRoute
+  '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/_app/admin': typeof AppAdminRoute
   '/_app/change-rest-day': typeof AppChangeRestDayRoute
   '/_app/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/_app/profile': typeof AppProfileRoute
+  '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
+  '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
+  '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
   '/_app/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/_app/records/$id': typeof AppRecordsIdRoute
   '/_app/official-business/': typeof AppOfficialBusinessIndexRoute
@@ -134,6 +162,9 @@ export interface FileRouteTypes {
     | '/change-rest-day'
     | '/change-time-schedule'
     | '/profile'
+    | '/rgc-asset-inventory/reports'
+    | '/rgc-asset-inventory/settings'
+    | '/rgc-asset-inventory/'
     | '/official-business/$id'
     | '/records/$id'
     | '/official-business/'
@@ -142,11 +173,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/choose'
-    | '/rgc-asset-inventory'
     | '/admin'
     | '/change-rest-day'
     | '/change-time-schedule'
     | '/profile'
+    | '/rgc-asset-inventory/reports'
+    | '/rgc-asset-inventory/settings'
+    | '/rgc-asset-inventory'
     | '/official-business/$id'
     | '/records/$id'
     | '/official-business'
@@ -161,6 +194,9 @@ export interface FileRouteTypes {
     | '/_app/change-rest-day'
     | '/_app/change-time-schedule'
     | '/_app/profile'
+    | '/rgc-asset-inventory/reports'
+    | '/rgc-asset-inventory/settings'
+    | '/rgc-asset-inventory/'
     | '/_app/official-business/$id'
     | '/_app/records/$id'
     | '/_app/official-business/'
@@ -171,7 +207,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ChooseRoute: typeof ChooseRoute
-  RgcAssetInventoryRoute: typeof RgcAssetInventoryRoute
+  RgcAssetInventoryRoute: typeof RgcAssetInventoryRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +268,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
+    '/rgc-asset-inventory/': {
+      id: '/rgc-asset-inventory/'
+      path: '/'
+      fullPath: '/rgc-asset-inventory/'
+      preLoaderRoute: typeof RgcAssetInventoryIndexRouteImport
+      parentRoute: typeof RgcAssetInventoryRoute
+    }
+    '/rgc-asset-inventory/reports': {
+      id: '/rgc-asset-inventory/reports'
+      path: '/reports'
+      fullPath: '/rgc-asset-inventory/reports'
+      preLoaderRoute: typeof RgcAssetInventoryReportsRouteImport
+      parentRoute: typeof RgcAssetInventoryRoute
+    }
+    '/rgc-asset-inventory/settings': {
+      id: '/rgc-asset-inventory/settings'
+      path: '/settings'
+      fullPath: '/rgc-asset-inventory/settings'
+      preLoaderRoute: typeof RgcAssetInventorySettingsRouteImport
+      parentRoute: typeof RgcAssetInventoryRoute
+    }
     '/_app/official-business/': {
       id: '/_app/official-business/'
       path: '/official-business'
@@ -287,11 +344,26 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface RgcAssetInventoryRouteChildren {
+  RgcAssetInventoryReportsRoute: typeof RgcAssetInventoryReportsRoute
+  RgcAssetInventorySettingsRoute: typeof RgcAssetInventorySettingsRoute
+  RgcAssetInventoryIndexRoute: typeof RgcAssetInventoryIndexRoute
+}
+
+const RgcAssetInventoryRouteChildren: RgcAssetInventoryRouteChildren = {
+  RgcAssetInventoryReportsRoute: RgcAssetInventoryReportsRoute,
+  RgcAssetInventorySettingsRoute: RgcAssetInventorySettingsRoute,
+  RgcAssetInventoryIndexRoute: RgcAssetInventoryIndexRoute,
+}
+
+const RgcAssetInventoryRouteWithChildren =
+  RgcAssetInventoryRoute._addFileChildren(RgcAssetInventoryRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ChooseRoute: ChooseRoute,
-  RgcAssetInventoryRoute: RgcAssetInventoryRoute,
+  RgcAssetInventoryRoute: RgcAssetInventoryRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

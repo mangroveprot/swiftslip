@@ -29,6 +29,15 @@ const EnvSchema = z.object({
   // Optional: AI biometric import. Leave GEMINI_API_KEY empty to disable it.
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
+
+  // RGC Asset Inventory — a SEPARATE Postgres database from SwiftSlip's Supabase.
+  // Direct connection string (postgresql://user:pass@host:5432/db), URL-encoded.
+  RGC_INVENTORY_DATABASE_URL: z
+    .string()
+    .url("must be a postgresql:// connection string")
+    .refine((v) => v.startsWith("postgresql://") || v.startsWith("postgres://"), {
+      message: "must start with postgresql:// or postgres://",
+    }),
 });
 
 /** Treat `FOO=` (empty string) the same as "not set". */
@@ -68,6 +77,10 @@ function buildConfig() {
       /** `undefined` means the AI import feature is switched off. */
       apiKey: env.GEMINI_API_KEY,
       model: env.GEMINI_MODEL ?? BIOMETRIC_IMPORT.defaultModel,
+    },
+    /** RGC Asset Inventory database — never mixed with SwiftSlip's Supabase tables. */
+    rgcInventory: {
+      databaseUrl: env.RGC_INVENTORY_DATABASE_URL,
     },
   };
 }

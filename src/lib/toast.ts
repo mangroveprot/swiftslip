@@ -15,6 +15,8 @@ export const toast = {
     sonnerToast.success(message, options),
   error: (message: string, options?: Parameters<typeof sonnerToast.error>[1]) =>
     sonnerToast.error(message, options),
+  warning: (message: string, options?: Parameters<typeof sonnerToast.warning>[1]) =>
+    sonnerToast.warning(message, options),
   info: (message: string, options?: Parameters<typeof sonnerToast>[1]) =>
     sonnerToast(message, options),
   loading: (message: string, options?: Parameters<typeof sonnerToast.loading>[1]) =>
