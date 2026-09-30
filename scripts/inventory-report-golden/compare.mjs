@@ -94,21 +94,30 @@ const templateBytes = await readFile(templatePath);
 
 // The .NET side embeds `asset_inventory/.../wwwroot/assets/report_template.xlsx`;
 // the browser fetches `public/inventory/report_template.xlsx`. Same bytes or
-// the diff below would blame the template.
-const embeddedTemplate = await readFile(
-  path.join(
-    repoRoot,
-    "asset_inventory",
-    "RGCDIPOLOG_INVENTORY.Shared",
-    "wwwroot",
-    "assets",
-    "report_template.xlsx",
-  ),
+// the diff below would blame the template. The .NET source tree is not tracked
+// by git and may be absent — only enforce the parity while it is present.
+const embeddedTemplatePath = path.join(
+  repoRoot,
+  "asset_inventory",
+  "RGCDIPOLOG_INVENTORY.Shared",
+  "wwwroot",
+  "assets",
+  "report_template.xlsx",
 );
-if (sha256(embeddedTemplate) !== sha256(templateBytes)) {
-  fail(
-    "template copies diverged — public/inventory/report_template.xlsx no longer matches the embedded original",
-  );
+let embeddedTemplate = null;
+try {
+  embeddedTemplate = await readFile(embeddedTemplatePath);
+} catch (err) {
+  if (err?.code !== "ENOENT") throw err;
+}
+if (embeddedTemplate) {
+  if (sha256(embeddedTemplate) !== sha256(templateBytes)) {
+    fail(
+      "template copies diverged — public/inventory/report_template.xlsx no longer matches the embedded original",
+    );
+  }
+} else {
+  console.log("note: .NET embedded template not found — skipping the template-parity check");
 }
 
 /* --------------------------------------------------------------- build --- */
