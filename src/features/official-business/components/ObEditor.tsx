@@ -1,12 +1,13 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Check, FileDown, Loader2, Printer, Save as SaveIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { deleteObForm, saveObForm } from "@/api/official-business.functions";
+import { deleteObForm, getObForm, saveObForm } from "@/api/official-business.functions";
 import { useSession } from "@/features/auth/use-session";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { toast } from "@/lib/toast";
-import type { ObEntry, ObForm } from "@/shared/types";
+import type { EmployeeProfile, ObEntry, ObForm } from "@/shared/types";
 import { APP } from "@/config/app";
 import { downloadObWord } from "../lib/word-export";
 import { obFormQueryOptions, obFormsQueryOptions } from "../queries";
@@ -23,18 +24,33 @@ function buildRows(rows: ObEntry[]): ObEntry[] {
     .map((r, idx) => ({ ...r, idx }));
 }
 
-/** A form the user hasn't actually filled in. Identity fields (id number, name,
- * department, position) and Date Filed are auto-prefilled from the profile /
- * today when the form is created, so they DON'T count as user input — otherwise a
- * brand-new form would look "used" the moment it's created and never get
- * discarded on exit. Only real input marks a form as worth keeping. */
-function isBlankForm(form: ObForm, rows: ObEntry[]): boolean {
+/**
+ * A form the user hasn't actually filled in. Identity fields (id number, name,
+ * department, position) and Date Filed are auto-prefilled from the profile / today
+ * when the form is created, so they only count as content when they differ from
+ * that auto-fill — otherwise a brand-new form would look "used" the moment it's
+ * created and never get discarded on exit. Any real input (itinerary rows,
+ * signature, approver, date of OB, or an edited identity field) marks the form as
+ * worth keeping, even if the user later clears it again. Date Filed is excluded
+ * here on purpose: edits to it are caught by the net-change check on leave.
+ */
+function isScaffoldForm(form: ObForm, rows: ObEntry[], profile: EmployeeProfile | null): boolean {
+  if (
+    rows.length > 0 ||
+    form.employee_signature ||
+    form.approved_by?.trim() ||
+    form.date_of_ob?.trim() ||
+    form.approved_via_viber
+  ) {
+    return false;
+  }
+  const norm = (v: string | null | undefined) => (v ?? "").trim();
+  const p = profile ?? { emp_no: "", full_name: "", designation: "", area: "" };
   return (
-    rows.length === 0 &&
-    !form.employee_signature &&
-    !form.approved_by?.trim() &&
-    !form.date_of_ob?.trim() &&
-    !form.approved_via_viber
+    norm(form.id_number) === norm(p.emp_no) &&
+    norm(form.employee_name) === norm(p.full_name) &&
+    norm(form.department) === norm(p.area) &&
+    norm(form.position) === norm(p.designation)
   );
 }
 
@@ -44,6 +60,12 @@ export function ObEditor({ id }: { id: string }) {
   const qc = useQueryClient();
 
   const { data } = useQuery(obFormQueryOptions(id));
+  const profileQuery = useQuery(profileQueryOptions());
+  // Identity fields are auto-filled from the profile when a form is created, so
+  // the profile is the reference for telling that auto-fill apart from content the
+  // user actually typed.
+  const profile = profileQuery.data ?? null;
+  const profileReady = profileQuery.data !== undefined || profileQuery.isError;
 
   const [form, setForm] = useState<ObForm | null>(null);
   const [rows, setRows] = useState<ObEntry[]>([]);
@@ -52,15 +74,29 @@ export function ObEditor({ id }: { id: string }) {
 
   // Serialized snapshot of what's already persisted, so we only save real changes.
   const savedSnapshotRef = useRef<string>("");
+  // Frozen snapshot of the form as it was loaded — used on leave to detect that
+  // the user left without any net change.
+  const initialSnapshotRef = useRef<string>("");
   const hydratedRef = useRef(false);
-  const wasBlankOnLoadRef = useRef(false);
+  // Whether the form loaded as an untouched auto-fill scaffold — only those can be
+  // discarded when left without any net change.
+  const wasScaffoldOnLoadRef = useRef(false);
   const keptRef = useRef(false);
-  const latestRef = useRef({ form, rows, canEdit });
-  latestRef.current = { form, rows, canEdit };
+  // Latest state, read by the unmount handler without re-subscribing it.
+  const latestRef = useRef({ form, rows, canEdit, profile });
+  latestRef.current = { form, rows, canEdit, profile };
 
-  // Load the saved form into local edit state.
+  // Discarding is only allowed on a genuine exit. The router remounts this editor
+  // while navigating away (that instance mounts after the location has already
+  // changed) and StrictMode simulates an unmount right after mounting — neither
+  // is an exit, and letting them decide would delete forms the user kept.
+  const mountPathRef = useRef(useRouterState({ select: (s) => s.location.pathname }));
+  const mountedAtRef = useRef(Date.now());
+
+  // Load the saved form into local edit state. Waits for the profile so the
+  // scaffold decision compares against the same auto-fill the form was created with.
   useEffect(() => {
-    if (!data) return;
+    if (!data || !profileReady) return;
     const f = data.form;
     const localSig =
       typeof window !== "undefined" ? (localStorage.getItem(`ob-sig:${id}`) ?? "") : "";
@@ -76,14 +112,25 @@ export function ObEditor({ id }: { id: string }) {
       employee_signature: f.employee_signature || localSig || "",
     };
     const nextRows = buildRows(data.entries);
+    const incoming = JSON.stringify({ form: nextForm, entries: nextRows });
+
+    if (hydratedRef.current) {
+      const current = JSON.stringify({ form, entries: buildRows(rows) });
+      // Unsaved local edits always win — a save's cache write or a background
+      // refetch must never clobber what the user is currently typing.
+      if (current !== savedSnapshotRef.current) return;
+      // Already in sync — reapplying identical values would just loop.
+      if (current === incoming) return;
+    }
+
     setForm(nextForm);
     setRows(nextRows);
-
-    savedSnapshotRef.current = JSON.stringify({ form: nextForm, entries: nextRows });
-    wasBlankOnLoadRef.current = isBlankForm(nextForm, nextRows);
-    if (!wasBlankOnLoadRef.current) keptRef.current = true;
+    savedSnapshotRef.current = incoming;
+    initialSnapshotRef.current = incoming;
+    wasScaffoldOnLoadRef.current = isScaffoldForm(nextForm, nextRows, profile);
+    if (!wasScaffoldOnLoadRef.current) keptRef.current = true;
     hydratedRef.current = true;
-  }, [data, id]);
+  }, [data, id, profile, profileReady, form, rows]);
 
   // Keep a local backup of the signature so it survives a failed save.
   useEffect(() => {
@@ -103,13 +150,19 @@ export function ObEditor({ id }: { id: string }) {
       saveObForm({ data: { id, form, entries } })
         .then(() => {
           savedSnapshotRef.current = snapshot;
-          if (!isBlankForm(form, entries)) keptRef.current = true;
+          // Keep the query cache truthful: the router can remount this editor
+          // during navigation, and that instance hydrates from the cache — it
+          // must never mistake saved content for an untouched scaffold.
+          qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...form, id }, entries });
+          // Auto-save only fires when something actually changed — that counts as a
+          // deliberate edit, so from this point on the form is never auto-discarded.
+          keptRef.current = true;
           setSaveStatus("saved");
         })
         .catch(() => setSaveStatus("error"));
     }, 1200);
     return () => clearTimeout(timer);
-  }, [form, rows, canEdit, id]);
+  }, [form, rows, canEdit, id, qc]);
 
   // Let the "Saved" confirmation linger briefly, then return the button to idle.
   useEffect(() => {
@@ -118,20 +171,48 @@ export function ObEditor({ id }: { id: string }) {
     return () => clearTimeout(timer);
   }, [saveStatus]);
 
-  // On leaving: discard an untouched new form, or flush any unsaved changes.
+  // On leaving: discard a form that is still just the untouched auto-fill
+  // scaffold (no committed content, no net change this session), or flush any
+  // unsaved changes. Anything the user actually edited is always kept.
   useEffect(() => {
+    // Captured here (at mount) — both refs are frozen after the first render.
+    const mountPath = mountPathRef.current;
+    const mountedAt = mountedAtRef.current;
     return () => {
-      const { form: f, rows: r, canEdit: editable } = latestRef.current;
+      const { form: f, rows: r, canEdit: editable, profile: prof } = latestRef.current;
       if (!editable || !f) return;
       const entries = buildRows(r);
-      if (wasBlankOnLoadRef.current && !keptRef.current && isBlankForm(f, entries)) {
-        void deleteObForm({ data: { id } })
-          .then(() => qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey }))
-          .catch(() => {});
+      const snapshot = JSON.stringify({ form: f, entries });
+      if (
+        wasScaffoldOnLoadRef.current &&
+        !keptRef.current &&
+        snapshot === initialSnapshotRef.current
+      ) {
+        const genuineExit = mountPath.endsWith(`/${id}`) && Date.now() - mountedAt > 100;
+        if (genuineExit) {
+          // Re-check the server before discarding: this instance may have a stale
+          // view (another tab's edit, a flush still in flight). Only a form that
+          // is STILL an untouched scaffold gets deleted.
+          void getObForm({ data: { id } })
+            .then(({ form: freshForm, entries: fresh }) => {
+              if (!isScaffoldForm(freshForm, fresh, prof)) {
+                qc.setQueryData(obFormQueryOptions(id).queryKey, {
+                  form: { ...freshForm, id },
+                  entries: fresh,
+                });
+                return;
+              }
+              return deleteObForm({ data: { id } });
+            })
+            .then(() => qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey }))
+            .catch(() => qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey }));
+        }
         return;
       }
-      const snapshot = JSON.stringify({ form: f, entries });
       if (snapshot !== savedSnapshotRef.current) {
+        // Write the cache synchronously, before the network call: the remounted
+        // instance hydrates within milliseconds and has to see these changes.
+        qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...f, id }, entries });
         void saveObForm({ data: { id, form: f, entries } })
           .then(() => qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey }))
           .catch(() => {});
@@ -147,7 +228,10 @@ export function ObEditor({ id }: { id: string }) {
   async function persist(f: ObForm, entries: ObEntry[]) {
     await saveObForm({ data: { id, form: f, entries } });
     savedSnapshotRef.current = JSON.stringify({ form: f, entries });
-    if (!isBlankForm(f, entries)) keptRef.current = true;
+    // Keep the query cache truthful — a remounted editor hydrates from it and
+    // must see what was just saved, or it would treat real content as a scaffold.
+    qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...f, id }, entries });
+    if (!isScaffoldForm(f, entries, profile)) keptRef.current = true;
   }
 
   async function onSave() {

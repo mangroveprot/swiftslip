@@ -1,15 +1,24 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, FileDown, Loader2, Printer, Save as SaveIcon, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  FileDown,
+  Loader2,
+  Printer,
+  Save as SaveIcon,
+  Upload,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
-import { deleteRecord, saveRecord } from "@/api/records.functions";
+import { deleteRecord, getRecord, saveRecord } from "@/api/records.functions";
 import { useSession } from "@/features/auth/use-session";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { templateQueryOptions } from "@/features/template/queries";
 import { toast } from "@/lib/toast";
 import { MONTHS, daysForPeriod } from "@/shared/period";
-import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
+import type { DtrEntry, DtrHeader, EmployeeProfile, Period } from "@/shared/types";
 import { APP } from "@/config/app";
 import { applyImportedLog, fileToBase64 } from "../lib/biometric-import";
 import { downloadDtrWord } from "../lib/word-export";
@@ -28,17 +37,29 @@ function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
 }
 
 /**
- * A record the user hasn't actually filled in: no entries, signature, certifier,
- * and no identity fields (name / emp_no). Typing a name or employee number counts
- * as meaningful content worth keeping, even without any daily entries.
+ * A record the user hasn't actually filled in. New records are created with the
+ * profile auto-filled into the identity fields (name / emp_no / designation /
+ * area), so those fields only count as content when they differ from the profile.
+ * Opening such a scaffold and leaving it without any net change discards it — an
+ * untouched auto-fill was never committed by the user. Any real input (daily
+ * entries, signature, certifier, or an edited identity field) marks the record as
+ * worth keeping, even if the user later clears it again.
  */
-function isBlankRecord(header: DtrHeader, entries: DtrEntry[]): boolean {
+function isScaffoldRecord(
+  header: DtrHeader,
+  entries: DtrEntry[],
+  profile: EmployeeProfile | null,
+): boolean {
+  if (entries.length > 0 || header.employee_signature || header.certified_by?.trim()) {
+    return false;
+  }
+  const norm = (v: string | null | undefined) => (v ?? "").trim();
+  const p = profile ?? { emp_no: "", full_name: "", designation: "", area: "" };
   return (
-    entries.length === 0 &&
-    !header.employee_signature &&
-    !header.certified_by?.trim() &&
-    !header.name?.trim() &&
-    !header.emp_no?.trim()
+    norm(header.name) === norm(p.full_name) &&
+    norm(header.emp_no) === norm(p.emp_no) &&
+    norm(header.designation) === norm(p.designation) &&
+    norm(header.area) === norm(p.area)
   );
 }
 
@@ -51,6 +72,12 @@ export function RecordEditor({ id }: { id: string }) {
   const { data } = useQuery(recordQueryOptions(id));
   const { data: template } = useQuery(templateQueryOptions());
   const { data: allRecords } = useQuery(recordsQueryOptions());
+  const profileQuery = useQuery(profileQueryOptions());
+  // Identity fields are auto-filled from the profile when a record is created, so
+  // the profile is the reference for telling that auto-fill apart from content the
+  // user actually typed.
+  const profile = profileQuery.data ?? null;
+  const profileReady = profileQuery.data !== undefined || profileQuery.isError;
 
   const [header, setHeader] = useState<DtrHeader | null>(null);
   const [rows, setRows] = useState<Record<number, DtrEntry>>({});
@@ -59,16 +86,27 @@ export function RecordEditor({ id }: { id: string }) {
 
   // Serialized snapshot of what's already persisted, so we only save real changes.
   const savedSnapshotRef = useRef<string>("");
+  // Frozen snapshot of the record as it was loaded — used on leave to detect that
+  // the user left without any net change.
+  const initialSnapshotRef = useRef<string>("");
   // Skip auto-save until the server data has been loaded into local state.
   const hydratedRef = useRef(false);
-  // Whether the record arrived empty — only those get discarded when left untouched.
-  const wasBlankOnLoadRef = useRef(false);
-  // The user deliberately committed this record (clicked Save / imported a file).
-  // Once set, the record is never auto-discarded on leave, even if it looks blank.
+  // Whether the record loaded as an untouched auto-fill scaffold — only those can
+  // be discarded when left without any net change.
+  const wasScaffoldOnLoadRef = useRef(false);
+  // The user deliberately committed content beyond the auto-fill (edited fields,
+  // entries, signature, or imported a file). Once set, never auto-discarded.
   const keptRef = useRef(false);
   // Latest state, read by the unmount handler without re-subscribing it.
-  const latestRef = useRef({ header, rows, canEdit });
-  latestRef.current = { header, rows, canEdit };
+  const latestRef = useRef({ header, rows, canEdit, profile });
+  latestRef.current = { header, rows, canEdit, profile };
+
+  // Discarding is only allowed on a genuine exit. The router remounts this editor
+  // while navigating away (that instance mounts after the location has already
+  // changed) and StrictMode simulates an unmount right after mounting — neither
+  // is an exit, and letting them decide would delete records the user kept.
+  const mountPathRef = useRef(useRouterState({ select: (s) => s.location.pathname }));
+  const mountedAtRef = useRef(Date.now());
 
   const employeeOptions = useMemo(() => {
     const map = new Map<string, EmployeeOption>();
@@ -81,9 +119,10 @@ export function RecordEditor({ id }: { id: string }) {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [allRecords]);
 
-  // Load the saved record into local edit state.
+  // Load the saved record into local edit state. Waits for the profile so the
+  // scaffold decision compares against the same auto-fill the record was created with.
   useEffect(() => {
-    if (!data) return;
+    if (!data || !profileReady) return;
     const r = data.record as DtrHeader & { employee_signature?: string };
     const localSig =
       typeof window !== "undefined" ? (localStorage.getItem(`dtr-sig:${id}`) ?? "") : "";
@@ -100,17 +139,29 @@ export function RecordEditor({ id }: { id: string }) {
     };
     const map: Record<number, DtrEntry> = {};
     for (const e of data.entries) map[e.day] = e;
-    setHeader(nextHeader);
-    setRows(map);
 
     const entries = buildEntries(map);
-    savedSnapshotRef.current = JSON.stringify({ header: nextHeader, entries });
-    wasBlankOnLoadRef.current = isBlankRecord(nextHeader, entries);
-    // A record that already holds content is one the user meant to keep — lock that
-    // in now so clearing a field later can never trigger the untouched-scaffold delete.
-    if (!wasBlankOnLoadRef.current) keptRef.current = true;
+    const incoming = JSON.stringify({ header: nextHeader, entries });
+
+    if (hydratedRef.current) {
+      const current = JSON.stringify({ header, entries: buildEntries(rows) });
+      // Unsaved local edits always win — a save's cache write or a background
+      // refetch must never clobber what the user is currently typing.
+      if (current !== savedSnapshotRef.current) return;
+      // Already in sync — reapplying identical values would just loop.
+      if (current === incoming) return;
+    }
+
+    setHeader(nextHeader);
+    setRows(map);
+    savedSnapshotRef.current = incoming;
+    initialSnapshotRef.current = incoming;
+    wasScaffoldOnLoadRef.current = isScaffoldRecord(nextHeader, entries, profile);
+    // A record that already holds real content is one the user meant to keep — lock
+    // that in now so clearing a field later can never trigger the scaffold delete.
+    if (!wasScaffoldOnLoadRef.current) keptRef.current = true;
     hydratedRef.current = true;
-  }, [data, id]);
+  }, [data, id, profile, profileReady, header, rows]);
 
   // Keep a local backup of the signature so it survives a failed save.
   useEffect(() => {
@@ -130,13 +181,19 @@ export function RecordEditor({ id }: { id: string }) {
       saveRecord({ data: { id, header, entries } })
         .then(() => {
           savedSnapshotRef.current = snapshot;
-          if (!isBlankRecord(header, entries)) keptRef.current = true;
+          // Keep the query cache truthful: the router can remount this editor
+          // during navigation, and that instance hydrates from the cache — it
+          // must never mistake saved content for an untouched scaffold.
+          qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...header, id }, entries });
+          // Auto-save only fires when something actually changed — that counts as a
+          // deliberate edit, so from this point on the record is never auto-discarded.
+          keptRef.current = true;
           setSaveStatus("saved");
         })
         .catch(() => setSaveStatus("error"));
     }, 1200);
     return () => clearTimeout(timer);
-  }, [header, rows, canEdit, id]);
+  }, [header, rows, canEdit, id, qc]);
 
   // Let the "Saved" confirmation linger briefly, then return the button to its
   // default Save icon/label.
@@ -146,20 +203,45 @@ export function RecordEditor({ id }: { id: string }) {
     return () => clearTimeout(timer);
   }, [saveStatus]);
 
-  // On leaving: discard an untouched new record, or flush any unsaved changes.
+  // On leaving: discard a record that is still just the untouched auto-fill
+  // scaffold (no committed content, no net change this session), or flush any
+  // unsaved changes. Anything the user actually edited is always kept.
   useEffect(() => {
+    // Captured here (at mount) — both refs are frozen after the first render.
+    const mountPath = mountPathRef.current;
+    const mountedAt = mountedAtRef.current;
     return () => {
-      const { header: h, rows: r, canEdit: editable } = latestRef.current;
+      const { header: h, rows: r, canEdit: editable, profile: prof } = latestRef.current;
       if (!editable || !h) return;
       const entries = buildEntries(r);
-      if (wasBlankOnLoadRef.current && !keptRef.current && isBlankRecord(h, entries)) {
-        void deleteRecord({ data: { id } })
-          .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
-          .catch(() => {});
+      const snapshot = JSON.stringify({ header: h, entries });
+      if (
+        wasScaffoldOnLoadRef.current &&
+        !keptRef.current &&
+        snapshot === initialSnapshotRef.current
+      ) {
+        const genuineExit = mountPath.endsWith(`/${id}`) && Date.now() - mountedAt > 100;
+        if (genuineExit) {
+          // Re-check the server before discarding: this instance may have a stale
+          // view (another tab's edit, a flush still in flight). Only a record that
+          // is STILL an untouched scaffold gets deleted.
+          void getRecord({ data: { id } })
+            .then(({ record, entries: fresh }) => {
+              if (!isScaffoldRecord(record, fresh, prof)) {
+                qc.setQueryData(recordQueryOptions(id).queryKey, { record, entries: fresh });
+                return;
+              }
+              return deleteRecord({ data: { id } });
+            })
+            .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
+            .catch(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }));
+        }
         return;
       }
-      const snapshot = JSON.stringify({ header: h, entries });
       if (snapshot !== savedSnapshotRef.current) {
+        // Write the cache synchronously, before the network call: the remounted
+        // instance hydrates within milliseconds and has to see these changes.
+        qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...h, id }, entries });
         void saveRecord({ data: { id, header: h, entries } })
           .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
           .catch(() => {});
@@ -181,12 +263,17 @@ export function RecordEditor({ id }: { id: string }) {
     setRows({ ...rows, [day]: { ...row(day), ...patch } });
 
   // Single place that writes to the server and records what's now persisted.
-  // Once a record has held real content, mark it kept so it's never auto-discarded
-  // later — even if the user then clears it back to blank.
+  // Saving real content marks the record kept so it's never auto-discarded later —
+  // even if the user then clears it back. Saving the untouched scaffold (an
+  // auto-fill the user never changed) does not: leaving it then discards it.
   async function persist(h: DtrHeader, entries: DtrEntry[]) {
     await saveRecord({ data: { id, header: h, entries } });
     savedSnapshotRef.current = JSON.stringify({ header: h, entries });
-    if (!isBlankRecord(h, entries)) keptRef.current = true;
+    // Keep the query cache truthful — a remounted editor hydrates from it and
+    // must see what was just saved, or it would treat real content as a scaffold.
+    qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...h, id }, entries });
+    const scaffold = isScaffoldRecord(h, entries, profile);
+    if (!scaffold) keptRef.current = true;
   }
 
   async function onSave() {
