@@ -48,8 +48,7 @@ export function LoginForm() {
         </div>
         <h1 className="mt-2 text-4xl font-semibold">SwiftSlip</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter your access password. Administrator passwords unlock editing, importing and
-          settings.
+          Sign in to continue. Your password is required to access SwiftSlip .
         </p>
 
         <form onSubmit={submit} className="mt-8 space-y-4">

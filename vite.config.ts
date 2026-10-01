@@ -84,7 +84,14 @@ export default defineConfig(async ({ command, mode }) => {
       host: "::",
       port: 8080,
       // Wait until writes settle (1s) before restarting the dev server.
-      watch: { awaitWriteFinish: { stabilityThreshold: 1000, pollInterval: 100 } },
+      watch: {
+        awaitWriteFinish: { stabilityThreshold: 1000, pollInterval: 100 },
+        // Never watch build output (nitro → .output/, wrangler → .wrangler/).
+        // A build writing or locking files there crashes the dev server on
+        // Windows (unhandled EBUSY from the file watcher). Merged with Vite's
+        // own defaults (.git, node_modules, cache dir), not a replacement.
+        ignored: ["**/.output/**", "**/.wrangler/**"],
+      },
     },
     plugins,
   } satisfies UserConfig;

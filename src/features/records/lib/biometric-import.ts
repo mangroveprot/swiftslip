@@ -1,14 +1,6 @@
 import { customPeriod } from "@/shared/period";
 import type { DtrEntry, DtrHeader, ImportedLog } from "@/shared/types";
 
-/** Reads a File into base64 for the import server function. */
-export async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes.at(i) ?? 0);
-  return btoa(binary);
-}
-
 /**
  * Merges an imported time log into the sheet being edited. Keeps existing
  * schedule/remarks, and switches the header to a custom period that spans the

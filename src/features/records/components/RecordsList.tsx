@@ -5,12 +5,14 @@ import { useState } from "react";
 
 import { createRecord, deleteRecord } from "@/api/records.functions";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { ListSkeleton } from "@/components/common/Skeletons";
 import { templateQueryOptions } from "@/features/template/queries";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { MONTHS, periodLabel, periodRange } from "@/shared/period";
 import { relativeTime } from "@/shared/time";
 import type { Period } from "@/shared/types";
+import { usePendingRecords } from "../lib/pending-records";
 import { recordsQueryOptions } from "../queries";
 
 type RecordRow = {
@@ -30,10 +32,15 @@ export function RecordsList() {
   const qc = useQueryClient();
   const { data: records } = useQuery(recordsQueryOptions());
   const { data: template } = useQuery(templateQueryOptions());
+  // Auto-created records the user hasn't touched yet stay hidden until they are
+  // filled in or cleaned up in the background — they are not real entries.
+  const { pendingIds, markPending } = usePendingRecords();
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<RecordRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
+
+  const visible = (records ?? []).filter((r) => !pendingIds.has(r.id));
 
   async function newRecord() {
     setBusy(true);
@@ -46,6 +53,10 @@ export function RecordsList() {
           period: (template?.default_period ?? "first_half") as Period,
         },
       });
+      markPending(id);
+      // Cached lists stay fresh for a while now, so mark this one stale before
+      // leaving — it has to pick the new record up on the next visit.
+      qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
       navigate({ to: "/records/$id", params: { id } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create a new record.");
@@ -81,9 +92,9 @@ export function RecordsList() {
         </button>
       </div>
 
-      {records && records.length > 0 ? (
+      {visible.length > 0 ? (
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {records.map((r, i) => (
+          {visible.map((r, i) => (
             <RecordCard
               key={r.id}
               record={r as RecordRow}
@@ -97,7 +108,9 @@ export function RecordsList() {
         <div className="mt-8 rounded-xl border bg-card px-4 py-10 text-center text-muted-foreground">
           No records yet.
         </div>
-      ) : null}
+      ) : (
+        <ListSkeleton />
+      )}
 
       <ConfirmDialog
         open={pendingDelete !== null}

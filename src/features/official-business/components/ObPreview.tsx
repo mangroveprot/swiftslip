@@ -7,13 +7,23 @@ import type { ObEntry, ObForm } from "@/shared/types";
 const HEADER_FILL = "#7f7f7f";
 const MIN_ROWS = 1;
 
-export function ObPreview({ form, rows }: { form: ObForm; rows: ObEntry[] }) {
+export function ObPreview({
+  form,
+  rows,
+  sheetId,
+}: {
+  form: ObForm;
+  rows: ObEntry[];
+  /** DOM id for the sheet — only the inline editor copy carries one, so the
+   *  full-view lightbox copy can never produce a duplicate id. */
+  sheetId?: string;
+}) {
   const padded: (ObEntry | null)[] = [...rows];
   while (padded.length < MIN_ROWS) padded.push(null);
 
   return (
     <div
-      id="ob-sheet"
+      id={sheetId}
       className="print-sheet mx-auto w-full bg-paper px-6 pb-6 pt-1 text-[13px] leading-tight text-ink shadow-sm ring-1 ring-border"
       style={{ fontFamily: 'Calibri, "Segoe UI", Candara, Arial, sans-serif' }}
     >
@@ -58,12 +68,15 @@ export function ObPreview({ form, rows }: { form: ObForm; rows: ObEntry[] }) {
 
       {/* BOX 2 — itinerary (its own bordered box) */}
       <table className="w-full table-fixed border-collapse border-[2.5px] border-ink text-center">
+        {/* The two time columns are the narrowest ones — they get 15% each (was
+            12.5%) so "DEPARTURE"/"RETURN" never spill over their borders in the
+            on-screen preview and visually merge. */}
         <colgroup>
-          <col style={{ width: "20%" }} />
+          <col style={{ width: "19%" }} />
+          <col style={{ width: "24%" }} />
           <col style={{ width: "27%" }} />
-          <col style={{ width: "28%" }} />
-          <col style={{ width: "12.5%" }} />
-          <col style={{ width: "12.5%" }} />
+          <col style={{ width: "15%" }} />
+          <col style={{ width: "15%" }} />
         </colgroup>
         <thead className="font-bold" style={{ backgroundColor: HEADER_FILL }}>
           <tr>
@@ -80,8 +93,12 @@ export function ObPreview({ form, rows }: { form: ObForm; rows: ObEntry[] }) {
           <tr>
             <th className="border border-ink px-1 py-0.5">FROM</th>
             <th className="border border-ink px-1 py-0.5">TO</th>
-            <th className="border border-ink px-1 py-0.5">DEPARTURE</th>
-            <th className="border border-ink px-1 py-0.5">RETURN</th>
+            <th className="border border-ink px-0.5 py-0.5 text-[11px] leading-tight break-words md:text-[13px]">
+              DEPARTURE
+            </th>
+            <th className="border border-ink px-0.5 py-0.5 text-[11px] leading-tight break-words md:text-[13px]">
+              RETURN
+            </th>
           </tr>
         </thead>
         <tbody>

@@ -1,16 +1,28 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, FileDown, Loader2, Printer, Save as SaveIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  FileDown,
+  Loader2,
+  Maximize2,
+  Printer,
+  Save as SaveIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { deleteObForm, getObForm, saveObForm } from "@/api/official-business.functions";
+import { PreviewLightbox } from "@/components/common/PreviewLightbox";
+import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { toast } from "@/lib/toast";
-import type { EmployeeProfile, ObEntry, ObForm } from "@/shared/types";
+import type { ObEntry, ObForm } from "@/shared/types";
 import { APP } from "@/config/app";
-import { downloadObWord } from "../lib/word-export";
+import { unmarkPendingForm } from "../lib/pending-forms";
+import { isScaffoldForm } from "../lib/scaffold";
 import { obFormQueryOptions, obFormsQueryOptions } from "../queries";
+import { ObAssistantChat } from "./ObAssistantChat";
 import { ObFormFields } from "./ObFormFields";
 import { ObItineraryTable } from "./ObItineraryTable";
 import { ObPreview } from "./ObPreview";
@@ -22,36 +34,6 @@ function buildRows(rows: ObEntry[]): ObEntry[] {
   return rows
     .filter((r) => r.from_place || r.to_place || r.purpose || r.time_departure || r.time_return)
     .map((r, idx) => ({ ...r, idx }));
-}
-
-/**
- * A form the user hasn't actually filled in. Identity fields (id number, name,
- * department, position) and Date Filed are auto-prefilled from the profile / today
- * when the form is created, so they only count as content when they differ from
- * that auto-fill — otherwise a brand-new form would look "used" the moment it's
- * created and never get discarded on exit. Any real input (itinerary rows,
- * signature, approver, date of OB, or an edited identity field) marks the form as
- * worth keeping, even if the user later clears it again. Date Filed is excluded
- * here on purpose: edits to it are caught by the net-change check on leave.
- */
-function isScaffoldForm(form: ObForm, rows: ObEntry[], profile: EmployeeProfile | null): boolean {
-  if (
-    rows.length > 0 ||
-    form.employee_signature ||
-    form.approved_by?.trim() ||
-    form.date_of_ob?.trim() ||
-    form.approved_via_viber
-  ) {
-    return false;
-  }
-  const norm = (v: string | null | undefined) => (v ?? "").trim();
-  const p = profile ?? { emp_no: "", full_name: "", designation: "", area: "" };
-  return (
-    norm(form.id_number) === norm(p.emp_no) &&
-    norm(form.employee_name) === norm(p.full_name) &&
-    norm(form.department) === norm(p.area) &&
-    norm(form.position) === norm(p.designation)
-  );
 }
 
 export function ObEditor({ id }: { id: string }) {
@@ -71,6 +53,7 @@ export function ObEditor({ id }: { id: string }) {
   const [rows, setRows] = useState<ObEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Serialized snapshot of what's already persisted, so we only save real changes.
   const savedSnapshotRef = useRef<string>("");
@@ -128,7 +111,13 @@ export function ObEditor({ id }: { id: string }) {
     savedSnapshotRef.current = incoming;
     initialSnapshotRef.current = incoming;
     wasScaffoldOnLoadRef.current = isScaffoldForm(nextForm, nextRows, profile);
-    if (!wasScaffoldOnLoadRef.current) keptRef.current = true;
+    // A form that already holds real content is one the user meant to keep — lock
+    // that in now so clearing a field later can never trigger the scaffold delete.
+    // It also stops being a "pending" form the list is hiding.
+    if (!wasScaffoldOnLoadRef.current) {
+      keptRef.current = true;
+      unmarkPendingForm(id);
+    }
     hydratedRef.current = true;
   }, [data, id, profile, profileReady, form, rows]);
 
@@ -154,9 +143,17 @@ export function ObEditor({ id }: { id: string }) {
           // during navigation, and that instance hydrates from the cache — it
           // must never mistake saved content for an untouched scaffold.
           qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...form, id }, entries });
-          // Auto-save only fires when something actually changed — that counts as a
-          // deliberate edit, so from this point on the form is never auto-discarded.
-          keptRef.current = true;
+          // Auto-save also fires for hydration-driven diffs, so only a save that
+          // carries real content counts as a deliberate edit. Saving the bare
+          // auto-fill keeps the form discardable instead of locking it in — and
+          // still hidden from the list.
+          if (!isScaffoldForm(form, entries, latestRef.current.profile)) {
+            keptRef.current = true;
+            unmarkPendingForm(id);
+          }
+          // The list shows this form's name and "Updated" time — mark it stale so
+          // the next visit picks up what was just written.
+          qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
           setSaveStatus("saved");
         })
         .catch(() => setSaveStatus("error"));
@@ -204,7 +201,11 @@ export function ObEditor({ id }: { id: string }) {
               }
               return deleteObForm({ data: { id } });
             })
-            .then(() => qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey }))
+            .then(() => {
+              // Resolved either way — it gained content and is kept, or it is gone.
+              unmarkPendingForm(id);
+              return qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey });
+            })
             .catch(() => qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey }));
         }
         return;
@@ -213,6 +214,8 @@ export function ObEditor({ id }: { id: string }) {
         // Write the cache synchronously, before the network call: the remounted
         // instance hydrates within milliseconds and has to see these changes.
         qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...f, id }, entries });
+        // Leaving with content is a decision to keep it, whatever it contains.
+        unmarkPendingForm(id);
         void saveObForm({ data: { id, form: f, entries } })
           .then(() => qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey }))
           .catch(() => {});
@@ -221,9 +224,7 @@ export function ObEditor({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!form) {
-    return <main className="p-10 text-sm text-muted-foreground">Loading form…</main>;
-  }
+  if (!form) return <EditorSkeleton />;
 
   async function persist(f: ObForm, entries: ObEntry[]) {
     await saveObForm({ data: { id, form: f, entries } });
@@ -231,7 +232,23 @@ export function ObEditor({ id }: { id: string }) {
     // Keep the query cache truthful — a remounted editor hydrates from it and
     // must see what was just saved, or it would treat real content as a scaffold.
     qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...f, id }, entries });
-    if (!isScaffoldForm(f, entries, profile)) keptRef.current = true;
+    // Saving real content marks the form kept so it's never auto-discarded later —
+    // even if the user then clears it back — and the list can stop hiding it.
+    // Saving the untouched auto-fill does neither: it stays hidden and is still
+    // discarded when left, exactly like a form nobody opened.
+    if (!isScaffoldForm(f, entries, profile)) {
+      keptRef.current = true;
+      unmarkPendingForm(id);
+    }
+    qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
+  }
+
+  // The assistant replies with a partial patch; merge it into whatever is on
+  // screen so it never clobbers something typed a moment ago. From here it flows
+  // through the ordinary auto-save path like any other edit.
+  function applyAssistantPatch(patch: Partial<ObForm>, entries?: ObEntry[]) {
+    setForm((prev) => (prev ? { ...prev, ...patch } : prev));
+    if (entries) setRows(entries);
   }
 
   async function onSave() {
@@ -256,6 +273,9 @@ export function ObEditor({ id }: { id: string }) {
     setBusy(true);
     const toastId = toast.loading("Preparing Word file…");
     try {
+      // docxtemplater + pizzip are only needed when exporting (~330 kB) — keeping
+      // them out of the route chunk makes opening this form much faster.
+      const { downloadObWord } = await import("../lib/word-export");
       await downloadObWord({
         form,
         rows: buildRows(rows),
@@ -346,15 +366,39 @@ export function ObEditor({ id }: { id: string }) {
           <ObItineraryTable rows={rows} setRows={setRows} canEdit={canEdit} busy={busy} />
         </div>
 
-        <div className="flex min-h-0 flex-col lg:overflow-hidden print:overflow-visible">
-          <p className="no-print mb-1.5 shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground">
-            Live preview
-          </p>
+        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:overflow-visible">
+          <div className="no-print flex shrink-0 items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Live preview
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline size-7 p-0"
+              aria-label="Open the full view"
+              title="Full view — zoom in/out and drag the form around"
+              onClick={() => setPreviewOpen(true)}
+            >
+              <Maximize2 className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
           <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
-            <ObPreview form={form} rows={rows} />
+            <ObPreview sheetId="ob-sheet" form={form} rows={rows} />
           </div>
         </div>
       </div>
+
+      {/* The assistant floats above the page (bottom-right bubble) so the
+          preview column keeps its full height. */}
+      {canEdit ? (
+        <ObAssistantChat key={id} form={form} rows={rows} onApply={applyAssistantPatch} />
+      ) : null}
+      <PreviewLightbox
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Official Business Form — full view"
+      >
+        <ObPreview form={form} rows={rows} />
+      </PreviewLightbox>
     </main>
   );
 }

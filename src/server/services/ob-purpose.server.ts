@@ -3,36 +3,54 @@ import { getServerConfig } from "@/config/env.server";
 
 type PurposeMode = "generate" | "enhance";
 
-// Shared voice for both modes: the "Purpose(s)" line on a company Official
-// Business form — short, plain, professional. The example anchors the length and
-// tone we want (fragments joined with "&"/";", no labels or fluff).
 const STYLE =
-  'You write the "Purpose(s)" entry on a company Official Business (OB) form — the ' +
-  "short reason an employee is leaving the office for work.\n" +
+  'You write the "Purpose(s)" entry on a company Official Business (OB) form. ' +
+  "Your job is to turn an employee's notes into a short, clear, natural, and professional purpose.\n" +
   "Rules:\n" +
-  "- Keep it SHORT: a brief phrase or one to two short sentences, never a paragraph.\n" +
-  "- Plain, direct business language. No greetings, labels, quotes, or filler.\n" +
-  "- You may join multiple tasks with '&' or ';'.\n" +
-  "- Reply with ONLY the purpose text, nothing else.\n" +
-  'Example of the right length and tone: "CCTV Installation for Jose Dalman & also ' +
-  "had the showroom branch heads sign acknowledgment forms for the last cctv " +
-  'installations;"';
+  "- Keep it brief. Prefer one short phrase or sentence.\n" +
+  "- Use simple, everyday business English. Avoid unnecessarily formal or complicated words.\n" +
+  "- Make it sound like something an actual employee would write, not an AI-generated statement.\n" +
+  "- Be polite and professional without adding greetings, apologies, or excessive courtesy.\n" +
+  "- State the actual reason for the OB directly. Do not add unnecessary explanations.\n" +
+  "- Use natural wording. Avoid redundant words such as 'personally,' 'proceed to,' 'in order to,' or 'for the purpose of' unless essential.\n" +
+  "- Use infinitive phrases when appropriate, such as 'To claim...', 'To submit...', or 'To attend...'.\n" +
+  "- Do not force every purpose to start with 'To'. Use the most natural phrasing for the given context.\n" +
+  "- Preserve all relevant details, including names, locations, and specific tasks.\n" +
+  "- Do not invent details, reasons, or activities that are not provided.\n" +
+  "- If multiple tasks are provided, combine them naturally using '&' or ';' when appropriate.\n" +
+  "- Do not turn a simple purpose into a long explanation or a request message.\n" +
+  "- Reply with ONLY the purpose text. Do not include labels, quotation marks, or explanations.\n" +
+  "Examples of the expected tone and length:\n" +
+  "Notes: Claim salary at RGC-Dapitan Warehouse\n" +
+  "Purpose: To claim the salary at the RGC-Dapitan Warehouse.\n" +
+  "Notes: Submit documents to HR\n" +
+  "Purpose: To submit the required documents to HR.\n" +
+  "Notes: Attend meeting with branch manager\n" +
+  "Purpose: To attend a meeting with the branch manager.\n" +
+  "Notes: Get approval for OB to claim salary at RGC-Dapitan Warehouse\n" +
+  "Purpose: To request OB approval to claim the salary at the RGC-Dapitan Warehouse.";
 
 function buildPrompt(mode: PurposeMode, context: string, current: string): string {
   if (mode === "enhance") {
     return (
       `${STYLE}\n\n` +
-      "Task: Rewrite the following purpose so it is clear, concise, and professional. " +
-      "Keep the same meaning and every concrete detail (names, places, tasks). Do not invent new facts.\n\n" +
+      "Task: Improve the existing purpose while keeping its original meaning. " +
+      "Make only the necessary changes to improve clarity, grammar, and natural wording. " +
+      "Keep all concrete details, including names, locations, and tasks. " +
+      "Do not add unnecessary words, change the intended reason, or invent new information. " +
+      "If the original is already clear and natural, keep it mostly unchanged.\n\n" +
       `Purpose to improve:\n${current}`
     );
   }
+
   return (
     `${STYLE}\n\n` +
-    "Task: Write the purpose from the notes below. Use only what the notes imply; " +
-    "do not invent specific names or places that aren't given.\n\n" +
+    "Task: Write a concise OB purpose based on the notes below. " +
+    "Use natural and professional wording. " +
+    "Include only details explicitly provided or clearly implied. " +
+    "If an existing draft is provided, use it as additional context without unnecessarily expanding it.\n\n" +
     `Notes / instructions:\n${context}` +
-    (current.trim() ? `\n\nExisting draft to build on:\n${current}` : "")
+    (current.trim() ? `\n\nExisting draft:\n${current}` : "")
   );
 }
 

@@ -5,7 +5,7 @@
 import { z } from "zod";
 
 import { isPeriod } from "./period";
-import type { Period } from "./types";
+import type { ObEntry, ObForm, Period } from "./types";
 
 const period = z
   .string()
@@ -135,6 +135,51 @@ export const obPurposeInput = z.object({
   // The current Purpose text (the thing to enhance, or extra context to generate from).
   current: z.string().max(4000).default(""),
 });
+
+// Conversational agent that fills the Official Business form for the user.
+export const obChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  text: z.string().max(4000),
+});
+
+export const obChatInput = z.object({
+  // Transcript so far (oldest first). The assistant answers the last user turn.
+  messages: z.array(obChatMessageSchema).min(1).max(40),
+  // The form exactly as it stands — the assistant patches it, never resets it.
+  form: obFormSchema,
+  entries: z.array(obEntrySchema).max(50),
+  // The user's local date (YYYY-MM-DD) so "today" / "tomorrow" resolve correctly.
+  today: z.string().max(40).optional(),
+  // Optional photo/scan, handed to Gemini the same way the biometric import is.
+  image: z
+    .object({
+      mimeType: z.string().min(1).max(100),
+      base64: z.string().min(1),
+    })
+    .optional(),
+});
+
+/** The model's answer, validated before it is allowed to reach the client. */
+export const obChatReplySchema = z.object({
+  reply: z.string().max(4000).default(""),
+  // Only the fields the assistant decided to change.
+  form: obFormSchema.partial().optional(),
+  // Full replacement itinerary, only present when it changed.
+  entries: z.array(obEntrySchema).max(50).optional(),
+});
+
+export type ObChatInput = z.infer<typeof obChatInput>;
+
+/**
+ * What the assistant is allowed to send back: a short message plus, when needed,
+ * the form fields it changed and the full replacement itinerary. Declared by
+ * hand (rather than inferred) so the patch is a plain `Partial<ObForm>`.
+ */
+export type ObChatReply = {
+  reply: string;
+  form?: Partial<ObForm>;
+  entries?: ObEntry[];
+};
 
 export const employeeProfileSchema = z.object({
   emp_no: z.string(),

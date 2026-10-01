@@ -1,14 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { saveTemplate } from "@/api/template.functions";
 import { TextField } from "@/components/common/FormField";
+import { Skeleton } from "@/components/ui/skeleton";
 import { templateQueryOptions } from "@/features/template/queries";
 import { toast } from "@/lib/toast";
 import { PERIOD_LABELS } from "@/shared/period";
 import type { DtrTemplate, Period } from "@/shared/types";
 
 export function TemplateEditor() {
+  const qc = useQueryClient();
   const { data } = useQuery(templateQueryOptions());
   const [form, setForm] = useState<DtrTemplate | null>(null);
   const [busy, setBusy] = useState(false);
@@ -17,7 +19,23 @@ export function TemplateEditor() {
     if (data) setForm(data);
   }, [data]);
 
-  if (!form) return <p className="text-sm text-muted-foreground">Loading template…</p>;
+  if (!form) {
+    return (
+      <section className="rounded-xl border bg-card p-6">
+        <Skeleton className="h-7 w-52" />
+        <Skeleton className="mt-2 h-4 w-80 max-w-full" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="mt-6 h-9 w-36" />
+      </section>
+    );
+  }
 
   const set = (patch: Partial<DtrTemplate>) => setForm({ ...form, ...patch });
   const setColumn = (patch: Partial<DtrTemplate["columns"]>) =>
@@ -100,6 +118,9 @@ export function TemplateEditor() {
           setBusy(true);
           try {
             await saveTemplate({ data: form });
+            // Every sheet reads this query, and caches now stay fresh for a while —
+            // without an invalidation the old labels would keep being served.
+            await qc.invalidateQueries({ queryKey: templateQueryOptions().queryKey });
             toast.success("Template saved");
           } catch (e) {
             toast.error(e instanceof Error ? e.message : "Could not save the template.");

@@ -5,6 +5,7 @@ import {
   Check,
   FileDown,
   Loader2,
+  Maximize2,
   Printer,
   Save as SaveIcon,
   Upload,
@@ -13,14 +14,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
 import { deleteRecord, getRecord, saveRecord } from "@/api/records.functions";
+import { PreviewLightbox } from "@/components/common/PreviewLightbox";
+import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { templateQueryOptions } from "@/features/template/queries";
+import { fileToBase64 } from "@/lib/file";
 import { toast } from "@/lib/toast";
 import { MONTHS, daysForPeriod } from "@/shared/period";
-import type { DtrEntry, DtrHeader, EmployeeProfile, Period } from "@/shared/types";
+import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
 import { APP } from "@/config/app";
-import { applyImportedLog, fileToBase64 } from "../lib/biometric-import";
+import { applyImportedLog } from "../lib/biometric-import";
+import { unmarkPendingRecord } from "../lib/pending-records";
+import { isScaffoldRecord } from "../lib/scaffold";
 import { downloadDtrWord } from "../lib/word-export";
 import { recordQueryOptions, recordsQueryOptions } from "../queries";
 import { DailyEntriesTable } from "./DailyEntriesTable";
@@ -34,33 +40,6 @@ function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
   return Object.values(map)
     .filter((e) => e.time_in || e.time_out || e.schedule || e.remarks)
     .sort((a, b) => a.day - b.day);
-}
-
-/**
- * A record the user hasn't actually filled in. New records are created with the
- * profile auto-filled into the identity fields (name / emp_no / designation /
- * area), so those fields only count as content when they differ from the profile.
- * Opening such a scaffold and leaving it without any net change discards it — an
- * untouched auto-fill was never committed by the user. Any real input (daily
- * entries, signature, certifier, or an edited identity field) marks the record as
- * worth keeping, even if the user later clears it again.
- */
-function isScaffoldRecord(
-  header: DtrHeader,
-  entries: DtrEntry[],
-  profile: EmployeeProfile | null,
-): boolean {
-  if (entries.length > 0 || header.employee_signature || header.certified_by?.trim()) {
-    return false;
-  }
-  const norm = (v: string | null | undefined) => (v ?? "").trim();
-  const p = profile ?? { emp_no: "", full_name: "", designation: "", area: "" };
-  return (
-    norm(header.name) === norm(p.full_name) &&
-    norm(header.emp_no) === norm(p.emp_no) &&
-    norm(header.designation) === norm(p.designation) &&
-    norm(header.area) === norm(p.area)
-  );
 }
 
 export function RecordEditor({ id }: { id: string }) {
@@ -83,6 +62,7 @@ export function RecordEditor({ id }: { id: string }) {
   const [rows, setRows] = useState<Record<number, DtrEntry>>({});
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Serialized snapshot of what's already persisted, so we only save real changes.
   const savedSnapshotRef = useRef<string>("");
@@ -159,7 +139,11 @@ export function RecordEditor({ id }: { id: string }) {
     wasScaffoldOnLoadRef.current = isScaffoldRecord(nextHeader, entries, profile);
     // A record that already holds real content is one the user meant to keep — lock
     // that in now so clearing a field later can never trigger the scaffold delete.
-    if (!wasScaffoldOnLoadRef.current) keptRef.current = true;
+    // It also stops being a "pending" record the list is hiding.
+    if (!wasScaffoldOnLoadRef.current) {
+      keptRef.current = true;
+      unmarkPendingRecord(id);
+    }
     hydratedRef.current = true;
   }, [data, id, profile, profileReady, header, rows]);
 
@@ -185,9 +169,16 @@ export function RecordEditor({ id }: { id: string }) {
           // during navigation, and that instance hydrates from the cache — it
           // must never mistake saved content for an untouched scaffold.
           qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...header, id }, entries });
-          // Auto-save only fires when something actually changed — that counts as a
-          // deliberate edit, so from this point on the record is never auto-discarded.
-          keptRef.current = true;
+          // Auto-save also fires for hydration-driven diffs, so only a save that
+          // carries real content counts as a deliberate edit. Saving the bare
+          // auto-fill keeps the record discardable — and still hidden from the list.
+          if (!isScaffoldRecord(header, entries, latestRef.current.profile)) {
+            keptRef.current = true;
+            unmarkPendingRecord(id);
+          }
+          // The list shows this record's name and "Updated" time — mark it stale so
+          // the next visit picks up what was just written.
+          qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
           setSaveStatus("saved");
         })
         .catch(() => setSaveStatus("error"));
@@ -233,7 +224,11 @@ export function RecordEditor({ id }: { id: string }) {
               }
               return deleteRecord({ data: { id } });
             })
-            .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
+            .then(() => {
+              // Resolved either way — it gained content and is kept, or it is gone.
+              unmarkPendingRecord(id);
+              return qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey });
+            })
             .catch(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }));
         }
         return;
@@ -242,6 +237,8 @@ export function RecordEditor({ id }: { id: string }) {
         // Write the cache synchronously, before the network call: the remounted
         // instance hydrates within milliseconds and has to see these changes.
         qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...h, id }, entries });
+        // Leaving with content is a decision to keep it, whatever it contains.
+        unmarkPendingRecord(id);
         void saveRecord({ data: { id, header: h, entries } })
           .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
           .catch(() => {});
@@ -250,9 +247,7 @@ export function RecordEditor({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!header || !template) {
-    return <main className="p-10 text-sm text-muted-foreground">Loading sheet…</main>;
-  }
+  if (!header || !template) return <EditorSkeleton />;
 
   const days = daysForPeriod(header.period, header.month, header.year);
 
@@ -274,6 +269,10 @@ export function RecordEditor({ id }: { id: string }) {
     qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...h, id }, entries });
     const scaffold = isScaffoldRecord(h, entries, profile);
     if (!scaffold) keptRef.current = true;
+    // Pressing Save (or importing a log) is the user committing to this record,
+    // so it stops being a "pending" auto-fill the list is hiding.
+    unmarkPendingRecord(id);
+    qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
   }
 
   async function onSave() {
@@ -460,14 +459,39 @@ export function RecordEditor({ id }: { id: string }) {
         </div>
 
         <div className="flex min-h-0 flex-col lg:overflow-hidden print:overflow-visible">
-          <p className="no-print mb-1.5 shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground">
-            Live preview
-          </p>
+          <div className="no-print mb-1.5 flex shrink-0 items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Live preview
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline size-7 p-0"
+              aria-label="Open the full view"
+              title="Full view — zoom in/out and drag the record around"
+              onClick={() => setPreviewOpen(true)}
+            >
+              <Maximize2 className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
           <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
-            <DtrPreview template={template} header={header} days={days} entryFor={row} />
+            <DtrPreview
+              sheetId="dtr-sheet"
+              template={template}
+              header={header}
+              days={days}
+              entryFor={row}
+            />
           </div>
         </div>
       </div>
+
+      <PreviewLightbox
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Daily Time Record — full view"
+      >
+        <DtrPreview template={template} header={header} days={days} entryFor={row} />
+      </PreviewLightbox>
     </main>
   );
 }

@@ -2,9 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/server/auth/session.server";
 import * as ob from "@/server/services/official-business.server";
+import { chatObAssistant as chatObAssistantService } from "@/server/services/ob-assistant.server";
 import { writeObPurpose as writeObPurposeService } from "@/server/services/ob-purpose.server";
 import * as profiles from "@/server/services/profiles.server";
-import { createObFormInput, idInput, obPurposeInput, saveObFormInput } from "@/shared/schemas";
+import {
+  createObFormInput,
+  idInput,
+  obChatInput,
+  obPurposeInput,
+  saveObFormInput,
+} from "@/shared/schemas";
 
 export const listObForms = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireUser();
@@ -53,4 +60,11 @@ export const writeObPurpose = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireUser();
     return await writeObPurposeService(data);
+  });
+
+export const chatObAssistant = createServerFn({ method: "POST" })
+  .validator(obChatInput)
+  .handler(async ({ data }) => {
+    await requireUser();
+    return await chatObAssistantService(data);
   });

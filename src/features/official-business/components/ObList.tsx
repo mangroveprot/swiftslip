@@ -5,9 +5,11 @@ import { useState } from "react";
 
 import { createObForm, deleteObForm } from "@/api/official-business.functions";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { ListSkeleton } from "@/components/common/Skeletons";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { relativeTime } from "@/shared/time";
+import { usePendingForms } from "../lib/pending-forms";
 import { obFormsQueryOptions } from "../queries";
 
 type ObRow = {
@@ -24,10 +26,15 @@ export function ObList() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: forms } = useQuery(obFormsQueryOptions());
+  // Auto-created forms the user hasn't touched yet stay hidden until they are
+  // filled in or cleaned up in the background — they are not real entries.
+  const { pendingIds, markPending } = usePendingForms();
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ObRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
+
+  const visible = (forms ?? []).filter((f) => !pendingIds.has(f.id));
 
   async function newForm() {
     setBusy(true);
@@ -38,6 +45,12 @@ export function ObList() {
         d.getDate(),
       ).padStart(2, "0")}`;
       const { id } = await createObForm({ data: { date_filed: today } });
+      // Hide it from the list until it's actually filled in — it is only an
+      // untouched auto-fill at this point.
+      markPending(id);
+      // Cached lists stay fresh for a while now, so mark this one stale before
+      // leaving — it has to pick the new form up on the next visit.
+      qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
       navigate({ to: "/official-business/$id", params: { id } });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create a new form.");
@@ -75,9 +88,9 @@ export function ObList() {
         </button>
       </div>
 
-      {forms && forms.length > 0 ? (
+      {forms && visible.length > 0 ? (
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {forms.map((f, i) => (
+          {visible.map((f, i) => (
             <ObCard
               key={f.id}
               form={f as ObRow}
@@ -91,7 +104,9 @@ export function ObList() {
         <div className="mt-8 rounded-xl border bg-card px-4 py-10 text-center text-muted-foreground">
           No forms yet.
         </div>
-      ) : null}
+      ) : (
+        <ListSkeleton />
+      )}
 
       <ConfirmDialog
         open={pendingDelete !== null}

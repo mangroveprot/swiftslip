@@ -10,17 +10,21 @@ export function DtrPreview({
   header,
   days,
   entryFor,
+  sheetId,
 }: {
   template: DtrTemplate;
   header: DtrHeader;
   days: number[];
   entryFor: (day: number) => DtrEntry;
+  /** DOM id for the sheet — only the inline editor copy carries one, so the
+   *  full-view lightbox copy can never produce a duplicate id. */
+  sheetId?: string;
 }) {
   const monthRange = formatPeriodDateRange(header.period, header.month, header.year);
 
   return (
     <div
-      id="dtr-sheet"
+      id={sheetId}
       className="print-sheet mx-auto w-full bg-paper px-6 py-5 text-[11px] leading-tight text-ink shadow-sm ring-1 ring-border"
     >
       <img src={APP.logoPath} alt="" className="mb-3 h-[42px] w-auto object-contain object-left" />
