@@ -251,7 +251,7 @@ function FormActivityPanel({ className = "" }: { className?: string }) {
       ) : (
         <ul className="mt-1 divide-y">
           {rows.map((row) => (
-            <li key={row.id} className="py-2">
+            <li key={row.id} className="py-1">
               <div className="flex items-start justify-between gap-2">
                 <span className="min-w-0 truncate text-sm font-medium">
                   {row.actor_name ?? row.actor_number ?? "—"}
@@ -260,7 +260,7 @@ function FormActivityPanel({ className = "" }: { className?: string }) {
                   {relativeTime(row.created_at)}
                 </span>
               </div>
-              <div className="mt-1 flex min-w-0 items-center gap-1.5">
+              <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
                 <span className={`${actionPillClass(row.action)} shrink-0`}>
                   {ACTION_LABELS[row.action] ?? row.action}
                 </span>
@@ -298,19 +298,19 @@ function SecurityLogsPanel({ className = "" }: { className?: string }) {
       ) : (
         <ul className="mt-1 divide-y">
           {rows.map((row) => (
-            <li key={row.id} className="py-2">
+            <li key={row.id} className="py-1">
               <div className="flex items-start justify-between gap-2">
                 <span className="min-w-0 truncate text-sm font-medium">
                   {row.actor_name ?? (row.actor_number ? "Unknown name" : "—")}
+                  {row.actor_number ? (
+                    <span className="font-normal text-muted-foreground"> · {row.actor_number}</span>
+                  ) : null}
                 </span>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {relativeTime(row.created_at)}
                 </span>
               </div>
-              {row.actor_number ? (
-                <p className="truncate text-xs text-muted-foreground">{row.actor_number}</p>
-              ) : null}
-              <div className="mt-1 flex items-center justify-between gap-2">
+              <div className="mt-0.5 flex items-center justify-between gap-2">
                 <span className={`${actionPillClass(row.action)} shrink-0`}>
                   {ACTION_LABELS[row.action] ?? row.action}
                 </span>
