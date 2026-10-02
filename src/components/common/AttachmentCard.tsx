@@ -160,12 +160,18 @@ export function AttachmentCard({
   }
 
   // The card joins the printout only when there is something to print — an
-  // empty upload prompt has no place on the printed record/form. Interactive
-  // controls stay screen-only; the file itself (image preview or PDF embed)
-  // prints after the document.
+  // empty upload prompt has no place on the printed record/form. In print the
+  // card chrome (border/padding/badge box) is stripped and it always starts on
+  // a fresh page, so the attachment never shares a sheet with the document.
+  // Interactive controls stay screen-only; the file itself (image sized to fit
+  // the page, or PDF embed) prints below its title line.
   return (
     <section
-      className={`shrink-0 rounded-xl border bg-card p-3 shadow-sm${file ? "" : " print:hidden"}`}
+      className={`shrink-0 rounded-xl border bg-card p-3 shadow-sm${
+        file
+          ? " print:break-before-page print:border-0 print:rounded-none print:bg-transparent print:p-0 print:shadow-none"
+          : " print:hidden"
+      }`}
     >
       <input
         ref={fileInputRef}
@@ -186,7 +192,7 @@ export function AttachmentCard({
 
       {file ? (
         <div className="mt-2 space-y-2">
-          <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
+          <div className="flex items-center gap-2 rounded-lg border px-3 py-2 print:rounded-none print:border-0 print:px-0 print:py-0">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium" title={file.name}>
                 {file.name}
@@ -198,7 +204,7 @@ export function AttachmentCard({
                   src={signed.url}
                   alt={file.name}
                   loading="lazy"
-                  className="mt-1.5 max-h-28 w-auto rounded border print:max-h-[24cm]"
+                  className="mt-1.5 max-h-28 w-auto rounded border print:max-h-[24cm] print:max-w-full print:rounded-none"
                 />
               ) : null}
             </div>

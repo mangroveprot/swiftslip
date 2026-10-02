@@ -315,7 +315,7 @@ export function ObEditor({ id }: { id: string }) {
   }
 
   return (
-    <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:h-auto print:overflow-visible print:p-0">
+    <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
       <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-2">
           <Link
@@ -385,13 +385,13 @@ export function ObEditor({ id }: { id: string }) {
           </button>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
+      <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
         <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-hidden">
           <ObFormFields form={form} setForm={setForm} canEdit={canEdit} />
           <ObItineraryTable rows={rows} setRows={setRows} canEdit={canEdit} busy={busy} />
         </div>
 
-        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:overflow-visible">
+        <div className="flex min-h-0 flex-col gap-3 print:block lg:overflow-hidden print:overflow-visible">
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Live preview
