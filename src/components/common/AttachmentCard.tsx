@@ -90,6 +90,10 @@ export function AttachmentCard({
   const isImage = file ? IMAGE_RE.test(file.name) : false;
   /** PDFs don't preview inline on screen, but they can be embedded for print. */
   const isPdf = file ? /\.pdf$/i.test(file.name) : false;
+  // What prints is the file alone — a centered image or the PDF pages. The
+  // card title, badge and filename are screen-only, and file types that can't
+  // render inline (docx, xlsx, …) print nothing instead of a blank page.
+  const printable = Boolean(file) && (isImage || isPdf);
 
   async function refresh() {
     const urlKey =
@@ -159,16 +163,14 @@ export function AttachmentCard({
     }
   }
 
-  // The card joins the printout only when there is something to print — an
-  // empty upload prompt has no place on the printed record/form. In print the
-  // card chrome (border/padding/badge box) is stripped and it always starts on
-  // a fresh page, so the attachment never shares a sheet with the document.
-  // Interactive controls stay screen-only; the file itself (image sized to fit
-  // the page, or PDF embed) prints below its title line.
+  // The card joins the printout only when its file can actually be shown, and
+  // then it always starts on a fresh page — the attachment never shares a
+  // sheet with the document. Everything except the file itself (title, badge,
+  // filename, buttons) is screen-only.
   return (
     <section
       className={`shrink-0 rounded-xl border bg-card p-3 shadow-sm${
-        file
+        printable
           ? " print:break-before-page print:border-0 print:rounded-none print:bg-transparent print:p-0 print:shadow-none"
           : " print:hidden"
       }`}
@@ -182,7 +184,7 @@ export function AttachmentCard({
         onChange={pickFile}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <p className="lbl flex items-center gap-1.5">
           <Paperclip className="size-3.5" aria-hidden="true" />
           {copy.title}
@@ -193,12 +195,12 @@ export function AttachmentCard({
       {file ? (
         <div className="mt-2 space-y-2">
           <div className="flex items-center gap-2 rounded-lg border px-3 py-2 print:rounded-none print:border-0 print:px-0 print:py-0">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium" title={file.name}>
+            <div className="min-w-0 flex-1 print:text-center">
+              <p className="truncate text-sm font-medium print:hidden" title={file.name}>
                 {file.name}
               </p>
               {signing ? (
-                <p className="text-xs text-muted-foreground">Preparing link…</p>
+                <p className="text-xs text-muted-foreground print:hidden">Preparing link…</p>
               ) : isImage && signed?.url ? (
                 <img
                   src={signed.url}
