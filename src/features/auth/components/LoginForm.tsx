@@ -1,11 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { signIn } from "@/api/auth.functions";
 import { APP } from "@/config/app";
 import { sessionQueryOptions } from "../queries";
+
+/** The login page re-ticks "Remember me" the way the user last left it. */
+const REMEMBER_KEY = "swiftslip-remember-me";
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -16,6 +19,16 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Read after hydration so server and first client render match.
+  useEffect(() => {
+    setRemember(localStorage.getItem(REMEMBER_KEY) === "1");
+  }, []);
+
+  function toggleRemember(checked: boolean) {
+    setRemember(checked);
+    localStorage.setItem(REMEMBER_KEY, checked ? "1" : "0");
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,7 +125,7 @@ export function LoginForm() {
             <input
               type="checkbox"
               checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
+              onChange={(e) => toggleRemember(e.target.checked)}
               className="size-4 accent-primary"
             />
             Remember me
