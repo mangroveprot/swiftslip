@@ -26,6 +26,28 @@ export const signInInput = z.object({
 
 export const idInput = z.object({ id });
 
+/**
+ * Deleting a row: `quiet` marks the app's own clean-up of untouched scaffold
+ * forms, which stays out of the admin activity log.
+ */
+export const deleteRowInput = idInput.extend({ quiet: z.boolean().optional() });
+
+/** One page of the admin activity log (server-enforced page size). */
+export const ACTIVITY_LOG_PAGE_SIZE = 20;
+
+export const listActivityLogsInput = z.object({
+  search: z.string().trim().max(100).default(""),
+  from: z
+    .string()
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
+    .optional(),
+  to: z
+    .string()
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
+    .optional(),
+  page: z.number().int().min(1).default(1),
+});
+
 export const createRecordInput = z.object({
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(1970).max(9999),

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_name: string | null
+          actor_number: string | null
+          created_at: string
+          detail: string | null
+          id: string
+          ip: string | null
+          target: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_number?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          ip?: string | null
+          target?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_number?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          ip?: string | null
+          target?: string | null
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string

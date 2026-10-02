@@ -115,9 +115,10 @@ export async function saveRecord(
 export async function deleteRecord(id: string, ownerId: string) {
   const db = getDb();
   // Read the attachment first — deleting the row must take its file with it.
+  // The subject fields ride along for the admin activity log.
   const { data: row } = await db
     .from("dtr_records")
-    .select("attachment_path")
+    .select("attachment_path,name,emp_no")
     .eq("id", id)
     .eq("owner_id", ownerId)
     .maybeSingle();
@@ -133,4 +134,5 @@ export async function deleteRecord(id: string, ownerId: string) {
     // Best effort: an orphaned file is harmless, a lost record is not.
     await removeStoredFile(row.attachment_path);
   }
+  return { id, name: row?.name ?? "", emp_no: row?.emp_no ?? "" };
 }

@@ -162,7 +162,7 @@ export async function removeAttachment(
   const db = getDb();
   const { data: row, error: rowError } = await db
     .from(table)
-    .select("attachment_path")
+    .select("attachment_path,attachment_name")
     .eq("id", id)
     .eq("owner_id", ownerId)
     .maybeSingle();
@@ -188,7 +188,8 @@ export async function removeAttachment(
   if (error) throw new Error(error.message);
 
   if (row.attachment_path) await removeStoredFile(row.attachment_path);
-  return { ok: true as const };
+  // The name rides along for the admin activity log.
+  return { ok: true as const, name: row.attachment_name ?? "" };
 }
 
 /** Best-effort cleanup of a stored file whose row is already gone. */

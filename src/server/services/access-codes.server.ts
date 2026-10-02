@@ -138,11 +138,13 @@ export async function upsertAccessCode(input: {
 
 export async function deleteAccessCode(id: string) {
   const db = getDb();
-  const { data: row } = await db.from("users").select("role").eq("id", id).maybeSingle();
+  const { data: row } = await db.from("users").select("role,id_number").eq("id", id).maybeSingle();
   if (row?.role === "admin" && (await countAdmins(id)) === 0) {
     throw new Error("Keep at least one administrator account.");
   }
   await db.from("users").delete().eq("id", id);
+  // Which sign-in ID went with it — for the admin activity log.
+  return { idNumber: row?.id_number ?? id };
 }
 
 /** Change the password behind the currently signed-in access code, after checking the old one. */

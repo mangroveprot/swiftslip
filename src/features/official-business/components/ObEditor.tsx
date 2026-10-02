@@ -217,7 +217,7 @@ export function ObEditor({ id }: { id: string }) {
                 writeFormCache(qc, id, { form: { ...freshForm, id }, entries: fresh });
                 return;
               }
-              return deleteObForm({ data: { id } });
+              return deleteObForm({ data: { id, quiet: true } });
             })
             .then(() => {
               // Resolved either way — it gained content and is kept, or it is gone.

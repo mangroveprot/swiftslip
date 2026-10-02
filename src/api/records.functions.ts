@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/server/auth/session.server";
+import { logActivity } from "@/server/services/activity-log.server";
 import * as attachments from "@/server/services/attachments.server";
 import * as profiles from "@/server/services/profiles.server";
 import * as records from "@/server/services/records.server";
 import {
   attachmentUploadInput,
   createRecordInput,
+  deleteRowInput,
   idInput,
   saveRecordInput,
 } from "@/shared/schemas";
@@ -28,13 +30,22 @@ export const createRecord = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireUser();
     const profile = await profiles.getProfile(user.id);
-    return await records.createRecord(user.id, {
+    const created = await records.createRecord(user.id, {
       ...data,
       emp_no: profile.emp_no,
       name: profile.full_name,
       designation: profile.designation,
       area: profile.area,
     });
+    await logActivity({
+      action: "record.created",
+      actorId: user.id,
+      actorName: user.label,
+      actorNumber: user.idNumber,
+      target: `${profile.full_name} (${profile.emp_no})`,
+      detail: `Record ${created.id}`,
+    });
+    return created;
   });
 
 export const saveRecord = createServerFn({ method: "POST" })
@@ -46,10 +57,22 @@ export const saveRecord = createServerFn({ method: "POST" })
   });
 
 export const deleteRecord = createServerFn({ method: "POST" })
-  .validator(idInput)
+  .validator(deleteRowInput)
   .handler(async ({ data }) => {
     const user = await requireUser();
-    await records.deleteRecord(data.id, user.id);
+    const removed = await records.deleteRecord(data.id, user.id);
+    // `quiet` = the app sweeping an untouched scaffold away — housekeeping,
+    // not a user removing a record, so it stays out of the activity log.
+    if (!data.quiet) {
+      await logActivity({
+        action: "record.deleted",
+        actorId: user.id,
+        actorName: user.label,
+        actorNumber: user.idNumber,
+        target: `${removed.name || user.label} (${removed.emp_no || user.idNumber})`,
+        detail: `Record ${removed.id}`,
+      });
+    }
     return { ok: true as const };
   });
 
@@ -58,7 +81,16 @@ export const uploadRecordAttachment = createServerFn({ method: "POST" })
   .validator(attachmentUploadInput)
   .handler(async ({ data }) => {
     const user = await requireUser();
-    return await attachments.uploadAttachment("dtr_records", "Record", data, user.id);
+    const stored = await attachments.uploadAttachment("dtr_records", "Record", data, user.id);
+    await logActivity({
+      action: "attachment.uploaded",
+      actorId: user.id,
+      actorName: user.label,
+      actorNumber: user.idNumber,
+      target: `Record ${data.id}`,
+      detail: stored.name,
+    });
+    return stored;
   });
 
 /** Short-lived signed link to the record's attachment (`null` when there is none). */
@@ -73,5 +105,14 @@ export const removeRecordAttachment = createServerFn({ method: "POST" })
   .validator(idInput)
   .handler(async ({ data }) => {
     const user = await requireUser();
-    return await attachments.removeAttachment("dtr_records", "Record", data.id, user.id);
+    const removed = await attachments.removeAttachment("dtr_records", "Record", data.id, user.id);
+    await logActivity({
+      action: "attachment.removed",
+      actorId: user.id,
+      actorName: user.label,
+      actorNumber: user.idNumber,
+      target: `Record ${data.id}`,
+      detail: removed.name || null,
+    });
+    return removed;
   });

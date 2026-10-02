@@ -107,7 +107,7 @@ export function usePendingRecords(): {
           try {
             const { record, entries, attachment } = await getRecord({ data: { id } });
             if (isScaffoldRecord(record, entries, profile, Boolean(attachment))) {
-              await deleteRecord({ data: { id } });
+              await deleteRecord({ data: { id, quiet: true } });
               removed = true;
             }
             changed = true;

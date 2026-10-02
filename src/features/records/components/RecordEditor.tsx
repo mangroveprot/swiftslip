@@ -229,7 +229,7 @@ export function RecordEditor({ id }: { id: string }) {
                 writeRecordCache(qc, id, { record, entries: fresh });
                 return;
               }
-              return deleteRecord({ data: { id } });
+              return deleteRecord({ data: { id, quiet: true } });
             })
             .then(() => {
               // Resolved either way — it gained content and is kept, or it is gone.

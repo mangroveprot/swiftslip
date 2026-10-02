@@ -143,7 +143,7 @@ export function usePendingForms(): {
           try {
             const { form, entries, attachment } = await getObForm({ data: { id } });
             if (isScaffoldForm(form, entries, profile, Boolean(attachment))) {
-              await deleteObForm({ data: { id } });
+              await deleteObForm({ data: { id, quiet: true } });
               removed = true;
             }
             changed = true;
@@ -168,7 +168,7 @@ export function usePendingForms(): {
           try {
             const { form, entries, attachment } = await getObForm({ data: { id: row.id } });
             if (isScaffoldForm(form, entries, profile, Boolean(attachment))) {
-              await deleteObForm({ data: { id: row.id } });
+              await deleteObForm({ data: { id: row.id, quiet: true } });
               removed = true;
             }
           } catch {

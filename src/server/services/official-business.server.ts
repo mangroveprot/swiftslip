@@ -97,9 +97,10 @@ export async function saveObForm(id: string, ownerId: string, form: ObForm, entr
 export async function deleteObForm(id: string, ownerId: string) {
   const db = getDb();
   // Read the attachment first — deleting the row must take its file with it.
+  // The subject fields ride along for the admin activity log.
   const { data: form } = await db
     .from("ob_forms")
-    .select("attachment_path")
+    .select("attachment_path,employee_name,id_number")
     .eq("id", id)
     .eq("owner_id", ownerId)
     .maybeSingle();
@@ -115,4 +116,9 @@ export async function deleteObForm(id: string, ownerId: string) {
     // Best effort: an orphaned file is harmless, a lost form is not.
     await db.storage.from("swiftslip").remove([form.attachment_path]);
   }
+  return {
+    id,
+    employee_name: form?.employee_name ?? "",
+    id_number: form?.id_number ?? "",
+  };
 }
