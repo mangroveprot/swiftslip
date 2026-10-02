@@ -9,7 +9,7 @@ export const signIn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await verifyPassword(data.idNumber, data.password);
     if (!user) return { ok: false as const };
-    await startSession(user, data.remember);
+    await startSession(user);
     return { ok: true as const, ...user };
   });
 

@@ -17,10 +17,8 @@ export const APP = {
 
 export const SESSION = {
   cookieName: "swiftslip-session",
-  /** Login length without "Remember me" — enforced in `getSessionUser`. */
+  /** How long a login lasts. */
   maxAgeSeconds: 60 * 60 * 12,
-  /** Cookie/seal lifetime h3 uses for every session (remembered logins get all of it). */
-  rememberMaxAgeSeconds: 60 * 60 * 24 * 30,
 } as const;
 
 export const BIOMETRIC_IMPORT = {

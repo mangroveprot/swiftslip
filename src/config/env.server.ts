@@ -72,7 +72,6 @@ function buildConfig() {
       secret: env.SESSION_SECRET,
       cookieName: SESSION.cookieName,
       maxAgeSeconds: SESSION.maxAgeSeconds,
-      rememberMaxAgeSeconds: SESSION.rememberMaxAgeSeconds,
     },
     gemini: {
       /** `undefined` means the AI import feature is switched off. */

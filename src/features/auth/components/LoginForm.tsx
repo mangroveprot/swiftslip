@@ -1,34 +1,20 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { signIn } from "@/api/auth.functions";
 import { APP } from "@/config/app";
 import { sessionQueryOptions } from "../queries";
-
-/** The login page re-ticks "Remember me" the way the user last left it. */
-const REMEMBER_KEY = "swiftslip-remember-me";
 
 export function LoginForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [idNumber, setIdNumber] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-
-  // Read after hydration so server and first client render match.
-  useEffect(() => {
-    setRemember(localStorage.getItem(REMEMBER_KEY) === "1");
-  }, []);
-
-  function toggleRemember(checked: boolean) {
-    setRemember(checked);
-    localStorage.setItem(REMEMBER_KEY, checked ? "1" : "0");
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,9 +25,7 @@ export function LoginForm() {
     setBusy(true);
     setError("");
     try {
-      const result = await signIn({
-        data: { idNumber: idNumber.trim(), password, remember },
-      });
+      const result = await signIn({ data: { idNumber: idNumber.trim(), password } });
       if (!result.ok) {
         setBusy(false);
         setError("That ID number or password is not recognised.");
@@ -121,15 +105,6 @@ export function LoginForm() {
               </button>
             </span>
           </div>
-          <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={(e) => toggleRemember(e.target.checked)}
-              className="size-4 accent-primary"
-            />
-            Remember me
-          </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <button
             type="submit"
