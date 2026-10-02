@@ -239,7 +239,7 @@ function FormActivityPanel({ className = "" }: { className?: string }) {
   return (
     <section className={`rounded-xl border bg-card p-4 shadow-sm ${className}`}>
       <h3 className="text-sm font-semibold">Latest activity</h3>
-      <p className="text-xs text-muted-foreground">Latest {ACTIVITY_FEED_LIMIT} form actions</p>
+      <p className="text-xs text-muted-foreground">Latest {ACTIVITY_FEED_LIMIT} actions</p>
       {isLoading ? (
         <FeedSkeleton />
       ) : isError ? (

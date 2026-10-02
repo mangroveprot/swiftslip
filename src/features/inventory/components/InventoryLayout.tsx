@@ -16,6 +16,7 @@ import type { InventoryShell, InventoryView } from "../shell-context";
 const ROUTES = {
   assets: "/rgc-asset-inventory",
   reports: "/rgc-asset-inventory/reports",
+  settings: "/rgc-asset-inventory/settings",
 } as const;
 
 export function InventoryLayout() {
@@ -43,7 +44,11 @@ export function InventoryLayout() {
     }
   }
 
-  const activeView: InventoryView = pathname.startsWith(ROUTES.reports) ? "reports" : "assets";
+  const activeView: InventoryView = pathname.startsWith(ROUTES.reports)
+    ? "reports"
+    : pathname.startsWith(ROUTES.settings)
+      ? "settings"
+      : "assets";
 
   // The drawer stays open after a nav tap only until the route actually
   // changes — this also covers paths we don't drive from the sidebar

@@ -21,7 +21,7 @@ export const Route = createFileRoute("/admin")({
   head: () =>
     seo({
       title: pageTitle("Admin Panel"),
-      description: "Dashboard, user management, settings and the Daily Time Record template.",
+      description: "Dashboard, user management and the Daily Time Record template.",
     }),
   component: AdminPanel,
 });

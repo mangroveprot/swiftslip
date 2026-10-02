@@ -1,6 +1,7 @@
 /**
  * The admin panel's audit trail: one best-effort row per notable action
- * (sign-ins, OB / DTR create & remove, attachments, account changes).
+ * (sign-ins, OB / DTR create & remove, attachments, account changes,
+ * inventory asset/report activity).
  * Writing a log must never break the action it describes — `logActivity`
  * swallows every failure and only reports it to the server console.
  */
@@ -80,6 +81,9 @@ const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {
     "record.deleted",
     "attachment.uploaded",
     "attachment.removed",
+    "asset.created",
+    "asset.updated",
+    "report.downloaded",
   ],
 };
 
@@ -93,8 +97,8 @@ async function pruneExpired(): Promise<void> {
 
 /**
  * The newest `limit` rows of one dashboard feed: `security` (sign-ins and
- * account changes) or `forms` (OB / DTR / attachment activity). Prunes
- * expired rows first, like every other read of the log.
+ * account changes) or `forms` (OB / DTR / attachment / inventory activity).
+ * Prunes expired rows first, like every other read of the log.
  */
 export async function listActivityFeed(feed: ActivityLogFeed, limit: number) {
   await pruneExpired();

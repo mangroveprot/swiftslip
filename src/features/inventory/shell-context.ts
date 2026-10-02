@@ -7,7 +7,7 @@ import { createContext, useContext } from "react";
 
 import type { InventoryBranch } from "@/shared/inventory";
 
-export type InventoryView = "assets" | "reports";
+export type InventoryView = "assets" | "reports" | "settings";
 
 export type InventoryShell = {
   branches: InventoryBranch[];

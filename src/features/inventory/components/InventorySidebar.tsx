@@ -14,6 +14,7 @@ import type { InventoryShell, InventoryView } from "../shell-context";
 const NAV_ITEMS: { key: InventoryView; label: string }[] = [
   { key: "assets", label: "Assets" },
   { key: "reports", label: "Reports" },
+  { key: "settings", label: "Settings" },
 ];
 
 function NavIcon({ view }: { view: InventoryView }) {

@@ -10,7 +10,7 @@ export const inventoryQueryOptions = () =>
     retry: false,
   });
 
-/** Admin Settings section: options with usage counts. */
+/** Settings page: options with usage counts. */
 export const managedOptionsQueryOptions = () =>
   queryOptions({
     queryKey: ["inventory", "options"],
