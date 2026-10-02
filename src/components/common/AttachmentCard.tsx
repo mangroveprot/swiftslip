@@ -88,6 +88,8 @@ export function AttachmentCard({
     enabled: Boolean(file),
   });
   const isImage = file ? IMAGE_RE.test(file.name) : false;
+  /** PDFs don't preview inline on screen, but they can be embedded for print. */
+  const isPdf = file ? /\.pdf$/i.test(file.name) : false;
 
   async function refresh() {
     const urlKey =
@@ -157,8 +159,14 @@ export function AttachmentCard({
     }
   }
 
+  // The card joins the printout only when there is something to print — an
+  // empty upload prompt has no place on the printed record/form. Interactive
+  // controls stay screen-only; the file itself (image preview or PDF embed)
+  // prints after the document.
   return (
-    <section className="no-print shrink-0 rounded-xl border bg-card p-3 shadow-sm">
+    <section
+      className={`shrink-0 rounded-xl border bg-card p-3 shadow-sm${file ? "" : " print:hidden"}`}
+    >
       <input
         ref={fileInputRef}
         type="file"
@@ -190,7 +198,7 @@ export function AttachmentCard({
                   src={signed.url}
                   alt={file.name}
                   loading="lazy"
-                  className="mt-1.5 max-h-28 w-auto rounded border"
+                  className="mt-1.5 max-h-28 w-auto rounded border print:max-h-[24cm]"
                 />
               ) : null}
             </div>
@@ -199,7 +207,7 @@ export function AttachmentCard({
                 href={signed.url}
                 target="_blank"
                 rel="noreferrer"
-                className="btn btn-outline size-7 shrink-0 p-0"
+                className="btn btn-outline size-7 shrink-0 p-0 print:hidden"
                 aria-label="Open attachment"
                 title="Open attachment"
               >
@@ -210,7 +218,7 @@ export function AttachmentCard({
               <>
                 <button
                   type="button"
-                  className="btn btn-outline size-7 shrink-0 p-0"
+                  className="btn btn-outline size-7 shrink-0 p-0 print:hidden"
                   aria-label="Replace attachment"
                   title="Replace attachment"
                   disabled={busy}
@@ -220,7 +228,7 @@ export function AttachmentCard({
                 </button>
                 <button
                   type="button"
-                  className="btn btn-outline size-7 shrink-0 p-0 text-destructive hover:text-destructive"
+                  className="btn btn-outline size-7 shrink-0 p-0 text-destructive hover:text-destructive print:hidden"
                   aria-label="Remove attachment"
                   title="Remove attachment"
                   disabled={busy}
@@ -231,6 +239,18 @@ export function AttachmentCard({
               </>
             ) : null}
           </div>
+
+          {/* Print-only PDF embed: the filename above always prints, and in a
+              Chromium printout the attachment's pages follow the document
+              below it (other file types print as name + image where possible). */}
+          {isPdf && signed?.url ? (
+            <iframe
+              src={signed.url}
+              title={file.name}
+              loading="lazy"
+              className="hidden h-40 w-full border print:block print:h-[24cm]"
+            />
+          ) : null}
 
           {children}
         </div>

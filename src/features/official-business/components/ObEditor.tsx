@@ -406,6 +406,12 @@ export function ObEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
+          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
+            <ObPreview sheetId="ob-sheet" form={form} rows={rows} />
+          </div>
+          {/* Below the sheet for the same reason as the DTR: the preview header
+              and its full-view button stay directly above the preview, and the
+              approval slip prints after the form when there is one. */}
           <ObAttachmentCard
             id={id}
             form={form}
@@ -414,9 +420,6 @@ export function ObEditor({ id }: { id: string }) {
             attachment={data?.attachment ?? null}
             onUploaded={handleAttachmentUploaded}
           />
-          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
-            <ObPreview sheetId="ob-sheet" form={form} rows={rows} />
-          </div>
         </div>
       </div>
 

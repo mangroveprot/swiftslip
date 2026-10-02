@@ -22,7 +22,8 @@ import { accessCodesQueryOptions } from "../queries";
 
 type Account = {
   id: string;
-  label: string;
+  /** The employee's real full name, joined in from their profile ("" when unset). */
+  full_name: string;
   id_number: string;
   role: Role;
   created_at: string;
@@ -34,9 +35,10 @@ function roleText(role: string) {
 
 /**
  * User management for the admin panel: search the accounts, create one with its
- * unique ID number + password, then rename it, change its ID/role or reset its
- * password. (This replaces the old "Access passwords" list — same server
- * functions, no more "Name" field on creation.)
+ * unique ID number + password, then change its ID/role or reset its password.
+ * The Name column shows the employee's real full name from their profile — the
+ * free-text sidebar label is no longer edited here. (Same server functions as
+ * the old "Access passwords" list.)
  */
 export function UserManagement() {
   const { data: session } = useQuery(sessionQueryOptions());
@@ -51,7 +53,7 @@ export function UserManagement() {
 
   const query = search.trim().toLowerCase();
   const list = (accounts ?? []).filter((a) =>
-    `${a.id_number} ${a.label ?? ""} ${roleText(a.role)} ${a.role}`.toLowerCase().includes(query),
+    `${a.id_number} ${a.full_name} ${roleText(a.role)} ${a.role}`.toLowerCase().includes(query),
   );
 
   async function confirmRemove() {
@@ -140,7 +142,13 @@ export function UserManagement() {
                       ) : null}
                     </td>
                     <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
-                      {a.label && a.label !== a.id_number ? a.label : "—"}
+                      {a.full_name ? (
+                        <span className="block max-w-52 truncate" title={a.full_name}>
+                          {a.full_name}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -227,7 +235,6 @@ function AccountDialog({
   const isNew = editing === "new";
   const account = editing !== "new" ? editing : null;
   const [idNumber, setIdNumber] = useState("");
-  const [label, setLabel] = useState("");
   const [role, setRole] = useState<Role>("user");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -238,7 +245,6 @@ function AccountDialog({
   if (openKey && openKey !== openId) {
     setOpenId(openKey);
     setIdNumber(isNew ? "" : (account?.id_number ?? ""));
-    setLabel(isNew ? "" : (account?.label ?? ""));
     setRole(isNew ? "user" : (account?.role ?? "user"));
     setPassword("");
   }
@@ -261,8 +267,10 @@ function AccountDialog({
           role,
           // Create: the password is the account's first one (required above).
           // Edit: blank = keep the existing password — only rehash when given.
+          // No label is sent either way: the service keeps the sidebar label
+          // as-is (the real name comes from the employee's profile).
           password: password || undefined,
-          ...(account ? { id: account.id, label } : {}),
+          ...(account ? { id: account.id } : {}),
         },
       });
       toast.success(isNew ? "Account created" : "Account updated");
@@ -288,14 +296,6 @@ function AccountDialog({
             onChange={setIdNumber}
             placeholder="e.g. 2026-515"
           />
-          {isNew ? null : (
-            <TextField
-              label="Name (display)"
-              value={label}
-              onChange={setLabel}
-              placeholder="Shown in the sidebar — leave blank to show the ID number"
-            />
-          )}
           <label className="block">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Access level

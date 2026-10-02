@@ -37,19 +37,30 @@ function migrationOrThrow(message: string) {
 }
 
 export async function listAccessCodes() {
-  const { data, error } = await getDb()
-    .from("access_codes")
-    .select("id,label,id_number,role,created_at")
-    .order("created_at");
+  const db = getDb();
+  const [{ data, error }, { data: profiles, error: profilesError }] = await Promise.all([
+    db.from("access_codes").select("id,id_number,role,created_at").order("created_at"),
+    db.from("profiles").select("access_code_id,full_name"),
+  ]);
   if (error) throw migrationOrThrow(error.message);
-  return data ?? [];
+  if (profilesError) throw new Error(profilesError.message);
+  // The real name lives on the profile (filled in under "My Account"), not on
+  // the account row — join it in so user management shows actual full names
+  // instead of the free-text sidebar label.
+  const names = new Map<string, string>();
+  for (const profile of profiles ?? []) {
+    names.set(profile.access_code_id, profile.full_name);
+  }
+  return (data ?? []).map((code) => ({ ...code, full_name: names.get(code.id) ?? "" }));
 }
 
 export async function upsertAccessCode(input: {
   id?: string | undefined;
   /** Unique sign-in ID for the account — required on create. */
   idNumber: string;
-  /** Display name (sidebar); falls back to the ID number when blank. */
+  /** Display name (sidebar); falls back to the ID number when blank. Omitting
+   *  it on an edit keeps whatever label the account already has — user
+   *  management no longer edits labels (the real name comes from the profile). */
   label?: string | undefined;
   role: Role;
   /** Blank/omitted on an edit keeps the existing password. Required when creating. */
@@ -57,15 +68,16 @@ export async function upsertAccessCode(input: {
 }) {
   const db = getDb();
   const idNumber = input.idNumber.trim();
-  const label = (input.label ?? "").trim() || idNumber;
 
   if (input.id) {
     const { data: existing } = await db
       .from("access_codes")
-      .select("role")
+      .select("role,label")
       .eq("id", input.id)
       .maybeSingle();
     if (!existing) throw new Error("That account no longer exists.");
+    const label =
+      input.label !== undefined ? input.label.trim() || idNumber : existing.label || idNumber;
 
     // Don't let the last administrator get demoted — that would lock everyone out.
     if (
@@ -100,6 +112,7 @@ export async function upsertAccessCode(input: {
   if (await idNumberInUse(idNumber)) {
     throw new Error("That ID number is already in use.");
   }
+  const label = (input.label ?? "").trim() || idNumber;
   const insertPayload = {
     label,
     id_number: idNumber,

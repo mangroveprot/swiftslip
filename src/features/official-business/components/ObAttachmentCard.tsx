@@ -66,7 +66,7 @@ export function ObAttachmentCard({
     >
       {attachment && canEdit ? (
         <label
-          className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground"
+          className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground print:hidden"
           title='Marking this approved also checks "Approved via Viber" on the form'
         >
           <input

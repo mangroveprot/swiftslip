@@ -484,8 +484,8 @@ export function RecordEditor({ id }: { id: string }) {
           />
         </div>
 
-        <div className="flex min-h-0 flex-col lg:overflow-hidden print:overflow-visible">
-          <div className="no-print mb-1.5 flex shrink-0 items-center justify-between gap-2">
+        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:overflow-visible">
+          <div className="no-print flex shrink-0 items-center justify-between gap-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Live preview
             </p>
@@ -499,13 +499,6 @@ export function RecordEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <AttachmentCard
-            kind="record"
-            id={id}
-            file={data?.attachment ?? null}
-            canEdit={canEdit}
-            onUploaded={handleAttachmentUploaded}
-          />
           <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
             <DtrPreview
               sheetId="dtr-sheet"
@@ -515,6 +508,17 @@ export function RecordEditor({ id }: { id: string }) {
               entryFor={row}
             />
           </div>
+          {/* Below the sheet on purpose: the Live-preview header (and its
+              full-view button) sits directly above the preview it controls,
+              nothing looks like it belongs to the attachment, and the card
+              prints after the record when there is a file. */}
+          <AttachmentCard
+            kind="record"
+            id={id}
+            file={data?.attachment ?? null}
+            canEdit={canEdit}
+            onUploaded={handleAttachmentUploaded}
+          />
         </div>
       </div>
 
