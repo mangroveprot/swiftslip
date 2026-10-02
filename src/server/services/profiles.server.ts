@@ -6,14 +6,24 @@ const emptyProfile = (): EmployeeProfile => ({
   full_name: "",
   designation: "",
   area: "",
+  signature: "",
 });
 
 export async function getProfile(accessCodeId: string): Promise<EmployeeProfile> {
-  const { data, error } = await getDb()
+  const db = getDb();
+  let { data, error } = await db
     .from("profiles")
-    .select("emp_no,full_name,designation,area")
+    .select("emp_no,full_name,designation,area,signature")
     .eq("access_code_id", accessCodeId)
     .maybeSingle();
+  // Databases that haven't run migration 0012 don't have this column yet.
+  if (error?.message?.includes("signature")) {
+    ({ data, error } = await db
+      .from("profiles")
+      .select("emp_no,full_name,designation,area")
+      .eq("access_code_id", accessCodeId)
+      .maybeSingle());
+  }
   if (error) throw new Error(error.message);
   if (!data) return emptyProfile();
   return {
@@ -21,6 +31,7 @@ export async function getProfile(accessCodeId: string): Promise<EmployeeProfile>
     full_name: data.full_name ?? "",
     designation: data.designation ?? "",
     area: data.area ?? "",
+    signature: data.signature ?? "",
   };
 }
 
@@ -34,18 +45,31 @@ export async function saveProfile(
     full_name: profile.full_name,
     designation: profile.designation,
     area: profile.area,
+    signature: profile.signature,
     updated_at: new Date().toISOString(),
   };
-  const { data, error } = await getDb()
+  const db = getDb();
+  let { data, error } = await db
     .from("profiles")
     .upsert(payload, { onConflict: "access_code_id" })
-    .select("emp_no,full_name,designation,area")
+    .select("emp_no,full_name,designation,area,signature")
     .single();
+  // Databases that haven't run migration 0012 don't have this column yet.
+  if (error?.message?.includes("signature")) {
+    const { signature: _sig, ...withoutSignature } = payload;
+    ({ data, error } = await db
+      .from("profiles")
+      .upsert(withoutSignature, { onConflict: "access_code_id" })
+      .select("emp_no,full_name,designation,area")
+      .single());
+  }
   if (error) throw new Error(error.message);
+  if (!data) throw new Error("Profile not found.");
   return {
     emp_no: data.emp_no ?? "",
     full_name: data.full_name ?? "",
     designation: data.designation ?? "",
     area: data.area ?? "",
+    signature: data.signature ?? "",
   };
 }

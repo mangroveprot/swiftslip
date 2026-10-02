@@ -41,6 +41,7 @@ export async function createObForm(
     employee_name?: string;
     department?: string;
     position?: string;
+    employee_signature?: string;
     date_filed?: string;
   },
 ) {
@@ -52,6 +53,7 @@ export async function createObForm(
       employee_name: input.employee_name ?? "",
       department: input.department ?? "",
       position: input.position ?? "",
+      employee_signature: input.employee_signature ?? "",
       date_filed: input.date_filed ?? "",
     })
     .select("id")

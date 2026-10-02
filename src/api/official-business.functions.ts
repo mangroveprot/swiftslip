@@ -39,6 +39,7 @@ export const createObForm = createServerFn({ method: "POST" })
       employee_name: profile.full_name,
       department: profile.area,
       position: profile.designation,
+      employee_signature: profile.signature,
       date_filed: data.date_filed ?? "",
     });
     await logActivity({

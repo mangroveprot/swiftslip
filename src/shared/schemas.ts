@@ -253,4 +253,5 @@ export const employeeProfileSchema = z.object({
   full_name: z.string(),
   designation: z.string(),
   area: z.string(),
+  signature: z.string().default(""),
 });

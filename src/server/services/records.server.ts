@@ -44,23 +44,36 @@ export async function createRecord(
     name?: string;
     designation?: string;
     area?: string;
+    employee_signature?: string;
   },
 ) {
-  const { data: row, error } = await getDb()
+  const rowPayload = {
+    owner_id: ownerId,
+    month: input.month,
+    year: input.year,
+    period: input.period,
+    emp_no: input.emp_no ?? "",
+    name: input.name ?? "",
+    designation: input.designation ?? "",
+    area: input.area ?? "",
+    employee_signature: input.employee_signature ?? "",
+  };
+  let { data: row, error } = await getDb()
     .from("dtr_records")
-    .insert({
-      owner_id: ownerId,
-      month: input.month,
-      year: input.year,
-      period: input.period,
-      emp_no: input.emp_no ?? "",
-      name: input.name ?? "",
-      designation: input.designation ?? "",
-      area: input.area ?? "",
-    })
+    .insert(rowPayload)
     .select("id")
     .single();
+  // Databases that haven't run migration 0003 don't have this column yet.
+  if (error?.message?.includes("employee_signature")) {
+    const { employee_signature: _sig, ...withoutSignature } = rowPayload;
+    ({ data: row, error } = await getDb()
+      .from("dtr_records")
+      .insert(withoutSignature)
+      .select("id")
+      .single());
+  }
   if (error) throw new Error(error.message);
+  if (!row) throw new Error("Could not create a record.");
   return { id: row.id as string };
 }
 

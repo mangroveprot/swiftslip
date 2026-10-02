@@ -9,6 +9,8 @@ export type EmployeeProfile = {
   full_name: string;
   designation: string;
   area: string;
+  /** Data URL (PNG) of the saved signature — auto-filled into new forms. */
+  signature: string;
 };
 
 export type DtrEntry = {

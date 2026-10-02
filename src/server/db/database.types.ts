@@ -181,6 +181,7 @@ export type Database = {
           designation: string
           emp_no: string
           full_name: string
+          signature: string
           updated_at: string
         }
         Insert: {
@@ -189,6 +190,7 @@ export type Database = {
           designation?: string
           emp_no?: string
           full_name?: string
+          signature?: string
           updated_at?: string
         }
         Update: {
@@ -197,6 +199,7 @@ export type Database = {
           designation?: string
           emp_no?: string
           full_name?: string
+          signature?: string
           updated_at?: string
         }
         Relationships: [

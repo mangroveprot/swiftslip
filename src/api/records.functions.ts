@@ -36,6 +36,7 @@ export const createRecord = createServerFn({ method: "POST" })
       name: profile.full_name,
       designation: profile.designation,
       area: profile.area,
+      employee_signature: profile.signature,
     });
     await logActivity({
       action: "record.created",

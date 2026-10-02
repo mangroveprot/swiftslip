@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { saveMyProfile } from "@/api/profile.functions";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/features/auth/use-session";
+import { SignatureField } from "@/features/records/components/SignaturePad";
 import { toast } from "@/lib/toast";
 import type { EmployeeProfile } from "@/shared/types";
 import { profileQueryOptions } from "../queries";
@@ -14,6 +15,7 @@ const empty: EmployeeProfile = {
   full_name: "",
   designation: "",
   area: "",
+  signature: "",
 };
 
 const FIELDS: Array<{ key: keyof EmployeeProfile; label: string; placeholder?: string }> = [
@@ -60,7 +62,8 @@ export function ProfileForm() {
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Account</p>
           <h1 className="mt-1 text-4xl">My profile</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            These details fill in automatically when you create a new time record.
+            These details and your signature fill in automatically whenever you create a new time
+            record or form.
           </p>
         </div>
         {session ? (
@@ -96,6 +99,12 @@ export function ProfileForm() {
             />
           ))}
         </div>
+
+        <SignatureField
+          value={form.signature}
+          disabled={busy}
+          onChange={(v) => setForm({ ...form, signature: v })}
+        />
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button className="btn btn-primary" disabled={busy} onClick={onSave}>
