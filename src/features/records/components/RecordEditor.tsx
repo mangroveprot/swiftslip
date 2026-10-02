@@ -10,7 +10,7 @@ import {
   Save as SaveIcon,
   Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
 import { deleteRecord, getRecord, saveRecord } from "@/api/records.functions";
@@ -32,7 +32,7 @@ import { downloadDtrWord } from "../lib/word-export";
 import { recordQueryOptions, recordsQueryOptions } from "../queries";
 import { DailyEntriesTable } from "./DailyEntriesTable";
 import { DtrPreview } from "./DtrPreview";
-import { RecordHeaderFields, type EmployeeOption } from "./RecordHeaderFields";
+import { RecordHeaderFields } from "./RecordHeaderFields";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -62,7 +62,6 @@ export function RecordEditor({ id }: { id: string }) {
 
   const { data } = useQuery(recordQueryOptions(id));
   const { data: template } = useQuery(templateQueryOptions());
-  const { data: allRecords } = useQuery(recordsQueryOptions());
   const profileQuery = useQuery(profileQueryOptions());
   // Identity fields are auto-filled from the profile when a record is created, so
   // the profile is the reference for telling that auto-fill apart from content the
@@ -99,17 +98,6 @@ export function RecordEditor({ id }: { id: string }) {
   // is an exit, and letting them decide would delete records the user kept.
   const mountPathRef = useRef(useRouterState({ select: (s) => s.location.pathname }));
   const mountedAtRef = useRef(Date.now());
-
-  const employeeOptions = useMemo(() => {
-    const map = new Map<string, EmployeeOption>();
-    for (const r of (allRecords ?? []) as EmployeeOption[]) {
-      const name = (r.name ?? "").trim();
-      if (!name) continue;
-      const key = name.toLowerCase();
-      if (!map.has(key)) map.set(key, r);
-    }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [allRecords]);
 
   // Load the saved record into local edit state. Waits for the profile so the
   // scaffold decision compares against the same auto-fill the record was created with.
@@ -466,7 +454,6 @@ export function RecordEditor({ id }: { id: string }) {
             header={header}
             setHeader={setHeader}
             template={template}
-            employeeOptions={employeeOptions}
             canEdit={canEdit}
           />
           <DailyEntriesTable

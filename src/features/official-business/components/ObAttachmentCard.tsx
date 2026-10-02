@@ -5,8 +5,10 @@ import type { ObForm } from "@/shared/types";
 
 /**
  * The approval-slip attachment for an OB form: the shared upload/view/remove
- * card plus the approval bits the DTR doesn't have — a status badge and an
- * "Approved" checkbox that also ticks "Approved via Viber" on the form.
+ * card plus the approval bits the DTR doesn't have — a status badge and the
+ * single "Approved" checkbox (auto-ticked when a slip is uploaded). Ticking
+ * it also drives the form's "Approved via Viber" note; the separate form
+ * checkbox was removed as a duplicate.
  */
 export function ObAttachmentCard({
   id,
@@ -27,13 +29,9 @@ export function ObAttachmentCard({
   const approved = form.attachment_approved;
 
   function setChecked(checked: boolean) {
-    // Approving the attachment also ticks "Approved via Viber" — that is exactly
-    // the approval trail the note describes.
-    setForm({
-      ...form,
-      attachment_approved: checked,
-      ...(checked ? { approved_via_viber: true } : {}),
-    });
+    // This tick is the approval trail now: it drives both marks — the card
+    // badge and the "Approved via Viber" note on the form/preview.
+    setForm({ ...form, attachment_approved: checked, approved_via_viber: checked });
   }
 
   return (
@@ -42,11 +40,20 @@ export function ObAttachmentCard({
       id={id}
       file={attachment}
       canEdit={canEdit}
-      onUploaded={onUploaded}
+      onUploaded={() => {
+        // An uploaded slip IS the approval — tick both marks automatically so
+        // nobody confirms the same thing twice. The box stays toggleable for
+        // the odd slip that shouldn't count yet.
+        setForm({ ...form, attachment_approved: true, approved_via_viber: true });
+        onUploaded();
+      }}
       onRemoved={() => {
-        // The server cleared the approval along with the file — keep local state
-        // in step so the next auto-save can't resurrect it.
-        if (form.attachment_approved) setForm({ ...form, attachment_approved: false });
+        // The server cleared the approval along with the file — keep local
+        // state in step so the next auto-save can't resurrect it (or the
+        // "Approved via Viber" note that now follows it).
+        if (form.attachment_approved || form.approved_via_viber) {
+          setForm({ ...form, attachment_approved: false, approved_via_viber: false });
+        }
       }}
       badge={
         attachment ? (

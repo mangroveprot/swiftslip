@@ -2,42 +2,17 @@ import { SignatureField } from "./SignaturePad";
 import { MONTHS, PERIOD_LABELS, customPeriod, daysInMonth, periodRange } from "@/shared/period";
 import type { DtrHeader, DtrTemplate, Period } from "@/shared/types";
 
-export type EmployeeOption = {
-  id: string;
-  name: string;
-  emp_no: string;
-  designation?: string;
-  area?: string;
-};
-
 export function RecordHeaderFields({
   header,
   setHeader,
   template,
-  employeeOptions,
   canEdit,
 }: {
   header: DtrHeader;
   setHeader: (header: DtrHeader) => void;
   template: DtrTemplate;
-  employeeOptions: EmployeeOption[];
   canEdit: boolean;
 }) {
-  function pickEmployee(name: string) {
-    const match = employeeOptions.find((e) => e.name === name);
-    if (!match) {
-      setHeader({ ...header, name });
-      return;
-    }
-    setHeader({
-      ...header,
-      name: match.name,
-      emp_no: match.emp_no || header.emp_no,
-      designation: match.designation || header.designation,
-      area: match.area || header.area,
-    });
-  }
-
   return (
     <section className="shrink-0 rounded-xl border bg-card p-3 shadow-sm">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -47,22 +22,14 @@ export function RecordHeaderFields({
           disabled={!canEdit}
           onChange={(v) => setHeader({ ...header, emp_no: v })}
         />
-        <label className="block sm:col-span-1">
-          <span className="lbl">Full name</span>
-          <input
-            className="inp"
-            list="employee-name-options"
-            disabled={!canEdit}
-            value={header.name}
-            onChange={(e) => pickEmployee(e.target.value)}
-            placeholder="Select or type a name"
-          />
-          <datalist id="employee-name-options">
-            {employeeOptions.map((e) => (
-              <option key={e.id} value={e.name} />
-            ))}
-          </datalist>
-        </label>
+        {/* A plain text field: the old name chooser (a datalist arrow that
+            swapped in another employee's details) is gone by request. */}
+        <Field
+          label="Full name"
+          value={header.name}
+          disabled={!canEdit}
+          onChange={(v) => setHeader({ ...header, name: v })}
+        />
         <Field
           label="Designation"
           value={header.designation}

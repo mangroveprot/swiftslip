@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Loader2, Paperclip, Trash2, Upload } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { removeObAttachment, uploadObAttachment } from "@/api/official-business.functions";
 import {
@@ -111,10 +111,8 @@ export function AttachmentCard({
     ]);
   }
 
-  async function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0];
-    e.target.value = ""; // re-picking the same file has to work again
-    if (!picked) return;
+  /** Shared by the file button and Ctrl+V: same checks, same upload path. */
+  async function uploadFile(picked: File) {
     if (!picked.size) {
       toast.error("That file is empty.");
       return;
@@ -146,6 +144,35 @@ export function AttachmentCard({
       setBusy(false);
     }
   }
+
+  async function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0];
+    e.target.value = ""; // re-picking the same file has to work again
+    if (picked) await uploadFile(picked);
+  }
+
+  // Ctrl+V pastes a screenshot straight in as the attachment — approval slips
+  // often arrive as a clipboard image. Only a real image file on the clipboard
+  // is taken (then the browser's own insert is suppressed); ordinary text and
+  // HTML pastes, and pastes while a dialog is open, go through untouched.
+  // Latest state, read by the handler without re-subscribing it.
+  const pasteRef = useRef({ canEdit, busy, confirming, uploadFile });
+  pasteRef.current = { canEdit, busy, confirming, uploadFile };
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const { canEdit, busy, confirming, uploadFile } = pasteRef.current;
+      if (!canEdit || busy || confirming) return;
+      const image = Array.from(event.clipboardData?.items ?? [])
+        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .find((f): f is File => f !== null);
+      if (!image) return;
+      event.preventDefault();
+      void uploadFile(image);
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, []);
 
   async function confirmRemove() {
     setBusy(true);

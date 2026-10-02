@@ -53,28 +53,15 @@ export function ObFormFields({
         />
         <label className="block sm:col-span-2 xl:col-span-1">
           <span className="lbl">Approved by (Supervisor / Dept. Head)</span>
-          <div className="flex items-center gap-2">
-            <input
-              className="inp flex-1"
-              type="text"
-              disabled={!canEdit}
-              value={form.approved_by}
-              onChange={(e) => setForm({ ...form, approved_by: e.target.value })}
-            />
-            <label
-              className="flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap text-xs font-medium text-muted-foreground"
-              title='Show "Approved via Viber" on the form'
-            >
-              <input
-                type="checkbox"
-                className="size-4 accent-primary"
-                disabled={!canEdit}
-                checked={form.approved_via_viber}
-                onChange={(e) => setForm({ ...form, approved_via_viber: e.target.checked })}
-              />
-              Approved via Viber
-            </label>
-          </div>
+          {/* The viber checkbox that used to sit here is gone: approval is the
+              attachment card's single "Approved" tick (auto-checked on upload). */}
+          <input
+            className="inp"
+            type="text"
+            disabled={!canEdit}
+            value={form.approved_by}
+            onChange={(e) => setForm({ ...form, approved_by: e.target.value })}
+          />
         </label>
       </div>
 
