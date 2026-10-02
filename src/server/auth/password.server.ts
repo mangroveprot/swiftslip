@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 /**
- * NOTE: unsalted SHA-256 is what existing `access_codes.password_hash` rows use,
+ * NOTE: unsalted SHA-256 is what existing `users.password_hash` rows use,
  * so it is kept for compatibility. Moving to a salted KDF (argon2/scrypt) means
  * a data migration — do it here, in one place, when you're ready.
  */

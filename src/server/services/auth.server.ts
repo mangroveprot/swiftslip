@@ -18,8 +18,8 @@ export async function verifyPassword(
   const normalized = idNumber.trim();
   if (!normalized) return null;
   const { data, error } = await getDb()
-    .from("access_codes")
-    .select("id,role,label,password_hash")
+    .from("users")
+    .select("id,role,id_number,password_hash")
     .ilike("id_number", escapeLike(normalized))
     .maybeSingle();
   if (error) {
@@ -30,8 +30,28 @@ export async function verifyPassword(
         "Sign-in needs a pending database update — run drizzle/migrations/0007_account_id_number.sql first.",
       );
     }
+    // The account table arrives with its rename migration too — PostgREST
+    // reports unknown tables as a schema-cache miss (raw PG says "relation").
+    if (/could not find the table .*users|relation .*users.* does not exist/i.test(error.message)) {
+      throw new Error(
+        "Sign-in needs a pending database update — run drizzle/migrations/0010_users_rename.sql first.",
+      );
+    }
     throw new Error(error.message);
   }
   if (!data || !verifyPasswordHash(password, data.password_hash)) return null;
-  return { id: data.id as string, role: data.role as Role, label: data.label };
+  // The sidebar's "Signed in as …" uses the profile's real full name (the old
+  // free-text label column is gone), falling back to the ID number when the
+  // employee hasn't filled in their profile yet. A failed profile lookup must
+  // never block signing in — the ID number always works.
+  const { data: profile } = await getDb()
+    .from("profiles")
+    .select("full_name")
+    .eq("access_code_id", data.id)
+    .maybeSingle();
+  return {
+    id: data.id,
+    role: data.role as Role,
+    label: profile?.full_name?.trim() || data.id_number,
+  };
 }

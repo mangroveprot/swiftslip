@@ -126,8 +126,6 @@ export const upsertCodeInput = z.object({
   id: id.optional(),
   /** The account's unique sign-in ID — required, and unique across accounts. */
   idNumber: z.string().trim().min(1, "ID number is required.").max(64),
-  /** Display name shown in the sidebar. Optional — falls back to the ID number. */
-  label: z.string().trim().max(120).optional(),
   role: roleSchema,
   // Optional when editing (blank = keep the current password). Required when
   // creating a new one — that and the length check happen in the service so

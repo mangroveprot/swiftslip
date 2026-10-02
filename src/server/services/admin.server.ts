@@ -26,7 +26,7 @@ export type AdminStats = {
   monthly: { label: string; records: number; forms: number }[];
 };
 
-async function countRows(table: "access_codes" | "dtr_records" | "ob_forms") {
+async function countRows(table: "users" | "dtr_records" | "ob_forms") {
   const { count, error } = await getDb().from(table).select("id", { count: "exact", head: true });
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -82,11 +82,11 @@ export async function getAdminStats(): Promise<AdminStats> {
   const since = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 5, 1));
 
   const [accounts, records, forms, adminCount] = await Promise.all([
-    countRows("access_codes"),
+    countRows("users"),
     countRows("dtr_records"),
     countRows("ob_forms"),
     db
-      .from("access_codes")
+      .from("users")
       .select("id", { count: "exact", head: true })
       .eq("role", "admin")
       .then(({ count }) => count ?? 0),

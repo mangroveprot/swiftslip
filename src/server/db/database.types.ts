@@ -14,12 +14,11 @@ export type Database = {
   }
   public: {
     Tables: {
-      access_codes: {
+      users: {
         Row: {
           created_at: string
           id: string
           id_number: string
-          label: string
           password_hash: string
           role: string
         }
@@ -27,7 +26,6 @@ export type Database = {
           created_at?: string
           id?: string
           id_number: string
-          label: string
           password_hash: string
           role: string
         }
@@ -35,7 +33,6 @@ export type Database = {
           created_at?: string
           id?: string
           id_number?: string
-          label?: string
           password_hash?: string
           role?: string
         }
@@ -136,7 +133,7 @@ export type Database = {
             foreignKeyName: "dtr_records_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
-            referencedRelation: "access_codes"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -171,7 +168,7 @@ export type Database = {
             foreignKeyName: "profiles_access_code_id_fkey"
             columns: ["access_code_id"]
             isOneToOne: true
-            referencedRelation: "access_codes"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -236,7 +233,7 @@ export type Database = {
             foreignKeyName: "ob_forms_owner_id_fkey"
             columns: ["owner_id"]
             isOneToOne: false
-            referencedRelation: "access_codes"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
