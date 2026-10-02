@@ -1,6 +1,15 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutGrid, LogOut, Menu } from "lucide-react";
+import {
+  FileSpreadsheet,
+  History,
+  LayoutDashboard,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 import { signOut } from "@/api/auth.functions";
@@ -13,11 +22,11 @@ import { UserManagement } from "./UserManagement";
 
 type Section = "dashboard" | "users" | "logs" | "template";
 
-const SECTIONS: { id: Section; label: string; note: string }[] = [
-  { id: "dashboard", label: "Dashboard", note: "Totals & activity" },
-  { id: "users", label: "User management", note: "Accounts & roles" },
-  { id: "logs", label: "Activity logs", note: "Sign-ins & changes" },
-  { id: "template", label: "DTR template", note: "Sheet headings" },
+const SECTIONS: { id: Section; label: string; note: string; icon: LucideIcon }[] = [
+  { id: "dashboard", label: "Dashboard", note: "Totals & activity", icon: LayoutDashboard },
+  { id: "users", label: "User management", note: "Accounts & roles", icon: Users },
+  { id: "logs", label: "Activity logs", note: "Sign-ins & changes", icon: History },
+  { id: "template", label: "DTR template", note: "Sheet headings", icon: FileSpreadsheet },
 ];
 
 /**
@@ -144,8 +153,13 @@ function AdminSidebar({
               onNavigate?.();
             }}
           >
-            <span className="block">{item.label}</span>
-            <span className="block text-[11px] text-muted-foreground">{item.note}</span>
+            <span className="flex items-start gap-2.5">
+              <item.icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className="block">{item.label}</span>
+                <span className="block text-[11px] text-muted-foreground">{item.note}</span>
+              </span>
+            </span>
           </button>
         ))}
       </nav>

@@ -94,7 +94,7 @@ export function AdminDashboard() {
 
         <div className="order-1 space-y-4 lg:order-2">
           <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <h3 className="text-sm font-semibold">Activity — last 6 months</h3>
+            <h3 className="text-sm font-semibold">Activity last 6 months</h3>
             <p className="text-xs text-muted-foreground">Records and OB forms created per month</p>
             {isLoading ? (
               <div className="mt-4 h-[240px] animate-pulse rounded-lg bg-muted" />

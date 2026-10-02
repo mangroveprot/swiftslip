@@ -1,7 +1,7 @@
 {
   "name": "SwiftSlip — Daily time records, simplified.",
   "short_name": "SwiftSlip",
-  "description": "Daily time records, simplified.",
+  "description": "Employee portal for daily time records, official business forms and schedule changes — biometric log import, printing, and company asset tracking.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

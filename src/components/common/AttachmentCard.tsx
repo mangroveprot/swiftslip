@@ -35,14 +35,14 @@ const COPY: Record<
 > = {
   ob: {
     title: "Approval attachment",
-    empty: "Attach approval slip — PDF, image or document, up to 10 MB",
+    empty: "Attach approval slip PDF, image or document, up to 10 MB",
     removeTitle: "Remove this attachment?",
     removeDescription:
       "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
   },
   record: {
     title: "Attachment",
-    empty: "Attach a supporting document — PDF, image or document, up to 10 MB",
+    empty: "Attach a supporting document PDF, image or document, up to 10 MB",
     removeTitle: "Remove this attachment?",
     removeDescription: "The uploaded file is deleted. This can't be undone.",
   },

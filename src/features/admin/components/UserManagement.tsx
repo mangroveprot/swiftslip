@@ -294,7 +294,7 @@ function AccountDialog({
             label="ID Number"
             value={idNumber}
             onChange={setIdNumber}
-            placeholder="e.g. 2026-515"
+            placeholder="e.g. 2026-XXX"
           />
           <label className="block">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

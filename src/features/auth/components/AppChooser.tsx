@@ -39,7 +39,7 @@ export function AppChooser() {
           <img
             src={APP.mindbridgeLogoPath}
             alt="Mindbridge"
-            className="h-8 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
         </span>
         <span className="flex items-center gap-3 text-sm">
@@ -65,28 +65,6 @@ export function AppChooser() {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:120ms] flex`}>
-            <Link to="/records" className={CARD_CLASS}>
-              <span>
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
-                  <img src={APP.mindbridgeLogoPath} alt="" className="h-6 w-auto object-contain" />
-                </span>
-                <span className="mt-3 block text-base font-semibold">{APP.name}</span>
-                <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
-                  Daily Time Records, Official Business forms and imports — everything the portal
-                  does today.
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
-                Open {APP.name}
-                <ArrowRight
-                  className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
-                  aria-hidden="true"
-                />
-              </span>
-            </Link>
-          </div>
-
           <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:260ms] flex`}>
             <Link to="/admin" className={CARD_CLASS}>
               <span>
@@ -95,12 +73,34 @@ export function AppChooser() {
                 </span>
                 <span className="mt-3 block text-base font-semibold">Admin Panel</span>
                 <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
-                  Dashboard, user management and the DTR template — create accounts, set roles and
+                  Dashboard, user management and the DTR template create accounts, set roles and
                   edit the sheet headings.
                 </span>
               </span>
               <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
                 Open Admin Panel
+                <ArrowRight
+                  className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
+                  aria-hidden="true"
+                />
+              </span>
+            </Link>
+          </div>
+
+          <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:120ms] flex`}>
+            <Link to="/records" className={CARD_CLASS}>
+              <span>
+                <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                  <img src={APP.mindbridgeLogoPath} alt="" className="h-6 w-auto object-contain" />
+                </span>
+                <span className="mt-3 block text-base font-semibold">{APP.name}</span>
+                <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
+                  Daily Time Records, Official Business forms and imports everything the portal does
+                  today.
+                </span>
+              </span>
+              <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                Open {APP.name}
                 <ArrowRight
                   className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
                   aria-hidden="true"
@@ -119,7 +119,7 @@ export function AppChooser() {
                   <span className="text-base font-semibold">RGC Asset Inventory</span>
                 </span>
                 <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
-                  Track company assets, issuances and assignments. This module is being built — the
+                  Track company assets, issuances and assignments. This module is being built the
                   door is here, the rooms come later.
                 </span>
               </span>
