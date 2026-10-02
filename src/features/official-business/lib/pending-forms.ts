@@ -141,8 +141,8 @@ export function usePendingForms(): {
         // Marked forms — created here, hidden until they are resolved.
         for (const id of ids) {
           try {
-            const { form, entries } = await getObForm({ data: { id } });
-            if (isScaffoldForm(form, entries, profile)) {
+            const { form, entries, attachment } = await getObForm({ data: { id } });
+            if (isScaffoldForm(form, entries, profile, Boolean(attachment))) {
               await deleteObForm({ data: { id } });
               removed = true;
             }
@@ -166,8 +166,8 @@ export function usePendingForms(): {
         for (const row of rows) {
           if (!profile || !looksLikeAutoFill(row, profile)) continue;
           try {
-            const { form, entries } = await getObForm({ data: { id: row.id } });
-            if (isScaffoldForm(form, entries, profile)) {
+            const { form, entries, attachment } = await getObForm({ data: { id: row.id } });
+            if (isScaffoldForm(form, entries, profile, Boolean(attachment))) {
               await deleteObForm({ data: { id: row.id } });
               removed = true;
             }

@@ -16,6 +16,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: APP.name },
       { name: "description", content: APP.tagline },
       { name: "author", content: APP.name },
+      { name: "theme-color", content: "#ffffff" },
+      // Installable as an app (Chrome/Edge install menu) and addable to the
+      // iOS home screen with its own icon.
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: APP.name },
       { property: "og:title", content: APP.name },
       { property: "og:description", content: APP.tagline },
       { property: "og:type", content: "website" },
@@ -30,6 +37,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: APP.faviconPath, type: "image/png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,

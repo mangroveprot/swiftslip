@@ -7,7 +7,7 @@ import { signInInput } from "@/shared/schemas";
 export const signIn = createServerFn({ method: "POST" })
   .validator(signInInput)
   .handler(async ({ data }) => {
-    const user = await verifyPassword(data.password);
+    const user = await verifyPassword(data.idNumber, data.password);
     if (!user) return { ok: false as const };
     await startSession(user);
     return { ok: true as const, ...user };

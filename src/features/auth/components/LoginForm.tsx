@@ -10,6 +10,7 @@ import { sessionQueryOptions } from "../queries";
 export function LoginForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [idNumber, setIdNumber] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -17,23 +18,33 @@ export function LoginForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!idNumber.trim()) {
+      setError("Enter your ID number.");
+      return;
+    }
     setBusy(true);
     setError("");
-    const result = await signIn({ data: { password } });
-    if (!result.ok) {
+    try {
+      const result = await signIn({ data: { idNumber: idNumber.trim(), password } });
+      if (!result.ok) {
+        setBusy(false);
+        setError("That ID number or password is not recognised.");
+        return;
+      }
+      // Confirm the cookie actually stuck before leaving the page.
+      const confirmed = await queryClient.fetchQuery({ ...sessionQueryOptions(), staleTime: 0 });
+      if (!confirmed) {
+        setBusy(false);
+        setError("Your session could not be started. Please try again.");
+        return;
+      }
+      // Administrators pick which app to open; staff go straight to their records.
+      await navigate({ to: confirmed.role === "admin" ? "/choose" : "/records" });
+    } catch (err) {
+      // Server-thrown messages (e.g. a pending migration) are worth showing.
       setBusy(false);
-      setError("That password is not recognised.");
-      return;
+      setError(err instanceof Error && err.message ? err.message : "Sign-in failed. Try again.");
     }
-    // Confirm the cookie actually stuck before leaving the page.
-    const confirmed = await queryClient.fetchQuery({ ...sessionQueryOptions(), staleTime: 0 });
-    if (!confirmed) {
-      setBusy(false);
-      setError("Your session could not be started. Please try again.");
-      return;
-    }
-    // Administrators pick which app to open; staff go straight to their records.
-    await navigate({ to: confirmed.role === "admin" ? "/choose" : "/records" });
   }
 
   return (
@@ -48,10 +59,23 @@ export function LoginForm() {
         </div>
         <h1 className="mt-2 text-4xl font-semibold">SwiftSlip</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to continue. Your password is required to access SwiftSlip .
+          Sign in to continue. Your ID number and password are required to access SwiftSlip.
         </p>
 
         <form onSubmit={submit} className="mt-8 space-y-4">
+          <div>
+            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              ID Number
+            </label>
+            <input
+              type="text"
+              autoComplete="username"
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value)}
+              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+              placeholder="e.g. 2026-515"
+            />
+          </div>
           <div>
             <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Password

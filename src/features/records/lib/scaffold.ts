@@ -7,13 +7,22 @@ import type { DtrEntry, DtrHeader, EmployeeProfile } from "@/shared/types";
  *
  * Used by the editor (to decide whether leaving discards the record) and by the
  * records list (to clean up auto-fills that were created and then abandoned).
+ *
+ * @param hasAttachment whether the record already has a file attached — the file
+ * itself lives in storage, so the caller is the only place that knows.
  */
 export function isScaffoldRecord(
   header: DtrHeader,
   entries: DtrEntry[],
   profile: EmployeeProfile | null,
+  hasAttachment = false,
 ): boolean {
-  if (entries.length > 0 || header.employee_signature || header.certified_by?.trim()) {
+  if (
+    entries.length > 0 ||
+    header.employee_signature ||
+    header.certified_by?.trim() ||
+    hasAttachment
+  ) {
     return false;
   }
   const norm = (v: string | null | undefined) => (v ?? "").trim();

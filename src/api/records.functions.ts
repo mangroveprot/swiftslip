@@ -1,9 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/server/auth/session.server";
+import * as attachments from "@/server/services/attachments.server";
 import * as profiles from "@/server/services/profiles.server";
 import * as records from "@/server/services/records.server";
-import { createRecordInput, idInput, saveRecordInput } from "@/shared/schemas";
+import {
+  attachmentUploadInput,
+  createRecordInput,
+  idInput,
+  saveRecordInput,
+} from "@/shared/schemas";
 
 export const listRecords = createServerFn({ method: "GET" }).handler(async () => {
   const user = await requireUser();
@@ -45,4 +51,27 @@ export const deleteRecord = createServerFn({ method: "POST" })
     const user = await requireUser();
     await records.deleteRecord(data.id, user.id);
     return { ok: true as const };
+  });
+
+/** Store a supporting document for one of the signed-in user's records. */
+export const uploadRecordAttachment = createServerFn({ method: "POST" })
+  .validator(attachmentUploadInput)
+  .handler(async ({ data }) => {
+    const user = await requireUser();
+    return await attachments.uploadAttachment("dtr_records", "Record", data, user.id);
+  });
+
+/** Short-lived signed link to the record's attachment (`null` when there is none). */
+export const getRecordAttachmentUrl = createServerFn({ method: "GET" })
+  .validator(idInput)
+  .handler(async ({ data }) => {
+    const user = await requireUser();
+    return await attachments.getAttachmentUrl("dtr_records", "Record", data.id, user.id);
+  });
+
+export const removeRecordAttachment = createServerFn({ method: "POST" })
+  .validator(idInput)
+  .handler(async ({ data }) => {
+    const user = await requireUser();
+    return await attachments.removeAttachment("dtr_records", "Record", data.id, user.id);
   });

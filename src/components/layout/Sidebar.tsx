@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { Clock, LayoutGrid } from "lucide-react";
 
 import { APP } from "@/config/app";
-import { roleLabel, visibleNavItems } from "./nav-items";
+import { roleLabel, NAV_ITEMS } from "./nav-items";
+import { InstallButton } from "./InstallButton";
 import type { Role } from "@/shared/types";
 
 export function Sidebar({
@@ -16,7 +17,7 @@ export function Sidebar({
   onSignOut: () => void;
   onNavigate?: () => void;
 }) {
-  const items = visibleNavItems(role);
+  const items = NAV_ITEMS;
 
   return (
     <div className="flex h-full flex-col border-r border-white/40 bg-glass backdrop-blur-xl">
@@ -42,7 +43,10 @@ export function Sidebar({
               title="Coming soon"
             >
               {item.label}
-              <Clock className="size-4 shrink-0 text-muted-foreground/60" aria-label="Coming soon" />
+              <Clock
+                className="size-4 shrink-0 text-muted-foreground/60"
+                aria-label="Coming soon"
+              />
             </span>
           ) : (
             <Link
@@ -77,6 +81,7 @@ export function Sidebar({
             Switch app
           </Link>
         ) : null}
+        <InstallButton className="btn btn-outline w-full" />
         <button className="btn btn-outline w-full" onClick={onSignOut}>
           Sign out
         </button>

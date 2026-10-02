@@ -58,6 +58,8 @@ export type ObForm = {
   approved_via_viber: boolean;
   /** Data URL (PNG) of the employee signature drawing or upload. */
   employee_signature: string;
+  /** The uploaded approval-slip attachment has been approved. */
+  attachment_approved: boolean;
 };
 
 /** One itinerary line on an Official Business form. */

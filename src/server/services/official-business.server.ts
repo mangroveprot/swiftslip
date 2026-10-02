@@ -27,6 +27,10 @@ export async function getObForm(id: string, ownerId: string) {
   return {
     form: form as unknown as ObForm & { id: string },
     entries: (entries ?? []) as ObEntry[],
+    // The approval-slip file itself stays in storage — only its name travels
+    // here, and only when there is one (absent keeps every cache write of
+    // `{ form, entries }` type-compatible).
+    ...(form.attachment_name ? { attachment: { name: form.attachment_name } } : {}),
   };
 }
 
@@ -68,6 +72,7 @@ export async function saveObForm(id: string, ownerId: string, form: ObForm, entr
     approved_by: form.approved_by,
     approved_via_viber: form.approved_via_viber,
     employee_signature: form.employee_signature ?? "",
+    attachment_approved: form.attachment_approved ?? false,
     updated_at: new Date().toISOString(),
   };
 
@@ -90,7 +95,15 @@ export async function saveObForm(id: string, ownerId: string, form: ObForm, entr
 }
 
 export async function deleteObForm(id: string, ownerId: string) {
-  const { data, error } = await getDb()
+  const db = getDb();
+  // Read the attachment first — deleting the row must take its file with it.
+  const { data: form } = await db
+    .from("ob_forms")
+    .select("attachment_path")
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  const { data, error } = await db
     .from("ob_forms")
     .delete()
     .eq("id", id)
@@ -98,4 +111,8 @@ export async function deleteObForm(id: string, ownerId: string) {
     .select("id");
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error("Form not found.");
+  if (form?.attachment_path) {
+    // Best effort: an orphaned file is harmless, a lost form is not.
+    await db.storage.from("swiftslip").remove([form.attachment_path]);
+  }
 }

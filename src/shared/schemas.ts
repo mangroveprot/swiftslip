@@ -15,7 +15,14 @@ const id = z.string().min(1);
 
 export const roleSchema = z.enum(["admin", "user"]);
 
-export const signInInput = z.object({ password: z.string().max(200) });
+/**
+ * Sign in with the unique ID number + password. The ID number identifies the
+ * account (it must be unique across all accounts); the password proves it.
+ */
+export const signInInput = z.object({
+  idNumber: z.string().trim().min(1, "Enter your ID number.").max(64),
+  password: z.string().max(200),
+});
 
 export const idInput = z.object({ id });
 
@@ -83,6 +90,8 @@ export const obFormSchema = z.object({
   approved_by: z.string(),
   approved_via_viber: z.boolean().default(false),
   employee_signature: z.string().default(""),
+  /** The uploaded approval slip has been approved (also ticks "via Viber"). */
+  attachment_approved: z.boolean().default(false),
 });
 
 export const obEntrySchema = z.object({
@@ -100,9 +109,25 @@ export const saveObFormInput = z.object({
   entries: z.array(obEntrySchema).max(50),
 });
 
+/**
+ * A supporting document uploaded for a record (the OB approval slip or a DTR
+ * attachment). The file travels as raw base64 (same pattern as the biometric
+ * import); the server enforces the 10 MB cap itself — the client check is only
+ * for a friendlier, faster error.
+ */
+export const attachmentUploadInput = z.object({
+  id,
+  filename: z.string().min(1).max(200),
+  contentType: z.string().min(1).max(150),
+  base64: z.string().min(1),
+});
+
 export const upsertCodeInput = z.object({
   id: id.optional(),
-  label: z.string(),
+  /** The account's unique sign-in ID — required, and unique across accounts. */
+  idNumber: z.string().trim().min(1, "ID number is required.").max(64),
+  /** Display name shown in the sidebar. Optional — falls back to the ID number. */
+  label: z.string().trim().max(120).optional(),
   role: roleSchema,
   // Optional when editing (blank = keep the current password). Required when
   // creating a new one — that and the length check happen in the service so

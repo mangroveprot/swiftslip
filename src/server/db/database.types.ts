@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          id_number: string
           label: string
           password_hash: string
           role: string
@@ -25,6 +26,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          id_number: string
           label: string
           password_hash: string
           role: string
@@ -32,6 +34,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          id_number?: string
           label?: string
           password_hash?: string
           role?: string
@@ -79,6 +82,8 @@ export type Database = {
       dtr_records: {
         Row: {
           area: string
+          attachment_name: string | null
+          attachment_path: string | null
           certified_by: string
           created_at: string
           designation: string
@@ -94,6 +99,8 @@ export type Database = {
         }
         Insert: {
           area?: string
+          attachment_name?: string | null
+          attachment_path?: string | null
           certified_by?: string
           created_at?: string
           designation?: string
@@ -109,6 +116,8 @@ export type Database = {
         }
         Update: {
           area?: string
+          attachment_name?: string | null
+          attachment_path?: string | null
           certified_by?: string
           created_at?: string
           designation?: string
@@ -171,6 +180,9 @@ export type Database = {
         Row: {
           approved_by: string
           approved_via_viber: boolean
+          attachment_approved: boolean
+          attachment_name: string | null
+          attachment_path: string | null
           created_at: string
           date_filed: string
           date_of_ob: string
@@ -186,6 +198,9 @@ export type Database = {
         Insert: {
           approved_by?: string
           approved_via_viber?: boolean
+          attachment_approved?: boolean
+          attachment_name?: string | null
+          attachment_path?: string | null
           created_at?: string
           date_filed?: string
           date_of_ob?: string
@@ -201,6 +216,9 @@ export type Database = {
         Update: {
           approved_by?: string
           approved_via_viber?: boolean
+          attachment_approved?: boolean
+          attachment_name?: string | null
+          attachment_path?: string | null
           created_at?: string
           date_filed?: string
           date_of_ob?: string

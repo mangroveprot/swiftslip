@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
@@ -14,6 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
 import { deleteRecord, getRecord, saveRecord } from "@/api/records.functions";
+import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
@@ -40,6 +41,17 @@ function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
   return Object.values(map)
     .filter((e) => e.time_in || e.time_out || e.schedule || e.remarks)
     .sort((a, b) => a.day - b.day);
+}
+
+/** Write a save into the query cache WITHOUT dropping the `attachment` sibling —
+ *  a bare `{ record, entries }` write replaces the whole entry, so the file the
+ *  card renders would vanish until the next refetch. */
+function writeRecordCache(
+  qc: QueryClient,
+  id: string,
+  next: { record: DtrHeader & { id: string }; entries: DtrEntry[] },
+) {
+  qc.setQueryData(recordQueryOptions(id).queryKey, (prev) => (prev ? { ...prev, ...next } : next));
 }
 
 export function RecordEditor({ id }: { id: string }) {
@@ -136,7 +148,14 @@ export function RecordEditor({ id }: { id: string }) {
     setRows(map);
     savedSnapshotRef.current = incoming;
     initialSnapshotRef.current = incoming;
-    wasScaffoldOnLoadRef.current = isScaffoldRecord(nextHeader, entries, profile);
+    // An attachment counts as real content: the file itself lives in storage, so
+    // `data.attachment` is what tells the scaffold check it exists.
+    wasScaffoldOnLoadRef.current = isScaffoldRecord(
+      nextHeader,
+      entries,
+      profile,
+      Boolean(data.attachment),
+    );
     // A record that already holds real content is one the user meant to keep — lock
     // that in now so clearing a field later can never trigger the scaffold delete.
     // It also stops being a "pending" record the list is hiding.
@@ -168,7 +187,7 @@ export function RecordEditor({ id }: { id: string }) {
           // Keep the query cache truthful: the router can remount this editor
           // during navigation, and that instance hydrates from the cache — it
           // must never mistake saved content for an untouched scaffold.
-          qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...header, id }, entries });
+          writeRecordCache(qc, id, { record: { ...header, id }, entries });
           // Auto-save also fires for hydration-driven diffs, so only a save that
           // carries real content counts as a deliberate edit. Saving the bare
           // auto-fill keeps the record discardable — and still hidden from the list.
@@ -217,9 +236,9 @@ export function RecordEditor({ id }: { id: string }) {
           // view (another tab's edit, a flush still in flight). Only a record that
           // is STILL an untouched scaffold gets deleted.
           void getRecord({ data: { id } })
-            .then(({ record, entries: fresh }) => {
-              if (!isScaffoldRecord(record, fresh, prof)) {
-                qc.setQueryData(recordQueryOptions(id).queryKey, { record, entries: fresh });
+            .then(({ record, entries: fresh, attachment }) => {
+              if (!isScaffoldRecord(record, fresh, prof, Boolean(attachment))) {
+                writeRecordCache(qc, id, { record, entries: fresh });
                 return;
               }
               return deleteRecord({ data: { id } });
@@ -236,7 +255,7 @@ export function RecordEditor({ id }: { id: string }) {
       if (snapshot !== savedSnapshotRef.current) {
         // Write the cache synchronously, before the network call: the remounted
         // instance hydrates within milliseconds and has to see these changes.
-        qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...h, id }, entries });
+        writeRecordCache(qc, id, { record: { ...h, id }, entries });
         // Leaving with content is a decision to keep it, whatever it contains.
         unmarkPendingRecord(id);
         void saveRecord({ data: { id, header: h, entries } })
@@ -266,13 +285,20 @@ export function RecordEditor({ id }: { id: string }) {
     savedSnapshotRef.current = JSON.stringify({ header: h, entries });
     // Keep the query cache truthful — a remounted editor hydrates from it and
     // must see what was just saved, or it would treat real content as a scaffold.
-    qc.setQueryData(recordQueryOptions(id).queryKey, { record: { ...h, id }, entries });
+    writeRecordCache(qc, id, { record: { ...h, id }, entries });
     const scaffold = isScaffoldRecord(h, entries, profile);
     if (!scaffold) keptRef.current = true;
     // Pressing Save (or importing a log) is the user committing to this record,
     // so it stops being a "pending" auto-fill the list is hiding.
     unmarkPendingRecord(id);
     qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
+  }
+
+  // A stored attachment is content: keep this record out of the scaffold discard
+  // and off the hidden-pending list the moment the file lands.
+  function handleAttachmentUploaded() {
+    keptRef.current = true;
+    unmarkPendingRecord(id);
   }
 
   async function onSave() {
@@ -473,6 +499,13 @@ export function RecordEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
+          <AttachmentCard
+            kind="record"
+            id={id}
+            file={data?.attachment ?? null}
+            canEdit={canEdit}
+            onUploaded={handleAttachmentUploaded}
+          />
           <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
             <DtrPreview
               sheetId="dtr-sheet"

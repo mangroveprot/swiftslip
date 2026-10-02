@@ -1,4 +1,5 @@
 import { getDb } from "@/server/db/client.server";
+import { removeStoredFile } from "@/server/services/attachments.server";
 import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
 
 export async function listRecords(ownerId: string) {
@@ -27,6 +28,9 @@ export async function getRecord(id: string, ownerId: string) {
   return {
     record: record as unknown as DtrHeader & { id: string },
     entries: (entries ?? []) as DtrEntry[],
+    // Only present when a file is attached — same shape as `getObForm`, so the
+    // editor's cache writes can merge it instead of dropping it.
+    ...(record.attachment_name ? { attachment: { name: record.attachment_name } } : {}),
   };
 }
 
@@ -109,7 +113,15 @@ export async function saveRecord(
 }
 
 export async function deleteRecord(id: string, ownerId: string) {
-  const { data, error } = await getDb()
+  const db = getDb();
+  // Read the attachment first — deleting the row must take its file with it.
+  const { data: row } = await db
+    .from("dtr_records")
+    .select("attachment_path")
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  const { data, error } = await db
     .from("dtr_records")
     .delete()
     .eq("id", id)
@@ -117,4 +129,8 @@ export async function deleteRecord(id: string, ownerId: string) {
     .select("id");
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error("Record not found.");
+  if (row?.attachment_path) {
+    // Best effort: an orphaned file is harmless, a lost record is not.
+    await removeStoredFile(row.attachment_path);
+  }
 }

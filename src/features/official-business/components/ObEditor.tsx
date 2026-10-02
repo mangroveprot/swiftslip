@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Check,
@@ -23,6 +23,7 @@ import { unmarkPendingForm } from "../lib/pending-forms";
 import { isScaffoldForm } from "../lib/scaffold";
 import { obFormQueryOptions, obFormsQueryOptions } from "../queries";
 import { ObAssistantChat } from "./ObAssistantChat";
+import { ObAttachmentCard } from "./ObAttachmentCard";
 import { ObFormFields } from "./ObFormFields";
 import { ObItineraryTable } from "./ObItineraryTable";
 import { ObPreview } from "./ObPreview";
@@ -34,6 +35,18 @@ function buildRows(rows: ObEntry[]): ObEntry[] {
   return rows
     .filter((r) => r.from_place || r.to_place || r.purpose || r.time_departure || r.time_return)
     .map((r, idx) => ({ ...r, idx }));
+}
+
+/** Write a save into the query cache WITHOUT dropping the `attachment` sibling.
+ *  A bare `{ form, entries }` write replaces the whole entry, so the file the
+ *  card renders would vanish until the next refetch (e.g. the auto-save fired by
+ *  ticking "Approved" made the attachment look deleted). */
+function writeFormCache(
+  qc: QueryClient,
+  id: string,
+  next: { form: ObForm & { id: string }; entries: ObEntry[] },
+) {
+  qc.setQueryData(obFormQueryOptions(id).queryKey, (prev) => (prev ? { ...prev, ...next } : next));
 }
 
 export function ObEditor({ id }: { id: string }) {
@@ -93,6 +106,7 @@ export function ObEditor({ id }: { id: string }) {
       approved_by: f.approved_by,
       approved_via_viber: f.approved_via_viber ?? false,
       employee_signature: f.employee_signature || localSig || "",
+      attachment_approved: f.attachment_approved ?? false,
     };
     const nextRows = buildRows(data.entries);
     const incoming = JSON.stringify({ form: nextForm, entries: nextRows });
@@ -110,7 +124,14 @@ export function ObEditor({ id }: { id: string }) {
     setRows(nextRows);
     savedSnapshotRef.current = incoming;
     initialSnapshotRef.current = incoming;
-    wasScaffoldOnLoadRef.current = isScaffoldForm(nextForm, nextRows, profile);
+    // An attachment counts as real content: the file itself lives in storage, so
+    // `data.attachment` is what tells the scaffold check it exists.
+    wasScaffoldOnLoadRef.current = isScaffoldForm(
+      nextForm,
+      nextRows,
+      profile,
+      Boolean(data.attachment),
+    );
     // A form that already holds real content is one the user meant to keep — lock
     // that in now so clearing a field later can never trigger the scaffold delete.
     // It also stops being a "pending" form the list is hiding.
@@ -142,7 +163,7 @@ export function ObEditor({ id }: { id: string }) {
           // Keep the query cache truthful: the router can remount this editor
           // during navigation, and that instance hydrates from the cache — it
           // must never mistake saved content for an untouched scaffold.
-          qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...form, id }, entries });
+          writeFormCache(qc, id, { form: { ...form, id }, entries });
           // Auto-save also fires for hydration-driven diffs, so only a save that
           // carries real content counts as a deliberate edit. Saving the bare
           // auto-fill keeps the form discardable instead of locking it in — and
@@ -191,12 +212,9 @@ export function ObEditor({ id }: { id: string }) {
           // view (another tab's edit, a flush still in flight). Only a form that
           // is STILL an untouched scaffold gets deleted.
           void getObForm({ data: { id } })
-            .then(({ form: freshForm, entries: fresh }) => {
-              if (!isScaffoldForm(freshForm, fresh, prof)) {
-                qc.setQueryData(obFormQueryOptions(id).queryKey, {
-                  form: { ...freshForm, id },
-                  entries: fresh,
-                });
+            .then(({ form: freshForm, entries: fresh, attachment }) => {
+              if (!isScaffoldForm(freshForm, fresh, prof, Boolean(attachment))) {
+                writeFormCache(qc, id, { form: { ...freshForm, id }, entries: fresh });
                 return;
               }
               return deleteObForm({ data: { id } });
@@ -213,7 +231,7 @@ export function ObEditor({ id }: { id: string }) {
       if (snapshot !== savedSnapshotRef.current) {
         // Write the cache synchronously, before the network call: the remounted
         // instance hydrates within milliseconds and has to see these changes.
-        qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...f, id }, entries });
+        writeFormCache(qc, id, { form: { ...f, id }, entries });
         // Leaving with content is a decision to keep it, whatever it contains.
         unmarkPendingForm(id);
         void saveObForm({ data: { id, form: f, entries } })
@@ -231,7 +249,7 @@ export function ObEditor({ id }: { id: string }) {
     savedSnapshotRef.current = JSON.stringify({ form: f, entries });
     // Keep the query cache truthful — a remounted editor hydrates from it and
     // must see what was just saved, or it would treat real content as a scaffold.
-    qc.setQueryData(obFormQueryOptions(id).queryKey, { form: { ...f, id }, entries });
+    writeFormCache(qc, id, { form: { ...f, id }, entries });
     // Saving real content marks the form kept so it's never auto-discarded later —
     // even if the user then clears it back — and the list can stop hiding it.
     // Saving the untouched auto-fill does neither: it stays hidden and is still
@@ -249,6 +267,13 @@ export function ObEditor({ id }: { id: string }) {
   function applyAssistantPatch(patch: Partial<ObForm>, entries?: ObEntry[]) {
     setForm((prev) => (prev ? { ...prev, ...patch } : prev));
     if (entries) setRows(entries);
+  }
+
+  // A stored attachment is content: keep this form out of the scaffold discard
+  // and off the hidden-pending list the moment the file lands.
+  function handleAttachmentUploaded() {
+    keptRef.current = true;
+    unmarkPendingForm(id);
   }
 
   async function onSave() {
@@ -381,6 +406,14 @@ export function ObEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
+          <ObAttachmentCard
+            id={id}
+            form={form}
+            setForm={setForm}
+            canEdit={canEdit}
+            attachment={data?.attachment ?? null}
+            onUploaded={handleAttachmentUploaded}
+          />
           <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
             <ObPreview sheetId="ob-sheet" form={form} rows={rows} />
           </div>

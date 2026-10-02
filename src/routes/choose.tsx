@@ -22,7 +22,7 @@ export const Route = createFileRoute("/choose")({
   head: () =>
     seo({
       title: pageTitle("Choose a screen"),
-      description: "Pick which application to open: SwiftSlip or RGC Asset Inventory.",
+      description: "Pick where to go: SwiftSlip, the Admin Panel or RGC Asset Inventory.",
     }),
   component: AppChooser,
 });
