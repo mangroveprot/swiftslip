@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Clock, ExternalLink, Trash2 } from "lucide-react";
+import { Clock, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { createObForm, deleteObForm } from "@/api/official-business.functions";
+import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { toast } from "@/lib/toast";
@@ -182,12 +183,7 @@ function ObCard({
       </div>
 
       {/* Approved forms get a badge; unapproved ones show nothing at all. */}
-      {f.attachment_approved ? (
-        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-          <CheckCircle2 className="size-3" aria-hidden="true" />
-          Approved
-        </span>
-      ) : null}
+      {f.attachment_approved ? <ApprovedBadge approved /> : null}
 
       <p className="text-xs text-foreground">
         {[f.department, f.position].filter(Boolean).join(" · ") || "No department / position"}

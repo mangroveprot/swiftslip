@@ -5,8 +5,9 @@ import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
 export async function listRecords(ownerId: string) {
   const { data } = await getDb()
     .from("dtr_records")
-    // `certified_by` rides along so the list can badge signed-off records.
-    .select("id,name,emp_no,designation,area,month,year,period,certified_by,updated_at")
+    // `attachment_path` rides along so the list can badge records: on DTRs the
+    // attached file IS the approval (no approval flag exists).
+    .select("id,name,emp_no,designation,area,month,year,period,attachment_path,updated_at")
     .eq("owner_id", ownerId)
     .order("updated_at", { ascending: false });
   return data ?? [];

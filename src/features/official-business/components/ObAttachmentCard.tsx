@@ -1,5 +1,6 @@
-import { CheckCircle2, Clock3, XCircle } from "lucide-react";
+import { Clock3 } from "lucide-react";
 
+import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { ObForm } from "@/shared/types";
 
@@ -59,10 +60,7 @@ export function ObAttachmentCard({
       badge={
         attachment ? (
           approved ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-              <CheckCircle2 className="size-3.5" aria-hidden="true" />
-              Approved
-            </span>
+            <ApprovedBadge approved />
           ) : (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
               <Clock3 className="size-3.5" aria-hidden="true" />
@@ -70,10 +68,7 @@ export function ObAttachmentCard({
             </span>
           )
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-            <XCircle className="size-3.5" aria-hidden="true" />
-            Not Approved
-          </span>
+          <ApprovedBadge approved={false} />
         )
       }
     >

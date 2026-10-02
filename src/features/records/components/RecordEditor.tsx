@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
 import { deleteRecord, getRecord, saveRecord } from "@/api/records.functions";
+import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { EditorSkeleton } from "@/components/common/Skeletons";
@@ -482,6 +483,8 @@ export function RecordEditor({ id }: { id: string }) {
               file={data?.attachment ?? null}
               canEdit={canEdit}
               onUploaded={handleAttachmentUploaded}
+              // A DTR has no approval flag: the attached file IS the approval.
+              badge={<ApprovedBadge approved={Boolean(data?.attachment)} />}
             />
           </div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
