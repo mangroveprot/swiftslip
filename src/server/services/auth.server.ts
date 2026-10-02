@@ -53,5 +53,7 @@ export async function verifyPassword(
     id: data.id,
     role: data.role as Role,
     label: profile?.full_name?.trim() || data.id_number,
+    // The sidebar footer shows it under the full name.
+    idNumber: data.id_number,
   };
 }

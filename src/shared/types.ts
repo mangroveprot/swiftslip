@@ -2,7 +2,7 @@ export type PresetPeriod = "first_half" | "second_half" | "full";
 export type Period = PresetPeriod | `custom:${number}-${number}`;
 export type Role = "admin" | "user";
 
-export type SessionUser = { id: string; role: Role; label: string };
+export type SessionUser = { id: string; role: Role; label: string; idNumber: string };
 
 export type EmployeeProfile = {
   emp_no: string;

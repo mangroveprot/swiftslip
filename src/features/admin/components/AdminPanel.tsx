@@ -43,6 +43,7 @@ export function AdminPanel() {
       section={section}
       onSelect={(next) => setSection(next)}
       label={session?.label}
+      idNumber={session?.idNumber}
       onSignOut={handleSignOut}
       onNavigate={() => setMenuOpen(false)}
     />
@@ -100,12 +101,14 @@ function AdminSidebar({
   section,
   onSelect,
   label,
+  idNumber,
   onSignOut,
   onNavigate,
 }: {
   section: Section;
   onSelect: (section: Section) => void;
   label?: string | undefined;
+  idNumber?: string | undefined;
   onSignOut: () => void;
   onNavigate?: () => void;
 }) {
@@ -146,11 +149,16 @@ function AdminSidebar({
       <div className="space-y-3 border-t px-4 py-4 text-sm">
         <div>
           <p className="font-medium">{label || "Administrator"}</p>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Administrator</p>
+          {/* The ID number under the full name — the old second line repeated
+              "Administrator" for no reason. Hidden for cookies issued before
+              the session carried the ID number (sign in again to get it). */}
+          {idNumber ? (
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">{idNumber}</p>
+          ) : null}
         </div>
         <Link to="/choose" onClick={onNavigate} className="btn btn-outline w-full">
           <LayoutGrid className="size-4" aria-hidden="true" />
-          All apps
+          Switch App
         </Link>
         <button className="btn btn-outline w-full" onClick={onSignOut}>
           <LogOut className="size-4" aria-hidden="true" />

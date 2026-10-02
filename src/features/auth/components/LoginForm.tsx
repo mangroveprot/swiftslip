@@ -12,6 +12,7 @@ export function LoginForm() {
   const queryClient = useQueryClient();
   const [idNumber, setIdNumber] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,7 +26,9 @@ export function LoginForm() {
     setBusy(true);
     setError("");
     try {
-      const result = await signIn({ data: { idNumber: idNumber.trim(), password } });
+      const result = await signIn({
+        data: { idNumber: idNumber.trim(), password, remember },
+      });
       if (!result.ok) {
         setBusy(false);
         setError("That ID number or password is not recognised.");
@@ -73,7 +76,7 @@ export function LoginForm() {
               value={idNumber}
               onChange={(e) => setIdNumber(e.target.value)}
               className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-              placeholder="e.g. 2026-515"
+              placeholder="e.g. 2026-XXX"
             />
           </div>
           <div>
@@ -105,6 +108,15 @@ export function LoginForm() {
               </button>
             </span>
           </div>
+          <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="size-4 accent-primary"
+            />
+            Remember me
+          </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <button
             type="submit"

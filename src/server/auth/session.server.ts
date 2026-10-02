@@ -3,21 +3,30 @@ import { useSession } from "@tanstack/react-start/server";
 import { getServerConfig } from "@/config/env.server";
 import type { Role, SessionUser } from "@/shared/types";
 
-type SessionData = { id?: string; role?: Role; label?: string };
+type SessionData = { id?: string; role?: Role; label?: string; idNumber?: string };
 
-function appSession() {
+/** `maxAge` overrides the default 12-hour login only while the session is created. */
+function appSession(maxAge?: number) {
   const { session, isProd } = getServerConfig();
   return useSession<SessionData>({
     password: session.secret,
     name: session.cookieName,
-    maxAge: session.maxAgeSeconds,
+    maxAge: maxAge ?? session.maxAgeSeconds,
     cookie: { httpOnly: true, secure: isProd, sameSite: "lax", path: "/" },
   });
 }
 
-export async function startSession(user: SessionUser) {
-  const session = await appSession();
-  await session.update({ id: user.id, role: user.role, label: user.label });
+export async function startSession(user: SessionUser, remember = false) {
+  const { session } = getServerConfig();
+  // "Remember me" stretches the cookie to weeks; without it the login still
+  // lasts one workday, exactly as before.
+  const s = await appSession(remember ? session.rememberMaxAgeSeconds : undefined);
+  await s.update({
+    id: user.id,
+    role: user.role,
+    label: user.label,
+    idNumber: user.idNumber,
+  });
 }
 
 export async function endSession() {
@@ -32,6 +41,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     id: session.data.id,
     role: session.data.role,
     label: session.data.label ?? "",
+    // Cookies issued before this field existed simply lack it.
+    idNumber: session.data.idNumber ?? "",
   };
 }
 
