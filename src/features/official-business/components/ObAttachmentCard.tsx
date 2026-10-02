@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock3 } from "lucide-react";
+import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { ObForm } from "@/shared/types";
@@ -8,7 +8,8 @@ import type { ObForm } from "@/shared/types";
  * card plus the approval bits the DTR doesn't have — a status badge and the
  * single "Approved" checkbox (auto-ticked when a slip is uploaded). Ticking
  * it also drives the form's "Approved via Viber" note; the separate form
- * checkbox was removed as a duplicate.
+ * checkbox was removed as a duplicate. With no slip on the form the badge
+ * reads "Not Approved" in red instead of staying hidden.
  */
 export function ObAttachmentCard({
   id,
@@ -68,7 +69,12 @@ export function ObAttachmentCard({
               Not approved
             </span>
           )
-        ) : null
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            <XCircle className="size-3.5" aria-hidden="true" />
+            Not Approved
+          </span>
+        )
       }
     >
       {attachment && canEdit ? (
