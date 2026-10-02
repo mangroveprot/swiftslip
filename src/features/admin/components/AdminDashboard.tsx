@@ -15,8 +15,6 @@ import { relativeTime } from "@/shared/time";
 import { ACTION_LABELS, actionPillClass } from "../activity";
 import { activityFeedQueryOptions, adminStatsQueryOptions } from "../queries";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 const chartConfig = {
   records: { label: "DTR records", color: "#4f46e5" },
   forms: { label: "OB forms", color: "#0d9488" },
@@ -92,14 +90,17 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_17rem]">
         <FormActivityPanel className="order-2 lg:order-1" />
 
-        <div className="order-1 space-y-4 lg:order-2">
-          <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="order-1 flex flex-col gap-4 lg:order-2">
+          <div className="flex flex-1 flex-col rounded-xl border bg-card p-4 shadow-sm">
             <h3 className="text-sm font-semibold">Activity last 6 months</h3>
             <p className="text-xs text-muted-foreground">Records and OB forms created per month</p>
             {isLoading ? (
-              <div className="mt-4 h-[240px] animate-pulse rounded-lg bg-muted" />
+              <div className="mt-4 min-h-[240px] flex-1 animate-pulse rounded-lg bg-muted" />
             ) : (
-              <ChartContainer config={chartConfig} className="mt-4 aspect-auto h-[240px] w-full">
+              <ChartContainer
+                config={chartConfig}
+                className="mt-4 aspect-auto min-h-[240px] w-full flex-1"
+              >
                 <BarChart
                   data={data?.monthly ?? []}
                   margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
@@ -124,96 +125,11 @@ export function AdminDashboard() {
               </ChartContainer>
             )}
           </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ActivityList
-              title="Latest OB forms"
-              empty="No official business forms yet."
-              loading={isLoading}
-              items={(data?.recentForms ?? []).map((f) => ({
-                key: f.id,
-                name: f.employee_name || "Unnamed employee",
-                note: f.id_number ? `ID ${f.id_number}` : "",
-                updated: f.updated_at,
-              }))}
-            />
-            <ActivityList
-              title="Latest DTR records"
-              empty="No time records yet."
-              loading={isLoading}
-              items={(data?.recentRecords ?? []).map((r) => ({
-                key: r.id,
-                name: r.name || "Unnamed employee",
-                note: `${MONTHS[r.month - 1] ?? ""} ${r.year}`,
-                updated: r.updated_at,
-              }))}
-            />
-          </div>
         </div>
 
         <SecurityLogsPanel className="order-3" />
       </div>
     </section>
-  );
-}
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((word) => word[0]?.toUpperCase() ?? "")
-      .join("") || "?"
-  );
-}
-
-function ActivityList({
-  title,
-  empty,
-  loading,
-  items,
-}: {
-  title: string;
-  empty: string;
-  loading: boolean;
-  items: { key: string; name: string; note: string; updated: string }[];
-}) {
-  return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      {loading ? (
-        <ul className="mt-3 space-y-3">
-          {[0, 1, 2].map((i) => (
-            <li key={i} className="flex items-center gap-3">
-              <span className="size-8 animate-pulse rounded-full bg-muted" />
-              <span className="h-4 w-2/3 animate-pulse rounded-md bg-muted" />
-            </li>
-          ))}
-        </ul>
-      ) : items.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <ul className="mt-1 divide-y">
-          {items.map((item) => (
-            <li key={item.key} className="flex items-center gap-3 py-2.5">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                {initials(item.name)}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{item.name}</span>
-                {item.note ? (
-                  <span className="block truncate text-xs text-muted-foreground">{item.note}</span>
-                ) : null}
-              </span>
-              <span className="shrink-0 text-xs text-muted-foreground">
-                {relativeTime(item.updated)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

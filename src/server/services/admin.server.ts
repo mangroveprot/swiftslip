@@ -20,8 +20,6 @@ export type AdminStats = {
   administrators: number;
   records: number;
   forms: number;
-  recentForms: { id: string; employee_name: string; id_number: string; updated_at: string }[];
-  recentRecords: { id: string; name: string; month: number; year: number; updated_at: string }[];
   /** Rows created per month over the last six months, oldest bucket first. */
   monthly: { label: string; records: number; forms: number }[];
 };
@@ -76,7 +74,7 @@ function monthlySeries(recordDates: string[], formDates: string[]): AdminStats["
   return buckets.map(({ label, records, forms }) => ({ label, records, forms }));
 }
 
-/** Dashboard numbers for the admin panel: totals, the chart, latest activity. */
+/** Dashboard numbers for the admin panel: totals and the six-month chart. */
 export async function getAdminStats(): Promise<AdminStats> {
   const db = getDb();
   const since = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 5, 1));
@@ -92,35 +90,16 @@ export async function getAdminStats(): Promise<AdminStats> {
       .then(({ count }) => count ?? 0),
   ]);
 
-  const [
-    { data: recentForms, error: formsError },
-    { data: recentRecords, error: recordsError },
-    recordDates,
-    formDates,
-  ] = await Promise.all([
-    db
-      .from("ob_forms")
-      .select("id,employee_name,id_number,updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(5),
-    db
-      .from("dtr_records")
-      .select("id,name,month,year,updated_at")
-      .order("updated_at", { ascending: false })
-      .limit(5),
+  const [recordDates, formDates] = await Promise.all([
     createdSince("dtr_records", since.toISOString()),
     createdSince("ob_forms", since.toISOString()),
   ]);
-  if (formsError) throw new Error(formsError.message);
-  if (recordsError) throw new Error(recordsError.message);
 
   return {
     accounts,
     administrators: adminCount,
     records,
     forms,
-    recentForms: recentForms ?? [],
-    recentRecords: recentRecords ?? [],
     monthly: monthlySeries(recordDates, formDates),
   };
 }
