@@ -3,32 +3,21 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Input } from "@/components/ui/input";
-import { ACTIVITY_LOG_PAGE_SIZE } from "@/shared/schemas";
+import { ACTIVITY_LOG_PAGE_SIZE, type ActivityLogActionFilter } from "@/shared/schemas";
+import { ACTION_LABELS, actionPillClass } from "../activity";
 import { activityLogsQueryOptions } from "../queries";
-
-const ACTION_LABELS: Record<string, string> = {
-  "signin.success": "Signed in",
-  "signin.failed": "Sign-in failed",
-  "ob.created": "OB created",
-  "ob.deleted": "OB removed",
-  "record.created": "DTR record created",
-  "record.deleted": "DTR record removed",
-  "attachment.uploaded": "Approval slip uploaded",
-  "attachment.removed": "Approval slip removed",
-  "user.created": "Account created",
-  "user.updated": "Account updated",
-  "user.deleted": "Account removed",
-};
 
 /**
  * Admin-panel "Activity logs": who signed in (including rejected attempts —
- * for spotting password spam) and who created/removed what. Search + date
- * range + pagination keep hundreds of rows readable; rows past the 30-day
- * retention window are deleted by the database and never shown here.
+ * for spotting password spam) and who created/removed what. Search + an
+ * action filter + date range + pagination keep hundreds of rows readable;
+ * rows past the 30-day retention window are deleted by the database and
+ * never shown here.
  */
 export function ActivityLogs() {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
+  const [action, setAction] = useState<ActivityLogActionFilter | "">("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
@@ -55,7 +44,13 @@ export function ActivityLogs() {
   const toIso = to ? new Date(`${to}T23:59:59.999`).toISOString() : undefined;
 
   const { data, isLoading, isError, error } = useQuery(
-    activityLogsQueryOptions({ search: term, from: fromIso, to: toIso, page }),
+    activityLogsQueryOptions({
+      search: term,
+      ...(action ? { action } : {}),
+      from: fromIso,
+      to: toIso,
+      page,
+    }),
   );
 
   const rows = data?.rows ?? [];
@@ -63,11 +58,12 @@ export function ActivityLogs() {
   const pageCount = Math.max(1, Math.ceil(total / ACTIVITY_LOG_PAGE_SIZE));
   const first = total === 0 ? 0 : (page - 1) * ACTIVITY_LOG_PAGE_SIZE + 1;
   const last = Math.min(page * ACTIVITY_LOG_PAGE_SIZE, total);
-  const filtered = Boolean(term || from || to);
+  const filtered = Boolean(term || action || from || to);
 
   function clearFilters() {
     setSearch("");
     setTerm("");
+    setAction("");
     setFrom("");
     setTo("");
     setPage(1);
@@ -98,6 +94,30 @@ export function ActivityLogs() {
             aria-label="Search activity logs"
           />
         </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          Action
+          <select
+            value={action}
+            onChange={(e) => {
+              setAction(e.target.value as ActivityLogActionFilter | "");
+              setPage(1);
+            }}
+            className="h-9 rounded-md border border-input bg-background px-3 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+            aria-label="Filter by action"
+          >
+            <option value="">All actions</option>
+            <optgroup label="Security">
+              <option value="signin">Signed in</option>
+              <option value="signin-failed">Sign-in failed</option>
+              <option value="accounts">Account changes</option>
+            </optgroup>
+            <optgroup label="Activity">
+              <option value="ob">OB forms</option>
+              <option value="records">DTR records</option>
+              <option value="attachments">Approval slips</option>
+            </optgroup>
+          </select>
+        </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           From
           <Input
@@ -168,13 +188,7 @@ export function ActivityLogs() {
                     ) : null}
                   </td>
                   <td className="px-4 py-2.5 align-top">
-                    <span
-                      className={
-                        row.action === "signin.failed"
-                          ? "inline-block rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
-                          : "inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-                      }
-                    >
+                    <span className={actionPillClass(row.action)}>
                       {ACTION_LABELS[row.action] ?? row.action}
                     </span>
                   </td>

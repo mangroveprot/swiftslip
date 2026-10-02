@@ -10,8 +10,10 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { ACTIVITY_FEED_LIMIT } from "@/shared/schemas";
 import { relativeTime } from "@/shared/time";
-import { adminStatsQueryOptions } from "../queries";
+import { ACTION_LABELS, actionPillClass } from "../activity";
+import { activityFeedQueryOptions, adminStatsQueryOptions } from "../queries";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -87,55 +89,69 @@ export function AdminDashboard() {
         ))}
       </div>
 
-      <div className="rounded-xl border bg-card p-4 shadow-sm">
-        <h3 className="text-sm font-semibold">Activity — last 6 months</h3>
-        <p className="text-xs text-muted-foreground">Records and OB forms created per month</p>
-        {isLoading ? (
-          <div className="mt-4 h-[240px] animate-pulse rounded-lg bg-muted" />
-        ) : (
-          <ChartContainer config={chartConfig} className="mt-4 aspect-auto h-[240px] w-full">
-            <BarChart data={data?.monthly ?? []} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis
-                dataKey="label"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                interval="preserveStartEnd"
-              />
-              <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
-              <ChartTooltip cursor={{ fill: "var(--muted)" }} content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Bar dataKey="records" fill="var(--color-records)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="forms" fill="var(--color-forms)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ChartContainer>
-        )}
-      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)_17rem]">
+        <FormActivityPanel className="order-2 lg:order-1" />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <ActivityList
-          title="Latest OB forms"
-          empty="No official business forms yet."
-          loading={isLoading}
-          items={(data?.recentForms ?? []).map((f) => ({
-            key: f.id,
-            name: f.employee_name || "Unnamed employee",
-            note: f.id_number ? `ID ${f.id_number}` : "",
-            updated: f.updated_at,
-          }))}
-        />
-        <ActivityList
-          title="Latest DTR records"
-          empty="No time records yet."
-          loading={isLoading}
-          items={(data?.recentRecords ?? []).map((r) => ({
-            key: r.id,
-            name: r.name || "Unnamed employee",
-            note: `${MONTHS[r.month - 1] ?? ""} ${r.year}`,
-            updated: r.updated_at,
-          }))}
-        />
+        <div className="order-1 space-y-4 lg:order-2">
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <h3 className="text-sm font-semibold">Activity — last 6 months</h3>
+            <p className="text-xs text-muted-foreground">Records and OB forms created per month</p>
+            {isLoading ? (
+              <div className="mt-4 h-[240px] animate-pulse rounded-lg bg-muted" />
+            ) : (
+              <ChartContainer config={chartConfig} className="mt-4 aspect-auto h-[240px] w-full">
+                <BarChart
+                  data={data?.monthly ?? []}
+                  margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+                >
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="label"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
+                  <ChartTooltip
+                    cursor={{ fill: "var(--muted)" }}
+                    content={<ChartTooltipContent />}
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Bar dataKey="records" fill="var(--color-records)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="forms" fill="var(--color-forms)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ActivityList
+              title="Latest OB forms"
+              empty="No official business forms yet."
+              loading={isLoading}
+              items={(data?.recentForms ?? []).map((f) => ({
+                key: f.id,
+                name: f.employee_name || "Unnamed employee",
+                note: f.id_number ? `ID ${f.id_number}` : "",
+                updated: f.updated_at,
+              }))}
+            />
+            <ActivityList
+              title="Latest DTR records"
+              empty="No time records yet."
+              loading={isLoading}
+              items={(data?.recentRecords ?? []).map((r) => ({
+                key: r.id,
+                name: r.name || "Unnamed employee",
+                note: `${MONTHS[r.month - 1] ?? ""} ${r.year}`,
+                updated: r.updated_at,
+              }))}
+            />
+          </div>
+        </div>
+
+        <SecurityLogsPanel className="order-3" />
       </div>
     </section>
   );
@@ -198,5 +214,114 @@ function ActivityList({
         </ul>
       )}
     </div>
+  );
+}
+
+/** Shared three-row placeholder for the dashboard's log panels. */
+function FeedSkeleton() {
+  return (
+    <ul className="mt-3 space-y-3">
+      {[0, 1, 2].map((i) => (
+        <li key={i} className="space-y-2">
+          <div className="h-4 w-2/3 animate-pulse rounded-md bg-muted" />
+          <div className="h-3 w-1/2 animate-pulse rounded-md bg-muted" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Dashboard left rail: the newest form actions from the activity log. */
+function FormActivityPanel({ className = "" }: { className?: string }) {
+  const { data, isLoading, isError, error } = useQuery(activityFeedQueryOptions("forms"));
+  const rows = data ?? [];
+
+  return (
+    <section className={`rounded-xl border bg-card p-4 shadow-sm ${className}`}>
+      <h3 className="text-sm font-semibold">Latest activity</h3>
+      <p className="text-xs text-muted-foreground">Latest {ACTIVITY_FEED_LIMIT} form actions</p>
+      {isLoading ? (
+        <FeedSkeleton />
+      ) : isError ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : "Could not load activity."}
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">No form activity yet.</p>
+      ) : (
+        <ul className="mt-1 divide-y">
+          {rows.map((row) => (
+            <li key={row.id} className="py-2">
+              <div className="flex items-start justify-between gap-2">
+                <span className="min-w-0 truncate text-sm font-medium">
+                  {row.actor_name ?? row.actor_number ?? "—"}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {relativeTime(row.created_at)}
+                </span>
+              </div>
+              <div className="mt-1 flex min-w-0 items-center gap-1.5">
+                <span className={`${actionPillClass(row.action)} shrink-0`}>
+                  {ACTION_LABELS[row.action] ?? row.action}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {[row.target, row.detail].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Dashboard right rail: the newest security events (sign-ins, account changes). */
+function SecurityLogsPanel({ className = "" }: { className?: string }) {
+  const { data, isLoading, isError, error } = useQuery(activityFeedQueryOptions("security"));
+  const rows = data ?? [];
+
+  return (
+    <section className={`rounded-xl border bg-card p-4 shadow-sm ${className}`}>
+      <h3 className="text-sm font-semibold">Security logs</h3>
+      <p className="text-xs text-muted-foreground">
+        Latest {ACTIVITY_FEED_LIMIT} sign-ins & account changes
+      </p>
+      {isLoading ? (
+        <FeedSkeleton />
+      ) : isError ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : "Could not load activity."}
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">No security events yet.</p>
+      ) : (
+        <ul className="mt-1 divide-y">
+          {rows.map((row) => (
+            <li key={row.id} className="py-2">
+              <div className="flex items-start justify-between gap-2">
+                <span className="min-w-0 truncate text-sm font-medium">
+                  {row.actor_name ?? (row.actor_number ? "Unknown name" : "—")}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {relativeTime(row.created_at)}
+                </span>
+              </div>
+              {row.actor_number ? (
+                <p className="truncate text-xs text-muted-foreground">{row.actor_number}</p>
+              ) : null}
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <span className={`${actionPillClass(row.action)} shrink-0`}>
+                  {ACTION_LABELS[row.action] ?? row.action}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {row.ip || row.target || ""}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

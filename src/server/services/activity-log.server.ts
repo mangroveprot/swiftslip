@@ -7,7 +7,7 @@
 import { getRequestIP } from "@tanstack/react-start/server";
 
 import { getDb } from "@/server/db/client.server";
-import { ACTIVITY_LOG_PAGE_SIZE } from "@/shared/schemas";
+import { ACTIVITY_LOG_PAGE_SIZE, type ActivityLogFeed } from "@/shared/schemas";
 
 /** Rows older than this are dropped by the table's trigger and by reads. */
 const RETENTION_DAYS = 30;
@@ -67,6 +67,59 @@ export function requestIp(): string {
   }
 }
 
+/** Which actions each dashboard side-panel feed shows. */
+const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {
+  security: ["signin.success", "signin.failed", "user.created", "user.updated", "user.deleted"],
+  forms: [
+    "ob.created",
+    "ob.deleted",
+    "record.created",
+    "record.deleted",
+    "attachment.uploaded",
+    "attachment.removed",
+  ],
+};
+
+/** Drop rows past the 30-day window before anyone can see them. */
+async function pruneExpired(): Promise<void> {
+  await getDb()
+    .from("activity_logs")
+    .delete()
+    .lt("created_at", new Date(Date.now() - RETENTION_DAYS * 86_400_000).toISOString());
+}
+
+/**
+ * The newest `limit` rows of one dashboard feed: `security` (sign-ins and
+ * account changes) or `forms` (OB / DTR / attachment activity). Prunes
+ * expired rows first, like every other read of the log.
+ */
+export async function listActivityFeed(feed: ActivityLogFeed, limit: number) {
+  await pruneExpired();
+  const { data, error } = await getDb()
+    .from("activity_logs")
+    .select("*")
+    .in("action", FEED_ACTIONS[feed])
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    throw new Error(
+      `Could not load activity (${error.message}). ` +
+        "On a fresh setup, run the 0011_activity_logs.sql migration first.",
+    );
+  }
+  return data ?? [];
+}
+
+/** Filter tokens → the `action` rows they cover (see activityLogActionFilter). */
+const ACTION_GROUPS: Record<string, string[]> = {
+  signin: ["signin.success"],
+  "signin-failed": ["signin.failed"],
+  accounts: ["user.created", "user.updated", "user.deleted"],
+  ob: ["ob.created", "ob.deleted"],
+  records: ["record.created", "record.deleted"],
+  attachments: ["attachment.uploaded", "attachment.removed"],
+};
+
 /**
  * One filtered page of the log for the admin panel: text search, optional
  * date range, newest first. Also prunes expired rows before reading so
@@ -74,17 +127,17 @@ export function requestIp(): string {
  */
 export async function listActivityLogs(filters: {
   search: string;
+  action?: string | undefined;
   from?: string | undefined;
   to?: string | undefined;
   page: number;
 }) {
   const db = getDb();
-  await db
-    .from("activity_logs")
-    .delete()
-    .lt("created_at", new Date(Date.now() - RETENTION_DAYS * 86_400_000).toISOString());
+  await pruneExpired();
 
   let query = db.from("activity_logs").select("*", { count: "exact" });
+  const actions = filters.action ? ACTION_GROUPS[filters.action] : undefined;
+  if (actions) query = query.in("action", actions);
   // Commas/percent/parens are PostgREST `or=` syntax — drop them from the term.
   const term = filters.search
     .replace(/[,%()]/g, " ")

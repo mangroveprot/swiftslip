@@ -35,8 +35,20 @@ export const deleteRowInput = idInput.extend({ quiet: z.boolean().optional() });
 /** One page of the admin activity log (server-enforced page size). */
 export const ACTIVITY_LOG_PAGE_SIZE = 20;
 
+/** Which slice of the log a row-filter selects; the server expands it to actions. */
+export const activityLogActionFilter = z.enum([
+  "signin",
+  "signin-failed",
+  "accounts",
+  "ob",
+  "records",
+  "attachments",
+]);
+export type ActivityLogActionFilter = z.infer<typeof activityLogActionFilter>;
+
 export const listActivityLogsInput = z.object({
   search: z.string().trim().max(100).default(""),
+  action: activityLogActionFilter.optional(),
   from: z
     .string()
     .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
@@ -47,6 +59,15 @@ export const listActivityLogsInput = z.object({
     .optional(),
   page: z.number().int().min(1).default(1),
 });
+
+/** Dashboard side-panel feeds: security events or form activity, newest first. */
+export const activityLogFeedInput = z.object({
+  feed: z.enum(["security", "forms"]),
+});
+export type ActivityLogFeed = z.infer<typeof activityLogFeedInput>["feed"];
+
+/** How many rows each dashboard feed shows. */
+export const ACTIVITY_FEED_LIMIT = 10;
 
 export const createRecordInput = z.object({
   month: z.number().int().min(1).max(12),

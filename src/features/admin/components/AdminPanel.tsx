@@ -83,7 +83,7 @@ export function AdminPanel() {
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div
           key={section}
-          className="mx-auto max-w-5xl space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out"
+          className={`${section === "dashboard" ? "max-w-7xl" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out`}
         >
           {section === "dashboard" ? (
             <AdminDashboard />
