@@ -314,9 +314,9 @@ export function ObEditor({ id }: { id: string }) {
     }
   }
 
-  // Rendered in one place at a time: above the preview while it's empty (the
-  // upload prompt should be the first thing you see), below the sheet once a
-  // slip exists so the printout still ends with the attachment.
+  // Always at the top of the preview column — the upload prompt and an already
+  // attached slip both belong where you look first. Print order is handled by
+  // `print:order` on the wrapper below, so the slip still follows the form.
   const attachmentCard = (
     <ObAttachmentCard
       id={id}
@@ -405,8 +405,11 @@ export function ObEditor({ id }: { id: string }) {
           <ObItineraryTable rows={rows} setRows={setRows} canEdit={canEdit} busy={busy} />
         </div>
 
-        <div className="flex min-h-0 flex-col gap-3 print:block lg:overflow-hidden print:overflow-visible">
-          {data?.attachment ? null : attachmentCard}
+        {/* Attachment first, always — but on print it drops back below the
+            sheet (`print:order`) so a slip still follows the form on its own
+            page. */}
+        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
+          <div className="print:order-2">{attachmentCard}</div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Live preview
@@ -421,13 +424,9 @@ export function ObEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
+          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
             <ObPreview sheetId="ob-sheet" form={form} rows={rows} />
           </div>
-          {/* Below the sheet once there's a slip, for the same reason as the
-              DTR: the approval slip prints after the form when there is one.
-              Empty, it sits above the preview instead (see attachmentCard). */}
-          {data?.attachment ? attachmentCard : null}
         </div>
       </div>
 

@@ -471,7 +471,19 @@ export function RecordEditor({ id }: { id: string }) {
           />
         </div>
 
-        <div className="flex min-h-0 flex-col gap-3 print:block lg:overflow-hidden print:overflow-visible">
+        {/* Attachment first, always — but on print it drops back below the
+            sheet (`print:order`) so a supporting file still follows the
+            record on its own page. */}
+        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
+          <div className="print:order-2">
+            <AttachmentCard
+              kind="record"
+              id={id}
+              file={data?.attachment ?? null}
+              canEdit={canEdit}
+              onUploaded={handleAttachmentUploaded}
+            />
+          </div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Live preview
@@ -486,7 +498,7 @@ export function RecordEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:overflow-visible">
+          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
             <DtrPreview
               sheetId="dtr-sheet"
               template={template}
@@ -495,17 +507,6 @@ export function RecordEditor({ id }: { id: string }) {
               entryFor={row}
             />
           </div>
-          {/* Below the sheet on purpose: the Live-preview header (and its
-              full-view button) sits directly above the preview it controls,
-              nothing looks like it belongs to the attachment, and the card
-              prints after the record when there is a file. */}
-          <AttachmentCard
-            kind="record"
-            id={id}
-            file={data?.attachment ?? null}
-            canEdit={canEdit}
-            onUploaded={handleAttachmentUploaded}
-          />
         </div>
       </div>
 

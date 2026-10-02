@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, ExternalLink, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { createObForm, deleteObForm } from "@/api/official-business.functions";
@@ -19,6 +19,8 @@ type ObRow = {
   department: string;
   position: string;
   date_of_ob: string;
+  /** Approval slip ticked — badges the card as Approved. */
+  attachment_approved: boolean;
   updated_at: string;
 };
 
@@ -178,6 +180,14 @@ function ObCard({
           </button>
         </div>
       </div>
+
+      {/* Approved forms get a badge; unapproved ones show nothing at all. */}
+      {f.attachment_approved ? (
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+          <CheckCircle2 className="size-3" aria-hidden="true" />
+          Approved
+        </span>
+      ) : null}
 
       <p className="text-xs text-foreground">
         {[f.department, f.position].filter(Boolean).join(" · ") || "No department / position"}

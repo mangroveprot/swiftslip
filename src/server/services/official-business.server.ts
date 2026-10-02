@@ -4,7 +4,10 @@ import type { ObEntry, ObForm } from "@/shared/types";
 export async function listObForms(ownerId: string) {
   const { data } = await getDb()
     .from("ob_forms")
-    .select("id,employee_name,id_number,department,position,date_of_ob,updated_at")
+    // `attachment_approved` rides along so the list can badge approved forms.
+    .select(
+      "id,employee_name,id_number,department,position,date_of_ob,attachment_approved,updated_at",
+    )
     .eq("owner_id", ownerId)
     .order("updated_at", { ascending: false });
   return data ?? [];

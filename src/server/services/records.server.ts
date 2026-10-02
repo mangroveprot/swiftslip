@@ -5,7 +5,8 @@ import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
 export async function listRecords(ownerId: string) {
   const { data } = await getDb()
     .from("dtr_records")
-    .select("id,name,emp_no,designation,area,month,year,period,updated_at")
+    // `certified_by` rides along so the list can badge signed-off records.
+    .select("id,name,emp_no,designation,area,month,year,period,certified_by,updated_at")
     .eq("owner_id", ownerId)
     .order("updated_at", { ascending: false });
   return data ?? [];

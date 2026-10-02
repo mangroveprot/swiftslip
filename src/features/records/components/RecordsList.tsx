@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, ExternalLink, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { createRecord, deleteRecord } from "@/api/records.functions";
@@ -22,6 +22,8 @@ type RecordRow = {
   month: number;
   year: number;
   period: string;
+  /** DTRs are certified, not approved — a certifier name badges the card. */
+  certified_by: string;
   updated_at: string;
 };
 
@@ -195,6 +197,14 @@ function RecordCard({
             </button>
           </div>
         </div>
+
+        {/* Signed off (a certifier name is filled in) — nothing when it isn't. */}
+        {r.certified_by?.trim() ? (
+          <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+            <CheckCircle2 className="size-3" aria-hidden="true" />
+            Certified
+          </span>
+        ) : null}
 
         <p className="mt-3 text-xs text-foreground">
           {MONTHS[r.month - 1]} {r.year} · {periodLabel(r.period as Period, r.month, r.year)}
