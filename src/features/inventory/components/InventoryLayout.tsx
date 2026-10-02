@@ -4,7 +4,7 @@
  * shell state (selected branch, sidebar, asset badge, add-asset requests)
  * exposed through `InventoryShellContext`.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
@@ -16,7 +16,6 @@ import type { InventoryShell, InventoryView } from "../shell-context";
 const ROUTES = {
   assets: "/rgc-asset-inventory",
   reports: "/rgc-asset-inventory/reports",
-  settings: "/rgc-asset-inventory/settings",
 } as const;
 
 export function InventoryLayout() {
@@ -44,14 +43,18 @@ export function InventoryLayout() {
     }
   }
 
-  const activeView: InventoryView = pathname.startsWith(ROUTES.reports)
-    ? "reports"
-    : pathname.startsWith(ROUTES.settings)
-      ? "settings"
-      : "assets";
+  const activeView: InventoryView = pathname.startsWith(ROUTES.reports) ? "reports" : "assets";
+
+  // The drawer stays open after a nav tap only until the route actually
+  // changes — this also covers paths we don't drive from the sidebar
+  // (back/forward, the "Add asset" jump, deep links).
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   const navigateTo = useCallback(
     (view: InventoryView) => {
+      setSidebarOpen(false);
       void navigate({ to: ROUTES[view] });
     },
     [navigate],
@@ -101,11 +104,13 @@ export function InventoryLayout() {
 
   return (
     <InventoryShellContext.Provider value={shell}>
-      <div className="rgc-inventory flex h-screen overflow-hidden relative text-slate-800">
+      <div className="rgc-inventory flex h-dvh overflow-hidden relative text-slate-800">
         <InventorySidebar shell={shell} />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          <main className="flex-1 min-h-0 flex flex-col overflow-hidden p-4 md:p-6">
+          {/* Phones/tablets scroll the page itself — with a fixed viewport the
+              header + stat cards left the table with no visible rows. */}
+          <main className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden md:overflow-hidden p-3 sm:p-4 md:p-6">
             <div className="page-enter flex flex-col flex-1 min-h-0" key={pathname}>
               <Outlet />
             </div>

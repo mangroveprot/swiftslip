@@ -43,6 +43,7 @@ export const activityLogActionFilter = z.enum([
   "ob",
   "records",
   "attachments",
+  "inventory",
 ]);
 export type ActivityLogActionFilter = z.infer<typeof activityLogActionFilter>;
 

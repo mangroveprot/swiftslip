@@ -354,7 +354,7 @@ export function InventoryHomePage() {
 
   return (
     <>
-      <div className="home-page flex flex-col flex-1 min-h-0 gap-4">
+      <div className="home-page flex flex-col flex-1 min-h-0 gap-3 md:gap-4">
         <div className="shrink-0">
           <InventoryTopBar
             branchSubtitle={shell.branchSubtitle}

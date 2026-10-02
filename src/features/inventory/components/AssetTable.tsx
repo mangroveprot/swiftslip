@@ -94,7 +94,7 @@ export const AssetTable = memo(function AssetTable({
           />
         </div>
 
-        <div className="asset-table__types" role="tablist" aria-label="Asset type">
+        <div className="asset-table__types no-scrollbar" role="tablist" aria-label="Asset type">
           <button
             type="button"
             role="tab"
@@ -118,7 +118,7 @@ export const AssetTable = memo(function AssetTable({
       </div>
 
       <div className="asset-table__scroll">
-        <table className="w-full text-sm table-fixed">
+        <table className="w-full text-sm table-fixed min-w-[26rem] lg:min-w-0">
           <thead>
             <tr className="asset-table__head">
               <th className="asset-table__th w-9">
@@ -130,12 +130,12 @@ export const AssetTable = memo(function AssetTable({
                 />
               </th>
               <th className="asset-table__th w-[15%]">Item ID</th>
-              <th className="asset-table__th w-[10%]">Type</th>
+              <th className="asset-table__th w-[10%] hidden md:table-cell">Type</th>
               <th className="asset-table__th w-[18%]">Assigned to</th>
-              <th className="asset-table__th w-[16%]">Department</th>
-              <th className="asset-table__th w-[9%]">Cubicle</th>
+              <th className="asset-table__th w-[16%] hidden md:table-cell">Department</th>
+              <th className="asset-table__th w-[9%] hidden md:table-cell">Cubicle</th>
               <th className="asset-table__th w-24">Status</th>
-              <th className="asset-table__th w-24">Condition</th>
+              <th className="asset-table__th w-24 hidden md:table-cell">Condition</th>
               <th className="asset-table__th asset-table__th--actions w-20 text-right">Actions</th>
             </tr>
           </thead>

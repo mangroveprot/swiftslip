@@ -115,6 +115,7 @@ export function ActivityLogs() {
               <option value="ob">OB forms</option>
               <option value="records">DTR records</option>
               <option value="attachments">Approval slips</option>
+              <option value="inventory">Inventory</option>
             </optgroup>
           </select>
         </label>

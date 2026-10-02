@@ -709,8 +709,10 @@
   }
 
   .asset-table__actions {
+    /* No box-shadow here: the old `-8px 0 12px -10px` "pinned column" shadow
+       painted a gray smudge over the Condition column, because this cell is a
+       plain (non-sticky) <td> — nothing ever scrolls underneath it. */
     @apply bg-white;
-    box-shadow: -8px 0 12px -10px rgba(15, 23, 42, 0.18);
   }
 
   .asset-table__row:hover .asset-table__actions {
@@ -931,6 +933,37 @@
     @apply w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white shrink-0;
     background: rgba(255, 255, 255, 0.18);
   }
+}
+
+/* --- Small screens: scroll the page, don't squeeze the table --------------
+   Below `md` the header + stat cards + search ate the whole viewport, so the
+   table body was left ~0 rows tall — and with `table-fixed` the five
+   percentage columns collapsed into unreadable slivers. Under `md` the table
+   now sizes to its content (the page scrolls instead, see `<main>` in
+   InventoryLayout), its columns keep a readable floor via `min-w-…`, and the
+   ones a phone doesn't need are hidden until `md` (AssetTable / AssetRow).
+   Unlayered on purpose: it has to beat the `flex-1` / `overflow-auto` the
+   component classes above put on the same elements. */
+@media (max-width: 767.98px) {
+  .asset-table {
+    flex: none;
+  }
+
+  .asset-table__scroll {
+    flex: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
+/* Horizontal chip/tab strips scroll by swipe/drag, so the scrollbar only adds
+   a grey bar under them — the half-visible last tab is the affordance. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* --- Animations, report preview and toasts (source: unlayered, copied 1:1). --- */

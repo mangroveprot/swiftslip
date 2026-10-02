@@ -8,16 +8,18 @@ import { APP } from "@/config/app";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
+import { SettingsSection } from "./SettingsSection";
 import { TemplateEditor } from "./TemplateEditor";
 import { UserManagement } from "./UserManagement";
 
-type Section = "dashboard" | "users" | "logs" | "template";
+type Section = "dashboard" | "users" | "logs" | "template" | "settings";
 
 const SECTIONS: { id: Section; label: string; note: string }[] = [
   { id: "dashboard", label: "Dashboard", note: "Totals & activity" },
   { id: "users", label: "User management", note: "Accounts & roles" },
   { id: "logs", label: "Activity logs", note: "Sign-ins & changes" },
   { id: "template", label: "DTR template", note: "Sheet headings" },
+  { id: "settings", label: "Settings", note: "Inventory options" },
 ];
 
 /**
@@ -91,6 +93,8 @@ export function AdminPanel() {
             <UserManagement />
           ) : section === "logs" ? (
             <ActivityLogs />
+          ) : section === "settings" ? (
+            <SettingsSection />
           ) : (
             <TemplateEditor />
           )}

@@ -14,7 +14,6 @@ import type { InventoryShell, InventoryView } from "../shell-context";
 const NAV_ITEMS: { key: InventoryView; label: string }[] = [
   { key: "assets", label: "Assets" },
   { key: "reports", label: "Reports" },
-  { key: "settings", label: "Settings" },
 ];
 
 function NavIcon({ view }: { view: InventoryView }) {
@@ -82,8 +81,8 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
   };
 
   const sidebarClasses =
-    "app-sidebar w-80 h-full border-r border-regasco-deep/30 flex flex-col shrink-0 " +
-    "fixed md:static left-0 z-40 transition-transform duration-200 md:translate-x-0 inset-y-0 " +
+    "app-sidebar w-[86vw] max-w-80 h-full border-r border-regasco-deep/30 flex flex-col shrink-0 " +
+    "fixed lg:static left-0 z-40 transition-transform duration-200 lg:translate-x-0 inset-y-0 " +
     (shell.sidebarOpen ? "translate-x-0" : "-translate-x-full");
 
   return (
@@ -91,7 +90,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
       {/* Mobile overlay (matches IsOpen in the original). */}
       {shell.sidebarOpen ? (
         <div
-          className="fixed inset-0 bg-slate-900/40 z-30 md:hidden"
+          className="fixed inset-0 bg-slate-900/40 z-30 lg:hidden"
           onClick={() => shell.closeSidebar()}
         />
       ) : null}
@@ -114,7 +113,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
             <button
               type="button"
               aria-label="Close menu"
-              className="md:hidden text-white/80 hover:text-white text-lg leading-none shrink-0"
+              className="lg:hidden text-white/80 hover:text-white text-lg leading-none shrink-0"
               onClick={() => shell.closeSidebar()}
             >
               &times;
@@ -209,7 +208,12 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                   className={`sidebar-nav-item ${
                     shell.activeView === item.key ? "sidebar-nav-item--active" : ""
                   }`}
-                  onClick={() => shell.navigateTo(item.key)}
+                  onClick={() => {
+                    // Close the drawer before/while navigating so the next
+                    // page is visible immediately on phones and tablets.
+                    shell.closeSidebar();
+                    shell.navigateTo(item.key);
+                  }}
                 >
                   <span className="sidebar-nav-item__icon" aria-hidden="true">
                     <NavIcon view={item.key} />

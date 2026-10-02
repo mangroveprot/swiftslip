@@ -29,7 +29,7 @@ export function StatCards({
   onFilterSelect,
 }: StatCardsProps) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
       <button
         type="button"
         className={cardClass(selectedFilter, "all", "stat-card--total")}

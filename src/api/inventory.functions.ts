@@ -12,6 +12,7 @@ import { requireAdmin } from "@/server/auth/session.server";
 import * as assets from "@/server/inventory/assets.server";
 import * as options from "@/server/inventory/options.server";
 import * as reports from "@/server/inventory/reports.server";
+import { logActivity } from "@/server/services/activity-log.server";
 import {
   assetSaveInput,
   createOptionInput,
@@ -19,6 +20,7 @@ import {
   deleteOptionInput,
   renameOptionInput,
   reportBranchInput,
+  reportDownloadInput,
 } from "@/shared/inventory";
 
 export const getInventoryData = createServerFn({ method: "GET" }).handler(async () => {
@@ -29,8 +31,17 @@ export const getInventoryData = createServerFn({ method: "GET" }).handler(async 
 export const saveAsset = createServerFn({ method: "POST" })
   .validator(assetSaveInput)
   .handler(async ({ data }) => {
-    await requireAdmin();
-    return assets.saveAsset(data);
+    const admin = await requireAdmin();
+    const saved = await assets.saveAsset(data);
+    await logActivity({
+      action: data.assetId == null ? "asset.created" : "asset.updated",
+      actorId: admin.id,
+      actorName: admin.label,
+      actorNumber: admin.idNumber,
+      target: data.itemId ? `Asset ${data.itemId}` : `Asset #${saved.assetId}`,
+      detail: data.assignedTo || null,
+    });
+    return saved;
   });
 
 export const deleteAssets = createServerFn({ method: "POST" })
@@ -81,4 +92,18 @@ export const getReportDocument = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin();
     return reports.buildReportDocument(data.branchId);
+  });
+
+/** Reports page: records who downloaded the Excel report (built client-side). */
+export const logReportDownload = createServerFn({ method: "POST" })
+  .validator(reportDownloadInput)
+  .handler(async ({ data }) => {
+    const admin = await requireAdmin();
+    await logActivity({
+      action: "report.downloaded",
+      actorId: admin.id,
+      actorName: admin.label,
+      actorNumber: admin.idNumber,
+      target: `Report — ${data.branchName}`,
+    });
   });

@@ -49,19 +49,19 @@ export function InventoryTopBar({
   }, []);
 
   return (
-    <header className="asset-inventory-header px-4 md:px-6 pt-7 pb-5 space-y-5">
+    <header className="asset-inventory-header px-4 md:px-6 pt-4 pb-4 md:pt-7 md:pb-5 space-y-4 md:space-y-5">
       <div className="relative z-[1] flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
-            className="md:hidden text-white/80 hover:text-white"
+            className="lg:hidden text-white/80 hover:text-white"
             onClick={onMenuToggle}
             aria-label="Open menu"
           >
             ☰
           </button>
           <div className="flex flex-col leading-tight min-w-0">
-            <span className="text-3xl md:text-4xl font-semibold text-white tracking-tight">
+            <span className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white tracking-tight">
               Asset inventory
             </span>
             <span className="text-sm md:text-lg text-white/80 truncate mt-1">{branchSubtitle}</span>

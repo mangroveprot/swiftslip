@@ -12,6 +12,9 @@ export const ACTION_LABELS: Record<string, string> = {
   "user.created": "Account created",
   "user.updated": "Account updated",
   "user.deleted": "Account removed",
+  "asset.created": "Asset created",
+  "asset.updated": "Asset edited",
+  "report.downloaded": "Report downloaded",
 };
 
 /** Shared pill styling for a log action — red only for rejected sign-ins. */

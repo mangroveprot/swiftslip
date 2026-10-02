@@ -23,7 +23,10 @@ export type ActivityAction =
   | "attachment.removed"
   | "user.created"
   | "user.updated"
-  | "user.deleted";
+  | "user.deleted"
+  | "asset.created"
+  | "asset.updated"
+  | "report.downloaded";
 
 export type ActivityEntry = {
   action: ActivityAction;
@@ -118,6 +121,7 @@ const ACTION_GROUPS: Record<string, string[]> = {
   ob: ["ob.created", "ob.deleted"],
   records: ["record.created", "record.deleted"],
   attachments: ["attachment.uploaded", "attachment.removed"],
+  inventory: ["asset.created", "asset.updated", "report.downloaded"],
 };
 
 /**

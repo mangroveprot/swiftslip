@@ -53,7 +53,7 @@ export const AssetRow = memo(function AssetRow({
         )}
       </td>
 
-      <td className="asset-table__td">
+      <td className="asset-table__td hidden md:table-cell">
         <span className="asset-table__type-chip">{asset.type?.type_name ?? "—"}</span>
       </td>
 
@@ -65,10 +65,10 @@ export const AssetRow = memo(function AssetRow({
         )}
       </td>
 
-      <td className="asset-table__td text-slate-600 truncate">
+      <td className="asset-table__td text-slate-600 truncate hidden md:table-cell">
         {asset.department?.department_name ?? "—"}
       </td>
-      <td className="asset-table__td text-slate-600 truncate">
+      <td className="asset-table__td text-slate-600 truncate hidden md:table-cell">
         {isBlank(asset.cubicle_seat) ? "—" : asset.cubicle_seat}
       </td>
 
@@ -78,7 +78,7 @@ export const AssetRow = memo(function AssetRow({
         </span>
       </td>
 
-      <td className="asset-table__td">
+      <td className="asset-table__td hidden md:table-cell">
         <span
           className={`asset-table__badge ${conditionBadgeClasses(asset.condition?.condition_name)}`}
         >

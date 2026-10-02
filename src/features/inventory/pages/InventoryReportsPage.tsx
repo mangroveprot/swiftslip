@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { logReportDownload } from "@/api/inventory.functions";
 import { toast } from "@/lib/toast";
 import { buildReportFileName, downloadReportWorkbook } from "../lib/report-export";
 import { reportQueryOptions } from "../queries";
@@ -52,6 +53,8 @@ export function InventoryReportsPage() {
     try {
       const fileName = buildReportFileName(document.branchName);
       await downloadReportWorkbook(document, fileName);
+      // Fire-and-forget: the audit trail must never turn a saved file into an error.
+      void logReportDownload({ data: { branchName: document.branchName } }).catch(() => undefined);
       showToast("Excel saved");
     } catch (err) {
       showToast(`Download failed: ${messageOf(err)}`, "error");
@@ -65,19 +68,19 @@ export function InventoryReportsPage() {
   return (
     <>
       <div className="flex flex-col flex-1 min-h-0 gap-4">
-        <header className="asset-inventory-header shrink-0 px-4 md:px-6 pt-7 pb-5">
+        <header className="asset-inventory-header shrink-0 px-4 md:px-6 pt-4 pb-4 md:pt-7 md:pb-5">
           <div className="relative z-[1] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 type="button"
-                className="md:hidden text-white/80 hover:text-white"
+                className="lg:hidden text-white/80 hover:text-white"
                 onClick={() => shell.openSidebar()}
                 aria-label="Open menu"
               >
                 ☰
               </button>
               <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-3xl md:text-4xl font-semibold text-white tracking-tight">
+                <span className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white tracking-tight">
                   Reports
                 </span>
                 <span className="text-sm md:text-lg text-white/80 truncate mt-1">
@@ -234,7 +237,7 @@ export function InventoryReportsPage() {
               })}
 
               {/* Excel-style sheet tabs */}
-              <div className="flex items-end gap-0 px-2 pt-2 bg-slate-100 border-t border-slate-200 overflow-x-auto">
+              <div className="flex items-end gap-0 px-2 pt-2 bg-slate-100 border-t border-slate-200 overflow-x-auto no-scrollbar">
                 {document.sheets.map((sheet, idx) => (
                   <button
                     type="button"

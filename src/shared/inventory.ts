@@ -195,6 +195,11 @@ export const reportBranchInput = z.object({
   branchId: z.number().int().positive(),
 });
 
+/** Who downloaded a report — the Excel file itself is built client-side. */
+export const reportDownloadInput = z.object({
+  branchName: z.string().trim().max(120),
+});
+
 /* ---------------------------------------------------------------- report - */
 
 /** One asset row in the inventory report (matches the Excel template columns). */
