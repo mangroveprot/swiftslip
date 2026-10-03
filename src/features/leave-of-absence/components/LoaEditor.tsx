@@ -26,7 +26,7 @@ import { loaFormQueryOptions, loaFormsQueryOptions } from "../queries";
 import { LoaAssistantChat } from "./LoaAssistantChat";
 import { LoaAttachmentCard } from "./LoaAttachmentCard";
 import { LoaFormFields } from "./LoaFormFields";
-import { LoaPreview } from "./LoaPreview";
+import { LOA_SHEET_WIDTH, LoaPreview } from "./LoaPreview";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -418,7 +418,11 @@ export function LoaEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
+          {/* The sheet is fixed at its true A4 page width (794px outer, with
+              the template's own margins as padding / 738px content) so text
+              wraps exactly like the Word template — the narrow column scrolls
+              horizontally instead of squeezing it. */}
+          <div className="min-h-0 overflow-x-auto rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
             <LoaPreview sheetId="loa-sheet" form={form} />
           </div>
         </div>
@@ -431,6 +435,7 @@ export function LoaEditor({ id }: { id: string }) {
         open={previewOpen}
         onOpenChange={setPreviewOpen}
         title="Leave of Absence Form — full view"
+        sheetWidth={LOA_SHEET_WIDTH}
       >
         <LoaPreview form={form} />
       </PreviewLightbox>

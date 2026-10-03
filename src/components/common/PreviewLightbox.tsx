@@ -40,11 +40,17 @@ export function PreviewLightbox({
   open,
   onOpenChange,
   title,
+  sheetWidth = SHEET_WIDTH,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** Outer width of the sheet wrapper — defaults to the A4 print width (688).
+   *  A sheet with its own fixed width (LOA = 794: an A4-wide page replica with
+   *  the template's margins as padding, 738px content) passes its own so
+   *  fit() measures right. */
+  sheetWidth?: number;
   children: ReactNode;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -241,7 +247,7 @@ export function PreviewLightbox({
               ref={contentRef}
               className="absolute left-0 top-0"
               style={{
-                width: SHEET_WIDTH,
+                width: sheetWidth,
                 transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.scale})`,
                 transformOrigin: "0 0",
               }}

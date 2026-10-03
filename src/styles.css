@@ -236,6 +236,14 @@
     background: #fff;
   }
 
+  /* Toasts are overlay UI and must never print. Hiding Sonner's section also
+     removes the only box that follows the named-page LOA sheet — leaving it
+     makes Chromium close the `loa` page group and emit an empty trailing
+     page under the default @page. */
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
   .no-print {
     display: none !important;
   }
@@ -251,9 +259,35 @@
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
+    min-height: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     max-width: none !important;
+  }
+
+  /* The LOA sheet replicates the Word template at exactly 738px of content,
+     so on paper it needs the template's own sectPr pgMar (asymmetric: 540/296
+     twips left/right) instead of the shared 14mm @page below. The named page
+     keeps OB/DTR on the default @page; browsers without named-page support
+     fall back to it and only print slightly narrower. */
+  .loa-print-sheet {
+    page: loa;
+  }
+
+  /* Chromium re-opens the default @page group the moment any default-group
+     content follows a named-page element — even an empty box — which used to
+     emit a blank trailing page. Binding the whole body to the `loa` group
+     while the sheet prints means no default-group page is ever opened. */
+  body:has(.loa-print-sheet) {
+    page: loa;
+  }
+
+  @page loa {
+    size: A4 portrait;
+    /* Exact copy of the template's page margins (top 1808 / right 296 /
+       bottom 360 / left 540 twips): the 738px content box lands at [36..774]
+       so every vertical rule sits on Word's render cell-for-cell. */
+    margin: 13.8mm 5.22mm 6.35mm 9.53mm;
   }
 
   @page {

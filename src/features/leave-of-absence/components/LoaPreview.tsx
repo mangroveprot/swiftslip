@@ -15,6 +15,15 @@ const HEADER_FILL = "#7f7f7f";
 const VIBER_BLUE = "#4472C4";
 const CELL_PAD_X = "7.2px";
 
+/** Sheet outer width — an exact A4 page replica: 794px (210mm at 96dpi) with
+ *  the template's own page margins as padding (36px left / 20px right per
+ *  sectPr pgMar), leaving the same 738px of content so line breaks match the
+ *  Word template. Every container (inline preview column, full-view lightbox)
+ *  must render the sheet at exactly this width; the print path gets the
+ *  identical box from the named `@page loa` in styles.css (which zeroes this
+ *  padding and re-applies the margins at page level). */
+export const LOA_SHEET_WIDTH = 794;
+
 const PT = {
   base: "14.67px",
   title: "18.67px",
@@ -119,8 +128,9 @@ export function LoaPreview({
   return (
     <div
       id={sheetId}
-      className="print-sheet mx-auto w-full bg-paper px-3 pb-5 pt-2 text-ink shadow-sm ring-1 ring-border"
+      className="print-sheet loa-print-sheet mx-auto bg-paper min-h-[1123px] pb-6 pl-9 pr-5 pt-[52px] text-ink shadow-sm ring-1 ring-border"
       style={{
+        width: LOA_SHEET_WIDTH,
         fontFamily: 'Calibri, "Segoe UI", Candara, Arial, sans-serif',
         fontSize: PT.base,
         lineHeight: 1.22,
@@ -130,15 +140,34 @@ export function LoaPreview({
           content width), ~16px gap, then the 10pt address and phone lines
           (phone icon inline, ~40px before the number, as Word's tab renders). */}
       <div className="flex flex-col items-center text-center">
-        <img src={APP.mindbridgeLogoPath} alt="" className="h-auto w-[36.7%] object-contain" />
-        <p style={{ fontSize: PT.h10, marginTop: 13 }}>
-          22nd Floor Strata 100, F. Ortigas Jr. Road, San Antonio, Pasig City
+        <img
+          src={APP.mindbridgeLogoPath}
+          alt=""
+          className="h-auto w-[36.7%] object-contain"
+          style={{ position: "relative", top: -5.4 }}
+        />
+        <p style={{ fontSize: PT.h10, marginTop: 10 }}>
+          22
+          <sup
+            style={{
+              fontSize: "1em",
+              position: "relative",
+              top: "-6px",
+              verticalAlign: "baseline",
+            }}
+          >
+            nd
+          </sup>
+          {" Floor Strata 100, F. Ortigas Jr. Road, San Antonio, Pasig City"}
         </p>
-        <p style={{ fontSize: PT.h10 }}>
+        <p style={{ fontSize: PT.h10, position: "relative" }}>
+          {/* Template centers the number on the content box and floats the icon
+              133px left of center (Word anchor), so keep the icon out of flow —
+              an inline icon would drag the centered text to the right. */}
           <img
             src="/loa_phone.jpg"
             alt=""
-            className="mr-10 inline-block h-[13px] w-[14px] align-[-2px] object-contain"
+            className="absolute left-1/2 top-0 -ml-[133px] h-[13px] w-[14px] object-contain"
           />
           638-06-60 loc 106
         </p>
@@ -147,24 +176,23 @@ export function LoaPreview({
       {/* Title — Eras Demi ITC bold 14pt, centered; the gap covers the
           template's empty 12pt paragraph between the header and the title. */}
       <h1
-        className="mt-[19px] text-center"
+        className="mt-[16px] text-center"
         style={{
           fontSize: PT.title,
-          fontWeight: 800,
-          letterSpacing: "0.02em",
-          fontFamily:
-            '"Eras Demi ITC", "Eras Bold ITC", "Arial Black", "Century Gothic", Arial, sans-serif',
+          fontWeight: 700,
+          fontFamily: '"Eras Demi ITC", "Eras Bold ITC", Arial, sans-serif',
         }}
       >
         APPLICATION FOR LEAVE OF ABSENCE (LOA) FORM
       </h1>
 
-      {/* Instructions — bold, indented 90 twips (6px) with the template's
-          effective right edge (~30px), body justified with first-line indent;
-          two empty 9pt paragraphs follow it (the table's 28px top gap). */}
-      <div className="mt-[14px]" style={{ paddingLeft: 6, paddingRight: 30 }}>
+      {/* Instructions — label bold, body regular (the template's runs carry no
+          <w:b/>), indented 90 twips (6px) left / 360 twips (24px) right, body
+          justified with the template's first-line tab (a default 0.5" tab stop
+          = 48px from the margin = 42px inside the paragraph box). */}
+      <div className="mt-[17px]" style={{ paddingLeft: 6, paddingRight: 24 }}>
         <p style={{ fontWeight: 700 }}>Instructions:</p>
-        <p className="text-justify" style={{ fontWeight: 700, textIndent: 19, lineHeight: 1.25 }}>
+        <p className="text-justify" style={{ textIndent: 42, lineHeight: 1.25 }}>
           This form must be accomplished and submitted before an employee goes on leave. In case of
           an emergency or illness this form must be accomplished and submitted upon reporting to
           work. Emergency leave is charged to vacation leave.
@@ -174,7 +202,7 @@ export function LoaPreview({
       {/* The main table — cell-for-cell from the template's document.xml. */}
       <table
         className="w-full"
-        style={{ borderCollapse: "collapse", tableLayout: "fixed", marginTop: 28 }}
+        style={{ borderCollapse: "collapse", tableLayout: "fixed", marginTop: 31 }}
       >
         <colgroup>
           {GRID.map((w, i) => (
