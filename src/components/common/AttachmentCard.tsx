@@ -3,12 +3,18 @@ import { ExternalLink, Loader2, Paperclip, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { removeObAttachment, uploadObAttachment } from "@/api/official-business.functions";
+import { removeLoaAttachment, uploadLoaAttachment } from "@/api/loa.functions";
 import {
   getRecordAttachmentUrl,
   removeRecordAttachment,
   uploadRecordAttachment,
 } from "@/api/records.functions";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import {
+  loaAttachmentUrlQueryOptions,
+  loaFormQueryOptions,
+  loaFormsQueryOptions,
+} from "@/features/leave-of-absence/queries";
 import {
   obAttachmentUrlQueryOptions,
   obFormQueryOptions,
@@ -22,9 +28,9 @@ import {
 import { fileToBase64 } from "@/lib/file";
 import { toast } from "@/lib/toast";
 
-/** What the document means for this row: OB's is an approval slip, the DTR's is
- *  just a supporting file (no approval step). */
-type AttachmentKind = "ob" | "record";
+/** What the document means for this row: the OB slip and the LOA medical
+ *  certificate both drive an approval mark; the DTR's is just a supporting file. */
+type AttachmentKind = "ob" | "loa" | "record";
 
 const MAX_MB = 10;
 const IMAGE_RE = /\.(png|jpe?g|webp|gif|bmp)$/i;
@@ -40,12 +46,26 @@ const COPY: Record<
     removeDescription:
       "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
   },
+  loa: {
+    title: "Medical certificate",
+    empty: "Attach medical certificate PDF, image or document, up to 10 MB",
+    removeTitle: "Remove this attachment?",
+    removeDescription:
+      "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
+  },
   record: {
     title: "Attachment",
     empty: "Attach a supporting document PDF, image or document, up to 10 MB",
     removeTitle: "Remove this attachment?",
     removeDescription: "The uploaded file is deleted. This can't be undone.",
   },
+};
+
+/** Per-kind signed-URL query options — one lookup instead of ternaries. */
+const URL_QUERY = {
+  ob: obAttachmentUrlQueryOptions,
+  loa: loaAttachmentUrlQueryOptions,
+  record: recordAttachmentUrlQueryOptions,
 };
 
 /**
@@ -84,7 +104,7 @@ export function AttachmentCard({
   const [confirming, setConfirming] = useState(false);
   const copy = COPY[kind];
   const { data: signed, isLoading: signing } = useQuery({
-    ...(kind === "ob" ? obAttachmentUrlQueryOptions(id) : recordAttachmentUrlQueryOptions(id)),
+    ...URL_QUERY[kind](id),
     enabled: Boolean(file),
   });
   const isImage = file ? IMAGE_RE.test(file.name) : false;
@@ -96,13 +116,21 @@ export function AttachmentCard({
   const printable = Boolean(file) && (isImage || isPdf);
 
   async function refresh() {
-    const urlKey =
-      kind === "ob"
-        ? obAttachmentUrlQueryOptions(id).queryKey
-        : recordAttachmentUrlQueryOptions(id).queryKey;
-    const detailKey =
-      kind === "ob" ? obFormQueryOptions(id).queryKey : recordQueryOptions(id).queryKey;
-    const listKey = kind === "ob" ? obFormsQueryOptions().queryKey : recordsQueryOptions().queryKey;
+    const urlKey = URL_QUERY[kind](id).queryKey;
+    const detailKey = (
+      kind === "record"
+        ? recordQueryOptions(id)
+        : kind === "loa"
+          ? loaFormQueryOptions(id)
+          : obFormQueryOptions(id)
+    ).queryKey;
+    const listKey = (
+      kind === "record"
+        ? recordsQueryOptions()
+        : kind === "loa"
+          ? loaFormsQueryOptions()
+          : obFormsQueryOptions()
+    ).queryKey;
     await Promise.all([
       qc.invalidateQueries({ queryKey: urlKey }),
       qc.invalidateQueries({ queryKey: detailKey }),
@@ -133,6 +161,7 @@ export function AttachmentCard({
         },
       };
       if (kind === "ob") await uploadObAttachment(payload);
+      else if (kind === "loa") await uploadLoaAttachment(payload);
       else await uploadRecordAttachment(payload);
       // A file on the row is content — it must never be scaffold-deleted.
       onUploaded();
@@ -178,6 +207,7 @@ export function AttachmentCard({
     setBusy(true);
     try {
       if (kind === "ob") await removeObAttachment({ data: { id } });
+      else if (kind === "loa") await removeLoaAttachment({ data: { id } });
       else await removeRecordAttachment({ data: { id } });
       onRemoved?.();
       await refresh();

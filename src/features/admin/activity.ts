@@ -5,6 +5,8 @@ export const ACTION_LABELS: Record<string, string> = {
   "signin.failed": "Sign-in failed",
   "ob.created": "OB created",
   "ob.deleted": "OB removed",
+  "loa.created": "LOA created",
+  "loa.deleted": "LOA removed",
   "record.created": "DTR record created",
   "record.deleted": "DTR record removed",
   "attachment.uploaded": "Approval slip uploaded",
@@ -22,6 +24,7 @@ const DANGER_ACTIONS = new Set([
   "signin.failed",
   "user.deleted",
   "ob.deleted",
+  "loa.deleted",
   "record.deleted",
   "attachment.removed",
 ]);

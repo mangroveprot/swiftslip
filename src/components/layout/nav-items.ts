@@ -3,6 +3,7 @@ import {
   CalendarClock,
   CalendarOff,
   Clock,
+  TreePalm,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -22,6 +23,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Daily Time Record", to: "/records", note: "DTR sheet", icon: Clock },
   { label: "Official Business", to: "/official-business", note: "OB form", icon: Briefcase },
+  { label: "Leave of Absence", to: "/leave-of-absence", note: "LOA form", icon: TreePalm },
   {
     label: "Change Time Schedule",
     to: "/change-time-schedule",

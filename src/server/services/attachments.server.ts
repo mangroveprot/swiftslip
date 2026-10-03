@@ -21,9 +21,9 @@ const BLOCKED_TYPES = new Set([
 const URL_TTL_SECONDS = 60 * 60;
 
 /** Rows that can hold a document; `(id, owner_id)` always identifies one of them. */
-type AttachmentTable = "ob_forms" | "dtr_records";
+type AttachmentTable = "ob_forms" | "loa_forms" | "dtr_records";
 /** The row's human name, used in error messages ("Form not found." etc.). */
-type Entity = "Form" | "Record";
+type Entity = "Form" | "LOA form" | "Record";
 
 /**
  * Never trust the client's filename: drop any path components, keep a readable
@@ -171,10 +171,12 @@ export async function removeAttachment(
 
   const detach = { attachment_path: null, attachment_name: null };
   const updated_at = new Date().toISOString();
+  // OB and LOA forms carry an approval mark along with the file — DTR records
+  // have no approval step.
   const { error } =
-    table === "ob_forms"
+    table !== "dtr_records"
       ? await db
-          .from("ob_forms")
+          .from(table)
           .update({ ...detach, attachment_approved: false, updated_at })
           .eq("id", id)
           .eq("owner_id", ownerId)

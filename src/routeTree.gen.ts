@@ -20,6 +20,8 @@ import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as RgcAssetInventoryIndexRouteImport } from './routes/rgc-asset-inventory.index'
 import { Route as RgcAssetInventoryReportsRouteImport } from './routes/rgc-asset-inventory.reports'
 import { Route as RgcAssetInventorySettingsRouteImport } from './routes/rgc-asset-inventory.settings'
+import { Route as AppLeaveOfAbsenceIndexRouteImport } from './routes/_app/leave-of-absence/index'
+import { Route as AppLeaveOfAbsenceIdRouteImport } from './routes/_app/leave-of-absence/$id'
 import { Route as AppOfficialBusinessIndexRouteImport } from './routes/_app/official-business/index'
 import { Route as AppOfficialBusinessIdRouteImport } from './routes/_app/official-business/$id'
 import { Route as AppRecordsIndexRouteImport } from './routes/_app/records/index'
@@ -81,6 +83,16 @@ const RgcAssetInventorySettingsRoute =
     path: '/settings',
     getParentRoute: () => RgcAssetInventoryRoute,
   } as any)
+const AppLeaveOfAbsenceIndexRoute = AppLeaveOfAbsenceIndexRouteImport.update({
+  id: '/leave-of-absence/',
+  path: '/leave-of-absence/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeaveOfAbsenceIdRoute = AppLeaveOfAbsenceIdRouteImport.update({
+  id: '/leave-of-absence/$id',
+  path: '/leave-of-absence/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOfficialBusinessIndexRoute =
   AppOfficialBusinessIndexRouteImport.update({
     id: '/official-business/',
@@ -114,8 +126,10 @@ export interface FileRoutesByFullPath {
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
   '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
+  '/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/leave-of-absence/': typeof AppLeaveOfAbsenceIndexRoute
   '/official-business/': typeof AppOfficialBusinessIndexRoute
   '/records/': typeof AppRecordsIndexRoute
 }
@@ -129,8 +143,10 @@ export interface FileRoutesByTo {
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryIndexRoute
+  '/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/leave-of-absence': typeof AppLeaveOfAbsenceIndexRoute
   '/official-business': typeof AppOfficialBusinessIndexRoute
   '/records': typeof AppRecordsIndexRoute
 }
@@ -147,8 +163,10 @@ export interface FileRoutesById {
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
   '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
+  '/_app/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/_app/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/_app/records/$id': typeof AppRecordsIdRoute
+  '/_app/leave-of-absence/': typeof AppLeaveOfAbsenceIndexRoute
   '/_app/official-business/': typeof AppOfficialBusinessIndexRoute
   '/_app/records/': typeof AppRecordsIndexRoute
 }
@@ -165,8 +183,10 @@ export interface FileRouteTypes {
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
     | '/rgc-asset-inventory/'
+    | '/leave-of-absence/$id'
     | '/official-business/$id'
     | '/records/$id'
+    | '/leave-of-absence/'
     | '/official-business/'
     | '/records/'
   fileRoutesByTo: FileRoutesByTo
@@ -180,8 +200,10 @@ export interface FileRouteTypes {
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
     | '/rgc-asset-inventory'
+    | '/leave-of-absence/$id'
     | '/official-business/$id'
     | '/records/$id'
+    | '/leave-of-absence'
     | '/official-business'
     | '/records'
   id:
@@ -197,8 +219,10 @@ export interface FileRouteTypes {
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
     | '/rgc-asset-inventory/'
+    | '/_app/leave-of-absence/$id'
     | '/_app/official-business/$id'
     | '/_app/records/$id'
+    | '/_app/leave-of-absence/'
     | '/_app/official-business/'
     | '/_app/records/'
   fileRoutesById: FileRoutesById
@@ -290,6 +314,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RgcAssetInventorySettingsRouteImport
       parentRoute: typeof RgcAssetInventoryRoute
     }
+    '/_app/leave-of-absence/': {
+      id: '/_app/leave-of-absence/'
+      path: '/leave-of-absence'
+      fullPath: '/leave-of-absence/'
+      preLoaderRoute: typeof AppLeaveOfAbsenceIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/leave-of-absence/$id': {
+      id: '/_app/leave-of-absence/$id'
+      path: '/leave-of-absence/$id'
+      fullPath: '/leave-of-absence/$id'
+      preLoaderRoute: typeof AppLeaveOfAbsenceIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/official-business/': {
       id: '/_app/official-business/'
       path: '/official-business'
@@ -325,8 +363,10 @@ interface AppRouteChildren {
   AppChangeRestDayRoute: typeof AppChangeRestDayRoute
   AppChangeTimeScheduleRoute: typeof AppChangeTimeScheduleRoute
   AppProfileRoute: typeof AppProfileRoute
+  AppLeaveOfAbsenceIdRoute: typeof AppLeaveOfAbsenceIdRoute
   AppOfficialBusinessIdRoute: typeof AppOfficialBusinessIdRoute
   AppRecordsIdRoute: typeof AppRecordsIdRoute
+  AppLeaveOfAbsenceIndexRoute: typeof AppLeaveOfAbsenceIndexRoute
   AppOfficialBusinessIndexRoute: typeof AppOfficialBusinessIndexRoute
   AppRecordsIndexRoute: typeof AppRecordsIndexRoute
 }
@@ -335,8 +375,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppChangeRestDayRoute: AppChangeRestDayRoute,
   AppChangeTimeScheduleRoute: AppChangeTimeScheduleRoute,
   AppProfileRoute: AppProfileRoute,
+  AppLeaveOfAbsenceIdRoute: AppLeaveOfAbsenceIdRoute,
   AppOfficialBusinessIdRoute: AppOfficialBusinessIdRoute,
   AppRecordsIdRoute: AppRecordsIdRoute,
+  AppLeaveOfAbsenceIndexRoute: AppLeaveOfAbsenceIndexRoute,
   AppOfficialBusinessIndexRoute: AppOfficialBusinessIndexRoute,
   AppRecordsIndexRoute: AppRecordsIndexRoute,
 }

@@ -318,6 +318,92 @@ export type Database = {
           },
         ]
       }
+      loa_forms: {
+        Row: {
+          approved_by: string
+          approved_via_viber: boolean
+          attachment_approved: boolean
+          attachment_name: string | null
+          attachment_path: string | null
+          created_at: string
+          date_filed: string
+          date_from: string
+          date_to: string
+          days_applied: string
+          department: string
+          employee_name: string
+          employee_signature: string
+          id: string
+          id_number: string
+          leave_type: string
+          leave_type_other: string
+          owner_id: string | null
+          pay_status: string
+          position: string
+          reasons: string
+          report_back_date: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string
+          approved_via_viber?: boolean
+          attachment_approved?: boolean
+          attachment_name?: string | null
+          attachment_path?: string | null
+          created_at?: string
+          date_filed?: string
+          date_from?: string
+          date_to?: string
+          days_applied?: string
+          department?: string
+          employee_name?: string
+          employee_signature?: string
+          id?: string
+          id_number?: string
+          leave_type?: string
+          leave_type_other?: string
+          owner_id?: string | null
+          pay_status?: string
+          position?: string
+          reasons?: string
+          report_back_date?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string
+          approved_via_viber?: boolean
+          attachment_approved?: boolean
+          attachment_name?: string | null
+          attachment_path?: string | null
+          created_at?: string
+          date_filed?: string
+          date_from?: string
+          date_to?: string
+          days_applied?: string
+          department?: string
+          employee_name?: string
+          employee_signature?: string
+          id?: string
+          id_number?: string
+          leave_type?: string
+          leave_type_other?: string
+          owner_id?: string | null
+          pay_status?: string
+          position?: string
+          reasons?: string
+          report_back_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loa_forms_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dtr_template: {
         Row: {
           certified_by_label: string

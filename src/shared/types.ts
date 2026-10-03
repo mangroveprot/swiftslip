@@ -75,6 +75,39 @@ export type ObEntry = {
   time_return: string;
 };
 
+/** Leave of Absence (LOA) form — mirrors public/loa_form_template.docx. */
+export type LoaForm = {
+  id_number: string;
+  employee_name: string;
+  department: string;
+  position: string;
+  /** Free-text / date string as typed (e.g. "2026-09-26"). */
+  date_filed: string;
+  /** Inclusive dates, YYYY-MM-DD as typed ("" while unset). */
+  date_from: string;
+  date_to: string;
+  /** Free text, prefilled by the From/To calculation — may hold "4 hours". */
+  days_applied: string;
+  /** One of the template's boxes, e.g. "Sick Leave"; "" while unset. */
+  leave_type: string;
+  /** The text on the "Others: ____" line when leave_type is "Others". */
+  leave_type_other: string;
+  /** "" | "with_pay" | "without_pay" — the ( ) w/ PAY boxes. */
+  pay_status: string;
+  /** The REASONS / REMARKS body. */
+  reasons: string;
+  /** "To report back for work on" date, YYYY-MM-DD. */
+  report_back_date: string;
+  /** Supervisor / Department Head / Manager who approves. */
+  approved_by: string;
+  /** When true, show the "Approved via Viber" note under the approver. */
+  approved_via_viber: boolean;
+  /** Data URL (PNG) of the employee signature drawing or upload. */
+  employee_signature: string;
+  /** The uploaded medical certificate has been approved. */
+  attachment_approved: boolean;
+};
+
 /** One parsed row from a biometric time log. */
 export type ImportedLogEntry = {
   month: number;

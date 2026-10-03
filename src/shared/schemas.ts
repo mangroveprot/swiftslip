@@ -5,7 +5,7 @@
 import { z } from "zod";
 
 import { isPeriod } from "./period";
-import type { ObEntry, ObForm, Period } from "./types";
+import type { LoaForm, ObEntry, ObForm, Period } from "./types";
 
 const period = z
   .string()
@@ -41,6 +41,7 @@ export const activityLogActionFilter = z.enum([
   "signin-failed",
   "accounts",
   "ob",
+  "loa",
   "records",
   "attachments",
   "inventory",
@@ -153,6 +154,38 @@ export const saveObFormInput = z.object({
   entries: z.array(obEntrySchema).max(50),
 });
 
+export const createLoaFormInput = z.object({
+  // Client passes its local "today" (YYYY-MM-DD) so Date Filed defaults correctly
+  // for the user's timezone rather than the server's.
+  date_filed: z.string().optional(),
+});
+
+export const loaFormSchema = z.object({
+  id_number: z.string(),
+  employee_name: z.string(),
+  department: z.string(),
+  position: z.string(),
+  date_filed: z.string(),
+  date_from: z.string(),
+  date_to: z.string(),
+  days_applied: z.string(),
+  leave_type: z.string(),
+  leave_type_other: z.string(),
+  pay_status: z.string(),
+  reasons: z.string(),
+  report_back_date: z.string(),
+  approved_by: z.string(),
+  approved_via_viber: z.boolean().default(false),
+  employee_signature: z.string().default(""),
+  /** The uploaded medical certificate has been approved (also ticks "via Viber"). */
+  attachment_approved: z.boolean().default(false),
+});
+
+export const saveLoaFormInput = z.object({
+  id,
+  form: loaFormSchema,
+});
+
 /**
  * A supporting document uploaded for a record (the OB approval slip or a DTR
  * attachment). The file travels as raw base64 (same pattern as the biometric
@@ -246,6 +279,56 @@ export type ObChatReply = {
   reply: string;
   form?: Partial<ObForm>;
   entries?: ObEntry[];
+};
+
+// AI help for the LOA "Reasons / Remarks" field (the OB Purpose twin).
+export const loaReasonInput = z.object({
+  mode: z.enum(["generate", "enhance"]),
+  // For "generate": the user's rough context / instructions. For "enhance": ignored.
+  context: z.string().max(2000).default(""),
+  // The current Reasons text (the thing to enhance, or extra context to generate from).
+  current: z.string().max(4000).default(""),
+});
+
+// Conversational agent that fills the Leave of Absence form for the user.
+export const loaChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  text: z.string().max(4000),
+});
+
+export const loaChatInput = z.object({
+  // Transcript so far (oldest first). The assistant answers the last user turn.
+  messages: z.array(loaChatMessageSchema).min(1).max(40),
+  // The form exactly as it stands — the assistant patches it, never resets it.
+  form: loaFormSchema,
+  // The user's local date (YYYY-MM-DD) so "today" / "tomorrow" resolve correctly.
+  today: z.string().max(40).optional(),
+  // Optional photo/scan, handed to Gemini the same way the biometric import is.
+  image: z
+    .object({
+      mimeType: z.string().min(1).max(100),
+      base64: z.string().min(1),
+    })
+    .optional(),
+});
+
+/** The model's answer, validated before it is allowed to reach the client. */
+export const loaChatReplySchema = z.object({
+  reply: z.string().max(4000).default(""),
+  // Only the fields the assistant decided to change.
+  form: loaFormSchema.partial().optional(),
+});
+
+export type LoaChatInput = z.infer<typeof loaChatInput>;
+
+/**
+ * What the LOA assistant is allowed to send back: a short message plus, when
+ * needed, the form fields it changed. Declared by hand (rather than inferred)
+ * so the patch is a plain `Partial<LoaForm>`.
+ */
+export type LoaChatReply = {
+  reply: string;
+  form?: Partial<LoaForm>;
 };
 
 export const employeeProfileSchema = z.object({
