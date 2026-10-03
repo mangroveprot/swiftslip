@@ -337,6 +337,7 @@ export type Database = {
           id_number: string
           leave_type: string
           leave_type_other: string
+          other_attachments: Json
           owner_id: string | null
           pay_status: string
           position: string
@@ -362,6 +363,7 @@ export type Database = {
           id_number?: string
           leave_type?: string
           leave_type_other?: string
+          other_attachments?: Json
           owner_id?: string | null
           pay_status?: string
           position?: string
@@ -387,6 +389,7 @@ export type Database = {
           id_number?: string
           leave_type?: string
           leave_type_other?: string
+          other_attachments?: Json
           owner_id?: string | null
           pay_status?: string
           position?: string

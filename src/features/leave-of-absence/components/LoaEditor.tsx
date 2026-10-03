@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { deleteLoaForm, getLoaForm, saveLoaForm } from "@/api/loa.functions";
+import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
@@ -24,18 +25,20 @@ import { unmarkPendingForm } from "../lib/pending-forms";
 import { isScaffoldForm } from "../lib/scaffold";
 import { loaFormQueryOptions, loaFormsQueryOptions } from "../queries";
 import { LoaAssistantChat } from "./LoaAssistantChat";
-import { LoaAttachmentCard } from "./LoaAttachmentCard";
 import { LoaFormFields } from "./LoaFormFields";
+import { LoaOtherAttachmentsCard } from "./LoaOtherAttachmentsCard";
 import { LOA_SHEET_WIDTH, LoaPreview } from "./LoaPreview";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-/** Write a save into the query cache WITHOUT dropping the `attachment` sibling.
- *  A bare `form` write replaces the whole entry, so the file the card renders
- *  would vanish until the next refetch (e.g. the auto-save fired by ticking
- *  "Approved" made the attachment look deleted). */
+/** Write a save into the query cache WITHOUT dropping the `attachment` /
+ *  `others` siblings. A bare `form` write replaces the whole entry, so the
+ *  files the cards render would vanish until the next refetch (e.g. the
+ *  auto-save fired by ticking "Approved" made the attachment look deleted). */
 function writeFormCache(qc: QueryClient, id: string, next: { form: LoaForm & { id: string } }) {
-  qc.setQueryData(loaFormQueryOptions(id).queryKey, (prev) => (prev ? { ...prev, ...next } : next));
+  qc.setQueryData(loaFormQueryOptions(id).queryKey, (prev) =>
+    prev ? { ...prev, ...next } : { others: [], ...next },
+  );
 }
 
 export function LoaEditor({ id }: { id: string }) {
@@ -55,6 +58,13 @@ export function LoaEditor({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [previewOpen, setPreviewOpen] = useState(false);
+  // Fit-to-width for the live preview: the sheet keeps its exact A4 width
+  // (794px) so the replica stays pixel-faithful, and this scale shrinks it to
+  // the column instead of forcing sideways dragging. Print drops the scale
+  // again through the `.loa-fitbox` / `.loa-fitsheet` rules in styles.css.
+  const [fit, setFit] = useState({ scale: 1, height: 0 });
+  const fitBoxRef = useRef<HTMLDivElement>(null);
+  const sheetFitRef = useRef<HTMLDivElement>(null);
 
   // Serialized snapshot of what's already persisted, so we only save real changes.
   const savedSnapshotRef = useRef<string>("");
@@ -117,9 +127,11 @@ export function LoaEditor({ id }: { id: string }) {
     setForm(nextForm);
     savedSnapshotRef.current = incoming;
     initialSnapshotRef.current = incoming;
-    // An attachment counts as real content: the file itself lives in storage, so
-    // `data.attachment` is what tells the scaffold check it exists.
-    wasScaffoldOnLoadRef.current = isScaffoldForm(nextForm, profile, Boolean(data.attachment));
+    // A stored file is real content: the bytes live in storage, so the query
+    // result (`data.attachment` / `data.others`) is what tells the scaffold
+    // check the form already holds something.
+    const hasFiles = Boolean(data.attachment) || Boolean(data.others?.length);
+    wasScaffoldOnLoadRef.current = isScaffoldForm(nextForm, profile, hasFiles);
     // A form that already holds real content is one the user meant to keep — lock
     // that in now so clearing a field later can never trigger the scaffold delete.
     // It also stops being a "pending" form the list is hiding.
@@ -180,6 +192,30 @@ export function LoaEditor({ id }: { id: string }) {
     return () => clearTimeout(timer);
   }, [saveStatus]);
 
+  // Fit-to-width for the live preview: measure the column and the sheet, then
+  // scale the sheet down (never past 100 %) so the whole page is visible with
+  // no horizontal scrollbar. The ResizeObserver keeps both numbers honest as
+  // the column or the sheet content changes (window resize, longer text,
+  // a signature landing). Values only change when they really differ, so the
+  // observation never feeds back into itself.
+  useEffect(() => {
+    if (!formLoaded) return;
+    const box = fitBoxRef.current;
+    const sheet = sheetFitRef.current;
+    if (!box || !sheet) return;
+    const measure = () => {
+      const scale = Math.min(1, box.clientWidth / LOA_SHEET_WIDTH);
+      // offsetHeight ignores the transform — the natural, unscaled height.
+      const height = Math.round(sheet.offsetHeight * scale);
+      setFit((prev) => (prev.scale === scale && prev.height === height ? prev : { scale, height }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    observer.observe(sheet);
+    return () => observer.disconnect();
+  }, [formLoaded]);
+
   // On leaving: discard a form that is still just the untouched auto-fill
   // scaffold (no committed content, no net change this session), or flush any
   // unsaved changes. Anything the user actually edited is always kept.
@@ -202,8 +238,9 @@ export function LoaEditor({ id }: { id: string }) {
           // view (another tab's edit, a flush still in flight). Only a form that
           // is STILL an untouched scaffold gets deleted.
           void getLoaForm({ data: { id } })
-            .then(({ form: freshForm, attachment }) => {
-              if (!isScaffoldForm(freshForm, prof, Boolean(attachment))) {
+            .then(({ form: freshForm, attachment, others }) => {
+              const hasFiles = Boolean(attachment) || Boolean(others?.length);
+              if (!isScaffoldForm(freshForm, prof, hasFiles)) {
                 writeFormCache(qc, id, { form: { ...freshForm, id } });
                 return;
               }
@@ -309,18 +346,27 @@ export function LoaEditor({ id }: { id: string }) {
     }
   }
 
-  // Always at the top of the preview column — the upload prompt and an already
-  // attached certificate both belong where you look first. Print order is handled
-  // by `print:order` on the wrapper below, so the file still follows the form.
+  // Always at the top of the preview column — the upload prompts belong where
+  // you look first. Print order is handled by `print:order` on the wrapper
+  // below, so the certificate still follows the form (the extra files card is
+  // screen-only and never prints). Approval is no longer any card's business:
+  // it lives on the form itself, next to "Approved by".
   const attachmentCard = (
-    <LoaAttachmentCard
-      id={id}
-      form={form}
-      setForm={setForm}
-      canEdit={canEdit}
-      attachment={data?.attachment ?? null}
-      onUploaded={handleAttachmentUploaded}
-    />
+    <div className="space-y-3">
+      <AttachmentCard
+        kind="loa"
+        id={id}
+        file={data?.attachment ?? null}
+        canEdit={canEdit}
+        onUploaded={handleAttachmentUploaded}
+      />
+      <LoaOtherAttachmentsCard
+        id={id}
+        canEdit={canEdit}
+        others={data?.others ?? []}
+        onUploaded={handleAttachmentUploaded}
+      />
+    </div>
   );
 
   return (
@@ -418,12 +464,28 @@ export function LoaEditor({ id }: { id: string }) {
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          {/* The sheet is fixed at its true A4 page width (794px outer, with
-              the template's own margins as padding / 738px content) so text
-              wraps exactly like the Word template — the narrow column scrolls
-              horizontally instead of squeezing it. */}
-          <div className="min-h-0 overflow-x-auto rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
-            <LoaPreview sheetId="loa-sheet" form={form} />
+          {/* The sheet keeps its true A4 width (794px outer, the template's own
+              margins as padding / 738px content) so text wraps exactly like the
+              Word template — and the column scales that whole page down to fit
+              instead of making you drag sideways. `.loa-fitbox` /
+              `.loa-fitsheet` (styles.css) drop the scale again for print. */}
+          <div
+            ref={fitBoxRef}
+            className="min-h-0 overflow-x-hidden rounded-sm lg:flex-1 lg:overflow-y-auto print:order-1 print:overflow-visible"
+          >
+            <div className="loa-fitbox" style={{ height: fit.height || undefined }}>
+              <div
+                ref={sheetFitRef}
+                className="loa-fitsheet"
+                style={{
+                  width: LOA_SHEET_WIDTH,
+                  transform: `scale(${fit.scale})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                <LoaPreview sheetId="loa-sheet" form={form} />
+              </div>
+            </div>
           </div>
         </div>
       </div>

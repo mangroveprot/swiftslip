@@ -8,6 +8,7 @@ import * as loa from "@/server/services/loa.server";
 import { writeLoaReason as writeLoaReasonService } from "@/server/services/loa-reason.server";
 import * as profiles from "@/server/services/profiles.server";
 import {
+  attachmentPathInput,
   attachmentUploadInput,
   createLoaFormInput,
   deleteRowInput,
@@ -111,6 +112,53 @@ export const removeLoaAttachment = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireUser();
     const removed = await attachments.removeAttachment("loa_forms", "LOA form", data.id, user.id);
+    await logActivity({
+      action: "attachment.removed",
+      actorId: user.id,
+      actorName: user.label,
+      actorNumber: user.idNumber,
+      target: `LOA form ${data.id}`,
+      detail: removed.name || null,
+    });
+    return removed;
+  });
+
+/** Store one more supporting file (medical etc.) — up to 8, 10 MB each. */
+export const uploadLoaOtherAttachment = createServerFn({ method: "POST" })
+  .validator(attachmentUploadInput)
+  .handler(async ({ data }) => {
+    const user = await requireUser();
+    const stored = await attachments.uploadOtherAttachment("loa_forms", "LOA form", data, user.id);
+    await logActivity({
+      action: "attachment.uploaded",
+      actorId: user.id,
+      actorName: user.label,
+      actorNumber: user.idNumber,
+      target: `LOA form ${data.id}`,
+      detail: stored.name,
+    });
+    return stored;
+  });
+
+/** Signed links for every additional file on the form, keyed by storage path. */
+export const getLoaOtherAttachmentUrls = createServerFn({ method: "GET" })
+  .validator(idInput)
+  .handler(async ({ data }) => {
+    const user = await requireUser();
+    return await attachments.getOtherAttachmentUrls("loa_forms", "LOA form", data.id, user.id);
+  });
+
+export const removeLoaOtherAttachment = createServerFn({ method: "POST" })
+  .validator(attachmentPathInput)
+  .handler(async ({ data }) => {
+    const user = await requireUser();
+    const removed = await attachments.removeOtherAttachment(
+      "loa_forms",
+      "LOA form",
+      data.id,
+      data.path,
+      user.id,
+    );
     await logActivity({
       action: "attachment.removed",
       actorId: user.id,

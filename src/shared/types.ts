@@ -108,6 +108,12 @@ export type LoaForm = {
   attachment_approved: boolean;
 };
 
+/** One additional supporting file on an LOA form: its path in storage + name. */
+export type LoaOtherFile = {
+  path: string;
+  name: string;
+};
+
 /** One parsed row from a biometric time log. */
 export type ImportedLogEntry = {
   month: number;

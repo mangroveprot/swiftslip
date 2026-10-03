@@ -265,6 +265,18 @@
     max-width: none !important;
   }
 
+  /* The inline LOA preview scales its A4 sheet down to the column on screen;
+     on paper it must print at full size from the named page's box, so the fit
+     wrapper's measured height and the sheet's transform are both undone. */
+  .loa-fitbox {
+    height: auto !important;
+  }
+
+  .loa-fitsheet {
+    transform: none !important;
+    width: auto !important;
+  }
+
   /* The LOA sheet replicates the Word template at exactly 738px of content,
      so on paper it needs the template's own sectPr pgMar (asymmetric: 540/296
      twips left/right) instead of the shared 14mm @page below. The named page

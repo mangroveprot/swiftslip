@@ -1,4 +1,5 @@
 import { getDb } from "@/server/db/client.server";
+import { readOtherFiles } from "@/server/services/attachments.server";
 import type { LoaForm } from "@/shared/types";
 
 export async function listLoaForms(ownerId: string) {
@@ -14,19 +15,23 @@ export async function listLoaForms(ownerId: string) {
 }
 
 export async function getLoaForm(id: string, ownerId: string) {
-  const { data: form } = await getDb()
+  const { data: row } = await getDb()
     .from("loa_forms")
     .select("*")
     .eq("id", id)
     .eq("owner_id", ownerId)
     .maybeSingle();
-  if (!form) throw new Error("Form not found.");
+  if (!row) throw new Error("Form not found.");
+  // The additional supporting files travel as a plain list (their bytes stay
+  // in storage) — pulled out of the row so `form` remains an exact LoaForm.
+  const { other_attachments, ...form } = row;
   return {
     form: form as unknown as LoaForm & { id: string },
     // The medical-certificate file itself stays in storage — only its name
     // travels here, and only when there is one (absent keeps every cache write
     // of `form` type-compatible).
-    ...(form.attachment_name ? { attachment: { name: form.attachment_name } } : {}),
+    ...(row.attachment_name ? { attachment: { name: row.attachment_name } } : {}),
+    others: readOtherFiles(other_attachments),
   };
 }
 
@@ -92,11 +97,11 @@ export async function saveLoaForm(id: string, ownerId: string, form: LoaForm) {
 
 export async function deleteLoaForm(id: string, ownerId: string) {
   const db = getDb();
-  // Read the attachment first — deleting the row must take its file with it.
+  // Read the attachments first — deleting the row must take its files with it.
   // The subject fields ride along for the admin activity log.
   const { data: form } = await db
     .from("loa_forms")
-    .select("attachment_path,employee_name,id_number")
+    .select("attachment_path,other_attachments,employee_name,id_number")
     .eq("id", id)
     .eq("owner_id", ownerId)
     .maybeSingle();
@@ -108,9 +113,13 @@ export async function deleteLoaForm(id: string, ownerId: string) {
     .select("id");
   if (error) throw new Error(error.message);
   if (!data?.length) throw new Error("Form not found.");
-  if (form?.attachment_path) {
+  const paths = [
+    form?.attachment_path,
+    ...(form ? readOtherFiles(form.other_attachments).map((file) => file.path) : []),
+  ].filter((path): path is string => Boolean(path));
+  if (paths.length) {
     // Best effort: an orphaned file is harmless, a lost form is not.
-    await db.storage.from("swiftslip").remove([form.attachment_path]);
+    await db.storage.from("swiftslip").remove(paths);
   }
   return {
     id,

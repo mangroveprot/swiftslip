@@ -199,6 +199,12 @@ export const attachmentUploadInput = z.object({
   base64: z.string().min(1),
 });
 
+/** One of the form's additional supporting files, identified by its stored path. */
+export const attachmentPathInput = z.object({
+  id,
+  path: z.string().min(1).max(400),
+});
+
 export const upsertCodeInput = z.object({
   id: id.optional(),
   /** The account's unique sign-in ID — required, and unique across accounts. */

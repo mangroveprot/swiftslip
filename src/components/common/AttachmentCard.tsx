@@ -28,8 +28,8 @@ import {
 import { fileToBase64 } from "@/lib/file";
 import { toast } from "@/lib/toast";
 
-/** What the document means for this row: the OB slip and the LOA medical
- *  certificate both drive an approval mark; the DTR's is just a supporting file. */
+/** What the document means for this row: the OB slip still drives an approval
+ *  mark; the LOA medical certificate and the DTR's file are supporting files. */
 type AttachmentKind = "ob" | "loa" | "record";
 
 const MAX_MB = 10;
@@ -50,8 +50,7 @@ const COPY: Record<
     title: "Medical certificate",
     empty: "Attach medical certificate PDF, image or document, up to 10 MB",
     removeTitle: "Remove this attachment?",
-    removeDescription:
-      "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
+    removeDescription: "The uploaded file is deleted. This can't be undone.",
   },
   record: {
     title: "Attachment",

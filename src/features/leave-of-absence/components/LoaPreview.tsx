@@ -281,25 +281,30 @@ export function LoaPreview({
               },
             ]}
           />
+          {/* Date Filed / Position / Number of Days form ONE line-free block:
+              each cell drops the border it shares with the next (t8|…|b8 with
+              no `r`, … no `l`, … no `l`), so a signature written across the
+              three is never chopped by a cell rule. Inclusive Dates keeps its
+              own column, so the block still ends on a full line. */}
           <Row
             cells={[
               {
                 span: 3,
-                b: "t8|l18|b8|r8",
+                b: "t8|l18|b8",
                 cls: "italic",
                 style: { fontWeight: 700 },
                 content: "Date Filed:",
               },
               {
                 span: 6,
-                b: "t8|l8|b8|r8",
+                b: "t8|b8",
                 cls: "italic",
                 style: { fontWeight: 700 },
                 content: "Position:",
               },
               {
                 span: 6,
-                b: "t8|l8|b8|r8",
+                b: "t8|b8|r8",
                 cls: "italic",
                 style: { fontWeight: 700 },
                 content: "Number of Days Applied:",
@@ -318,19 +323,19 @@ export function LoaPreview({
             cells={[
               {
                 span: 3,
-                b: "t8|l18|b8|r8",
+                b: "t8|l18|b8",
                 style: { fontWeight: 700 },
                 content: form.date_filed,
               },
               {
                 span: 6,
-                b: "t8|l8|b8|r8",
+                b: "t8|b8",
                 style: { fontWeight: 700 },
                 content: form.position,
               },
               {
                 span: 6,
-                b: "t8|l8|b8|r8",
+                b: "t8|b8|r8",
                 cls: "text-center",
                 style: { fontWeight: 700 },
                 content: form.days_applied,
@@ -354,9 +359,9 @@ export function LoaPreview({
           <Row
             h={466}
             cells={[
-              { span: 3, b: "t8|l18|b18|r8", content: "" },
-              { span: 6, b: "t8|l8|b18|r8", content: "" },
-              { span: 6, b: "t8|l8|b18|r8", content: "" },
+              { span: 3, b: "t8|l18|b18", content: "" },
+              { span: 6, b: "t8|b18", content: "" },
+              { span: 6, b: "t8|b18|r8", content: "" },
               {
                 span: 5,
                 b: "t8|l8|b18|r8",

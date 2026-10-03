@@ -1,4 +1,5 @@
 import { getDb } from "@/server/db/client.server";
+import type { LoaOtherFile } from "@/shared/types";
 
 const BUCKET = "swiftslip";
 /** Every user's documents live in their own folder: ApprovalSlip/<their id>/. */
@@ -171,18 +172,19 @@ export async function removeAttachment(
 
   const detach = { attachment_path: null, attachment_name: null };
   const updated_at = new Date().toISOString();
-  // OB and LOA forms carry an approval mark along with the file — DTR records
-  // have no approval step.
+  // Only OB forms tie their approval mark to the file. LOA approval now
+  // belongs to the form itself (deleting the certificate must not revoke it)
+  // and DTR records never had a mark.
   const { error } =
-    table !== "dtr_records"
+    table === "ob_forms"
       ? await db
-          .from(table)
+          .from("ob_forms")
           .update({ ...detach, attachment_approved: false, updated_at })
           .eq("id", id)
           .eq("owner_id", ownerId)
           .select("id")
       : await db
-          .from("dtr_records")
+          .from(table)
           .update({ ...detach, updated_at })
           .eq("id", id)
           .eq("owner_id", ownerId)
@@ -192,6 +194,161 @@ export async function removeAttachment(
   if (row.attachment_path) await removeStoredFile(row.attachment_path);
   // The name rides along for the admin activity log.
   return { ok: true as const, name: row.attachment_name ?? "" };
+}
+
+/* --------------------------------------------------------------------------
+   Additional supporting files (LOA only): up to OTHER_ATTACHMENTS_MAX files
+   per form beside the single certificate — same bucket, same per-file rules,
+   with the stored list living in the row's `other_attachments` jsonb column.
+   -------------------------------------------------------------------------- */
+
+/** Cap on a LOA form's additional supporting files. */
+export const OTHER_ATTACHMENTS_MAX = 8;
+
+/** Read the jsonb file list as a plain array (junk entries are dropped). */
+export function readOtherFiles(raw: unknown): LoaOtherFile[] {
+  if (!Array.isArray(raw)) return [];
+  const out: LoaOtherFile[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const { path, name } = entry as { path?: unknown; name?: unknown };
+    if (typeof path === "string" && typeof name === "string") out.push({ path, name });
+  }
+  return out;
+}
+
+/**
+ * Store one more supporting file on a LOA form (a second medical note, lab
+ * result, …) next to the single certificate: same bucket and the same empty /
+ * 10 MB / blocked-MIME checks, capped at OTHER_ATTACHMENTS_MAX files per form.
+ * A random segment in the path means two files that share a name never
+ * collide (and a replace can't overwrite a sibling).
+ */
+export async function uploadOtherAttachment(
+  table: "loa_forms",
+  entity: Entity,
+  input: { id: string; filename: string; contentType: string; base64: string },
+  ownerId: string,
+) {
+  const db = getDb();
+  const { data: row, error: rowError } = await db
+    .from(table)
+    .select("id,other_attachments")
+    .eq("id", input.id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  if (rowError) throw new Error(rowError.message);
+  if (!row) throw new Error(`${entity} not found.`);
+
+  const current = readOtherFiles(row.other_attachments);
+  if (current.length >= OTHER_ATTACHMENTS_MAX) {
+    throw new Error(`A form can hold up to ${OTHER_ATTACHMENTS_MAX} additional files.`);
+  }
+
+  const contentType = (input.contentType.split(";")[0] ?? "").trim().toLowerCase();
+  if (BLOCKED_TYPES.has(contentType)) {
+    throw new Error("That file type can't be stored here. Use a PDF, image or Office document.");
+  }
+  const buffer = Buffer.from(input.base64, "base64");
+  if (!buffer.byteLength) throw new Error("That file is empty or could not be read.");
+  if (buffer.byteLength > ATTACHMENT_MAX_BYTES) {
+    throw new Error("Attachments must be 10 MB or smaller.");
+  }
+
+  const name = safeFilename(input.filename);
+  const unique = crypto.randomUUID().slice(0, 8);
+  const path = `${ROOT}/${ownerId}/${row.id}-extra-${unique}-${name}`;
+
+  await ensureBucket();
+  const { error: uploadError } = await db.storage.from(BUCKET).upload(path, buffer, {
+    contentType: contentType || "application/octet-stream",
+    upsert: true,
+  });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { error: updateError } = await db
+    .from(table)
+    .update({
+      other_attachments: [...current, { path, name }],
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id)
+    .eq("owner_id", ownerId)
+    .select("id");
+  if (updateError) {
+    // Roll the fresh upload back so a failed save can't leave an orphan file.
+    await removeStoredFile(path);
+    throw new Error(updateError.message);
+  }
+  return { name };
+}
+
+/** Short-lived signed links for every additional file on a LOA form, keyed by path. */
+export async function getOtherAttachmentUrls(
+  table: "loa_forms",
+  entity: Entity,
+  id: string,
+  ownerId: string,
+): Promise<Record<string, string>> {
+  const db = getDb();
+  const { data: row, error } = await db
+    .from(table)
+    .select("other_attachments")
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!row) throw new Error(`${entity} not found.`);
+
+  const signed = await Promise.all(
+    readOtherFiles(row.other_attachments).map(async (file) => {
+      const { data, error: signError } = await db.storage
+        .from(BUCKET)
+        .createSignedUrl(file.path, URL_TTL_SECONDS);
+      // A file whose object is already gone simply drops out of the list.
+      return signError || !data ? null : ([file.path, data.signedUrl] as const);
+    }),
+  );
+  return Object.fromEntries(
+    signed.filter((entry): entry is readonly [string, string] => entry !== null),
+  );
+}
+
+/** Detach one additional file; the stored object goes with it. */
+export async function removeOtherAttachment(
+  table: "loa_forms",
+  entity: Entity,
+  id: string,
+  path: string,
+  ownerId: string,
+) {
+  const db = getDb();
+  const { data: row, error: rowError } = await db
+    .from(table)
+    .select("id,other_attachments")
+    .eq("id", id)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  if (rowError) throw new Error(rowError.message);
+  if (!row) throw new Error(`${entity} not found.`);
+
+  const files = readOtherFiles(row.other_attachments);
+  const target = files.find((file) => file.path === path);
+  if (!target) throw new Error("File not found.");
+
+  const { error } = await db
+    .from(table)
+    .update({
+      other_attachments: files.filter((file) => file.path !== path),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id)
+    .eq("owner_id", ownerId)
+    .select("id");
+  if (error) throw new Error(error.message);
+
+  await removeStoredFile(path);
+  return { name: target.name };
 }
 
 /** Best-effort cleanup of a stored file whose row is already gone. */
