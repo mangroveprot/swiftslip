@@ -11,7 +11,9 @@ export function ApprovedBadge({ approved, className }: { approved: boolean; clas
   return approved ? (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700",
+        // `w-fit` keeps the pill hugging its text even in a flex-col card,
+        // so OB and DTR cards render it identically.
+        "inline-flex w-fit items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700",
         className,
       )}
     >
@@ -21,7 +23,7 @@ export function ApprovedBadge({ approved, className }: { approved: boolean; clas
   ) : (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700",
+        "inline-flex w-fit items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700",
         className,
       )}
     >
