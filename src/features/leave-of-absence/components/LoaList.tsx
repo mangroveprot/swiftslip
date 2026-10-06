@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
+import { formatMonthDayYear } from "@/shared/period";
 import { relativeTime } from "@/shared/time";
 import { localToday } from "../lib/dates";
 import { usePendingForms } from "../lib/pending-forms";
@@ -134,7 +135,10 @@ function LoaCard({
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
-  const inclusive = f.date_from && f.date_to ? `${f.date_from} → ${f.date_to}` : f.date_from || "";
+  const inclusive =
+    f.date_from && f.date_to
+      ? `${formatMonthDayYear(f.date_from)} → ${formatMonthDayYear(f.date_to)}`
+      : formatMonthDayYear(f.date_from);
   return (
     <div
       role="link"

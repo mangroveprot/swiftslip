@@ -5,10 +5,13 @@ export function ObFormFields({
   form,
   setForm,
   canEdit,
+  savedSignature,
 }: {
   form: ObForm;
   setForm: (form: ObForm) => void;
   canEdit: boolean;
+  /** Profile signature, offered in the signature dialog as a one-click re-use. */
+  savedSignature?: string | undefined;
 }) {
   return (
     <section className="shrink-0 rounded-xl border bg-card p-3 shadow-sm">
@@ -68,6 +71,7 @@ export function ObFormFields({
       <SignatureField
         value={form.employee_signature}
         disabled={!canEdit}
+        savedSignature={savedSignature}
         onChange={(v) => setForm({ ...form, employee_signature: v })}
       />
     </section>

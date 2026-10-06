@@ -77,6 +77,19 @@ export function formatShortDate(day: number, month: number, year: number) {
   return `${mm}/${dd}/${yy}`;
 }
 
+/**
+ * How a stored `YYYY-MM-DD` date reads on screen: `10/03/2026` — slashes,
+ * month and day always two digits. `2026-10-03` is the storage/`<input
+ * type="date">` format, never what a finished form should print.
+ *
+ * Anything that isn't a complete ISO date ("" while unset, a hand-typed value)
+ * comes back untouched, so an unusual date is displayed rather than rewritten.
+ */
+export function formatMonthDayYear(value: string | null | undefined): string {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec((value ?? "").trim());
+  return iso ? `${iso[2]}/${iso[3]}/${iso[1]}` : (value ?? "");
+}
+
 /** Period as a date range for the MONTH header, e.g. 09/10/26 - 09/25/26 */
 export function formatPeriodDateRange(period: Period, month: number, year: number) {
   const { start, end } = periodRange(period, month, year);

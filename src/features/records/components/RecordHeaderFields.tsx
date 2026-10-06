@@ -7,11 +7,14 @@ export function RecordHeaderFields({
   setHeader,
   template,
   canEdit,
+  savedSignature,
 }: {
   header: DtrHeader;
   setHeader: (header: DtrHeader) => void;
   template: DtrTemplate;
   canEdit: boolean;
+  /** Profile signature, offered in the signature dialog as a one-click re-use. */
+  savedSignature?: string | undefined;
 }) {
   return (
     <section className="shrink-0 rounded-xl border bg-card p-3 shadow-sm">
@@ -107,6 +110,7 @@ export function RecordHeaderFields({
       <SignatureField
         value={header.employee_signature}
         disabled={!canEdit}
+        savedSignature={savedSignature}
         onChange={(v) => setHeader({ ...header, employee_signature: v })}
       />
     </section>

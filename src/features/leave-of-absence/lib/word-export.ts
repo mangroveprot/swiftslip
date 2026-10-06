@@ -1,6 +1,8 @@
 import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import ImageModule from "docxtemplater-image-module-free";
+import { base64ToBytes, fitSignature, naturalSize, toBase64 } from "@/lib/signature";
+import { formatMonthDayYear } from "@/shared/period";
 import type { LoaForm } from "@/shared/types";
 
 // The export fills a tokenized copy of the company's real Word form
@@ -14,46 +16,11 @@ import type { LoaForm } from "@/shared/types";
 // and {viber} (blue note).
 const TEMPLATE_URL = "/loa_form_template.docx";
 
-// Signature image is rendered at most this big (pixels); aspect ratio preserved.
-const SIG_MAX_W = 150;
-const SIG_MAX_H = 45;
-
 // A 1×1 transparent pixel: docxtemplater's image module refuses to render an
 // empty value, so an employee who hasn't signed yet still exports (the cell
 // just stays blank, exactly like the untouched template).
 const TRANSPARENT_PX =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-
-/** Split a data URL / bare base64 into its raw base64 payload (no prefix). */
-function toBase64(src: string): string {
-  if (!src) return "";
-  const comma = src.indexOf(",");
-  return src.startsWith("data:") && comma >= 0 ? src.slice(comma + 1) : src;
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
-
-/** Natural pixel size of an image source, or null if it can't be measured. */
-function naturalSize(src: string): Promise<{ w: number; h: number } | null> {
-  return new Promise((resolve) => {
-    if (!src) return resolve(null);
-    const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
-}
-
-function fit(size: { w: number; h: number } | null): [number, number] {
-  if (!size || !size.w || !size.h) return [SIG_MAX_W, SIG_MAX_H];
-  const scale = Math.min(SIG_MAX_W / size.w, SIG_MAX_H / size.h);
-  return [Math.round(size.w * scale), Math.round(size.h * scale)];
-}
 
 /** The template's own empty "Others:" line — the fallback when no text is given. */
 const OTHERS_LINE = "_".repeat(41);
@@ -76,13 +43,60 @@ const CHECK_TOKENS: Record<string, string> = {
   Others: "chk_others",
 };
 
+/**
+ * `w14:paraId` of the three header cells the preview centres: the "Date Filed:" /
+ * "Position:" / "Number of Days Applied:" labels and the value cells under them.
+ * The ids live in public/loa_form_template.docx, so they survive every render
+ * and there's no text to match against (the value cells are empty in the
+ * template — their contents differ on every export).
+ */
+const CENTERED_PARA_IDS = [
+  "36183A05", // Date Filed:
+  "5A76AA9B", // Position:
+  "7DE5730A", // Number of Days Applied:
+  "400AA95C", // {DateField}
+  "74100F27", // {Postion}
+  "439D4F4E", // {NumberDaysApplied}
+];
+
+/** Insert `markup` into the `<w:pPr>` of the paragraph carrying `paraId`, right
+ *  before the paragraph's own run-props — where OOXML wants ind / jc / spacing
+ *  to sit. Anything that doesn't look like the expected shape is returned
+ *  unchanged rather than mangled. */
+function insertInPPr(xml: string, paraId: string, markup: string): string {
+  const at = xml.indexOf(`w14:paraId="${paraId}"`);
+  if (at < 0) return xml;
+  const pPr = xml.indexOf("<w:pPr>", at);
+  const pPrEnd = pPr < 0 ? -1 : xml.indexOf("</w:pPr>", pPr);
+  const pEnd = xml.indexOf("</w:p>", at);
+  if (pPr < 0 || pPrEnd < 0 || pEnd < 0 || pPrEnd > pEnd) return xml;
+  const rPr = xml.indexOf("<w:rPr>", pPr);
+  const insertAt = rPr >= 0 && rPr < pPrEnd ? rPr : pPrEnd;
+  return xml.slice(0, insertAt) + markup + xml.slice(insertAt);
+}
+
+/** Centre the paragraph carrying `paraId` — `<w:jc>` after `ind`, before `rPr`. */
+const centerParagraph = (xml: string, paraId: string) =>
+  insertInPPr(xml, paraId, '<w:jc w:val="center"/>');
+
+/**
+ * The "Others:" paragraph (typed answer on top, fill line underneath).
+ *
+ * Its leading is tightened so the answer sits almost on the line: 67/240 of
+ * Word's single spacing for Calibri 11 = 5px, the same leading the preview
+ * uses. The 75-twip (5px) `after` puts back exactly what the tighter leading
+ * takes off the bottom of the block, so the fill line itself stays on the
+ * cell's baseline where the template leaves it.
+ */
+const OTHERS_PARA_ID = "0C022627";
+
 export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileName: string }) {
   const res = await fetch(TEMPLATE_URL);
   if (!res.ok) throw new Error("Could not load the Word template.");
   const content = await res.arrayBuffer();
 
   const sigB64 = toBase64(form.employee_signature ?? "");
-  const sigSize = fit(sigB64 ? await naturalSize(form.employee_signature) : null);
+  const sigSize = fitSignature(sigB64 ? await naturalSize(form.employee_signature) : null);
 
   const imageModule = new ImageModule({
     centered: false,
@@ -101,12 +115,11 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
   const box = (type: string) =>
     Object.fromEntries([[CHECK_TOKENS[type], check(form.leave_type === type)]]);
 
-  // The fill line keeps the template's exact width; the typed Others text
-  // goes on its own line directly UNDER it — the same rule as the preview
-  // (and only while Others is the chosen type). The second line is appended
-  // after render, just before the paragraph's close: {others_line} is
-  // followed inline by the pay boxes, so a line break inside the token
-  // would drag "( ) w/ PAY" down with the text.
+  // The typed Others answer goes ON TOP (indented to where the fill line
+  // starts), with "Others:" and the line — plus the two pay boxes, spaced off
+  // the line — underneath it, the same order the preview draws. It only appears
+  // while Others is the chosen type; switching away keeps the draft in the form
+  // but out of the sheet/export.
   const typedOthers =
     form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
 
@@ -114,13 +127,13 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
     IdNumber: form.id_number ?? "",
     EmployeName: form.employee_name ?? "",
     DepratmentLocation: form.department ?? "",
-    DateField: form.date_filed ?? "",
+    DateField: formatMonthDayYear(form.date_filed),
     Postion: form.position ?? "",
     NumberDaysApplied: form.days_applied ?? "",
-    From: form.date_from ?? "",
-    To: form.date_to ?? "",
+    From: formatMonthDayYear(form.date_from),
+    To: formatMonthDayYear(form.date_to),
     Remarks: form.reasons ?? "",
-    date: form.report_back_date ?? "",
+    date: formatMonthDayYear(form.report_back_date),
     approvedBy: form.approved_by ?? "",
     viber: form.approved_via_viber ? "Approved via Viber" : "",
     employee_signature: sigB64 || TRANSPARENT_PX,
@@ -132,57 +145,80 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
     ...box("Paternity Leave"),
     ...box("Bereavement Leave"),
     ...box("Others"),
-    // The typed text's second line is appended after render, below.
-    others_line: OTHERS_LINE,
+    // The two trailing spaces are the gap before "( ) w/ PAY"; docxtemplater
+    // keeps them (it emits xml:space="preserve" on the run).
+    others_line: OTHERS_LINE + "  ",
     chk_with_pay: form.pay_status === "with_pay" ? "✓" : " ",
     chk_without_pay: form.pay_status === "without_pay" ? "✓" : " ",
   });
 
-  if (typedOthers) {
-    const entry = zip.file("word/document.xml");
-    let xml = entry ? entry.asText() : "";
-    const label = xml.indexOf("Others:");
-    const pEnd = label < 0 ? -1 : xml.indexOf("</w:p>", label);
-    const tcEnd = label < 0 ? -1 : xml.indexOf("</w:tc>", label);
-    if (pEnd >= 0 && (tcEnd < 0 || pEnd < tcEnd)) {
-      // Reuse the label run's rPr so the note matches the line's styling.
-      const runStart = Math.max(xml.lastIndexOf("<w:r>", label), xml.lastIndexOf("<w:r ", label));
-      const rPr =
-        /<w:rPr>[\s\S]*<\/w:rPr>/.exec(runStart >= 0 ? xml.slice(runStart, label) : "")?.[0] ?? "";
-      const text = typedOthers.replace(/[\r\n]+/g, " ");
-      const under =
-        `<w:r><w:br/></w:r><w:r>${rPr}` +
-        `<w:t xml:space="preserve">${OTHERS_TEXT_INDENT}${xmlEsc(text)}</w:t></w:r>`;
-      xml = xml.slice(0, pEnd) + under + xml.slice(pEnd);
+  // Post-render XML pass: the typed answer sits ON TOP of the fill line and the
+  // Date Filed / Position / Number of Days cells are centred — both matching the
+  // preview. Centring runs on every export; the answer only when Others is the
+  // chosen type.
+  const entry = zip.file("word/document.xml");
+  let xml = entry ? entry.asText() : "";
+  if (xml) {
+    for (const paraId of CENTERED_PARA_IDS) xml = centerParagraph(xml, paraId);
+    // …and pull the typed answer down onto its fill line.
+    xml = insertInPPr(
+      xml,
+      OTHERS_PARA_ID,
+      '<w:spacing w:line="67" w:lineRule="auto" w:after="75"/>',
+    );
 
-      // The template ends with an invisible empty paragraph (after the last
-      // table) that still occupies a full line — with the sheet one line
-      // taller, Word spills it onto a blank second page. Pin it to 2pt for
-      // this export only; every other export stays byte-identical.
-      const sect = xml.lastIndexOf("<w:sectPr");
-      const pOpen = Math.max(xml.lastIndexOf("<w:p ", sect), xml.lastIndexOf("<w:p>", sect));
-      const pClose = pOpen < 0 ? -1 : xml.indexOf("</w:p>", pOpen);
-      if (pOpen >= 0 && pClose > pOpen) {
-        const para = xml.slice(pOpen, pClose);
-        const tight = '<w:spacing w:line="40" w:lineRule="exact"/>';
-        let fixed: string;
-        if (/<w:spacing\b[^>]*\/>/.test(para)) {
-          fixed = para.replace(/<w:spacing\b[^>]*\/>/, tight);
-        } else {
-          // spacing sits after pStyle and before jc/rPr in a valid pPr.
-          const at = ["<w:jc", "<w:rPr", "</w:pPr>"]
-            .map((t) => para.indexOf(t))
-            .filter((n) => n >= 0)
-            .sort((a, b) => a - b)[0];
-          fixed =
-            at !== undefined
-              ? para.slice(0, at) + tight + para.slice(at)
-              : para.replace(/^(<w:p(?:\s[^>]*)?>)/, "$1<w:pPr>" + tight + "</w:pPr>");
+    if (typedOthers) {
+      const label = xml.indexOf("Others:");
+      const pEnd = label < 0 ? -1 : xml.indexOf("</w:p>", label);
+      const tcEnd = label < 0 ? -1 : xml.indexOf("</w:tc>", label);
+      if (pEnd >= 0 && (tcEnd < 0 || pEnd < tcEnd)) {
+        // Reuse the label run's rPr so the answer matches the line's styling,
+        // then drop it in BEFORE that run: text on top, "Others:" and the fill
+        // line underneath — the order the preview draws. {others_line} is
+        // followed inline by the pay boxes, so the break goes between the two
+        // runs rather than inside the token.
+        const runStart = Math.max(xml.lastIndexOf("<w:r>", label), xml.lastIndexOf("<w:r ", label));
+        const rPr =
+          /<w:rPr>[\s\S]*<\/w:rPr>/.exec(runStart >= 0 ? xml.slice(runStart, label) : "")?.[0] ??
+          "";
+        const text = typedOthers.replace(/[\r\n]+/g, " ");
+        if (runStart >= 0) {
+          const above =
+            `<w:r>${rPr}<w:t xml:space="preserve">${OTHERS_TEXT_INDENT}${xmlEsc(text)}</w:t></w:r>` +
+            `<w:r>${rPr}<w:br/></w:r>`;
+          xml = xml.slice(0, runStart) + above + xml.slice(runStart);
         }
-        xml = xml.slice(0, pOpen) + fixed + xml.slice(pClose);
+
+        // The template ends with an invisible empty paragraph (after the last
+        // table) that still occupies a full line — with the sheet one line
+        // taller, Word spills it onto a blank second page. Pin it to 2pt for
+        // this export only; every other export stays byte-identical.
+        const sect = xml.lastIndexOf("<w:sectPr");
+        const pOpen = Math.max(xml.lastIndexOf("<w:p ", sect), xml.lastIndexOf("<w:p>", sect));
+        const pClose = pOpen < 0 ? -1 : xml.indexOf("</w:p>", pOpen);
+        if (pOpen >= 0 && pClose > pOpen) {
+          const para = xml.slice(pOpen, pClose);
+          const tight = '<w:spacing w:line="40" w:lineRule="exact"/>';
+          let fixed: string;
+          if (/<w:spacing\b[^>]*\/>/.test(para)) {
+            fixed = para.replace(/<w:spacing\b[^>]*\/>/, tight);
+          } else {
+            // spacing sits after pStyle and before jc/rPr in a valid pPr.
+            const at = ["<w:jc", "<w:rPr", "</w:pPr>"]
+              .map((t) => para.indexOf(t))
+              .filter((n) => n >= 0)
+              .sort((a, b) => a - b)[0];
+            fixed =
+              at !== undefined
+                ? para.slice(0, at) + tight + para.slice(at)
+                : para.replace(/^(<w:p(?:\s[^>]*)?>)/, "$1<w:pPr>" + tight + "</w:pPr>");
+          }
+          xml = xml.slice(0, pOpen) + fixed + xml.slice(pClose);
+        }
       }
-      zip.file("word/document.xml", xml);
     }
+
+    zip.file("word/document.xml", xml);
   }
 
   const blob = zip.generate({

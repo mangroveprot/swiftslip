@@ -1,4 +1,5 @@
 import { APP } from "@/config/app";
+import { formatMonthDayYear } from "@/shared/period";
 import { formatTime12h } from "@/shared/time";
 import type { ObEntry, ObForm } from "@/shared/types";
 
@@ -57,9 +58,13 @@ export function ObPreview({
             <HeaderField label="Department / Location:" value={form.department} />
           </tr>
           <tr>
-            <HeaderField label="Date Filed:" value={form.date_filed} highlight />
+            <HeaderField
+              label="Date Filed:"
+              value={formatMonthDayYear(form.date_filed)}
+              highlight
+            />
             <HeaderField label="Position:" value={form.position} />
-            <HeaderField label="Date of OB:" value={form.date_of_ob} />
+            <HeaderField label="Date of OB:" value={formatMonthDayYear(form.date_of_ob)} />
           </tr>
         </tbody>
       </table>

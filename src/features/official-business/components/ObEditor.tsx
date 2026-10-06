@@ -16,6 +16,7 @@ import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
+import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { ObEntry, ObForm } from "@/shared/types";
 import { APP } from "@/config/app";
@@ -94,8 +95,7 @@ export function ObEditor({ id }: { id: string }) {
   useEffect(() => {
     if (!data || !profileReady) return;
     const f = data.form;
-    const localSig =
-      typeof window !== "undefined" ? (localStorage.getItem(`ob-sig:${id}`) ?? "") : "";
+    const localSig = readSignatureBackup("ob", id);
     const nextForm: ObForm = {
       id_number: f.id_number,
       employee_name: f.employee_name,
@@ -144,9 +144,8 @@ export function ObEditor({ id }: { id: string }) {
 
   // Keep a local backup of the signature so it survives a failed save.
   useEffect(() => {
-    if (!form || typeof window === "undefined") return;
-    if (form.employee_signature) localStorage.setItem(`ob-sig:${id}`, form.employee_signature);
-    else localStorage.removeItem(`ob-sig:${id}`);
+    if (!form) return;
+    saveSignatureBackup("ob", id, form.employee_signature);
   }, [form?.employee_signature, id]);
 
   // Auto-save: after edits settle, persist quietly in the background.
@@ -401,7 +400,12 @@ export function ObEditor({ id }: { id: string }) {
       </div>
       <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
         <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-hidden">
-          <ObFormFields form={form} setForm={setForm} canEdit={canEdit} />
+          <ObFormFields
+            form={form}
+            setForm={setForm}
+            canEdit={canEdit}
+            savedSignature={profile?.signature}
+          />
           <ObItineraryTable rows={rows} setRows={setRows} canEdit={canEdit} busy={busy} />
         </div>
 

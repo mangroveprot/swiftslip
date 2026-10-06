@@ -2,8 +2,8 @@ import {
   Briefcase,
   CalendarClock,
   CalendarOff,
+  CalendarX,
   Clock,
-  TreePalm,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -13,32 +13,44 @@ import type { Role } from "@/shared/types";
 export type NavItem = {
   label: string;
   to: string;
-  /** Sheet this mirrors in the company workbook. */
-  note: string;
   /** Row icon shown to the left of the label. */
   icon: LucideIcon;
+  /** Renders as an inert row with a "Soon" pill instead of a link. */
   soon?: boolean;
 };
 
-export const NAV_ITEMS: NavItem[] = [
-  { label: "Daily Time Record", to: "/records", note: "DTR sheet", icon: Clock },
-  { label: "Official Business", to: "/official-business", note: "OB form", icon: Briefcase },
-  { label: "Leave of Absence", to: "/leave-of-absence", note: "LOA form", icon: TreePalm },
+export type NavSection = {
+  /** Uppercased group heading shown above the section's rows. */
+  label: string;
+  items: NavItem[];
+};
+
+/** The sidebar's nav, grouped exactly as the portal mock lays it out. */
+export const NAV_SECTIONS: NavSection[] = [
   {
-    label: "Change Time Schedule",
-    to: "/change-time-schedule",
-    note: "Notice form",
-    icon: CalendarClock,
-    soon: true,
+    label: "Records & Forms",
+    items: [
+      { label: "Daily Time Record", to: "/records", icon: Clock },
+      { label: "Official Business", to: "/official-business", icon: Briefcase },
+      { label: "Leave of Absence", to: "/leave-of-absence", icon: CalendarX },
+    ],
   },
   {
-    label: "Change Rest Day",
-    to: "/change-rest-day",
-    note: "Notice form",
-    icon: CalendarOff,
-    soon: true,
+    label: "Requests",
+    items: [
+      {
+        label: "Change Time Schedule",
+        to: "/change-time-schedule",
+        icon: CalendarClock,
+        soon: true,
+      },
+      { label: "Change Rest Day", to: "/change-rest-day", icon: CalendarOff, soon: true },
+    ],
   },
-  { label: "My Account", to: "/profile", note: "Employee details", icon: UserRound },
+  {
+    label: "Account",
+    items: [{ label: "My Account", to: "/profile", icon: UserRound }],
+  },
 ];
 
 export function roleLabel(role: Role | undefined) {

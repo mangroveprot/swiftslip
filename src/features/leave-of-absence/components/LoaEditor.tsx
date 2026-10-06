@@ -16,6 +16,7 @@ import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
+import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { LoaForm } from "@/shared/types";
 import { APP } from "@/config/app";
@@ -92,8 +93,7 @@ export function LoaEditor({ id }: { id: string }) {
   useEffect(() => {
     if (!data || !profileReady) return;
     const f = data.form;
-    const localSig =
-      typeof window !== "undefined" ? (localStorage.getItem(`loa-sig:${id}`) ?? "") : "";
+    const localSig = readSignatureBackup("loa", id);
     const nextForm: LoaForm = {
       id_number: f.id_number,
       employee_name: f.employee_name,
@@ -148,9 +148,8 @@ export function LoaEditor({ id }: { id: string }) {
   const sig = form?.employee_signature;
   const formLoaded = form !== null;
   useEffect(() => {
-    if (!formLoaded || typeof window === "undefined") return;
-    if (sig) localStorage.setItem(`loa-sig:${id}`, sig);
-    else localStorage.removeItem(`loa-sig:${id}`);
+    if (!formLoaded) return;
+    saveSignatureBackup("loa", id, sig);
   }, [formLoaded, sig, id]);
 
   // Auto-save: after edits settle, persist quietly in the background.
@@ -419,7 +418,12 @@ export function LoaEditor({ id }: { id: string }) {
       </div>
       <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
         <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-auto">
-          <LoaFormFields form={form} setForm={setForm} canEdit={canEdit} />
+          <LoaFormFields
+            form={form}
+            setForm={setForm}
+            canEdit={canEdit}
+            savedSignature={profile?.signature}
+          />
           {/* The other documents sit at the bottom of the form — the approval
               attachment keeps the top of the preview column. Screen-only, so
               it never prints. */}

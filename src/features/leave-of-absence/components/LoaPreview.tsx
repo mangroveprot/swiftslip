@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { APP } from "@/config/app";
+import { formatMonthDayYear } from "@/shared/period";
 import type { LoaForm } from "@/shared/types";
 
 // Pixel replica of public/loa_form_template.docx (APPLICATION FOR LEAVE OF
@@ -75,6 +76,9 @@ type Cell = {
   b?: string;
   /** tcPr vAlign — defaults to center (91 of the template's cells). */
   v?: "top" | "center" | "bottom";
+  /** tcPr vMerge — one cell across several rows, so its content centres over
+   *  the whole merged box instead of the first row alone. */
+  rowSpan?: number;
   /** #fill for the gray section bars. */
   fill?: string;
   cls?: string;
@@ -89,6 +93,7 @@ function Row({ cells, h, fill }: { cells: Cell[]; h?: number; fill?: string }) {
         <td
           key={i}
           colSpan={c.span}
+          rowSpan={c.rowSpan}
           className={c.cls}
           style={{
             ...borderStyles(c.b),
@@ -126,17 +131,16 @@ export function LoaPreview({
   const box = (type: string) => (form.leave_type === type ? "✓" : " ");
   const withPay = form.pay_status === "with_pay" ? "✓" : " ";
   const withoutPay = form.pay_status === "without_pay" ? "✓" : " ";
-  // The fill line keeps the template's exact width; the typed Others text
-  // sits on its own line directly UNDER it (indented past the "Others: "
-  // prefix so it starts below the line) and the row never wraps. It only
-  // appears while Others is the chosen type — switching away keeps the
-  // draft in the form but out of the sheet/export.
+  // The typed Others answer sits ON TOP (indented to where the fill line
+  // starts), with "Others:" and the line — plus the two pay boxes, spaced off
+  // the line — underneath it. It only appears while Others is the chosen type;
+  // switching away keeps the draft in the form but out of the sheet/export.
   const typedOthers =
     form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
   const othersText =
-    `Others: ${OTHERS_LINE}(${withPay}) w/ PAY                ` +
-    `(${withoutPay}) w/o PAY` +
-    (typedOthers ? `\n${OTHERS_TEXT_INDENT}${typedOthers}` : "");
+    (typedOthers ? `${OTHERS_TEXT_INDENT}${typedOthers}\n` : "") +
+    `Others: ${OTHERS_LINE}  (${withPay}) w/ PAY                ` +
+    `(${withoutPay}) w/o PAY`;
 
   return (
     <div
@@ -304,21 +308,21 @@ export function LoaPreview({
               {
                 span: 3,
                 b: "t8|l18|b8|r8",
-                cls: "italic",
+                cls: "italic text-center",
                 style: { fontWeight: 700 },
                 content: "Date Filed:",
               },
               {
                 span: 6,
                 b: "t8|l8|b8|r8",
-                cls: "italic",
+                cls: "italic text-center",
                 style: { fontWeight: 700 },
                 content: "Position:",
               },
               {
                 span: 6,
                 b: "t8|l8|b8|r8",
-                cls: "italic",
+                cls: "italic text-center",
                 style: { fontWeight: 700 },
                 content: "Number of Days Applied:",
               },
@@ -336,19 +340,26 @@ export function LoaPreview({
             cells={[
               {
                 span: 3,
-                b: "t8|l18|r8",
+                // vMerge: these three span the blank row under them too, so the
+                // fill sits in the middle of the merged box — never at the top.
+                rowSpan: 2,
+                b: "t8|l18|b18|r8",
+                cls: "text-center",
                 style: { fontWeight: 700 },
-                content: form.date_filed,
+                content: formatMonthDayYear(form.date_filed),
               },
               {
                 span: 6,
-                b: "t8|l8|r8",
+                rowSpan: 2,
+                b: "t8|l8|b18|r8",
+                cls: "text-center",
                 style: { fontWeight: 700 },
                 content: form.position,
               },
               {
                 span: 6,
-                b: "t8|l8|r8",
+                rowSpan: 2,
+                b: "t8|l8|b18|r8",
                 cls: "text-center",
                 style: { fontWeight: 700 },
                 content: form.days_applied,
@@ -372,22 +383,21 @@ export function LoaPreview({
           <Row
             h={466}
             cells={[
-              { span: 3, b: "l18|b18|r8", content: "" },
-              { span: 6, b: "l8|b18|r8", content: "" },
-              { span: 6, b: "l8|b18|r8", content: "" },
+              // The first three columns belong to the merged cells above
+              // (rowSpan 2), so only the Inclusive Dates pair lives here.
               {
                 span: 5,
                 b: "t8|l8|b18|r8",
                 cls: "text-center",
                 style: { fontWeight: 700 },
-                content: form.date_from,
+                content: formatMonthDayYear(form.date_from),
               },
               {
                 span: 1,
                 b: "t8|l8|b18|r18",
                 cls: "text-center",
                 style: { fontWeight: 700 },
-                content: form.date_to,
+                content: formatMonthDayYear(form.date_to),
               },
             ]}
           />
@@ -549,7 +559,19 @@ export function LoaPreview({
                 span: 19,
                 b: "l18|r18",
                 v: "bottom",
-                style: { fontWeight: 700, whiteSpace: "pre-wrap" },
+                // The typed answer sits almost on top of the fill line: 5px of
+                // leading instead of the sheet's usual 1.22 (17.9px). The 6.5px
+                // of bottom padding is exactly half the leading given up, so the
+                // fill line itself stays put on the cell's baseline instead of
+                // sinking into the border. The .docx mirrors both with
+                // w:line="67" (67/240 of Calibri 11 single = 5px) plus
+                // w:after="75" (5px) for the same correction.
+                style: {
+                  fontWeight: 700,
+                  whiteSpace: "pre-wrap",
+                  lineHeight: "5px",
+                  paddingBottom: "6.5px",
+                },
                 content: othersText,
               },
             ]}
@@ -631,7 +653,7 @@ export function LoaPreview({
                 b: "l18|b18|r18",
                 cls: "text-center",
                 style: { fontWeight: 700 },
-                content: form.report_back_date,
+                content: formatMonthDayYear(form.report_back_date),
               },
             ]}
           />

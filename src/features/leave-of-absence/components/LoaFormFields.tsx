@@ -22,10 +22,13 @@ export function LoaFormFields({
   form,
   setForm,
   canEdit,
+  savedSignature,
 }: {
   form: LoaForm;
   setForm: (form: LoaForm) => void;
   canEdit: boolean;
+  /** Profile signature, offered in the signature dialog as a one-click re-use. */
+  savedSignature?: string | undefined;
 }) {
   // Both dates present and From after To — the preview keeps showing what is
   // typed (no silent swap); the fields just refuse to compute from the bad range.
@@ -42,8 +45,14 @@ export function LoaFormFields({
   }
 
   return (
-    <section className="shrink-0 rounded-xl border bg-card p-3 shadow-sm">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+    <section className="loa-card shrink-0 rounded-2xl border bg-card p-4 shadow-sm">
+      {/* Title row — every box on this form carries one, in the same style the
+          other cards on the page use, so the form reads as a labelled box
+          rather than a bare field grid. */}
+      <div className="mb-2.5">
+        <p className="lbl">Leave details</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Field
           label="ID Number"
           value={form.id_number}
@@ -196,6 +205,7 @@ export function LoaFormFields({
       <SignatureField
         value={form.employee_signature}
         disabled={!canEdit}
+        savedSignature={savedSignature}
         onChange={(v) => setForm({ ...form, employee_signature: v })}
       />
     </section>

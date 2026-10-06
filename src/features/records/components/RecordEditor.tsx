@@ -22,6 +22,7 @@ import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { templateQueryOptions } from "@/features/template/queries";
 import { fileToBase64 } from "@/lib/file";
+import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import { MONTHS, daysForPeriod } from "@/shared/period";
 import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
@@ -105,8 +106,7 @@ export function RecordEditor({ id }: { id: string }) {
   useEffect(() => {
     if (!data || !profileReady) return;
     const r = data.record as DtrHeader & { employee_signature?: string };
-    const localSig =
-      typeof window !== "undefined" ? (localStorage.getItem(`dtr-sig:${id}`) ?? "") : "";
+    const localSig = readSignatureBackup("dtr", id);
     const nextHeader: DtrHeader = {
       emp_no: r.emp_no,
       name: r.name,
@@ -157,9 +157,8 @@ export function RecordEditor({ id }: { id: string }) {
 
   // Keep a local backup of the signature so it survives a failed save.
   useEffect(() => {
-    if (!header || typeof window === "undefined") return;
-    if (header.employee_signature) localStorage.setItem(`dtr-sig:${id}`, header.employee_signature);
-    else localStorage.removeItem(`dtr-sig:${id}`);
+    if (!header) return;
+    saveSignatureBackup("dtr", id, header.employee_signature);
   }, [header?.employee_signature, id]);
 
   // Auto-save: after edits settle, persist quietly in the background.
@@ -456,6 +455,7 @@ export function RecordEditor({ id }: { id: string }) {
             setHeader={setHeader}
             template={template}
             canEdit={canEdit}
+            savedSignature={profile?.signature}
           />
           <DailyEntriesTable
             template={template}

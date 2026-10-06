@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
+import { formatMonthDayYear } from "@/shared/period";
 import { relativeTime } from "@/shared/time";
 import { usePendingForms } from "../lib/pending-forms";
 import { obFormsQueryOptions } from "../queries";
@@ -189,7 +190,9 @@ function ObCard({
         {[f.department, f.position].filter(Boolean).join(" · ") || "No department / position"}
       </p>
       {f.date_of_ob ? (
-        <p className="text-xs text-muted-foreground">Date of OB: {f.date_of_ob}</p>
+        <p className="text-xs text-muted-foreground">
+          Date of OB: {formatMonthDayYear(f.date_of_ob)}
+        </p>
       ) : null}
       {f.updated_at ? (
         <p

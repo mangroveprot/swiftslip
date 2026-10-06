@@ -13,10 +13,18 @@ type Mode = "draw" | "upload";
 export function SignatureField({
   value,
   disabled,
+  savedSignature,
   onChange,
 }: {
   value: string;
   disabled: boolean;
+  /**
+   * Signature saved on the profile (My Account). It's offered under the field as
+   * a clickable picture of itself — a third text button next to Draw/Upload was
+   * impossible to tell apart from them. My Account never passes it: there it *is*
+   * the source, so re-applying it would be a no-op.
+   */
+  savedSignature?: string | undefined;
   onChange: (dataUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -72,6 +80,30 @@ export function SignatureField({
           </span>
         )}
       </button>
+
+      {/* The profile's signature as a picture you click to apply it. Showing the
+          actual image (instead of a third "Saved" button next to Draw/Upload) is
+          what makes it obvious this is a different signature, and where it comes
+          from. Hidden once the form already uses it — there'd be nothing to do. */}
+      {savedSignature && savedSignature !== value ? (
+        <button
+          type="button"
+          disabled={disabled}
+          title="Use the signature saved on My Account"
+          onClick={() => onChange(savedSignature)}
+          className="mt-2 flex w-full items-center gap-3 rounded-md border border-dashed border-border bg-background px-3 py-2 text-left transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <img
+            src={savedSignature}
+            alt="My Account signature"
+            className="h-10 w-auto max-w-[9rem] shrink-0 object-contain"
+          />
+          <span className="text-xs text-muted-foreground">
+            <span className="block font-medium text-foreground">My Account signature</span>
+            <span className="block">Click the picture to use it on this form</span>
+          </span>
+        </button>
+      ) : null}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-xl bg-card">
