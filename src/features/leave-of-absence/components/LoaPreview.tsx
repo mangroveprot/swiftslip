@@ -121,13 +121,17 @@ export function LoaPreview({
   const box = (type: string) => (form.leave_type === type ? "✓" : " ");
   const withPay = form.pay_status === "with_pay" ? "✓" : " ";
   const withoutPay = form.pay_status === "without_pay" ? "✓" : " ";
-  // The typed "Others" text only belongs on the sheet while Others is the
-  // chosen type — switching away keeps the draft in the form but stops it
-  // from leaking into the preview/print/export.
+  // The fill line stays on the sheet; typed Others text occupies its FRONT
+  // (like writing on the line) so the row keeps the template's exact width
+  // and never wraps. It only appears while Others is the chosen type —
+  // switching away keeps the draft in the form but out of the sheet/export.
+  const typedOthers =
+    form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
+  const othersLine = typedOthers
+    ? `${typedOthers} ${OTHERS_LINE.slice(0, Math.max(OTHERS_LINE.length - typedOthers.length - 1, 0))}`
+    : OTHERS_LINE;
   const othersText =
-    `Others: ${
-      form.leave_type === "Others" ? form.leave_type_other || OTHERS_LINE : OTHERS_LINE
-    }(${withPay}) w/ PAY                ` + `(${withoutPay}) w/o PAY`;
+    `Others: ${othersLine}(${withPay}) w/ PAY                ` + `(${withoutPay}) w/o PAY`;
 
   return (
     <div
@@ -681,12 +685,12 @@ export function LoaPreview({
                   <>
                     <span className="block">Approved by:</span>
                     <span className="block" style={{ height: 36 }} />
-                    <span className="block text-center">{form.approved_by}</span>
                     {form.approved_via_viber ? (
                       <span className="block text-center" style={{ color: VIBER_BLUE }}>
                         Approved via Viber
                       </span>
                     ) : null}
+                    <span className="block text-center">{form.approved_by}</span>
                   </>
                 ),
               },

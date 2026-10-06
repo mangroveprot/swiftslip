@@ -28,8 +28,8 @@ import {
 import { fileToBase64 } from "@/lib/file";
 import { toast } from "@/lib/toast";
 
-/** What the document means for this row: the OB slip still drives an approval
- *  mark; the LOA medical certificate and the DTR's file are supporting files. */
+/** What the document means for this row: the OB slip and the LOA approval
+ *  attachment drive an approval mark; the DTR's file is a supporting file. */
 type AttachmentKind = "ob" | "loa" | "record";
 
 const MAX_MB = 10;
@@ -47,10 +47,11 @@ const COPY: Record<
       "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
   },
   loa: {
-    title: "Medical certificate",
-    empty: "Attach medical certificate PDF, image or document, up to 10 MB",
+    title: "Approval Attachment",
+    empty: "Attach approval file PDF, image or document, up to 10 MB",
     removeTitle: "Remove this attachment?",
-    removeDescription: "The uploaded file is deleted. This can't be undone.",
+    removeDescription:
+      "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
   },
   record: {
     title: "Attachment",
@@ -71,8 +72,9 @@ const URL_QUERY = {
  * Upload / view / remove card for the document attached to an OB form or a DTR
  * record: ≤ 10 MB, any document type (stored-XSS MIME types refused), kept in
  * the private `swiftslip` bucket under `ApprovalSlip/<owner-id>/<row-id>-<file>`
- * and shown through 1-hour signed links. The OB approval badge and "Approved"
- * checkbox are passed in by `ObAttachmentCard` via `badge` / `children`.
+ * and shown through 1-hour signed links. The approval badge and "Approved"
+ * checkbox are passed in by `ObAttachmentCard` / `LoaAttachmentCard` via
+ * `badge` / `children`.
  */
 export function AttachmentCard({
   kind,

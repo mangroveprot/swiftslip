@@ -2,7 +2,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, Wand2, X } from "lucide-react";
 
 import { writeLoaReason } from "@/api/loa.functions";
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { SignatureField } from "@/features/records/components/SignaturePad";
 import { toast } from "@/lib/toast";
 import type { LoaForm } from "@/shared/types";
@@ -185,36 +184,8 @@ export function LoaFormFields({
           onChange={(v) => setForm({ ...form, approved_by: v })}
         />
 
-        {/* Approval is a property of the FORM (approved by the person above),
-            never of an uploaded file — the tick drives the same two marks the
-            old medical-card tick did: this status badge and the "Approved via
-            Viber" note on the form, the list and the printed sheet. */}
-        <div>
-          <span className="lbl">Approval</span>
-          <div className="flex flex-wrap items-center gap-3 pt-1.5">
-            <label
-              className="flex cursor-pointer items-center gap-2 text-sm"
-              title='Checking "Approved" also checks "Approved via Viber"'
-            >
-              <input
-                type="checkbox"
-                className="size-4 accent-primary"
-                disabled={!canEdit}
-                checked={form.attachment_approved}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    attachment_approved: e.target.checked,
-                    approved_via_viber: e.target.checked,
-                  })
-                }
-              />
-              Approved
-            </label>
-            <ApprovedBadge approved={form.attachment_approved} />
-          </div>
-        </div>
-
+        {/* Approval lives on the approval attachment, OB-style (upload ticks
+            it, removal clears it) — the form carries no widget for it. */}
         <ReasonField
           value={form.reasons}
           disabled={!canEdit}

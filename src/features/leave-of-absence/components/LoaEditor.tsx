@@ -12,7 +12,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { deleteLoaForm, getLoaForm, saveLoaForm } from "@/api/loa.functions";
-import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
@@ -25,6 +24,7 @@ import { unmarkPendingForm } from "../lib/pending-forms";
 import { isScaffoldForm } from "../lib/scaffold";
 import { loaFormQueryOptions, loaFormsQueryOptions } from "../queries";
 import { LoaAssistantChat } from "./LoaAssistantChat";
+import { LoaAttachmentCard } from "./LoaAttachmentCard";
 import { LoaFormFields } from "./LoaFormFields";
 import { LoaOtherAttachmentsCard } from "./LoaOtherAttachmentsCard";
 import { LOA_SHEET_WIDTH, LoaPreview } from "./LoaPreview";
@@ -346,29 +346,6 @@ export function LoaEditor({ id }: { id: string }) {
     }
   }
 
-  // Always at the top of the preview column — the upload prompts belong where
-  // you look first. Print order is handled by `print:order` on the wrapper
-  // below, so the certificate still follows the form (the extra files card is
-  // screen-only and never prints). Approval is no longer any card's business:
-  // it lives on the form itself, next to "Approved by".
-  const attachmentCard = (
-    <div className="space-y-3">
-      <AttachmentCard
-        kind="loa"
-        id={id}
-        file={data?.attachment ?? null}
-        canEdit={canEdit}
-        onUploaded={handleAttachmentUploaded}
-      />
-      <LoaOtherAttachmentsCard
-        id={id}
-        canEdit={canEdit}
-        others={data?.others ?? []}
-        onUploaded={handleAttachmentUploaded}
-      />
-    </div>
-  );
-
   return (
     <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
       <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
@@ -443,13 +420,32 @@ export function LoaEditor({ id }: { id: string }) {
       <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
         <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-auto">
           <LoaFormFields form={form} setForm={setForm} canEdit={canEdit} />
+          {/* The other documents sit at the bottom of the form — the approval
+              attachment keeps the top of the preview column. Screen-only, so
+              it never prints. */}
+          <LoaOtherAttachmentsCard
+            id={id}
+            canEdit={canEdit}
+            others={data?.others ?? []}
+            onUploaded={handleAttachmentUploaded}
+          />
         </div>
 
-        {/* Attachment first, always — but on print it drops back below the
-            sheet (`print:order`) so the certificate still follows the form on
+        {/* The approval attachment leads the preview column — like OB, the
+            uploaded file IS the approval — but on print it drops back below
+            the sheet (`print:order`) so the file still follows the form on
             its own page. */}
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
-          <div className="print:order-2">{attachmentCard}</div>
+          <div className="print:order-2">
+            <LoaAttachmentCard
+              id={id}
+              form={form}
+              setForm={setForm}
+              canEdit={canEdit}
+              attachment={data?.attachment ?? null}
+              onUploaded={handleAttachmentUploaded}
+            />
+          </div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
               Live preview

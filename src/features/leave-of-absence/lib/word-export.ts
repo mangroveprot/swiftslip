@@ -94,6 +94,15 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
   const box = (type: string) =>
     Object.fromEntries([[CHECK_TOKENS[type], check(form.leave_type === type)]]);
 
+  // The fill line stays on the sheet; typed Others text occupies its FRONT
+  // (like writing on the line) so the row keeps the template's exact width —
+  // the same rule as the preview (and only while Others is the chosen type).
+  const typedOthers =
+    form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
+  const othersLine = typedOthers
+    ? `${typedOthers} ${OTHERS_LINE.slice(0, Math.max(OTHERS_LINE.length - typedOthers.length - 1, 0))}`
+    : OTHERS_LINE;
+
   doc.render({
     IdNumber: form.id_number ?? "",
     EmployeName: form.employee_name ?? "",
@@ -116,8 +125,8 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
     ...box("Paternity Leave"),
     ...box("Bereavement Leave"),
     ...box("Others"),
-    // Typed only while "Others" is the chosen type — same rule as the sheet.
-    others_line: form.leave_type === "Others" ? form.leave_type_other || OTHERS_LINE : OTHERS_LINE,
+    // The fill line + typed text rule lives in `othersLine` above.
+    others_line: othersLine,
     chk_with_pay: form.pay_status === "with_pay" ? "✓" : " ",
     chk_without_pay: form.pay_status === "without_pay" ? "✓" : " ",
   });

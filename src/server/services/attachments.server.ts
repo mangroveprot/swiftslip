@@ -151,7 +151,7 @@ export async function getAttachmentUrl(
 }
 
 /**
- * Detach the attachment; the stored file goes too. Only OB forms carry an
+ * Detach the attachment; the stored file goes too. OB and LOA forms carry an
  * approval mark along with the file — DTR records have no approval step.
  */
 export async function removeAttachment(
@@ -172,23 +172,22 @@ export async function removeAttachment(
 
   const detach = { attachment_path: null, attachment_name: null };
   const updated_at = new Date().toISOString();
-  // Only OB forms tie their approval mark to the file. LOA approval now
-  // belongs to the form itself (deleting the certificate must not revoke it)
-  // and DTR records never had a mark.
-  const { error } =
-    table === "ob_forms"
-      ? await db
-          .from("ob_forms")
-          .update({ ...detach, attachment_approved: false, updated_at })
-          .eq("id", id)
-          .eq("owner_id", ownerId)
-          .select("id")
-      : await db
-          .from(table)
-          .update({ ...detach, updated_at })
-          .eq("id", id)
-          .eq("owner_id", ownerId)
-          .select("id");
+  // OB and LOA tie their approval mark to the file: removing the attachment
+  // revokes the approval it carried. DTR records never had a mark.
+  const clearApproval = table === "ob_forms" || table === "loa_forms";
+  const { error } = clearApproval
+    ? await db
+        .from(table)
+        .update({ ...detach, attachment_approved: false, updated_at })
+        .eq("id", id)
+        .eq("owner_id", ownerId)
+        .select("id")
+    : await db
+        .from(table)
+        .update({ ...detach, updated_at })
+        .eq("id", id)
+        .eq("owner_id", ownerId)
+        .select("id");
   if (error) throw new Error(error.message);
 
   if (row.attachment_path) await removeStoredFile(row.attachment_path);
