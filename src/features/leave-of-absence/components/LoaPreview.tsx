@@ -121,9 +121,13 @@ export function LoaPreview({
   const box = (type: string) => (form.leave_type === type ? "✓" : " ");
   const withPay = form.pay_status === "with_pay" ? "✓" : " ";
   const withoutPay = form.pay_status === "without_pay" ? "✓" : " ";
+  // The typed "Others" text only belongs on the sheet while Others is the
+  // chosen type — switching away keeps the draft in the form but stops it
+  // from leaking into the preview/print/export.
   const othersText =
-    `Others: ${form.leave_type_other || OTHERS_LINE}(${withPay}) w/ PAY                ` +
-    `(${withoutPay}) w/o PAY`;
+    `Others: ${
+      form.leave_type === "Others" ? form.leave_type_other || OTHERS_LINE : OTHERS_LINE
+    }(${withPay}) w/ PAY                ` + `(${withoutPay}) w/o PAY`;
 
   return (
     <div
@@ -281,30 +285,30 @@ export function LoaPreview({
               },
             ]}
           />
-          {/* Date Filed / Position / Number of Days form ONE line-free block:
-              each cell drops the border it shares with the next (t8|…|b8 with
-              no `r`, … no `l`, … no `l`), so a signature written across the
-              three is never chopped by a cell rule. Inclusive Dates keeps its
-              own column, so the block still ends on a full line. */}
+          {/* Date Filed / Position / Number of Days — like the template: the
+              vertical rules stay (they ARE the column borders), but the value
+              and the band beneath it are one vertically-merged cell, so the
+              horizontal between them must go. That keeps a signature drawn
+              across the three from being chopped by a cell rule. */}
           <Row
             cells={[
               {
                 span: 3,
-                b: "t8|l18|b8",
+                b: "t8|l18|b8|r8",
                 cls: "italic",
                 style: { fontWeight: 700 },
                 content: "Date Filed:",
               },
               {
                 span: 6,
-                b: "t8|b8",
+                b: "t8|l8|b8|r8",
                 cls: "italic",
                 style: { fontWeight: 700 },
                 content: "Position:",
               },
               {
                 span: 6,
-                b: "t8|b8|r8",
+                b: "t8|l8|b8|r8",
                 cls: "italic",
                 style: { fontWeight: 700 },
                 content: "Number of Days Applied:",
@@ -323,19 +327,19 @@ export function LoaPreview({
             cells={[
               {
                 span: 3,
-                b: "t8|l18|b8",
+                b: "t8|l18|r8",
                 style: { fontWeight: 700 },
                 content: form.date_filed,
               },
               {
                 span: 6,
-                b: "t8|b8",
+                b: "t8|l8|r8",
                 style: { fontWeight: 700 },
                 content: form.position,
               },
               {
                 span: 6,
-                b: "t8|b8|r8",
+                b: "t8|l8|r8",
                 cls: "text-center",
                 style: { fontWeight: 700 },
                 content: form.days_applied,
@@ -359,9 +363,9 @@ export function LoaPreview({
           <Row
             h={466}
             cells={[
-              { span: 3, b: "t8|l18|b18", content: "" },
-              { span: 6, b: "t8|b18", content: "" },
-              { span: 6, b: "t8|b18|r8", content: "" },
+              { span: 3, b: "l18|b18|r8", content: "" },
+              { span: 6, b: "l8|b18|r8", content: "" },
+              { span: 6, b: "l8|b18|r8", content: "" },
               {
                 span: 5,
                 b: "t8|l8|b18|r8",

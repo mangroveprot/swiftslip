@@ -145,7 +145,7 @@ export function LoaFormFields({
         {/* ( ) w/ PAY  ( ) w/o PAY — single choice. */}
         <fieldset>
           <legend className="lbl">Pay</legend>
-          <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+          <div className="flex flex-wrap gap-x-10 gap-y-1.5">
             <label className="flex cursor-pointer items-center gap-1.5 text-sm">
               <input
                 type="radio"

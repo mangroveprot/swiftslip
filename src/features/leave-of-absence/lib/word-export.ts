@@ -116,7 +116,8 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
     ...box("Paternity Leave"),
     ...box("Bereavement Leave"),
     ...box("Others"),
-    others_line: form.leave_type_other || OTHERS_LINE,
+    // Typed only while "Others" is the chosen type — same rule as the sheet.
+    others_line: form.leave_type === "Others" ? form.leave_type_other || OTHERS_LINE : OTHERS_LINE,
     chk_with_pay: form.pay_status === "with_pay" ? "✓" : " ",
     chk_without_pay: form.pay_status === "without_pay" ? "✓" : " ",
   });
