@@ -58,6 +58,13 @@ function fit(size: { w: number; h: number } | null): [number, number] {
 /** The template's own empty "Others:" line — the fallback when no text is given. */
 const OTHERS_LINE = "_".repeat(41);
 
+/** Second-line indent for the typed Others text — 15 Calibri-bold spaces
+ *  match the width of the "Others: " prefix (48.5px), so the text starts
+ *  under the line instead of in front of it (same rule as the preview). */
+const OTHERS_TEXT_INDENT = " ".repeat(15);
+
+const xmlEsc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 /** form.leave_type → its {chk_*} token in the tokenized template (single choice). */
 const CHECK_TOKENS: Record<string, string> = {
   "Vacation Leave": "chk_vacation",
@@ -94,14 +101,14 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
   const box = (type: string) =>
     Object.fromEntries([[CHECK_TOKENS[type], check(form.leave_type === type)]]);
 
-  // The fill line stays on the sheet; typed Others text occupies its FRONT
-  // (like writing on the line) so the row keeps the template's exact width —
-  // the same rule as the preview (and only while Others is the chosen type).
+  // The fill line keeps the template's exact width; the typed Others text
+  // goes on its own line directly UNDER it — the same rule as the preview
+  // (and only while Others is the chosen type). The second line is appended
+  // after render, just before the paragraph's close: {others_line} is
+  // followed inline by the pay boxes, so a line break inside the token
+  // would drag "( ) w/ PAY" down with the text.
   const typedOthers =
     form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
-  const othersLine = typedOthers
-    ? `${typedOthers} ${OTHERS_LINE.slice(0, Math.max(OTHERS_LINE.length - typedOthers.length - 1, 0))}`
-    : OTHERS_LINE;
 
   doc.render({
     IdNumber: form.id_number ?? "",
@@ -125,13 +132,60 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
     ...box("Paternity Leave"),
     ...box("Bereavement Leave"),
     ...box("Others"),
-    // The fill line + typed text rule lives in `othersLine` above.
-    others_line: othersLine,
+    // The typed text's second line is appended after render, below.
+    others_line: OTHERS_LINE,
     chk_with_pay: form.pay_status === "with_pay" ? "✓" : " ",
     chk_without_pay: form.pay_status === "without_pay" ? "✓" : " ",
   });
 
-  const blob = doc.getZip().generate({
+  if (typedOthers) {
+    const entry = zip.file("word/document.xml");
+    let xml = entry ? entry.asText() : "";
+    const label = xml.indexOf("Others:");
+    const pEnd = label < 0 ? -1 : xml.indexOf("</w:p>", label);
+    const tcEnd = label < 0 ? -1 : xml.indexOf("</w:tc>", label);
+    if (pEnd >= 0 && (tcEnd < 0 || pEnd < tcEnd)) {
+      // Reuse the label run's rPr so the note matches the line's styling.
+      const runStart = Math.max(xml.lastIndexOf("<w:r>", label), xml.lastIndexOf("<w:r ", label));
+      const rPr =
+        /<w:rPr>[\s\S]*<\/w:rPr>/.exec(runStart >= 0 ? xml.slice(runStart, label) : "")?.[0] ?? "";
+      const text = typedOthers.replace(/[\r\n]+/g, " ");
+      const under =
+        `<w:r><w:br/></w:r><w:r>${rPr}` +
+        `<w:t xml:space="preserve">${OTHERS_TEXT_INDENT}${xmlEsc(text)}</w:t></w:r>`;
+      xml = xml.slice(0, pEnd) + under + xml.slice(pEnd);
+
+      // The template ends with an invisible empty paragraph (after the last
+      // table) that still occupies a full line — with the sheet one line
+      // taller, Word spills it onto a blank second page. Pin it to 2pt for
+      // this export only; every other export stays byte-identical.
+      const sect = xml.lastIndexOf("<w:sectPr");
+      const pOpen = Math.max(xml.lastIndexOf("<w:p ", sect), xml.lastIndexOf("<w:p>", sect));
+      const pClose = pOpen < 0 ? -1 : xml.indexOf("</w:p>", pOpen);
+      if (pOpen >= 0 && pClose > pOpen) {
+        const para = xml.slice(pOpen, pClose);
+        const tight = '<w:spacing w:line="40" w:lineRule="exact"/>';
+        let fixed: string;
+        if (/<w:spacing\b[^>]*\/>/.test(para)) {
+          fixed = para.replace(/<w:spacing\b[^>]*\/>/, tight);
+        } else {
+          // spacing sits after pStyle and before jc/rPr in a valid pPr.
+          const at = ["<w:jc", "<w:rPr", "</w:pPr>"]
+            .map((t) => para.indexOf(t))
+            .filter((n) => n >= 0)
+            .sort((a, b) => a - b)[0];
+          fixed =
+            at !== undefined
+              ? para.slice(0, at) + tight + para.slice(at)
+              : para.replace(/^(<w:p(?:\s[^>]*)?>)/, "$1<w:pPr>" + tight + "</w:pPr>");
+        }
+        xml = xml.slice(0, pOpen) + fixed + xml.slice(pClose);
+      }
+      zip.file("word/document.xml", xml);
+    }
+  }
+
+  const blob = zip.generate({
     type: "blob",
     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });

@@ -109,6 +109,11 @@ function Row({ cells, h, fill }: { cells: Cell[]; h?: number; fill?: string }) {
 /** Empty fill-in line on the "Others:" row (verbatim from the template). */
 const OTHERS_LINE = "_________________________________________";
 
+/** Second-line indent for the typed Others text — 15 Calibri-bold spaces
+ *  match the width of the "Others: " prefix (48.5px), so the text starts
+ *  under the line instead of in front of it. */
+const OTHERS_TEXT_INDENT = " ".repeat(15);
+
 export function LoaPreview({
   form,
   sheetId,
@@ -121,17 +126,17 @@ export function LoaPreview({
   const box = (type: string) => (form.leave_type === type ? "✓" : " ");
   const withPay = form.pay_status === "with_pay" ? "✓" : " ";
   const withoutPay = form.pay_status === "without_pay" ? "✓" : " ";
-  // The fill line stays on the sheet; typed Others text occupies its FRONT
-  // (like writing on the line) so the row keeps the template's exact width
-  // and never wraps. It only appears while Others is the chosen type —
-  // switching away keeps the draft in the form but out of the sheet/export.
+  // The fill line keeps the template's exact width; the typed Others text
+  // sits on its own line directly UNDER it (indented past the "Others: "
+  // prefix so it starts below the line) and the row never wraps. It only
+  // appears while Others is the chosen type — switching away keeps the
+  // draft in the form but out of the sheet/export.
   const typedOthers =
     form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
-  const othersLine = typedOthers
-    ? `${typedOthers} ${OTHERS_LINE.slice(0, Math.max(OTHERS_LINE.length - typedOthers.length - 1, 0))}`
-    : OTHERS_LINE;
   const othersText =
-    `Others: ${othersLine}(${withPay}) w/ PAY                ` + `(${withoutPay}) w/o PAY`;
+    `Others: ${OTHERS_LINE}(${withPay}) w/ PAY                ` +
+    `(${withoutPay}) w/o PAY` +
+    (typedOthers ? `\n${OTHERS_TEXT_INDENT}${typedOthers}` : "");
 
   return (
     <div
