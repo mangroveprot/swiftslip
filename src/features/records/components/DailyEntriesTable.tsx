@@ -23,7 +23,7 @@ export function DailyEntriesTable({
   const cellFields = ["time_in", "time_out", "schedule", "remarks"] as const;
 
   return (
-    <section className="flex min-h-0 flex-col rounded-xl border bg-card p-3 shadow-sm lg:flex-1 lg:overflow-hidden">
+    <section className="form-fill flex min-h-0 flex-col rounded-xl border bg-card p-3 shadow-sm lg:flex-1 lg:overflow-hidden">
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">Daily entries</h2>
         {canEdit ? (

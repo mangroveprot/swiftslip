@@ -22,9 +22,16 @@ const BLOCKED_TYPES = new Set([
 const URL_TTL_SECONDS = 60 * 60;
 
 /** Rows that can hold a document; `(id, owner_id)` always identifies one of them. */
-type AttachmentTable = "ob_forms" | "loa_forms" | "dtr_records";
+type AttachmentTable = "ob_forms" | "loa_forms" | "cos_forms" | "ot_forms" | "dtr_records";
 /** The row's human name, used in error messages ("Form not found." etc.). */
-type Entity = "Form" | "LOA form" | "Record";
+type Entity = "Form" | "LOA form" | "Record" | "Change of Schedule form" | "Overtime form";
+
+/**
+ * Rows that carry the extra `other_attachments` list — the "supporting
+ * documents" card on LOA and OT. Narrower than `AttachmentTable` because DTR
+ * records and OB forms have no such column.
+ */
+type OtherAttachmentTable = Extract<AttachmentTable, "loa_forms" | "ot_forms">;
 
 /**
  * Never trust the client's filename: drop any path components, keep a readable
@@ -172,9 +179,10 @@ export async function removeAttachment(
 
   const detach = { attachment_path: null, attachment_name: null };
   const updated_at = new Date().toISOString();
-  // OB and LOA tie their approval mark to the file: removing the attachment
-  // revokes the approval it carried. DTR records never had a mark.
-  const clearApproval = table === "ob_forms" || table === "loa_forms";
+  // OB, LOA, COS and OT tie their approval mark to the file: removing the
+  // attachment revokes the approval it carried. DTR records never had a mark.
+  const clearApproval =
+    table === "ob_forms" || table === "loa_forms" || table === "cos_forms" || table === "ot_forms";
   const { error } = clearApproval
     ? await db
         .from(table)
@@ -196,12 +204,14 @@ export async function removeAttachment(
 }
 
 /* --------------------------------------------------------------------------
-   Additional supporting files (LOA only): up to OTHER_ATTACHMENTS_MAX files
-   per form beside the single certificate — same bucket, same per-file rules,
-   with the stored list living in the row's `other_attachments` jsonb column.
+   Additional supporting files (LOA and OT — NOT COS): up to
+   OTHER_ATTACHMENTS_MAX files per form beside the single certificate — same
+   bucket, same per-file rules, with the stored list living in the row's
+   `other_attachments` jsonb column. Add a table here only once it actually has
+   the card: the union below has to list every table that carries the column.
    -------------------------------------------------------------------------- */
 
-/** Cap on a LOA form's additional supporting files. */
+/** Cap on a form's additional supporting files. */
 export const OTHER_ATTACHMENTS_MAX = 8;
 
 /** Read the jsonb file list as a plain array (junk entries are dropped). */
@@ -217,14 +227,14 @@ export function readOtherFiles(raw: unknown): LoaOtherFile[] {
 }
 
 /**
- * Store one more supporting file on a LOA form (a second medical note, lab
+ * Store one more supporting file on a LOA or OT form (a second medical note, lab
  * result, …) next to the single certificate: same bucket and the same empty /
  * 10 MB / blocked-MIME checks, capped at OTHER_ATTACHMENTS_MAX files per form.
  * A random segment in the path means two files that share a name never
  * collide (and a replace can't overwrite a sibling).
  */
 export async function uploadOtherAttachment(
-  table: "loa_forms",
+  table: OtherAttachmentTable,
   entity: Entity,
   input: { id: string; filename: string; contentType: string; base64: string },
   ownerId: string,
@@ -282,9 +292,9 @@ export async function uploadOtherAttachment(
   return { name };
 }
 
-/** Short-lived signed links for every additional file on a LOA form, keyed by path. */
+/** Short-lived signed links for every additional file on a form, keyed by path. */
 export async function getOtherAttachmentUrls(
-  table: "loa_forms",
+  table: OtherAttachmentTable,
   entity: Entity,
   id: string,
   ownerId: string,
@@ -315,7 +325,7 @@ export async function getOtherAttachmentUrls(
 
 /** Detach one additional file; the stored object goes with it. */
 export async function removeOtherAttachment(
-  table: "loa_forms",
+  table: OtherAttachmentTable,
   entity: Entity,
   id: string,
   path: string,

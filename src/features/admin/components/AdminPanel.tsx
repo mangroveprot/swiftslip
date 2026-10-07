@@ -1,32 +1,36 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  FileSpreadsheet,
-  History,
-  LayoutDashboard,
-  LayoutGrid,
-  LogOut,
-  Menu,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { History, LayoutDashboard, LayoutGrid, Menu, Users, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
-import { signOut } from "@/api/auth.functions";
+import { SignOutButton } from "@/components/common/SignOutButton";
+import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "@/components/layout/sidebar-classes";
+import {
+  SidebarBrand,
+  SidebarFooter,
+  SidebarSection,
+  SidebarShell,
+} from "@/components/layout/sidebar-ui";
 import { APP } from "@/config/app";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
-import { TemplateEditor } from "./TemplateEditor";
 import { UserManagement } from "./UserManagement";
 
-type Section = "dashboard" | "users" | "logs" | "template";
+type Section = "dashboard" | "users" | "logs";
 
-const SECTIONS: { id: Section; label: string; note: string; icon: LucideIcon }[] = [
-  { id: "dashboard", label: "Dashboard", note: "Totals & activity", icon: LayoutDashboard },
-  { id: "users", label: "User management", note: "Accounts & roles", icon: Users },
-  { id: "logs", label: "Activity logs", note: "Sign-ins & changes", icon: History },
-  { id: "template", label: "DTR template", note: "Sheet headings", icon: FileSpreadsheet },
+type AdminItem = { id: Section; label: string; icon: LucideIcon };
+
+/** Grouped the same way the SwiftSlip sidebar groups its nav. */
+const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
+  { label: "Overview", items: [{ id: "dashboard", label: "Dashboard", icon: LayoutDashboard }] },
+  {
+    label: "Manage",
+    items: [
+      { id: "users", label: "User management", icon: Users },
+      { id: "logs", label: "Activity logs", icon: History },
+    ],
+  },
 ];
 
 /**
@@ -36,18 +40,9 @@ const SECTIONS: { id: Section; label: string; note: string; icon: LucideIcon }[]
  * reuses the SwiftSlip sidebar's look (glass panel, same nav/button styles).
  */
 export function AdminPanel() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data: session } = useQuery(sessionQueryOptions());
   const [section, setSection] = useState<Section>("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
-
-  async function handleSignOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await signOut();
-    navigate({ to: "/", replace: true });
-  }
 
   const sidebar = (
     <AdminSidebar
@@ -55,7 +50,6 @@ export function AdminPanel() {
       onSelect={(next) => setSection(next)}
       label={session?.label}
       idNumber={session?.idNumber}
-      onSignOut={handleSignOut}
       onNavigate={() => setMenuOpen(false)}
     />
   );
@@ -98,10 +92,8 @@ export function AdminPanel() {
             <AdminDashboard />
           ) : section === "users" ? (
             <UserManagement />
-          ) : section === "logs" ? (
-            <ActivityLogs />
           ) : (
-            <TemplateEditor />
+            <ActivityLogs />
           )}
         </div>
       </div>
@@ -115,74 +107,53 @@ function AdminSidebar({
   onSelect,
   label,
   idNumber,
-  onSignOut,
   onNavigate,
 }: {
   section: Section;
   onSelect: (section: Section) => void;
   label?: string | undefined;
   idNumber?: string | undefined;
-  onSignOut: () => void;
   onNavigate?: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col border-r border-white/40 bg-glass backdrop-blur-xl">
-      <div className="px-6 py-6">
-        <img src={APP.mindbridgeLogoPath} alt="Mindbridge" className="h-8 w-auto object-contain" />
-        <span className="text-2xl" style={{ fontFamily: "var(--font-display)" }}>
-          {APP.name}
-        </span>
-        <span className="block text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          Admin Panel
-        </span>
-      </div>
+    <SidebarShell>
+      <SidebarBrand subtitle="Admin Panel" />
 
-      <nav className="flex-1 space-y-1 px-3">
-        {SECTIONS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            aria-current={section === item.id ? "page" : undefined}
-            className={
-              section === item.id
-                ? "block w-full rounded-md bg-accent-tint px-3 py-2 text-left text-sm font-medium text-accent-tint-foreground"
-                : "block w-full rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
-            }
-            onClick={() => {
-              onSelect(item.id);
-              onNavigate?.();
-            }}
-          >
-            <span className="flex items-start gap-2.5">
-              <item.icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1">
-                <span className="block">{item.label}</span>
-                <span className="block text-[11px] text-muted-foreground">{item.note}</span>
-              </span>
-            </span>
-          </button>
+      <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-4">
+        {SECTION_GROUPS.map((group) => (
+          <SidebarSection key={group.label} label={group.label}>
+            {group.items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={section === item.id ? "page" : undefined}
+                className={sidebarRowClass({ active: section === item.id })}
+                onClick={() => {
+                  onSelect(item.id);
+                  onNavigate?.();
+                }}
+              >
+                <item.icon className="size-4 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 truncate">{item.label}</span>
+              </button>
+            ))}
+          </SidebarSection>
         ))}
       </nav>
 
-      <div className="space-y-3 border-t px-4 py-4 text-sm">
-        <div>
-          <p className="font-medium">{label || "Administrator"}</p>
-          {/* The ID number under the full name — the old second line repeated
-              "Administrator" for no reason. Hidden for cookies issued before
-              the session carried the ID number (sign in again to get it). */}
-          {idNumber ? (
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">{idNumber}</p>
-          ) : null}
-        </div>
-        <Link to="/choose" onClick={onNavigate} className="btn btn-outline w-full">
+      <SidebarFooter
+        name={label || "Administrator"}
+        // The ID number under the full name — the old second line repeated
+        // "Administrator" for no reason. Hidden for cookies issued before the
+        // session carried the ID number (sign in again to get it).
+        sublabel={idNumber || undefined}
+      >
+        <Link to="/choose" onClick={onNavigate} className={SIDEBAR_ACTION_CLASS}>
           <LayoutGrid className="size-4" aria-hidden="true" />
-          Switch App
+          Switch app
         </Link>
-        <button className="btn btn-outline w-full" onClick={onSignOut}>
-          <LogOut className="size-4" aria-hidden="true" />
-          Sign out
-        </button>
-      </div>
-    </div>
+        <SignOutButton className={SIDEBAR_ACTION_CLASS} />
+      </SidebarFooter>
+    </SidebarShell>
   );
 }

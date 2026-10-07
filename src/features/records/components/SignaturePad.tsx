@@ -13,11 +13,14 @@ type Mode = "draw" | "upload";
 export function SignatureField({
   value,
   disabled,
+  required = false,
   savedSignature,
   onChange,
 }: {
   value: string;
   disabled: boolean;
+  /** Puts the red required mark after the label — LOA's form asks for it. */
+  required?: boolean;
   /**
    * Signature saved on the profile (My Account). It's offered under the field as
    * a clickable picture of itself — a third text button next to Draw/Upload was
@@ -43,7 +46,14 @@ export function SignatureField({
   return (
     <div className="mt-3 border-t pt-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="lbl mb-0">Employee signature</p>
+        <p className="lbl mb-0">
+          Employee signature
+          {required ? (
+            <span aria-hidden="true" className="ml-0.5 text-destructive">
+              *
+            </span>
+          ) : null}
+        </p>
         <div className="flex items-center gap-2">
           {value ? (
             <button

@@ -39,6 +39,9 @@ export function LoaAttachmentCard({
     <AttachmentCard
       kind="loa"
       id={id}
+      // Same shell as the LOA's other boxes — the right column keeps its own
+      // two pieces (attachment card, then live preview), just restyled.
+      cardClassName="form-fill shrink-0 rounded-2xl border bg-card p-4 shadow-sm"
       file={attachment}
       canEdit={canEdit}
       onUploaded={() => {

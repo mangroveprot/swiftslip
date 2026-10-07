@@ -109,9 +109,95 @@ export type LoaForm = {
 };
 
 /** One additional supporting file on an LOA form: its path in storage + name. */
-export type LoaOtherFile = {
+/** One stored supporting document: its bucket path plus the original name. */
+export type OtherFile = {
   path: string;
   name: string;
+};
+
+/** Kept for the LOA card, which had this name first. Same shape. */
+export type LoaOtherFile = OtherFile;
+
+/** Change of Schedule (COS) form — mirrors public/cos_template.docx. */
+export type CosForm = {
+  id_number: string;
+  employee_name: string;
+  /** The template's "Plant/Location" box. */
+  plant_location: string;
+  position: string;
+  /** Free-text / date string as typed (e.g. "2026-10-06"). */
+  date_filed: string;
+  /** "" | "shift" | "rest_day" — the two boxes under "Change of Work Schedule". */
+  change_type: string;
+  /** Data URL (PNG) of the employee signature drawing or upload. */
+  employee_signature: string;
+  /** The REASON/S FOR CHANGE OF SCHEDULE body. */
+  reasons: string;
+  approved_by: string;
+  received_by: string;
+  processed_by: string;
+  /** When true, show the "Approved via Viber" note under the approver. */
+  approved_via_viber: boolean;
+  /** The uploaded approval slip has been approved. */
+  attachment_approved: boolean;
+};
+
+/** One schedule line on a Change of Schedule form (its own row, like ObEntry). */
+export type CosSchedule = {
+  /** Row order, 0-based. */
+  idx: number;
+  /** Effectivity date, YYYY-MM-DD as typed. */
+  effectivity_date: string;
+  /** The SCHEDULE → FROM line: the date it changes from, and that shift's hours. */
+  from_date: string;
+  /** Shift start, "HH:MM" from a time input ("" when not set). */
+  from_start: string;
+  /** Shift end, "HH:MM" ("" when not set). */
+  from_end: string;
+  /** The SCHEDULE → TO line: the date it changes to, and that shift's hours. */
+  to_date: string;
+  to_start: string;
+  to_end: string;
+};
+
+/** One OT line on an Overtime form — the template repeats its value row. */
+export type OtEntry = {
+  /** Row order, 0-based. */
+  idx: number;
+  /** The date the overtime was worked, YYYY-MM-DD. */
+  date_of_ot: string;
+  /** The regular shift that day, "HH:MM" from the time inputs. */
+  regular_from: string;
+  regular_to: string;
+  /** The hours actually worked, "HH:MM". */
+  actual_from: string;
+  actual_to: string;
+  /** Typed by the employee — the sheet asks for it, it is not derived. */
+  total_hours: string;
+  /** The "For HR use only" column. */
+  validation: string;
+};
+
+/** Overtime (OT) form — mirrors public/ot_template.docx. */
+export type OtForm = {
+  id_number: string;
+  employee_name: string;
+  /** The template's "Department/Location" box. */
+  department: string;
+  position: string;
+  /** Date & Time Filed, free text as typed. */
+  date_filed: string;
+  /** Data URL (PNG) of the employee signature drawing or upload. */
+  employee_signature: string;
+  /** The REASON FOR OVERTIME body. */
+  reasons: string;
+  approved_by: string;
+  received_by: string;
+  processed_by: string;
+  /** When true, show the "Approved via Viber" note under the approver. */
+  approved_via_viber: boolean;
+  /** The uploaded approval slip has been approved. */
+  attachment_approved: boolean;
 };
 
 /** One parsed row from a biometric time log. */

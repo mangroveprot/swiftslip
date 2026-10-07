@@ -17,7 +17,7 @@ export function RecordHeaderFields({
   savedSignature?: string | undefined;
 }) {
   return (
-    <section className="shrink-0 rounded-xl border bg-card p-3 shadow-sm">
+    <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <Field
           label="Emp No."

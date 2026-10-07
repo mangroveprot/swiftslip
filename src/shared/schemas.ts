@@ -5,7 +5,16 @@
 import { z } from "zod";
 
 import { isPeriod } from "./period";
-import type { LoaForm, ObEntry, ObForm, Period } from "./types";
+import type {
+  CosForm,
+  CosSchedule,
+  LoaForm,
+  ObEntry,
+  ObForm,
+  OtEntry,
+  OtForm,
+  Period,
+} from "./types";
 
 const period = z
   .string()
@@ -42,6 +51,8 @@ export const activityLogActionFilter = z.enum([
   "accounts",
   "ob",
   "loa",
+  "cos",
+  "ot",
   "records",
   "attachments",
   "inventory",
@@ -185,6 +196,184 @@ export const saveLoaFormInput = z.object({
   id,
   form: loaFormSchema,
 });
+
+export const createCosFormInput = z.object({
+  // Client passes its local "today" (YYYY-MM-DD) so Date Filed defaults correctly
+  // for the user's timezone rather than the server's.
+  date_filed: z.string().optional(),
+});
+
+export const cosFormSchema = z.object({
+  id_number: z.string(),
+  employee_name: z.string(),
+  plant_location: z.string(),
+  position: z.string(),
+  date_filed: z.string(),
+  /** "" | "shift" | "rest_day" — the Change of Work Schedule boxes. */
+  change_type: z.string(),
+  employee_signature: z.string().default(""),
+  reasons: z.string(),
+  approved_by: z.string(),
+  received_by: z.string(),
+  processed_by: z.string(),
+  approved_via_viber: z.boolean().default(false),
+  /** The uploaded approval slip has been approved (also ticks "via Viber"). */
+  attachment_approved: z.boolean().default(false),
+});
+
+export const cosScheduleSchema = z.object({
+  idx: z.number().int().min(0).max(50),
+  effectivity_date: z.string(),
+  from_date: z.string(),
+  // "HH:MM" from the time inputs, or "" when the line has no hours set.
+  from_start: z.string(),
+  from_end: z.string(),
+  to_date: z.string(),
+  to_start: z.string(),
+  to_end: z.string(),
+});
+
+export const saveCosFormInput = z.object({
+  id,
+  form: cosFormSchema,
+  /** One entry per schedule line — the child rows behind the form. */
+  schedules: z.array(cosScheduleSchema).max(50),
+});
+
+// AI help for the COS "Reason/s for Change of Schedule" field (the OB Purpose twin).
+export const cosReasonInput = z.object({
+  mode: z.enum(["generate", "enhance"]),
+  // For "generate": the user's rough context / instructions. For "enhance": ignored.
+  context: z.string().max(2000).default(""),
+  // The current Reason text (the thing to enhance, or extra context to generate from).
+  current: z.string().max(4000).default(""),
+});
+
+// Conversational agent that fills the Change of Schedule form for the user.
+export const cosChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  text: z.string().max(4000),
+});
+
+export const cosChatInput = z.object({
+  // Transcript so far (oldest first). The assistant answers the last user turn.
+  messages: z.array(cosChatMessageSchema).min(1).max(40),
+  // The form exactly as it stands — the assistant patches it, never resets it.
+  form: cosFormSchema,
+  schedules: z.array(cosScheduleSchema).max(50),
+  // The user's local date (YYYY-MM-DD) so "today" / "tomorrow" resolve correctly.
+  today: z.string().max(40).optional(),
+  // Optional photo/scan, handed to Gemini the same way the biometric import is.
+  image: z
+    .object({
+      mimeType: z.string().min(1).max(100),
+      base64: z.string().min(1),
+    })
+    .optional(),
+});
+
+/** The model's answer, validated before it is allowed to reach the client. */
+export const cosChatReplySchema = z.object({
+  reply: z.string().max(4000).default(""),
+  // Only the fields the assistant decided to change.
+  form: cosFormSchema.partial().optional(),
+  // Full replacement schedule, only present when it changed.
+  schedules: z.array(cosScheduleSchema).max(50).optional(),
+});
+
+export type CosChatInput = z.infer<typeof cosChatInput>;
+
+/**
+ * What the COS assistant is allowed to send back: a short message plus, when
+ * needed, the form fields it changed and the full replacement schedule.
+ * Declared by hand (rather than inferred) so the patch is a plain
+ * `Partial<CosForm>`.
+ */
+export type CosChatReply = {
+  reply: string;
+  form?: Partial<CosForm>;
+  schedules?: CosSchedule[];
+};
+
+export const createOtFormInput = z.object({
+  // Client passes its local "today" (YYYY-MM-DD) so Date Filed defaults correctly
+  // for the user's timezone rather than the server's.
+  date_filed: z.string().optional(),
+});
+
+export const otEntrySchema = z.object({
+  idx: z.number().int().min(0).max(50),
+  date_of_ot: z.string(),
+  // "HH:MM" from the time inputs, or "" when that side is not set.
+  regular_from: z.string(),
+  regular_to: z.string(),
+  actual_from: z.string(),
+  actual_to: z.string(),
+  total_hours: z.string(),
+  /** The "For HR use only" column. */
+  validation: z.string(),
+});
+
+export const otFormSchema = z.object({
+  id_number: z.string(),
+  employee_name: z.string(),
+  department: z.string(),
+  position: z.string(),
+  date_filed: z.string(),
+  employee_signature: z.string().default(""),
+  reasons: z.string(),
+  approved_by: z.string(),
+  received_by: z.string(),
+  processed_by: z.string(),
+  approved_via_viber: z.boolean().default(false),
+  attachment_approved: z.boolean().default(false),
+});
+
+export const saveOtFormInput = z.object({
+  id,
+  form: otFormSchema,
+  /** One entry per OT line — the child rows behind the form. */
+  entries: z.array(otEntrySchema).max(50),
+});
+
+// AI help for the OT "Reason for Overtime" field (the OB Purpose / COS Reason twin).
+export const otReasonInput = z.object({
+  mode: z.enum(["generate", "enhance"]),
+  context: z.string().max(2000).default(""),
+  current: z.string().max(4000).default(""),
+});
+
+// Conversational agent that fills the Overtime form for the user.
+export const otChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  text: z.string().max(4000),
+});
+
+export const otChatInput = z.object({
+  messages: z.array(otChatMessageSchema).min(1).max(40),
+  form: otFormSchema,
+  entries: z.array(otEntrySchema).max(50),
+  today: z.string().max(40).optional(),
+  image: z
+    .object({
+      mimeType: z.string().min(1).max(100),
+      base64: z.string().min(1),
+    })
+    .optional(),
+});
+
+export const otChatReplySchema = z.object({
+  reply: z.string().max(4000).default(""),
+  form: otFormSchema.partial().optional(),
+  entries: z.array(otEntrySchema).max(50).optional(),
+});
+
+export type OtChatInput = z.infer<typeof otChatInput>;
+export type OtChatReply = {
+  reply: string;
+  form?: Partial<OtForm>;
+  entries?: OtEntry[];
+};
 
 /**
  * A supporting document uploaded for a record (the OB approval slip or a DTR

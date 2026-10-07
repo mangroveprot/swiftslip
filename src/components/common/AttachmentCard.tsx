@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Loader2, Paperclip, Trash2, Upload } from "lucide-react";
+import { Download, ExternalLink, Loader2, Paperclip, Trash2, Upload } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { removeObAttachment, uploadObAttachment } from "@/api/official-business.functions";
+import { getCosAttachmentUrl, removeCosAttachment, uploadCosAttachment } from "@/api/cos.functions";
+import { getOtAttachmentUrl, removeOtAttachment, uploadOtAttachment } from "@/api/ot.functions";
 import { removeLoaAttachment, uploadLoaAttachment } from "@/api/loa.functions";
 import {
   getRecordAttachmentUrl,
@@ -10,6 +12,16 @@ import {
   uploadRecordAttachment,
 } from "@/api/records.functions";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import {
+  cosAttachmentUrlQueryOptions,
+  cosFormQueryOptions,
+  cosFormsQueryOptions,
+} from "@/features/change-of-schedule/queries";
+import {
+  otAttachmentUrlQueryOptions,
+  otFormQueryOptions,
+  otFormsQueryOptions,
+} from "@/features/overtime/queries";
 import {
   loaAttachmentUrlQueryOptions,
   loaFormQueryOptions,
@@ -26,14 +38,14 @@ import {
   recordsQueryOptions,
 } from "@/features/records/queries";
 import { fileToBase64 } from "@/lib/file";
+import { downloadFromUrl, IMAGE_RE } from "@/lib/attachment-file";
 import { toast } from "@/lib/toast";
 
 /** What the document means for this row: the OB slip and the LOA approval
  *  attachment drive an approval mark; the DTR's file is a supporting file. */
-type AttachmentKind = "ob" | "loa" | "record";
+type AttachmentKind = "ob" | "loa" | "cos" | "ot" | "record";
 
 const MAX_MB = 10;
-const IMAGE_RE = /\.(png|jpe?g|webp|gif|bmp)$/i;
 
 const COPY: Record<
   AttachmentKind,
@@ -53,6 +65,20 @@ const COPY: Record<
     removeDescription:
       "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
   },
+  cos: {
+    title: "Approval attachment",
+    empty: "Attach approval slip PDF, image or document, up to 10 MB",
+    removeTitle: "Remove this attachment?",
+    removeDescription:
+      "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
+  },
+  ot: {
+    title: "Approval attachment",
+    empty: "Attach approval slip PDF, image or document, up to 10 MB",
+    removeTitle: "Remove this attachment?",
+    removeDescription:
+      "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
+  },
   record: {
     title: "Attachment",
     empty: "Attach a supporting document PDF, image or document, up to 10 MB",
@@ -60,11 +86,12 @@ const COPY: Record<
     removeDescription: "The uploaded file is deleted. This can't be undone.",
   },
 };
-
 /** Per-kind signed-URL query options — one lookup instead of ternaries. */
 const URL_QUERY = {
   ob: obAttachmentUrlQueryOptions,
   loa: loaAttachmentUrlQueryOptions,
+  cos: cosAttachmentUrlQueryOptions,
+  ot: otAttachmentUrlQueryOptions,
   record: recordAttachmentUrlQueryOptions,
 };
 
@@ -85,6 +112,7 @@ export function AttachmentCard({
   onRemoved,
   badge,
   children,
+  cardClassName = "shrink-0 rounded-xl border bg-card p-3 shadow-sm",
 }: {
   kind: AttachmentKind;
   id: string;
@@ -98,6 +126,9 @@ export function AttachmentCard({
   badge?: ReactNode;
   /** Extra controls under the file row (the OB "Approved" checkbox). */
   children?: ReactNode;
+  /** Shell classes for the card itself. Overridable so a form can match its
+   *  own boxed layout without restyling the other screens that share this card. */
+  cardClassName?: string;
 }) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -123,14 +154,22 @@ export function AttachmentCard({
         ? recordQueryOptions(id)
         : kind === "loa"
           ? loaFormQueryOptions(id)
-          : obFormQueryOptions(id)
+          : kind === "cos"
+            ? cosFormQueryOptions(id)
+            : kind === "ot"
+              ? otFormQueryOptions(id)
+              : obFormQueryOptions(id)
     ).queryKey;
     const listKey = (
       kind === "record"
         ? recordsQueryOptions()
         : kind === "loa"
           ? loaFormsQueryOptions()
-          : obFormsQueryOptions()
+          : kind === "cos"
+            ? cosFormsQueryOptions()
+            : kind === "ot"
+              ? otFormsQueryOptions()
+              : obFormsQueryOptions()
     ).queryKey;
     await Promise.all([
       qc.invalidateQueries({ queryKey: urlKey }),
@@ -163,6 +202,8 @@ export function AttachmentCard({
       };
       if (kind === "ob") await uploadObAttachment(payload);
       else if (kind === "loa") await uploadLoaAttachment(payload);
+      else if (kind === "cos") await uploadCosAttachment(payload);
+      else if (kind === "ot") await uploadOtAttachment(payload);
       else await uploadRecordAttachment(payload);
       // A file on the row is content — it must never be scaffold-deleted.
       onUploaded();
@@ -209,6 +250,8 @@ export function AttachmentCard({
     try {
       if (kind === "ob") await removeObAttachment({ data: { id } });
       else if (kind === "loa") await removeLoaAttachment({ data: { id } });
+      else if (kind === "cos") await removeCosAttachment({ data: { id } });
+      else if (kind === "ot") await removeOtAttachment({ data: { id } });
       else await removeRecordAttachment({ data: { id } });
       onRemoved?.();
       await refresh();
@@ -227,7 +270,7 @@ export function AttachmentCard({
   // filename, buttons) is screen-only.
   return (
     <section
-      className={`shrink-0 rounded-xl border bg-card p-3 shadow-sm${
+      className={`${cardClassName}${
         printable
           ? " print:break-before-page print:border-0 print:rounded-none print:bg-transparent print:p-0 print:shadow-none"
           : " print:hidden"
@@ -268,6 +311,19 @@ export function AttachmentCard({
                 />
               ) : null}
             </div>
+            {signed?.url ? (
+              <button
+                type="button"
+                className="btn btn-outline size-7 shrink-0 p-0 print:hidden"
+                aria-label="Download attachment"
+                title="Download attachment"
+                onClick={() => {
+                  if (signed?.url) void downloadFromUrl(signed.url, file.name);
+                }}
+              >
+                <Download className="size-3.5" aria-hidden="true" />
+              </button>
+            ) : null}
             {signed?.url ? (
               <a
                 href={signed.url}

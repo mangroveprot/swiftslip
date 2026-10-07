@@ -8,19 +8,19 @@ import {
   Maximize2,
   Printer,
   Save as SaveIcon,
-  Upload,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
 import { deleteRecord, getRecord, saveRecord } from "@/api/records.functions";
+import { AiMascot } from "@/components/common/AiMascot";
 import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
-import { templateQueryOptions } from "@/features/template/queries";
+import { DTR_TEMPLATE } from "@/shared/dtr-template";
 import { fileToBase64 } from "@/lib/file";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
@@ -63,7 +63,8 @@ export function RecordEditor({ id }: { id: string }) {
   const qc = useQueryClient();
 
   const { data } = useQuery(recordQueryOptions(id));
-  const { data: template } = useQuery(templateQueryOptions());
+  // Fixed form wording — the Settings → DTR template screen is gone.
+  const template = DTR_TEMPLATE;
   const profileQuery = useQuery(profileQueryOptions());
   // Identity fields are auto-filled from the profile when a record is created, so
   // the profile is the reference for telling that auto-fill apart from content the
@@ -254,7 +255,7 @@ export function RecordEditor({ id }: { id: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (!header || !template) return <EditorSkeleton />;
+  if (!header) return <EditorSkeleton />;
 
   const days = daysForPeriod(header.period, header.month, header.year);
 
@@ -334,7 +335,7 @@ export function RecordEditor({ id }: { id: string }) {
   }
 
   async function download() {
-    if (!header || !template) return;
+    if (!header) return;
     setBusy(true);
     const toastId = toast.loading("Preparing Word file…");
     try {
@@ -382,7 +383,8 @@ export function RecordEditor({ id }: { id: string }) {
                 title="Upload a scanned or photographed biometric log (PDF or image) to auto-fill the days below"
                 onClick={() => fileRef.current?.click()}
               >
-                <Upload className="size-4" aria-hidden="true" />
+                {/* The mascot marks this as the AI read — the label says upload. */}
+                <AiMascot size="xs" />
                 <span className="hidden sm:inline">Import from biometric record</span>
               </button>
               <input

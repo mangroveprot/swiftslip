@@ -7,7 +7,7 @@ import { createRecord, deleteRecord } from "@/api/records.functions";
 import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
-import { templateQueryOptions } from "@/features/template/queries";
+import { DTR_TEMPLATE } from "@/shared/dtr-template";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { MONTHS, periodLabel, periodRange } from "@/shared/period";
@@ -34,7 +34,6 @@ export function RecordsList() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: records } = useQuery(recordsQueryOptions());
-  const { data: template } = useQuery(templateQueryOptions());
   // Auto-created records the user hasn't touched yet stay hidden until they are
   // filled in or cleaned up in the background — they are not real entries.
   const { pendingIds, markPending } = usePendingRecords();
@@ -53,7 +52,7 @@ export function RecordsList() {
         data: {
           month: today.getMonth() + 1,
           year: today.getFullYear(),
-          period: (template?.default_period ?? "first_half") as Period,
+          period: DTR_TEMPLATE.default_period as Period,
         },
       });
       markPending(id);

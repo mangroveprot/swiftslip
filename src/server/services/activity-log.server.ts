@@ -20,6 +20,10 @@ export type ActivityAction =
   | "ob.deleted"
   | "loa.created"
   | "loa.deleted"
+  | "cos.created"
+  | "cos.deleted"
+  | "ot.created"
+  | "ot.deleted"
   | "record.created"
   | "record.deleted"
   | "attachment.uploaded"
@@ -81,6 +85,10 @@ const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {
     "ob.deleted",
     "loa.created",
     "loa.deleted",
+    "cos.created",
+    "cos.deleted",
+    "ot.created",
+    "ot.deleted",
     "record.created",
     "record.deleted",
     "attachment.uploaded",
@@ -128,6 +136,8 @@ const ACTION_GROUPS: Record<string, string[]> = {
   accounts: ["user.created", "user.updated", "user.deleted"],
   ob: ["ob.created", "ob.deleted"],
   loa: ["loa.created", "loa.deleted"],
+  cos: ["cos.created", "cos.deleted"],
+  ot: ["ot.created", "ot.deleted"],
   records: ["record.created", "record.deleted"],
   attachments: ["attachment.uploaded", "attachment.removed"],
   inventory: ["asset.created", "asset.updated", "report.downloaded"],

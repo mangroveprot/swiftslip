@@ -559,18 +559,22 @@ export function LoaPreview({
                 span: 19,
                 b: "l18|r18",
                 v: "bottom",
-                // The typed answer sits almost on top of the fill line: 5px of
-                // leading instead of the sheet's usual 1.22 (17.9px). The 6.5px
-                // of bottom padding is exactly half the leading given up, so the
-                // fill line itself stays put on the cell's baseline instead of
-                // sinking into the border. The .docx mirrors both with
-                // w:line="67" (67/240 of Calibri 11 single = 5px) plus
-                // w:after="75" (5px) for the same correction.
+                // The typed answer is written ON the fill line: 2px of leading
+                // instead of the sheet's usual 1.22 (17.9px), which is what
+                // stops it looking like it is floating above the line. The 8px
+                // of bottom padding is exactly half the leading given up, so
+                // the fill line itself stays put on the cell's baseline instead
+                // of sinking into the border.
+                //
+                // The .docx can't follow this far: Word's proportional leading
+                // overlaps the two lines somewhere below ~170 (240ths of a single
+                // line), so the export stops at 190 — see OTHERS_PARA_ID in
+                // lib/word-export.ts.
                 style: {
                   fontWeight: 700,
                   whiteSpace: "pre-wrap",
-                  lineHeight: "5px",
-                  paddingBottom: "6.5px",
+                  lineHeight: "2px",
+                  paddingBottom: "8px",
                 },
                 content: othersText,
               },

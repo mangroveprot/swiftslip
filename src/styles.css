@@ -231,6 +231,231 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring) 22%, transparent);
 }
 
+/* ── Filled form fields (LOA, OB, DTR) ──────────────────────────────────
+   The three form editors lay their fields out as labelled boxes: white
+   rounded cards, each opening with a title row and holding its own group of
+   fields. Inside those cards the inputs drop their outline for the filled
+   field of that layout — the smooth look the LOA form introduced, now shared
+   by OB and the DTR so all three read the same. Font sizes and weights are
+   deliberately untouched: `.inp` and `.lbl` still decide those. */
+.form-fill .inp {
+  border-color: transparent;
+  background: var(--color-muted);
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+}
+
+.form-fill .inp:focus {
+  border-color: var(--color-ring);
+}
+
+/* ── Change of Schedule sheet ───────────────────────────────────────────
+   The live preview / print replica of public/cos_template.docx. Scoped under
+   `.cos-sheet` (the way the RGC inventory styles are scoped) so none of these
+   selectors can leak into the rest of the app. */
+.cos-sheet {
+  padding: 12px 12px 16px;
+  background: #fff;
+  color: #000;
+  font-family: Calibri, "Segoe UI", Candara, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.cos-sheet .form {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* Header / logo */
+.cos-sheet .logo {
+  text-align: center;
+  line-height: 1;
+}
+
+/* Tailwind's preflight makes every `img` display:block, and a block element is
+   not centred by `text-align` — without this the logo sits hard left. */
+.cos-sheet .logo img {
+  display: block;
+  margin: 0 auto;
+}
+
+.cos-sheet h1 {
+  text-align: center;
+  margin: -2px 0 10px;
+  font-family: "Eras Demi ITC", "Eras Bold ITC", "Arial Black", "Century Gothic", Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+}
+
+.cos-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.cos-sheet .box td,
+.cos-sheet .box th {
+  border: 1px solid #000;
+  padding: 4px 8px;
+  vertical-align: top;
+}
+
+.cos-sheet .outer {
+  border: 3px solid #000;
+}
+
+.cos-sheet .outer td {
+  border: 1px solid #000;
+}
+
+/* Top info block */
+.cos-sheet .info td {
+  height: auto;
+  padding: 4px 7px;
+  font-size: 13px;
+}
+
+.cos-sheet .info .label {
+  display: block;
+  margin-bottom: 3px;
+  /* A step under the 13px body — the OB preview does the same for its tight
+     cells (`DEPARTURE` / `RETURN`). At 13px the three info labels are wider
+     than their column in the narrow preview column, and "Plant/Location:" has
+     no space in it, so it overflows instead of wrapping. */
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+
+.cos-sheet .info .val {
+  font-weight: 700;
+  padding-left: 6px;
+}
+
+.cos-sheet .info .val.normal {
+  font-weight: 400;
+}
+
+.cos-sheet .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 4px 14px 0 6px;
+  white-space: nowrap;
+}
+
+.cos-sheet .cb {
+  width: 12px;
+  height: 12px;
+  border: 1px solid #000;
+  display: inline-block;
+  text-align: center;
+  line-height: 10px;
+  font-size: 11px;
+}
+
+.cos-sheet .gap {
+  height: 8px;
+}
+
+/* Schedule block */
+.cos-sheet .sched {
+  border: 3px solid #000;
+}
+
+.cos-sheet .sched th,
+.cos-sheet .sched td {
+  border: 1px solid #000;
+}
+
+.cos-sheet .sched thead th {
+  background: #bfbfbf;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 3px;
+  line-height: 1.2;
+}
+
+.cos-sheet .sched .sub th {
+  background: #fff;
+  font-size: 13px;
+  padding: 2px;
+}
+
+.cos-sheet .sched td {
+  height: 52px;
+  font-size: 13px;
+  padding: 6px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.cos-sheet .sig-line {
+  height: 50px;
+}
+
+/* Reason block */
+.cos-sheet .reason {
+  border: 3px solid #000;
+  padding: 5px 8px 9px;
+}
+
+.cos-sheet .reason b.title {
+  font-size: 13px;
+}
+
+.cos-sheet .reason p {
+  text-align: center;
+  font-weight: 700;
+  margin: 5px 0 0;
+  font-size: 13px;
+}
+
+/* Signatories */
+.cos-sheet .sign {
+  border: 3px solid #000;
+}
+
+.cos-sheet .sign td {
+  border: 2px solid #000;
+  height: 96px;
+  padding: 5px 8px;
+  vertical-align: top;
+}
+
+.cos-sheet .sign .head {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.cos-sheet .sign .who {
+  text-align: center;
+  margin-top: 34px;
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.cos-sheet .sign .who .name {
+  font-size: 11px;
+}
+
+/* The "Approved via Viber" note, in the same blue the OB sheet uses. */
+.cos-sheet .sign .who .viber {
+  color: #4472c4;
+}
+
+.cos-sheet .sign .team {
+  text-align: center;
+  margin-top: 50px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
 @media print {
   body {
     background: #fff;
@@ -275,6 +500,16 @@
   .loa-fitsheet {
     transform: none !important;
     width: auto !important;
+  }
+
+  /* The sheet's own screen padding is the page margin on paper. */
+  .cos-sheet {
+    padding: 0 !important;
+  }
+
+  .cos-sheet .sched thead th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* The LOA sheet replicates the Word template at exactly 738px of content,
@@ -1271,5 +1506,154 @@
   to {
     opacity: 0;
     transform: translateX(1.25rem);
+  }
+}
+
+/* --- AI assistant widget (mascot launcher, speech bubble, chat window). --- */
+
+/* The bubble grows out of the corner the mascot sits in: scale up from the
+   bottom right, with a slight overshoot on the way so it reads as sprung. */
+@keyframes ai-bubble-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.6);
+  }
+
+  60% {
+    transform: translateY(-1px) scale(1.04);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Leaving is quicker and flatter than arriving — no bounce on the way out. */
+@keyframes ai-bubble-vanish {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.72);
+  }
+}
+
+/* The launcher rocks gently, so the bubble above it reads as speech from a
+   character rather than a static tooltip. */
+@keyframes ai-mascot-idle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-3px) rotate(-3deg);
+  }
+}
+
+/* A soft halo that breathes out from behind the mascot to draw the eye. */
+@keyframes ai-halo-pulse {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+/* The bubble tail is a CSS triangle — a zero-size box with two transparent
+   borders and one coloured border. Scaling it needs no rotation: a zero-size
+   element's transform-origin *is* the point where it meets the bubble, so it
+   grows out of the join rather than spinning. */
+@keyframes ai-tail-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Message rows settle in as they are appended to the transcript. */
+@keyframes ai-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Cross-fade used when the rotating hint text swaps over. */
+@keyframes ai-hint-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* `transform-origin` travels with the keyframes above so the scale always
+   grows out of the mascot. */
+.ai-bubble-pop {
+  transform-origin: bottom right;
+  animation: ai-bubble-pop 0.42s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.ai-bubble-vanish {
+  transform-origin: bottom right;
+  animation: ai-bubble-vanish 0.18s ease-in both;
+}
+
+.ai-tail-pop {
+  /* `transform-origin` is irrelevant for a zero-size triangle — its own
+     origin is the apex where it meets the bubble. */
+  animation: ai-tail-pop 0.3s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.ai-mascot-idle {
+  animation: ai-mascot-idle 3.6s ease-in-out infinite;
+}
+
+.ai-halo-pulse {
+  animation: ai-halo-pulse 2.6s ease-out infinite;
+}
+
+.ai-message-in {
+  animation: ai-message-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.ai-hint-fade {
+  animation: ai-hint-fade 0.35s ease-out both;
+}
+
+/* No motion for anyone who asked the OS for none. */
+@media (prefers-reduced-motion: reduce) {
+  .ai-bubble-pop,
+  .ai-bubble-vanish,
+  .ai-tail-pop,
+  .ai-mascot-idle,
+  .ai-halo-pulse,
+  .ai-message-in,
+  .ai-hint-fade {
+    animation: none;
   }
 }

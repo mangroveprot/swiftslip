@@ -16,11 +16,13 @@ import type { LoaForm } from "@/shared/types";
 // and {viber} (blue note).
 const TEMPLATE_URL = "/loa_form_template.docx";
 
-// A 1×1 transparent pixel: docxtemplater's image module refuses to render an
-// empty value, so an employee who hasn't signed yet still exports (the cell
-// just stays blank, exactly like the untouched template).
+// A 1×1 FULLY transparent pixel (RGBA 0,0,0,0): docxtemplater's image module
+// refuses to render an empty value, so an employee who hasn't signed yet still
+// exports — the cell just stays blank, exactly like the untouched template.
+// (The value this replaced was RGBA 0,0,255,127 — a half-opaque BLUE — which
+// Word drew as a blue block in the signature cell of every unsigned export.)
 const TRANSPARENT_PX =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNgAAIAAAUAAen63NgAAAAASUVORK5CYII=";
 
 /** The template's own empty "Others:" line — the fallback when no text is given. */
 const OTHERS_LINE = "_".repeat(41);
@@ -82,11 +84,17 @@ const centerParagraph = (xml: string, paraId: string) =>
 /**
  * The "Others:" paragraph (typed answer on top, fill line underneath).
  *
- * Its leading is tightened so the answer sits almost on the line: 67/240 of
- * Word's single spacing for Calibri 11 = 5px, the same leading the preview
- * uses. The 75-twip (5px) `after` puts back exactly what the tighter leading
- * takes off the bottom of the block, so the fill line itself stays on the
- * cell's baseline where the template leaves it.
+ * The answer line is tightened so it sits just above the fill line — but not
+ * so far that the two collide. `w:line` under `lineRule="auto"` counts 240ths
+ * of a single line, so 190 is ~10.9pt for Calibri 11, i.e. ~14.6px between the
+ * two baselines: close to the preview's own spacing, and clear of the font's
+ * glyph extent. Values much below ~170 make Word draw the answer straight ON
+ * the fill line (the value this replaced was 67, ≈3.9pt — less than a third of
+ * the text's own height, so the two lines overlapped).
+ *
+ * The cell is bottom-aligned (`w:vAlign="bottom"`), so the leading moves the
+ * answer line only; the 75-twip `after` is what keeps the fill line itself on
+ * the baseline the template leaves it at.
  */
 const OTHERS_PARA_ID = "0C022627";
 
@@ -160,11 +168,11 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
   let xml = entry ? entry.asText() : "";
   if (xml) {
     for (const paraId of CENTERED_PARA_IDS) xml = centerParagraph(xml, paraId);
-    // …and pull the typed answer down onto its fill line.
+    // …and tighten the answer line so it sits just above its fill line.
     xml = insertInPPr(
       xml,
       OTHERS_PARA_ID,
-      '<w:spacing w:line="67" w:lineRule="auto" w:after="75"/>',
+      '<w:spacing w:line="190" w:lineRule="auto" w:after="75"/>',
     );
 
     if (typedOthers) {

@@ -1,586 +1,777 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
+    PostgrestVersion: "14.5";
+  };
   public: {
     Tables: {
       activity_logs: {
         Row: {
-          action: string
-          actor_id: string | null
-          actor_name: string | null
-          actor_number: string | null
-          created_at: string
-          detail: string | null
-          id: string
-          ip: string | null
-          target: string | null
-        }
+          action: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          actor_number: string | null;
+          created_at: string;
+          detail: string | null;
+          id: string;
+          ip: string | null;
+          target: string | null;
+        };
         Insert: {
-          action: string
-          actor_id?: string | null
-          actor_name?: string | null
-          actor_number?: string | null
-          created_at?: string
-          detail?: string | null
-          id?: string
-          ip?: string | null
-          target?: string | null
-        }
+          action: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          actor_number?: string | null;
+          created_at?: string;
+          detail?: string | null;
+          id?: string;
+          ip?: string | null;
+          target?: string | null;
+        };
         Update: {
-          action?: string
-          actor_id?: string | null
-          actor_name?: string | null
-          actor_number?: string | null
-          created_at?: string
-          detail?: string | null
-          id?: string
-          ip?: string | null
-          target?: string | null
-        }
-        Relationships: []
-      }
+          action?: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          actor_number?: string | null;
+          created_at?: string;
+          detail?: string | null;
+          id?: string;
+          ip?: string | null;
+          target?: string | null;
+        };
+        Relationships: [];
+      };
       users: {
         Row: {
-          created_at: string
-          id: string
-          id_number: string
-          password_hash: string
-          role: string
-        }
+          created_at: string;
+          id: string;
+          id_number: string;
+          password_hash: string;
+          role: string;
+        };
         Insert: {
-          created_at?: string
-          id?: string
-          id_number: string
-          password_hash: string
-          role: string
-        }
+          created_at?: string;
+          id?: string;
+          id_number: string;
+          password_hash: string;
+          role: string;
+        };
         Update: {
-          created_at?: string
-          id?: string
-          id_number?: string
-          password_hash?: string
-          role?: string
-        }
-        Relationships: []
-      }
+          created_at?: string;
+          id?: string;
+          id_number?: string;
+          password_hash?: string;
+          role?: string;
+        };
+        Relationships: [];
+      };
       dtr_entries: {
         Row: {
-          day: number
-          id: string
-          record_id: string
-          remarks: string
-          schedule: string
-          time_in: string
-          time_out: string
-        }
+          day: number;
+          id: string;
+          record_id: string;
+          remarks: string;
+          schedule: string;
+          time_in: string;
+          time_out: string;
+        };
         Insert: {
-          day: number
-          id?: string
-          record_id: string
-          remarks?: string
-          schedule?: string
-          time_in?: string
-          time_out?: string
-        }
+          day: number;
+          id?: string;
+          record_id: string;
+          remarks?: string;
+          schedule?: string;
+          time_in?: string;
+          time_out?: string;
+        };
         Update: {
-          day?: number
-          id?: string
-          record_id?: string
-          remarks?: string
-          schedule?: string
-          time_in?: string
-          time_out?: string
-        }
+          day?: number;
+          id?: string;
+          record_id?: string;
+          remarks?: string;
+          schedule?: string;
+          time_in?: string;
+          time_out?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "dtr_entries_record_id_fkey"
-            columns: ["record_id"]
-            isOneToOne: false
-            referencedRelation: "dtr_records"
-            referencedColumns: ["id"]
+            foreignKeyName: "dtr_entries_record_id_fkey";
+            columns: ["record_id"];
+            isOneToOne: false;
+            referencedRelation: "dtr_records";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       dtr_records: {
         Row: {
-          area: string
-          attachment_name: string | null
-          attachment_path: string | null
-          certified_by: string
-          created_at: string
-          designation: string
-          emp_no: string
-          employee_signature: string
-          id: string
-          month: number
-          name: string
-          owner_id: string | null
-          period: string
-          updated_at: string
-          year: number
-        }
+          area: string;
+          attachment_name: string | null;
+          attachment_path: string | null;
+          certified_by: string;
+          created_at: string;
+          designation: string;
+          emp_no: string;
+          employee_signature: string;
+          id: string;
+          month: number;
+          name: string;
+          owner_id: string | null;
+          period: string;
+          updated_at: string;
+          year: number;
+        };
         Insert: {
-          area?: string
-          attachment_name?: string | null
-          attachment_path?: string | null
-          certified_by?: string
-          created_at?: string
-          designation?: string
-          emp_no?: string
-          employee_signature?: string
-          id?: string
-          month?: number
-          name?: string
-          owner_id?: string | null
-          period?: string
-          updated_at?: string
-          year?: number
-        }
+          area?: string;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          certified_by?: string;
+          created_at?: string;
+          designation?: string;
+          emp_no?: string;
+          employee_signature?: string;
+          id?: string;
+          month?: number;
+          name?: string;
+          owner_id?: string | null;
+          period?: string;
+          updated_at?: string;
+          year?: number;
+        };
         Update: {
-          area?: string
-          attachment_name?: string | null
-          attachment_path?: string | null
-          certified_by?: string
-          created_at?: string
-          designation?: string
-          emp_no?: string
-          employee_signature?: string
-          id?: string
-          month?: number
-          name?: string
-          owner_id?: string | null
-          period?: string
-          updated_at?: string
-          year?: number
-        }
+          area?: string;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          certified_by?: string;
+          created_at?: string;
+          designation?: string;
+          emp_no?: string;
+          employee_signature?: string;
+          id?: string;
+          month?: number;
+          name?: string;
+          owner_id?: string | null;
+          period?: string;
+          updated_at?: string;
+          year?: number;
+        };
         Relationships: [
           {
-            foreignKeyName: "dtr_records_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            foreignKeyName: "dtr_records_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       profiles: {
         Row: {
-          access_code_id: string
-          area: string
-          designation: string
-          emp_no: string
-          full_name: string
-          signature: string
-          updated_at: string
-        }
+          access_code_id: string;
+          area: string;
+          designation: string;
+          emp_no: string;
+          full_name: string;
+          signature: string;
+          updated_at: string;
+        };
         Insert: {
-          access_code_id: string
-          area?: string
-          designation?: string
-          emp_no?: string
-          full_name?: string
-          signature?: string
-          updated_at?: string
-        }
+          access_code_id: string;
+          area?: string;
+          designation?: string;
+          emp_no?: string;
+          full_name?: string;
+          signature?: string;
+          updated_at?: string;
+        };
         Update: {
-          access_code_id?: string
-          area?: string
-          designation?: string
-          emp_no?: string
-          full_name?: string
-          signature?: string
-          updated_at?: string
-        }
+          access_code_id?: string;
+          area?: string;
+          designation?: string;
+          emp_no?: string;
+          full_name?: string;
+          signature?: string;
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "profiles_access_code_id_fkey"
-            columns: ["access_code_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            foreignKeyName: "profiles_access_code_id_fkey";
+            columns: ["access_code_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       ob_forms: {
         Row: {
-          approved_by: string
-          approved_via_viber: boolean
-          attachment_approved: boolean
-          attachment_name: string | null
-          attachment_path: string | null
-          created_at: string
-          date_filed: string
-          date_of_ob: string
-          department: string
-          employee_name: string
-          employee_signature: string
-          id: string
-          id_number: string
-          owner_id: string | null
-          position: string
-          updated_at: string
-        }
+          approved_by: string;
+          approved_via_viber: boolean;
+          attachment_approved: boolean;
+          attachment_name: string | null;
+          attachment_path: string | null;
+          created_at: string;
+          date_filed: string;
+          date_of_ob: string;
+          department: string;
+          employee_name: string;
+          employee_signature: string;
+          id: string;
+          id_number: string;
+          owner_id: string | null;
+          position: string;
+          updated_at: string;
+        };
         Insert: {
-          approved_by?: string
-          approved_via_viber?: boolean
-          attachment_approved?: boolean
-          attachment_name?: string | null
-          attachment_path?: string | null
-          created_at?: string
-          date_filed?: string
-          date_of_ob?: string
-          department?: string
-          employee_name?: string
-          employee_signature?: string
-          id?: string
-          id_number?: string
-          owner_id?: string | null
-          position?: string
-          updated_at?: string
-        }
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          created_at?: string;
+          date_filed?: string;
+          date_of_ob?: string;
+          department?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          owner_id?: string | null;
+          position?: string;
+          updated_at?: string;
+        };
         Update: {
-          approved_by?: string
-          approved_via_viber?: boolean
-          attachment_approved?: boolean
-          attachment_name?: string | null
-          attachment_path?: string | null
-          created_at?: string
-          date_filed?: string
-          date_of_ob?: string
-          department?: string
-          employee_name?: string
-          employee_signature?: string
-          id?: string
-          id_number?: string
-          owner_id?: string | null
-          position?: string
-          updated_at?: string
-        }
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          created_at?: string;
+          date_filed?: string;
+          date_of_ob?: string;
+          department?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          owner_id?: string | null;
+          position?: string;
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "ob_forms_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            foreignKeyName: "ob_forms_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       ob_entries: {
         Row: {
-          form_id: string
-          from_place: string
-          id: string
-          idx: number
-          purpose: string
-          time_departure: string
-          time_return: string
-          to_place: string
-        }
+          form_id: string;
+          from_place: string;
+          id: string;
+          idx: number;
+          purpose: string;
+          time_departure: string;
+          time_return: string;
+          to_place: string;
+        };
         Insert: {
-          form_id: string
-          from_place?: string
-          id?: string
-          idx: number
-          purpose?: string
-          time_departure?: string
-          time_return?: string
-          to_place?: string
-        }
+          form_id: string;
+          from_place?: string;
+          id?: string;
+          idx: number;
+          purpose?: string;
+          time_departure?: string;
+          time_return?: string;
+          to_place?: string;
+        };
         Update: {
-          form_id?: string
-          from_place?: string
-          id?: string
-          idx?: number
-          purpose?: string
-          time_departure?: string
-          time_return?: string
-          to_place?: string
-        }
+          form_id?: string;
+          from_place?: string;
+          id?: string;
+          idx?: number;
+          purpose?: string;
+          time_departure?: string;
+          time_return?: string;
+          to_place?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "ob_entries_form_id_fkey"
-            columns: ["form_id"]
-            isOneToOne: false
-            referencedRelation: "ob_forms"
-            referencedColumns: ["id"]
+            foreignKeyName: "ob_entries_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "ob_forms";
+            referencedColumns: ["id"];
           },
-        ]
-      }
+        ];
+      };
       loa_forms: {
         Row: {
-          approved_by: string
-          approved_via_viber: boolean
-          attachment_approved: boolean
-          attachment_name: string | null
-          attachment_path: string | null
-          created_at: string
-          date_filed: string
-          date_from: string
-          date_to: string
-          days_applied: string
-          department: string
-          employee_name: string
-          employee_signature: string
-          id: string
-          id_number: string
-          leave_type: string
-          leave_type_other: string
-          other_attachments: Json
-          owner_id: string | null
-          pay_status: string
-          position: string
-          reasons: string
-          report_back_date: string
-          updated_at: string
-        }
+          approved_by: string;
+          approved_via_viber: boolean;
+          attachment_approved: boolean;
+          attachment_name: string | null;
+          attachment_path: string | null;
+          created_at: string;
+          date_filed: string;
+          date_from: string;
+          date_to: string;
+          days_applied: string;
+          department: string;
+          employee_name: string;
+          employee_signature: string;
+          id: string;
+          id_number: string;
+          leave_type: string;
+          leave_type_other: string;
+          other_attachments: Json;
+          owner_id: string | null;
+          pay_status: string;
+          position: string;
+          reasons: string;
+          report_back_date: string;
+          updated_at: string;
+        };
         Insert: {
-          approved_by?: string
-          approved_via_viber?: boolean
-          attachment_approved?: boolean
-          attachment_name?: string | null
-          attachment_path?: string | null
-          created_at?: string
-          date_filed?: string
-          date_from?: string
-          date_to?: string
-          days_applied?: string
-          department?: string
-          employee_name?: string
-          employee_signature?: string
-          id?: string
-          id_number?: string
-          leave_type?: string
-          leave_type_other?: string
-          other_attachments?: Json
-          owner_id?: string | null
-          pay_status?: string
-          position?: string
-          reasons?: string
-          report_back_date?: string
-          updated_at?: string
-        }
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          created_at?: string;
+          date_filed?: string;
+          date_from?: string;
+          date_to?: string;
+          days_applied?: string;
+          department?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          leave_type?: string;
+          leave_type_other?: string;
+          other_attachments?: Json;
+          owner_id?: string | null;
+          pay_status?: string;
+          position?: string;
+          reasons?: string;
+          report_back_date?: string;
+          updated_at?: string;
+        };
         Update: {
-          approved_by?: string
-          approved_via_viber?: boolean
-          attachment_approved?: boolean
-          attachment_name?: string | null
-          attachment_path?: string | null
-          created_at?: string
-          date_filed?: string
-          date_from?: string
-          date_to?: string
-          days_applied?: string
-          department?: string
-          employee_name?: string
-          employee_signature?: string
-          id?: string
-          id_number?: string
-          leave_type?: string
-          leave_type_other?: string
-          other_attachments?: Json
-          owner_id?: string | null
-          pay_status?: string
-          position?: string
-          reasons?: string
-          report_back_date?: string
-          updated_at?: string
-        }
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          created_at?: string;
+          date_filed?: string;
+          date_from?: string;
+          date_to?: string;
+          days_applied?: string;
+          department?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          leave_type?: string;
+          leave_type_other?: string;
+          other_attachments?: Json;
+          owner_id?: string | null;
+          pay_status?: string;
+          position?: string;
+          reasons?: string;
+          report_back_date?: string;
+          updated_at?: string;
+        };
         Relationships: [
           {
-            foreignKeyName: "loa_forms_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            foreignKeyName: "loa_forms_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
           },
-        ]
-      }
-      dtr_template: {
+        ];
+      };
+      cos_forms: {
         Row: {
-          certified_by_label: string
-          certifier_signature_label: string
-          columns: Json
-          default_period: string
-          default_schedule: string
-          employee_signature_label: string
-          id: number
-          org_name: string
-          title: string
-          updated_at: string
-        }
+          approved_by: string;
+          approved_via_viber: boolean;
+          attachment_approved: boolean;
+          attachment_name: string | null;
+          attachment_path: string | null;
+          change_type: string;
+          created_at: string;
+          date_filed: string;
+          employee_name: string;
+          employee_signature: string;
+          id: string;
+          id_number: string;
+          owner_id: string | null;
+          plant_location: string;
+          position: string;
+          processed_by: string;
+          reasons: string;
+          received_by: string;
+          updated_at: string;
+        };
         Insert: {
-          certified_by_label?: string
-          certifier_signature_label?: string
-          columns?: Json
-          default_period?: string
-          default_schedule?: string
-          employee_signature_label?: string
-          id?: number
-          org_name?: string
-          title?: string
-          updated_at?: string
-        }
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          change_type?: string;
+          created_at?: string;
+          date_filed?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          owner_id?: string | null;
+          plant_location?: string;
+          position?: string;
+          processed_by?: string;
+          reasons?: string;
+          received_by?: string;
+          updated_at?: string;
+        };
         Update: {
-          certified_by_label?: string
-          certifier_signature_label?: string
-          columns?: Json
-          default_period?: string
-          default_schedule?: string
-          employee_signature_label?: string
-          id?: number
-          org_name?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-    }
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          change_type?: string;
+          created_at?: string;
+          date_filed?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          owner_id?: string | null;
+          plant_location?: string;
+          position?: string;
+          processed_by?: string;
+          reasons?: string;
+          received_by?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cos_forms_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      cos_schedules: {
+        Row: {
+          effectivity_date: string;
+          form_id: string;
+          from_date: string;
+          from_end: string;
+          from_start: string;
+          id: string;
+          idx: number;
+          to_date: string;
+          to_end: string;
+          to_start: string;
+        };
+        Insert: {
+          effectivity_date?: string;
+          form_id: string;
+          from_date?: string;
+          from_end?: string;
+          from_start?: string;
+          id?: string;
+          idx: number;
+          to_date?: string;
+          to_end?: string;
+          to_start?: string;
+        };
+        Update: {
+          effectivity_date?: string;
+          form_id?: string;
+          from_date?: string;
+          from_end?: string;
+          from_start?: string;
+          id?: string;
+          idx?: number;
+          to_date?: string;
+          to_end?: string;
+          to_start?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cos_schedules_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "cos_forms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ot_forms: {
+        Row: {
+          approved_by: string;
+          approved_via_viber: boolean;
+          attachment_approved: boolean;
+          attachment_name: string | null;
+          attachment_path: string | null;
+          created_at: string;
+          date_filed: string;
+          department: string;
+          employee_name: string;
+          employee_signature: string;
+          id: string;
+          id_number: string;
+          other_attachments: Json;
+          owner_id: string | null;
+          position: string;
+          processed_by: string;
+          reasons: string;
+          received_by: string;
+          updated_at: string;
+        };
+        Insert: {
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          created_at?: string;
+          date_filed?: string;
+          department?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          other_attachments?: Json;
+          owner_id?: string | null;
+          position?: string;
+          processed_by?: string;
+          reasons?: string;
+          received_by?: string;
+          updated_at?: string;
+        };
+        Update: {
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          created_at?: string;
+          date_filed?: string;
+          department?: string;
+          employee_name?: string;
+          employee_signature?: string;
+          id?: string;
+          id_number?: string;
+          other_attachments?: Json;
+          owner_id?: string | null;
+          position?: string;
+          processed_by?: string;
+          reasons?: string;
+          received_by?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ot_forms_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ot_entries: {
+        Row: {
+          actual_from: string;
+          actual_to: string;
+          date_of_ot: string;
+          form_id: string;
+          id: string;
+          idx: number;
+          regular_from: string;
+          regular_to: string;
+          total_hours: string;
+          validation: string;
+        };
+        Insert: {
+          actual_from?: string;
+          actual_to?: string;
+          date_of_ot?: string;
+          form_id: string;
+          id?: string;
+          idx: number;
+          regular_from?: string;
+          regular_to?: string;
+          total_hours?: string;
+          validation?: string;
+        };
+        Update: {
+          actual_from?: string;
+          actual_to?: string;
+          date_of_ot?: string;
+          form_id?: string;
+          id?: string;
+          idx?: number;
+          regular_from?: string;
+          regular_to?: string;
+          total_hours?: string;
+          validation?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ot_entries_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "ot_forms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Enums: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
+      [_ in never]: never;
+    };
+  };
+};
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
+      Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
       }
       ? R
       : never
-    : never
+    : never;
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
+      Insert: infer I;
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
+        Insert: infer I;
       }
       ? I
       : never
-    : never
+    : never;
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
+      Update: infer U;
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
+        Update: infer U;
       }
       ? U
       : never
-    : never
+    : never;
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+    : never;
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
+    schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
+  schema: keyof DatabaseWithoutInternals;
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+    : never;
 
 export const Constants = {
   public: {
     Enums: {},
   },
-} as const
+} as const;

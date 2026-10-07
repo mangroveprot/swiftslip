@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Clock, LayoutDashboard, LogOut } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Clock, LayoutDashboard } from "lucide-react";
 
-import { signOut } from "@/api/auth.functions";
+import { SignOutButton } from "@/components/common/SignOutButton";
 import { APP } from "@/config/app";
 import { sessionQueryOptions } from "../queries";
 
@@ -21,16 +21,7 @@ const ENTRANCE_CLASS =
 /** Post-login entry point (administrators only): pick which application to open.
  *  Deliberately full-screen — it sits outside the `_app` shell/sidebar. */
 export function AppChooser() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const { data: session } = useQuery(sessionQueryOptions());
-
-  async function handleSignOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await signOut();
-    navigate({ to: "/", replace: true });
-  }
 
   return (
     <main className="flex min-h-dvh flex-col px-4 py-6 md:px-8">
@@ -48,10 +39,7 @@ export function AppChooser() {
               Signed in as {session.label}
             </span>
           ) : null}
-          <button className="btn btn-outline" onClick={handleSignOut}>
-            <LogOut className="size-4" aria-hidden="true" />
-            Sign out
-          </button>
+          <SignOutButton />
         </span>
       </header>
 

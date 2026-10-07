@@ -14,16 +14,18 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ChooseRouteImport } from './routes/choose'
 import { Route as RgcAssetInventoryRouteImport } from './routes/rgc-asset-inventory'
-import { Route as AppChangeRestDayRouteImport } from './routes/_app/change-rest-day'
-import { Route as AppChangeTimeScheduleRouteImport } from './routes/_app/change-time-schedule'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as RgcAssetInventoryIndexRouteImport } from './routes/rgc-asset-inventory.index'
 import { Route as RgcAssetInventoryReportsRouteImport } from './routes/rgc-asset-inventory.reports'
 import { Route as RgcAssetInventorySettingsRouteImport } from './routes/rgc-asset-inventory.settings'
+import { Route as AppChangeOfScheduleIndexRouteImport } from './routes/_app/change-of-schedule/index'
+import { Route as AppChangeOfScheduleIdRouteImport } from './routes/_app/change-of-schedule/$id'
 import { Route as AppLeaveOfAbsenceIndexRouteImport } from './routes/_app/leave-of-absence/index'
 import { Route as AppLeaveOfAbsenceIdRouteImport } from './routes/_app/leave-of-absence/$id'
 import { Route as AppOfficialBusinessIndexRouteImport } from './routes/_app/official-business/index'
 import { Route as AppOfficialBusinessIdRouteImport } from './routes/_app/official-business/$id'
+import { Route as AppOvertimeIndexRouteImport } from './routes/_app/overtime/index'
+import { Route as AppOvertimeIdRouteImport } from './routes/_app/overtime/$id'
 import { Route as AppRecordsIndexRouteImport } from './routes/_app/records/index'
 import { Route as AppRecordsIdRouteImport } from './routes/_app/records/$id'
 
@@ -51,16 +53,6 @@ const RgcAssetInventoryRoute = RgcAssetInventoryRouteImport.update({
   path: '/rgc-asset-inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppChangeRestDayRoute = AppChangeRestDayRouteImport.update({
-  id: '/change-rest-day',
-  path: '/change-rest-day',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppChangeTimeScheduleRoute = AppChangeTimeScheduleRouteImport.update({
-  id: '/change-time-schedule',
-  path: '/change-time-schedule',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -83,6 +75,17 @@ const RgcAssetInventorySettingsRoute =
     path: '/settings',
     getParentRoute: () => RgcAssetInventoryRoute,
   } as any)
+const AppChangeOfScheduleIndexRoute =
+  AppChangeOfScheduleIndexRouteImport.update({
+    id: '/change-of-schedule/',
+    path: '/change-of-schedule/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppChangeOfScheduleIdRoute = AppChangeOfScheduleIdRouteImport.update({
+  id: '/change-of-schedule/$id',
+  path: '/change-of-schedule/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLeaveOfAbsenceIndexRoute = AppLeaveOfAbsenceIndexRouteImport.update({
   id: '/leave-of-absence/',
   path: '/leave-of-absence/',
@@ -104,6 +107,16 @@ const AppOfficialBusinessIdRoute = AppOfficialBusinessIdRouteImport.update({
   path: '/official-business/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOvertimeIndexRoute = AppOvertimeIndexRouteImport.update({
+  id: '/overtime/',
+  path: '/overtime/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOvertimeIdRoute = AppOvertimeIdRouteImport.update({
+  id: '/overtime/$id',
+  path: '/overtime/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRecordsIndexRoute = AppRecordsIndexRouteImport.update({
   id: '/records/',
   path: '/records/',
@@ -120,34 +133,38 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
-  '/change-rest-day': typeof AppChangeRestDayRoute
-  '/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/profile': typeof AppProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
   '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
+  '/change-of-schedule/$id': typeof AppChangeOfScheduleIdRoute
   '/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
+  '/overtime/$id': typeof AppOvertimeIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/change-of-schedule/': typeof AppChangeOfScheduleIndexRoute
   '/leave-of-absence/': typeof AppLeaveOfAbsenceIndexRoute
   '/official-business/': typeof AppOfficialBusinessIndexRoute
+  '/overtime/': typeof AppOvertimeIndexRoute
   '/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
-  '/change-rest-day': typeof AppChangeRestDayRoute
-  '/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/profile': typeof AppProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryIndexRoute
+  '/change-of-schedule/$id': typeof AppChangeOfScheduleIdRoute
   '/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
+  '/overtime/$id': typeof AppOvertimeIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/change-of-schedule': typeof AppChangeOfScheduleIndexRoute
   '/leave-of-absence': typeof AppLeaveOfAbsenceIndexRoute
   '/official-business': typeof AppOfficialBusinessIndexRoute
+  '/overtime': typeof AppOvertimeIndexRoute
   '/records': typeof AppRecordsIndexRoute
 }
 export interface FileRoutesById {
@@ -157,17 +174,19 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
-  '/_app/change-rest-day': typeof AppChangeRestDayRoute
-  '/_app/change-time-schedule': typeof AppChangeTimeScheduleRoute
   '/_app/profile': typeof AppProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
   '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
+  '/_app/change-of-schedule/$id': typeof AppChangeOfScheduleIdRoute
   '/_app/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/_app/official-business/$id': typeof AppOfficialBusinessIdRoute
+  '/_app/overtime/$id': typeof AppOvertimeIdRoute
   '/_app/records/$id': typeof AppRecordsIdRoute
+  '/_app/change-of-schedule/': typeof AppChangeOfScheduleIndexRoute
   '/_app/leave-of-absence/': typeof AppLeaveOfAbsenceIndexRoute
   '/_app/official-business/': typeof AppOfficialBusinessIndexRoute
+  '/_app/overtime/': typeof AppOvertimeIndexRoute
   '/_app/records/': typeof AppRecordsIndexRoute
 }
 export interface FileRouteTypes {
@@ -177,34 +196,38 @@ export interface FileRouteTypes {
     | '/admin'
     | '/choose'
     | '/rgc-asset-inventory'
-    | '/change-rest-day'
-    | '/change-time-schedule'
     | '/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
     | '/rgc-asset-inventory/'
+    | '/change-of-schedule/$id'
     | '/leave-of-absence/$id'
     | '/official-business/$id'
+    | '/overtime/$id'
     | '/records/$id'
+    | '/change-of-schedule/'
     | '/leave-of-absence/'
     | '/official-business/'
+    | '/overtime/'
     | '/records/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/choose'
-    | '/change-rest-day'
-    | '/change-time-schedule'
     | '/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
     | '/rgc-asset-inventory'
+    | '/change-of-schedule/$id'
     | '/leave-of-absence/$id'
     | '/official-business/$id'
+    | '/overtime/$id'
     | '/records/$id'
+    | '/change-of-schedule'
     | '/leave-of-absence'
     | '/official-business'
+    | '/overtime'
     | '/records'
   id:
     | '__root__'
@@ -213,17 +236,19 @@ export interface FileRouteTypes {
     | '/admin'
     | '/choose'
     | '/rgc-asset-inventory'
-    | '/_app/change-rest-day'
-    | '/_app/change-time-schedule'
     | '/_app/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
     | '/rgc-asset-inventory/'
+    | '/_app/change-of-schedule/$id'
     | '/_app/leave-of-absence/$id'
     | '/_app/official-business/$id'
+    | '/_app/overtime/$id'
     | '/_app/records/$id'
+    | '/_app/change-of-schedule/'
     | '/_app/leave-of-absence/'
     | '/_app/official-business/'
+    | '/_app/overtime/'
     | '/_app/records/'
   fileRoutesById: FileRoutesById
 }
@@ -272,20 +297,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RgcAssetInventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/change-rest-day': {
-      id: '/_app/change-rest-day'
-      path: '/change-rest-day'
-      fullPath: '/change-rest-day'
-      preLoaderRoute: typeof AppChangeRestDayRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/change-time-schedule': {
-      id: '/_app/change-time-schedule'
-      path: '/change-time-schedule'
-      fullPath: '/change-time-schedule'
-      preLoaderRoute: typeof AppChangeTimeScheduleRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/profile': {
       id: '/_app/profile'
       path: '/profile'
@@ -313,6 +324,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/rgc-asset-inventory/settings'
       preLoaderRoute: typeof RgcAssetInventorySettingsRouteImport
       parentRoute: typeof RgcAssetInventoryRoute
+    }
+    '/_app/change-of-schedule/': {
+      id: '/_app/change-of-schedule/'
+      path: '/change-of-schedule'
+      fullPath: '/change-of-schedule/'
+      preLoaderRoute: typeof AppChangeOfScheduleIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/change-of-schedule/$id': {
+      id: '/_app/change-of-schedule/$id'
+      path: '/change-of-schedule/$id'
+      fullPath: '/change-of-schedule/$id'
+      preLoaderRoute: typeof AppChangeOfScheduleIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/leave-of-absence/': {
       id: '/_app/leave-of-absence/'
@@ -342,6 +367,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOfficialBusinessIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/overtime/': {
+      id: '/_app/overtime/'
+      path: '/overtime'
+      fullPath: '/overtime/'
+      preLoaderRoute: typeof AppOvertimeIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/overtime/$id': {
+      id: '/_app/overtime/$id'
+      path: '/overtime/$id'
+      fullPath: '/overtime/$id'
+      preLoaderRoute: typeof AppOvertimeIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/records/': {
       id: '/_app/records/'
       path: '/records'
@@ -360,26 +399,30 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
-  AppChangeRestDayRoute: typeof AppChangeRestDayRoute
-  AppChangeTimeScheduleRoute: typeof AppChangeTimeScheduleRoute
   AppProfileRoute: typeof AppProfileRoute
+  AppChangeOfScheduleIdRoute: typeof AppChangeOfScheduleIdRoute
   AppLeaveOfAbsenceIdRoute: typeof AppLeaveOfAbsenceIdRoute
   AppOfficialBusinessIdRoute: typeof AppOfficialBusinessIdRoute
+  AppOvertimeIdRoute: typeof AppOvertimeIdRoute
   AppRecordsIdRoute: typeof AppRecordsIdRoute
+  AppChangeOfScheduleIndexRoute: typeof AppChangeOfScheduleIndexRoute
   AppLeaveOfAbsenceIndexRoute: typeof AppLeaveOfAbsenceIndexRoute
   AppOfficialBusinessIndexRoute: typeof AppOfficialBusinessIndexRoute
+  AppOvertimeIndexRoute: typeof AppOvertimeIndexRoute
   AppRecordsIndexRoute: typeof AppRecordsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppChangeRestDayRoute: AppChangeRestDayRoute,
-  AppChangeTimeScheduleRoute: AppChangeTimeScheduleRoute,
   AppProfileRoute: AppProfileRoute,
+  AppChangeOfScheduleIdRoute: AppChangeOfScheduleIdRoute,
   AppLeaveOfAbsenceIdRoute: AppLeaveOfAbsenceIdRoute,
   AppOfficialBusinessIdRoute: AppOfficialBusinessIdRoute,
+  AppOvertimeIdRoute: AppOvertimeIdRoute,
   AppRecordsIdRoute: AppRecordsIdRoute,
+  AppChangeOfScheduleIndexRoute: AppChangeOfScheduleIndexRoute,
   AppLeaveOfAbsenceIndexRoute: AppLeaveOfAbsenceIndexRoute,
   AppOfficialBusinessIndexRoute: AppOfficialBusinessIndexRoute,
+  AppOvertimeIndexRoute: AppOvertimeIndexRoute,
   AppRecordsIndexRoute: AppRecordsIndexRoute,
 }
 

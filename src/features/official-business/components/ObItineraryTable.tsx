@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Loader2, Plus, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { Loader2, Plus, Trash2, Wand2, X } from "lucide-react";
 
 import { writeObPurpose } from "@/api/official-business.functions";
+import { AiMascot } from "@/components/common/AiMascot";
 import { toast } from "@/lib/toast";
 import type { ObEntry } from "@/shared/types";
 
@@ -41,7 +42,7 @@ export function ObItineraryTable({
   }
 
   return (
-    <section className="flex min-h-0 flex-col rounded-xl border bg-card p-3 shadow-sm lg:flex-1 lg:overflow-hidden">
+    <section className="form-fill flex min-h-0 flex-col rounded-xl border bg-card p-3 shadow-sm lg:flex-1 lg:overflow-hidden">
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">Itinerary / Destination</h2>
         {canEdit ? (
@@ -61,7 +62,7 @@ export function ObItineraryTable({
           rows.map((row, i) => (
             <div
               key={row.idx}
-              className="rounded-lg border bg-background p-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-300"
+              className="rounded-lg border bg-card p-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-300"
             >
               <div className="mb-2.5 flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -217,7 +218,7 @@ function PurposeField({
               {busy === "generate" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Sparkles className="size-3.5" aria-hidden="true" />
+                <AiMascot size="xs" />
               )}
               Generate
             </button>
@@ -282,7 +283,7 @@ function PurposeField({
               {busy === "generate" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Sparkles className="size-3.5" aria-hidden="true" />
+                <AiMascot size="xs" />
               )}
               Generate
             </button>

@@ -1,7 +1,6 @@
 import {
   Briefcase,
   CalendarClock,
-  CalendarOff,
   CalendarX,
   Clock,
   UserRound,
@@ -33,18 +32,8 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Daily Time Record", to: "/records", icon: Clock },
       { label: "Official Business", to: "/official-business", icon: Briefcase },
       { label: "Leave of Absence", to: "/leave-of-absence", icon: CalendarX },
-    ],
-  },
-  {
-    label: "Requests",
-    items: [
-      {
-        label: "Change Time Schedule",
-        to: "/change-time-schedule",
-        icon: CalendarClock,
-        soon: true,
-      },
-      { label: "Change Rest Day", to: "/change-rest-day", icon: CalendarOff, soon: true },
+      { label: "Change of Schedule", to: "/change-of-schedule", icon: CalendarClock },
+      { label: "Overtime", to: "/overtime", icon: Clock },
     ],
   },
   {

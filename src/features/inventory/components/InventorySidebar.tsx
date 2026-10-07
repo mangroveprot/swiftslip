@@ -5,10 +5,9 @@
  */
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { LayoutGrid, LogOut } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 
-import { signOut } from "@/api/auth.functions";
+import { SignOutButton } from "@/components/common/SignOutButton";
 import type { InventoryShell, InventoryView } from "../shell-context";
 
 const NAV_ITEMS: { key: InventoryView; label: string }[] = [
@@ -53,7 +52,6 @@ function NavIcon({ view }: { view: InventoryView }) {
 export function InventorySidebar({ shell }: { shell: InventoryShell }) {
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   const closeMenu = () => setBranchMenuOpen(false);
 
@@ -61,14 +59,6 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
     setBranchMenuOpen(false);
     shell.closeSidebar();
     void navigate({ to: "/choose" });
-  };
-
-  const handleSignOut = async () => {
-    setBranchMenuOpen(false);
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await signOut();
-    void navigate({ to: "/", replace: true });
   };
 
   const selectBranch = (branchId: number) => {
@@ -252,14 +242,11 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                 <LayoutGrid className="size-4 shrink-0" aria-hidden="true" />
                 Switch app
               </button>
-              <button
-                type="button"
-                onClick={() => void handleSignOut()}
+              <SignOutButton
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
-              >
-                <LogOut className="size-4 shrink-0" aria-hidden="true" />
-                Sign out
-              </button>
+                accessName="the RGC Asset Inventory"
+                onSignOutStart={() => setBranchMenuOpen(false)}
+              />
             </div>
           </div>
         </div>

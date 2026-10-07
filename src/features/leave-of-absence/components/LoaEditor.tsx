@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { deleteLoaForm, getLoaForm, saveLoaForm } from "@/api/loa.functions";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
+import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -23,7 +24,7 @@ import { APP } from "@/config/app";
 import { recomputeDerived } from "../lib/dates";
 import { unmarkPendingForm } from "../lib/pending-forms";
 import { isScaffoldForm } from "../lib/scaffold";
-import { loaFormQueryOptions, loaFormsQueryOptions } from "../queries";
+import { loaFormQueryOptions, loaFormsQueryOptions, loaOtherUrlsQueryOptions } from "../queries";
 import { LoaAssistantChat } from "./LoaAssistantChat";
 import { LoaAttachmentCard } from "./LoaAttachmentCard";
 import { LoaFormFields } from "./LoaFormFields";
@@ -54,6 +55,14 @@ export function LoaEditor({ id }: { id: string }) {
   // user actually typed.
   const profile = profileQuery.data ?? null;
   const profileReady = profileQuery.data !== undefined || profileQuery.isError;
+
+  // The extra attachments, plus their signed links. The card in the form column
+  // lists them and the print pages below render them; both read this one query.
+  const others = data?.others ?? [];
+  const { data: otherUrls } = useQuery({
+    ...loaOtherUrlsQueryOptions(id),
+    enabled: others.length > 0,
+  });
 
   const [form, setForm] = useState<LoaForm | null>(null);
   const [busy, setBusy] = useState(false);
@@ -416,8 +425,16 @@ export function LoaEditor({ id }: { id: string }) {
           </button>
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
-        <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-auto">
+      {/* `minmax(0,1fr)` on the base (single) column too, not just at lg: the
+          preview column holds the A4 sheet at its true 794px width, and an
+          implicit `auto` track sizes to its content's minimum — the track (and
+          with it the fit box) would become 794px wide on a phone, so the
+          fit-to-width measure above would read 794/794, keep the scale at 1
+          and clip the sheet instead of shrinking it. Declared `minmax(0,…)`
+          lets the column stay at the viewport width, which is what makes the
+          scale drop below 1 on small screens. */}
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
+        <div className="no-print @container flex min-h-0 flex-col gap-3 lg:overflow-auto">
           <LoaFormFields
             form={form}
             setForm={setForm}
@@ -425,12 +442,13 @@ export function LoaEditor({ id }: { id: string }) {
             savedSignature={profile?.signature}
           />
           {/* The other documents sit at the bottom of the form — the approval
-              attachment keeps the top of the preview column. Screen-only, so
-              it never prints. */}
+              attachment keeps the top of the preview column. This card is
+              screen-only; its printable copies are mounted in the preview
+              column below. */}
           <LoaOtherAttachmentsCard
             id={id}
             canEdit={canEdit}
-            others={data?.others ?? []}
+            others={others}
             onUploaded={handleAttachmentUploaded}
           />
         </div>
@@ -487,6 +505,13 @@ export function LoaEditor({ id }: { id: string }) {
               </div>
             </div>
           </div>
+          {/* The printable "other attachments", after everything else on paper.
+              They have to live HERE, in the column that isn't `.no-print`, and
+              not inside the card — the form column is `display: none` on paper,
+              which would take them with it. `print:order-3` follows the sheet
+              (1) and the approval slip (2). Renders nothing when no attached
+              file is printable. */}
+          <OtherAttachmentsPrint files={others} urls={otherUrls} className="print:order-3" />
         </div>
       </div>
 
