@@ -17,13 +17,16 @@ export function OtAttachmentCard({
   canEdit,
   attachment,
   onUploaded,
+  onEnsureRow,
 }: {
   id: string;
   form: OtForm;
   setForm: (form: OtForm) => void;
   canEdit: boolean;
   attachment: { name: string } | null;
-  onUploaded: () => void;
+  onUploaded?: (() => void) | undefined;
+  /** A draft has no id until it holds real content; resolve one before uploading. */
+  onEnsureRow?: (() => Promise<string>) | undefined;
 }) {
   const approved = form.attachment_approved;
 
@@ -34,12 +37,13 @@ export function OtAttachmentCard({
   return (
     <AttachmentCard
       kind="ot"
+      onEnsureRow={onEnsureRow}
       id={id}
       file={attachment}
       canEdit={canEdit}
       onUploaded={() => {
         setForm({ ...form, attachment_approved: true, approved_via_viber: true });
-        onUploaded();
+        onUploaded?.();
       }}
       onRemoved={() => {
         // The server cleared the approval along with the file — keep local state

@@ -110,6 +110,7 @@ export function AttachmentCard({
   canEdit,
   onUploaded,
   onRemoved,
+  onEnsureRow,
   badge,
   children,
   cardClassName = "shrink-0 rounded-xl border bg-card p-3 shadow-sm",
@@ -118,10 +119,14 @@ export function AttachmentCard({
   id: string;
   file: { name: string } | null;
   canEdit: boolean;
-  /** Called after a successful upload so the editor can lock the row in as kept. */
-  onUploaded: () => void;
+  /** Called after a successful upload. Editors use it to re-read the row. */
+  onUploaded?: (() => void) | undefined;
   /** Called after a successful removal (the OB editor clears its approval mark). */
   onRemoved?: () => void;
+  /** A draft row has no id until it holds something the user typed, and an
+   *  attachment is that something. The editor resolves a real id here before the
+   *  upload goes out; omitted for editors that always pass a persisted id. */
+  onEnsureRow?: (() => Promise<string>) | undefined;
   /** Status chip shown next to the title (the OB approved / not-approved badge). */
   badge?: ReactNode;
   /** Extra controls under the file row (the OB "Approved" checkbox). */
@@ -147,18 +152,18 @@ export function AttachmentCard({
   // render inline (docx, xlsx, …) print nothing instead of a blank page.
   const printable = Boolean(file) && (isImage || isPdf);
 
-  async function refresh() {
-    const urlKey = URL_QUERY[kind](id).queryKey;
+  async function refresh(rowId: string) {
+    const urlKey = URL_QUERY[kind](rowId).queryKey;
     const detailKey = (
       kind === "record"
-        ? recordQueryOptions(id)
+        ? recordQueryOptions(rowId)
         : kind === "loa"
-          ? loaFormQueryOptions(id)
+          ? loaFormQueryOptions(rowId)
           : kind === "cos"
-            ? cosFormQueryOptions(id)
+            ? cosFormQueryOptions(rowId)
             : kind === "ot"
-              ? otFormQueryOptions(id)
-              : obFormQueryOptions(id)
+              ? otFormQueryOptions(rowId)
+              : obFormQueryOptions(rowId)
     ).queryKey;
     const listKey = (
       kind === "record"
@@ -191,10 +196,14 @@ export function AttachmentCard({
     }
     setBusy(true);
     try {
+      // A draft has no id yet, and a file is real content — so this upload is
+      // what forces the row to be created. Resolve the id before reading the file
+      // so the created row and the stored file agree.
+      const rowId = onEnsureRow ? await onEnsureRow() : id;
       const base64 = await fileToBase64(picked);
       const payload = {
         data: {
-          id,
+          id: rowId,
           filename: picked.name,
           contentType: picked.type || "application/octet-stream",
           base64,
@@ -205,9 +214,8 @@ export function AttachmentCard({
       else if (kind === "cos") await uploadCosAttachment(payload);
       else if (kind === "ot") await uploadOtAttachment(payload);
       else await uploadRecordAttachment(payload);
-      // A file on the row is content — it must never be scaffold-deleted.
-      onUploaded();
-      await refresh();
+      onUploaded?.();
+      await refresh(rowId);
       toast.success("Attachment uploaded");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed.");
@@ -248,13 +256,14 @@ export function AttachmentCard({
   async function confirmRemove() {
     setBusy(true);
     try {
+      // Only reachable once a file exists, which means the row is already real.
       if (kind === "ob") await removeObAttachment({ data: { id } });
       else if (kind === "loa") await removeLoaAttachment({ data: { id } });
       else if (kind === "cos") await removeCosAttachment({ data: { id } });
       else if (kind === "ot") await removeOtAttachment({ data: { id } });
       else await removeRecordAttachment({ data: { id } });
       onRemoved?.();
-      await refresh();
+      await refresh(id);
       setConfirming(false);
       toast.success("Attachment removed");
     } catch (err) {

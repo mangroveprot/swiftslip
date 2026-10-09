@@ -3,17 +3,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { createRecord, deleteRecord } from "@/api/records.functions";
+import { deleteRecord } from "@/api/records.functions";
 import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
-import { DTR_TEMPLATE } from "@/shared/dtr-template";
+import { profileQueryOptions } from "@/features/profile/queries";
+import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { MONTHS, periodLabel, periodRange } from "@/shared/period";
 import { relativeTime } from "@/shared/time";
 import type { Period } from "@/shared/types";
-import { usePendingRecords } from "../lib/pending-records";
 import { recordsQueryOptions } from "../queries";
 
 type RecordRow = {
@@ -34,37 +34,20 @@ export function RecordsList() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: records } = useQuery(recordsQueryOptions());
-  // Auto-created records the user hasn't touched yet stay hidden until they are
-  // filled in or cleaned up in the background — they are not real entries.
-  const { pendingIds, markPending } = usePendingRecords();
-  const [busy, setBusy] = useState(false);
+  // Warm the profile while the list is on screen: a new record is built from it
+  // the moment "New record" is pressed, and fetching it only at that point would
+  // put a skeleton in front of the user for data we already could have had.
+  useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<RecordRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
 
-  const visible = (records ?? []).filter((r) => !pendingIds.has(r.id));
+  // A draft exists only in the browser, so there is nothing here to filter out —
+  // the list shows exactly the records that are in the database.
+  const visible = records ?? [];
 
-  async function newRecord() {
-    setBusy(true);
-    try {
-      const today = new Date();
-      const { id } = await createRecord({
-        data: {
-          month: today.getMonth() + 1,
-          year: today.getFullYear(),
-          period: DTR_TEMPLATE.default_period as Period,
-        },
-      });
-      markPending(id);
-      // Cached lists stay fresh for a while now, so mark this one stale before
-      // leaving — it has to pick the new record up on the next visit.
-      qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
-      navigate({ to: "/records/$id", params: { id } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create a new record.");
-    } finally {
-      setBusy(false);
-    }
+  function newRecord() {
+    navigate({ to: "/records/$id", params: { id: newDraftId() } });
   }
 
   async function confirmDelete() {
@@ -89,8 +72,8 @@ export function RecordsList() {
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Attendance</p>
           <h1 className="mt-1 text-4xl">Time records</h1>
         </div>
-        <button className="btn btn-primary" disabled={busy} onClick={newRecord}>
-          {busy ? "Creating…" : "New record"}
+        <button className="btn btn-primary" onClick={newRecord}>
+          New record
         </button>
       </div>
 

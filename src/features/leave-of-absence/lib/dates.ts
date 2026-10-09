@@ -12,13 +12,9 @@
 
 import type { LoaForm } from "@/shared/types";
 
-/** `YYYY-MM-DD` for the user's local day. */
-export function localToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")}`;
-}
+/** `YYYY-MM-DD` for the user's local day. Re-exported from the shared draft
+ *  helpers so there is one implementation of it across the app. */
+export { localToday } from "@/lib/form-draft";
 
 /** Parse a `YYYY-MM-DD` string as a local Date (null when unusable). */
 function parse(value: string): Date | null {

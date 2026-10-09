@@ -8,9 +8,15 @@ import { Sidebar } from "./Sidebar";
 /** Chrome (sidebar / mobile header) around every signed-in page. */
 export function AppShell({ session, children }: { session: SessionUser; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  // Re-key the content area per route so each tab switch replays a smooth
-  // fade/rise instead of hard-cutting to the new page.
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Re-key the content area per page (the deepest matched route) so each tab
+  // switch replays a smooth fade/rise instead of hard-cutting to the new page.
+  // Saving a draft only swaps the `$id` param — same route, so the key holds
+  // and the editor keeps its mount instead of flashing like a reload.
+  const page = useRouterState({
+    // `routeId` is the route's static id (`/_app/records/$id`), unlike `id`,
+    // which embeds the pathname and would change with every param.
+    select: (s) => s.matches[s.matches.length - 1]?.routeId ?? s.location.pathname,
+  });
 
   return (
     <div className="flex h-dvh flex-col md:grid md:grid-cols-[17rem_1fr] md:overflow-hidden print:block print:h-auto print:overflow-visible">
@@ -44,7 +50,7 @@ export function AppShell({ session, children }: { session: SessionUser; children
       ) : null}
 
       <div
-        key={pathname}
+        key={page}
         className="min-h-0 min-w-0 flex-1 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out print:overflow-visible"
       >
         {children}

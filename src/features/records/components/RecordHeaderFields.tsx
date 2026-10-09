@@ -1,5 +1,13 @@
 import { SignatureField } from "./SignaturePad";
-import { MONTHS, PERIOD_LABELS, customPeriod, daysInMonth, periodRange } from "@/shared/period";
+import {
+  MONTHS,
+  PERIOD_LABELS,
+  customPeriod,
+  daysInMonth,
+  parseSpan,
+  periodRange,
+  spanPeriod,
+} from "@/shared/period";
 import type { DtrHeader, DtrTemplate, Period } from "@/shared/types";
 
 export function RecordHeaderFields({
@@ -16,6 +24,8 @@ export function RecordHeaderFields({
   /** Profile signature, offered in the signature dialog as a one-click re-use. */
   savedSignature?: string | undefined;
 }) {
+  const isRange = header.period.startsWith("custom:") || header.period.startsWith("span:");
+
   return (
     <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -74,7 +84,7 @@ export function RecordHeaderFields({
           <span className="lbl">Days covered</span>
           <select
             disabled={!canEdit}
-            value={header.period.startsWith("custom:") ? "custom" : header.period}
+            value={isRange ? "custom" : header.period}
             onChange={(e) => {
               const value = e.target.value;
               const currentRange = periodRange(header.period, header.month, header.year);
@@ -82,7 +92,14 @@ export function RecordHeaderFields({
                 ...header,
                 period:
                   value === "custom"
-                    ? customPeriod(currentRange.start, currentRange.end, header.month, header.year)
+                    ? header.period.startsWith("span:")
+                      ? header.period
+                      : customPeriod(
+                          currentRange.start,
+                          currentRange.end,
+                          header.month,
+                          header.year,
+                        )
                     : (value as Period),
               });
             }}
@@ -102,9 +119,7 @@ export function RecordHeaderFields({
           disabled={!canEdit}
           onChange={(v) => setHeader({ ...header, certified_by: v })}
         />
-        {header.period.startsWith("custom:") ? (
-          <RangeFields header={header} setHeader={setHeader} disabled={!canEdit} />
-        ) : null}
+        {isRange ? <RangeFields header={header} setHeader={setHeader} disabled={!canEdit} /> : null}
       </div>
 
       <SignatureField
@@ -150,8 +165,59 @@ function RangeFields({
   setHeader: (header: DtrHeader) => void;
   disabled: boolean;
 }) {
-  const range = periodRange(header.period, header.month, header.year);
   const lastDay = daysInMonth(header.month, header.year);
+
+  // Range that ends in the following month, e.g. 09/25 to 10/08.
+  const span = parseSpan(header.period);
+  if (span) {
+    return (
+      <div className="grid grid-cols-2 gap-2 sm:col-span-2 xl:col-span-4">
+        <label className="block">
+          <span className="lbl">From day</span>
+          <select
+            className="inp"
+            disabled={disabled}
+            value={span.start}
+            onChange={(e) =>
+              setHeader({
+                ...header,
+                period: spanPeriod(Number(e.target.value), span.end, header.month, header.year),
+              })
+            }
+          >
+            {Array.from({ length: lastDay - 1 }, (_, index) => index + 2).map((day) => (
+              <option key={day} value={day}>
+                {day}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="lbl">To day (next month)</span>
+          <select
+            className="inp"
+            disabled={disabled}
+            value={span.end}
+            onChange={(e) =>
+              setHeader({
+                ...header,
+                period: spanPeriod(span.start, Number(e.target.value), header.month, header.year),
+              })
+            }
+          >
+            {Array.from({ length: span.start - 1 }, (_, index) => index + 1).map((day) => (
+              <option key={day} value={day}>
+                {day}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
+  }
+
+  // Range inside the sheet's month.
+  const range = periodRange(header.period, header.month, header.year);
   return (
     <div className="grid grid-cols-2 gap-2 sm:col-span-2 xl:col-span-4">
       <label className="block">

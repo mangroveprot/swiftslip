@@ -3,15 +3,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { createObForm, deleteObForm } from "@/api/official-business.functions";
+import { deleteObForm } from "@/api/official-business.functions";
 import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
+import { profileQueryOptions } from "@/features/profile/queries";
+import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { formatMonthDayYear } from "@/shared/period";
 import { relativeTime } from "@/shared/time";
-import { usePendingForms } from "../lib/pending-forms";
 import { obFormsQueryOptions } from "../queries";
 
 type ObRow = {
@@ -30,37 +31,20 @@ export function ObList() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: forms } = useQuery(obFormsQueryOptions());
-  // Auto-created forms the user hasn't touched yet stay hidden until they are
-  // filled in or cleaned up in the background — they are not real entries.
-  const { pendingIds, markPending } = usePendingForms();
-  const [busy, setBusy] = useState(false);
+  // Warm the profile while the list is on screen: a new form is built from it the
+  // moment "New form" is pressed, so fetching it only then would put a skeleton in
+  // front of the user for data we could already have had.
+  useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<ObRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
 
-  const visible = (forms ?? []).filter((f) => !pendingIds.has(f.id));
+  // A draft lives only in the browser, so there is nothing here to filter out —
+  // the list shows exactly the forms that are in the database.
+  const visible = forms ?? [];
 
-  async function newForm() {
-    setBusy(true);
-    try {
-      // Default Date Filed to the user's local "today" (YYYY-MM-DD).
-      const d = new Date();
-      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-        d.getDate(),
-      ).padStart(2, "0")}`;
-      const { id } = await createObForm({ data: { date_filed: today } });
-      // Hide it from the list until it's actually filled in — it is only an
-      // untouched auto-fill at this point.
-      markPending(id);
-      // Cached lists stay fresh for a while now, so mark this one stale before
-      // leaving — it has to pick the new form up on the next visit.
-      qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
-      navigate({ to: "/official-business/$id", params: { id } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create a new form.");
-    } finally {
-      setBusy(false);
-    }
+  function newForm() {
+    navigate({ to: "/official-business/$id", params: { id: newDraftId() } });
   }
 
   async function confirmDelete() {
@@ -87,8 +71,8 @@ export function ObList() {
           </p>
           <h1 className="mt-1 text-4xl">Official Business forms</h1>
         </div>
-        <button className="btn btn-primary" disabled={busy} onClick={newForm}>
-          {busy ? "Creating…" : "New form"}
+        <button className="btn btn-primary" onClick={newForm}>
+          New form
         </button>
       </div>
 

@@ -18,6 +18,7 @@ export function LoaAttachmentCard({
   canEdit,
   attachment,
   onUploaded,
+  onEnsureRow,
 }: {
   id: string;
   form: LoaForm;
@@ -25,7 +26,9 @@ export function LoaAttachmentCard({
   canEdit: boolean;
   attachment: { name: string } | null;
   /** Called after a successful upload so the editor can lock the form in as kept. */
-  onUploaded: () => void;
+  onUploaded?: (() => void) | undefined;
+  /** A draft has no id until it holds real content; resolve one before uploading. */
+  onEnsureRow?: (() => Promise<string>) | undefined;
 }) {
   const approved = form.attachment_approved;
 
@@ -38,6 +41,7 @@ export function LoaAttachmentCard({
   return (
     <AttachmentCard
       kind="loa"
+      onEnsureRow={onEnsureRow}
       id={id}
       // Same shell as the LOA's other boxes — the right column keeps its own
       // two pieces (attachment card, then live preview), just restyled.
@@ -49,7 +53,7 @@ export function LoaAttachmentCard({
         // automatically so nobody confirms the same thing twice. The box stays
         // toggleable for the odd file that shouldn't count yet.
         setForm({ ...form, attachment_approved: true, approved_via_viber: true });
-        onUploaded();
+        onUploaded?.();
       }}
       onRemoved={() => {
         // The server cleared the approval along with the file — keep local

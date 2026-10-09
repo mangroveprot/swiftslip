@@ -37,7 +37,7 @@ export function LoaOtherAttachmentsCard({
   others: LoaOtherFile[];
   /** Called the moment the first file lands — a stored file is content, so the
    *  form must be kept (never scaffold-discarded) from then on. */
-  onUploaded: () => void;
+  onUploaded?: (() => void) | undefined;
 }) {
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -95,7 +95,7 @@ export function LoaOtherAttachmentsCard({
             base64,
           },
         });
-        if (stored === 0) onUploaded();
+        if (stored === 0) onUploaded?.();
         stored += 1;
       }
       await refresh();

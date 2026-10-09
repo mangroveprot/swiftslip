@@ -3,14 +3,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { createOtForm, deleteOtForm } from "@/api/ot.functions";
+import { deleteOtForm } from "@/api/ot.functions";
 import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
+import { profileQueryOptions } from "@/features/profile/queries";
+import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { relativeTime } from "@/shared/time";
-import { usePendingForms } from "../lib/pending-forms";
 import { otFormsQueryOptions } from "../queries";
 
 type OtRow = {
@@ -28,32 +29,20 @@ export function OtList() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: forms } = useQuery(otFormsQueryOptions());
-  // Auto-created forms the user hasn't touched yet stay hidden until they are
-  // filled in or cleaned up in the background — they are not real entries.
-  const { pendingIds, markPending } = usePendingForms();
-  const [busy, setBusy] = useState(false);
+  // Warm the profile while the list is on screen: a new form is built from it the
+  // moment "New form" is pressed, so fetching it only then would put a skeleton in
+  // front of the user for data we could already have had.
+  useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<OtRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
 
-  const visible = (forms ?? []).filter((f) => !pendingIds.has(f.id));
+  // A draft lives only in the browser, so there is nothing here to filter out —
+  // the list shows exactly the forms that are in the database.
+  const visible = forms ?? [];
 
-  async function newForm() {
-    setBusy(true);
-    try {
-      const d = new Date();
-      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-        d.getDate(),
-      ).padStart(2, "0")}`;
-      const { id } = await createOtForm({ data: { date_filed: today } });
-      markPending(id);
-      qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey, refetchType: "none" });
-      navigate({ to: "/overtime/$id", params: { id } });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create a new form.");
-    } finally {
-      setBusy(false);
-    }
+  function newForm() {
+    navigate({ to: "/overtime/$id", params: { id: newDraftId() } });
   }
 
   async function confirmDelete() {
@@ -78,8 +67,8 @@ export function OtList() {
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Overtime</p>
           <h1 className="mt-1 text-4xl">Overtime forms</h1>
         </div>
-        <button className="btn btn-primary" disabled={busy} onClick={newForm}>
-          {busy ? "Creating…" : "New form"}
+        <button className="btn btn-primary" onClick={newForm}>
+          New form
         </button>
       </div>
 

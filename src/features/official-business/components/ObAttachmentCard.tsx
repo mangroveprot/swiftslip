@@ -19,6 +19,7 @@ export function ObAttachmentCard({
   canEdit,
   attachment,
   onUploaded,
+  onEnsureRow,
 }: {
   id: string;
   form: ObForm;
@@ -26,7 +27,9 @@ export function ObAttachmentCard({
   canEdit: boolean;
   attachment: { name: string } | null;
   /** Called after a successful upload so the editor can lock the form in as kept. */
-  onUploaded: () => void;
+  onUploaded?: (() => void) | undefined;
+  /** A draft has no id until it holds real content; resolve one before uploading. */
+  onEnsureRow?: (() => Promise<string>) | undefined;
 }) {
   const approved = form.attachment_approved;
 
@@ -39,6 +42,7 @@ export function ObAttachmentCard({
   return (
     <AttachmentCard
       kind="ob"
+      onEnsureRow={onEnsureRow}
       id={id}
       file={attachment}
       canEdit={canEdit}
@@ -47,7 +51,7 @@ export function ObAttachmentCard({
         // nobody confirms the same thing twice. The box stays toggleable for
         // the odd slip that shouldn't count yet.
         setForm({ ...form, attachment_approved: true, approved_via_viber: true });
-        onUploaded();
+        onUploaded?.();
       }}
       onRemoved={() => {
         // The server cleared the approval along with the file — keep local

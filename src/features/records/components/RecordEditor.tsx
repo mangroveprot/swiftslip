@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -12,7 +12,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { importBiometricFile } from "@/api/biometric-import.functions";
-import { deleteRecord, getRecord, saveRecord } from "@/api/records.functions";
+import { createRecord, saveRecord } from "@/api/records.functions";
 import { AiMascot } from "@/components/common/AiMascot";
 import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
@@ -25,18 +25,32 @@ import { fileToBase64 } from "@/lib/file";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import { MONTHS, daysForPeriod } from "@/shared/period";
-import type { DtrEntry, DtrHeader, Period } from "@/shared/types";
+import type { DtrEntry, DtrHeader, EmployeeProfile, Period } from "@/shared/types";
 import { APP } from "@/config/app";
 import { applyImportedLog } from "../lib/biometric-import";
-import { unmarkPendingRecord } from "../lib/pending-records";
-import { isScaffoldRecord } from "../lib/scaffold";
 import { downloadDtrWord } from "../lib/word-export";
+import { buildDraftRecordHeader, EMPTY_PROFILE } from "../lib/draft-form";
+import {
+  clearDraft,
+  isDraftId,
+  promoteDraft,
+  promoteSignatureBackup,
+  readDraft,
+  writeDraft,
+} from "@/lib/draft";
+import {
+  createAutoSave,
+  flushOnPageHide,
+  type SaveStatus as AutoSaveStatus,
+} from "@/lib/auto-save";
 import { recordQueryOptions, recordsQueryOptions } from "../queries";
 import { DailyEntriesTable } from "./DailyEntriesTable";
 import { DtrPreview } from "./DtrPreview";
 import { RecordHeaderFields } from "./RecordHeaderFields";
 
-type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SaveStatus = "idle" | AutoSaveStatus;
+
+const DRAFT_FEATURE = "dtr";
 
 /** The daily entries worth persisting — a row counts only if it has any value. */
 function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
@@ -56,19 +70,59 @@ function writeRecordCache(
   qc.setQueryData(recordQueryOptions(id).queryKey, (prev) => (prev ? { ...prev, ...next } : next));
 }
 
+/**
+ * One editor instance per record — including across that record's own save.
+ * Saving a draft swaps `$id` from `draft_…` to the id `insertDraft` just
+ * created: that is the SAME record, so the body must keep its mount (a
+ * remount would flash the skeleton and drop the field being typed in over
+ * content that never changed). Any other id is a different record and gets
+ * the fresh instance the body's mount-time `rowId` init assumes.
+ */
 export function RecordEditor({ id }: { id: string }) {
+  const [promotion, setPromotion] = useState<{ draft: string; real: string } | null>(null);
+  // While the id points at this draft's own created row, keep following the
+  // draft id — the key that has been stable since the draft was opened.
+  const key = promotion && promotion.real === id ? promotion.draft : id;
+  return (
+    <RecordEditorBody
+      key={key}
+      id={id}
+      onPromoted={(draft, real) => setPromotion({ draft, real })}
+    />
+  );
+}
+
+function RecordEditorBody({
+  id,
+  onPromoted,
+}: {
+  id: string;
+  onPromoted: (draft: string, real: string) => void;
+}) {
   const session = useSession();
   const canEdit = Boolean(session);
   const fileRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
-  const { data } = useQuery(recordQueryOptions(id));
+  // A draft id means this record does not exist in the database yet — nothing was
+  // written when the user pressed "New record", and nothing will be until they
+  // enter something of their own.
+  const isDraft = isDraftId(id);
+  // The row's real id, once it has one. `null` while the draft is still empty.
+  const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
+  const rowIdRef = useRef<string | null>(isDraft ? null : id);
+
+  // Fetched only once there is a real id — a draft has nothing to load, which is
+  // why opening one shows the form straight away instead of a skeleton.
+  const { data } = useQuery({
+    ...recordQueryOptions(rowId ?? ""),
+    enabled: rowId !== null,
+  });
+
   // Fixed form wording — the Settings → DTR template screen is gone.
   const template = DTR_TEMPLATE;
   const profileQuery = useQuery(profileQueryOptions());
-  // Identity fields are auto-filled from the profile when a record is created, so
-  // the profile is the reference for telling that auto-fill apart from content the
-  // user actually typed.
   const profile = profileQuery.data ?? null;
   const profileReady = profileQuery.data !== undefined || profileQuery.isError;
 
@@ -78,36 +132,107 @@ export function RecordEditor({ id }: { id: string }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // Serialized snapshot of what's already persisted, so we only save real changes.
-  const savedSnapshotRef = useRef<string>("");
-  // Frozen snapshot of the record as it was loaded — used on leave to detect that
-  // the user left without any net change.
-  const initialSnapshotRef = useRef<string>("");
-  // Skip auto-save until the server data has been loaded into local state.
-  const hydratedRef = useRef(false);
-  // Whether the record loaded as an untouched auto-fill scaffold — only those can
-  // be discarded when left without any net change.
-  const wasScaffoldOnLoadRef = useRef(false);
-  // The user deliberately committed content beyond the auto-fill (edited fields,
-  // entries, signature, or imported a file). Once set, never auto-discarded.
-  const keptRef = useRef(false);
-  // Latest state, read by the unmount handler without re-subscribing it.
-  const latestRef = useRef({ header, rows, canEdit, profile });
-  latestRef.current = { header, rows, canEdit, profile };
+  // Latest state, read by callbacks that must not re-subscribe on every keystroke.
+  const latestRef = useRef({ header, rows, canEdit });
+  latestRef.current = { header, rows, canEdit };
 
-  // Discarding is only allowed on a genuine exit. The router remounts this editor
-  // while navigating away (that instance mounts after the location has already
-  // changed) and StrictMode simulates an unmount right after mounting — neither
-  // is an exit, and letting them decide would delete records the user kept.
-  const mountPathRef = useRef(useRouterState({ select: (s) => s.location.pathname }));
-  const mountedAtRef = useRef(Date.now());
+  /** Everything the user could have changed, in one comparable string. */
+  const snapshotOf = (h: DtrHeader, r: Record<number, DtrEntry>) =>
+    JSON.stringify({ header: h, entries: buildEntries(r) });
 
-  // Load the saved record into local edit state. Waits for the profile so the
-  // scaffold decision compares against the same auto-fill the record was created with.
+  // What is on screen right now, for the load effect to compare against the
+  // database before deciding whether a refetch may overwrite it.
+  const localRef = useRef<string | null>(null);
+  localRef.current = header ? snapshotOf(header, rows) : null;
+
+  // Create the row the first time the form holds something real. Guarded so a
+  // burst of keystrokes produces one insert, not one per keystroke.
+  const insertingRef = useRef<Promise<string> | null>(null);
+
+  const autoSave = useRef<ReturnType<typeof createAutoSave> | null>(null);
+  if (autoSave.current === null) {
+    autoSave.current = createAutoSave({
+      // Nothing is persisted yet: a draft has no row, and a loaded record's
+      // baseline is set by the load effect once its data arrives.
+      initial: "",
+      save: writeSnapshot,
+      stageLocal: () => {
+        const { header: h, rows: r } = latestRef.current;
+        // Once the row exists the backup belongs to the real id — the draft key is
+        // a different record by then.
+        if (h) writeDraft(DRAFT_FEATURE, rowIdRef.current ?? id, { header: h, entries: r });
+      },
+      onStatus: (status) => setSaveStatus(status),
+    });
+  }
+  const auto = autoSave.current;
+
+  async function insertDraft(): Promise<string> {
+    const existing = rowIdRef.current;
+    if (existing) return existing;
+    if (insertingRef.current) return insertingRef.current;
+    const { header: h, rows: r } = latestRef.current;
+    if (!h) throw new Error("This record is not ready yet.");
+    insertingRef.current = (async () => {
+      const { id: created } = await createRecord({
+        data: { month: h.month, year: h.year, period: h.period },
+      });
+      const entries = buildEntries(r);
+      // Save the content that triggered the insert in the same breath, so the row
+      // never exists holding only the auto-fill.
+      await saveRecord({ data: { id: created, header: h, entries } });
+      rowIdRef.current = created;
+      // Write cache BEFORE setRowId triggers a re-render that starts the query —
+      // without this, the query fires against empty DB state and overwrites the
+      // just-saved local state with nothing.
+      writeRecordCache(qc, created, { record: { ...h, id: created }, entries });
+      setRowId(created);
+      // A signature drawn before the row existed was backed up under the draft id.
+      promoteSignatureBackup("dtr", id, created);
+      promoteDraft(DRAFT_FEATURE, id, created, { header: h, entries: r });
+      // Mark persisted BEFORE navigate: an unmount flush must not see the draft
+      // still pending — that would insert a second, blank row.
+      auto.setPersisted(snapshotOf(h, r));
+      // Keep this same editor mounted through the swap: the wrapper's key
+      // follows this pair instead of remounting over unchanged content.
+      onPromoted(id, created);
+      // Swap the address bar to the real id, so Back, a reload and a shared link
+      // all refer to the record that now exists.
+      navigate({ to: "/records/$id", params: { id: created }, replace: true });
+      qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
+      return created;
+    })();
+    try {
+      return await insertingRef.current;
+    } catch (e) {
+      // Let the next attempt try again rather than caching the failure.
+      insertingRef.current = null;
+      throw e;
+    }
+  }
+
+  /** Everything that reaches the database goes through here. */
+  async function writeSnapshot(): Promise<void> {
+    const { header: h, rows: r } = latestRef.current;
+    if (!h) return;
+    // insertDraft already writes content — a second save races and errors.
+    if (!rowIdRef.current) {
+      await insertDraft();
+      return;
+    }
+    const entries = buildEntries(r);
+    const target = rowIdRef.current;
+    await saveRecord({ data: { id: target, header: h, entries } });
+    writeRecordCache(qc, target, { record: { ...h, id: target }, entries });
+    qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
+  }
+
+  // Load a real record into local edit state. Nothing here needs the profile:
+  // the auto-fill comparison only applies to drafts.
   useEffect(() => {
-    if (!data || !profileReady) return;
+    if (!data) return;
     const r = data.record as DtrHeader & { employee_signature?: string };
-    const localSig = readSignatureBackup("dtr", id);
+    const localSig = readSignatureBackup("dtr", rowId ?? id);
     const nextHeader: DtrHeader = {
       emp_no: r.emp_no,
       name: r.name,
@@ -122,139 +247,75 @@ export function RecordEditor({ id }: { id: string }) {
     const map: Record<number, DtrEntry> = {};
     for (const e of data.entries) map[e.day] = e;
 
-    const entries = buildEntries(map);
-    const incoming = JSON.stringify({ header: nextHeader, entries });
-
-    if (hydratedRef.current) {
-      const current = JSON.stringify({ header, entries: buildEntries(rows) });
-      // Unsaved local edits always win — a save's cache write or a background
-      // refetch must never clobber what the user is currently typing.
-      if (current !== savedSnapshotRef.current) return;
-      // Already in sync — reapplying identical values would just loop.
-      if (current === incoming) return;
-    }
-
+    const incoming = snapshotOf(nextHeader, map);
+    // Unsaved local edits always win — a save's cache write or a background
+    // refetch must never clobber what the user is currently typing.
+    if (localRef.current !== null && localRef.current !== auto.persistedSnapshot()) return;
+    if (localRef.current === incoming) return;
     setHeader(nextHeader);
     setRows(map);
-    savedSnapshotRef.current = incoming;
-    initialSnapshotRef.current = incoming;
-    // An attachment counts as real content: the file itself lives in storage, so
-    // `data.attachment` is what tells the scaffold check it exists.
-    wasScaffoldOnLoadRef.current = isScaffoldRecord(
-      nextHeader,
-      entries,
-      profile,
-      Boolean(data.attachment),
-    );
-    // A record that already holds real content is one the user meant to keep — lock
-    // that in now so clearing a field later can never trigger the scaffold delete.
-    // It also stops being a "pending" record the list is hiding.
-    if (!wasScaffoldOnLoadRef.current) {
-      keptRef.current = true;
-      unmarkPendingRecord(id);
-    }
-    hydratedRef.current = true;
-  }, [data, id, profile, profileReady, header, rows]);
+    auto.setPersisted(incoming);
+  }, [data, rowId, id, auto]);
 
-  // Keep a local backup of the signature so it survives a failed save.
+  // Build a draft from the profile — in the browser, with no request. The starting
+  // point becomes the baseline: whatever differs from it is something the user
+  // actually entered, and that is what creates the row.
   useEffect(() => {
-    if (!header) return;
-    saveSignatureBackup("dtr", id, header.employee_signature);
-  }, [header?.employee_signature, id]);
+    if (!isDraft || !profileReady || header) return;
+    const fresh = buildDraftRecordHeader((profile ?? EMPTY_PROFILE) as EmployeeProfile);
+    // A refresh mid-draft brings the locally backed-up edits back.
+    const stored = readDraft<{ header: DtrHeader; entries: DtrEntry[] }>(DRAFT_FEATURE, id);
+    const restoredEntries: Record<number, DtrEntry> = {};
+    for (const e of stored?.entries ?? []) restoredEntries[e.day] = e;
+    const nextHeader = stored?.header ?? fresh;
+    setHeader(nextHeader);
+    setRows(restoredEntries);
+    // Baseline = the pristine auto-fill. The insert fires only once the user
+    // moves away from it.
+    auto.setBaseline(snapshotOf(fresh, {}));
+  }, [isDraft, profileReady, profile, header, id, auto]);
 
-  // Auto-save: after edits settle, persist quietly in the background.
+  // Keep a local backup of the signature so it survives a failed save. Derived
+  // values only (not the header object), so the effect re-runs when the signature
+  // changes — and skips the pre-hydration render where header is still null.
+  const sig = header?.employee_signature;
+  const headerLoaded = header !== null;
   useEffect(() => {
-    if (!hydratedRef.current || !header || !canEdit) return;
-    const entries = buildEntries(rows);
-    const snapshot = JSON.stringify({ header, entries });
-    if (snapshot === savedSnapshotRef.current) return;
-    const timer = setTimeout(() => {
-      setSaveStatus("saving");
-      saveRecord({ data: { id, header, entries } })
-        .then(() => {
-          savedSnapshotRef.current = snapshot;
-          // Keep the query cache truthful: the router can remount this editor
-          // during navigation, and that instance hydrates from the cache — it
-          // must never mistake saved content for an untouched scaffold.
-          writeRecordCache(qc, id, { record: { ...header, id }, entries });
-          // Auto-save also fires for hydration-driven diffs, so only a save that
-          // carries real content counts as a deliberate edit. Saving the bare
-          // auto-fill keeps the record discardable — and still hidden from the list.
-          if (!isScaffoldRecord(header, entries, latestRef.current.profile)) {
-            keptRef.current = true;
-            unmarkPendingRecord(id);
-          }
-          // The list shows this record's name and "Updated" time — mark it stale so
-          // the next visit picks up what was just written.
-          qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
-          setSaveStatus("saved");
-        })
-        .catch(() => setSaveStatus("error"));
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [header, rows, canEdit, id, qc]);
+    if (!headerLoaded) return;
+    saveSignatureBackup("dtr", rowId ?? id, sig);
+  }, [headerLoaded, sig, rowId, id]);
 
-  // Let the "Saved" confirmation linger briefly, then return the button to its
-  // default Save icon/label.
+  // The single trigger for every change: persist a draft that has become real
+  // content, or arm the tiered save for a record that already exists.
+  useEffect(() => {
+    if (!header || !canEdit) return;
+    const snapshot = snapshotOf(header, rows);
+    if (rowIdRef.current) auto.arm(snapshot);
+    else if (auto.belowBaseline(snapshot)) auto.arm(snapshot);
+  }, [header, rows, canEdit, auto]);
+
+  // Let the "Saved" confirmation linger briefly, then return the button to idle.
   useEffect(() => {
     if (saveStatus !== "saved") return;
     const timer = setTimeout(() => setSaveStatus("idle"), 2000);
     return () => clearTimeout(timer);
   }, [saveStatus]);
 
-  // On leaving: discard a record that is still just the untouched auto-fill
-  // scaffold (no committed content, no net change this session), or flush any
-  // unsaved changes. Anything the user actually edited is always kept.
+  // Leaving: flush only once a real row exists. A draft with no row stays in
+  // localStorage — flushing here would insert during StrictMode remounts.
   useEffect(() => {
-    // Captured here (at mount) — both refs are frozen after the first render.
-    const mountPath = mountPathRef.current;
-    const mountedAt = mountedAtRef.current;
     return () => {
-      const { header: h, rows: r, canEdit: editable, profile: prof } = latestRef.current;
-      if (!editable || !h) return;
-      const entries = buildEntries(r);
-      const snapshot = JSON.stringify({ header: h, entries });
-      if (
-        wasScaffoldOnLoadRef.current &&
-        !keptRef.current &&
-        snapshot === initialSnapshotRef.current
-      ) {
-        const genuineExit = mountPath.endsWith(`/${id}`) && Date.now() - mountedAt > 100;
-        if (genuineExit) {
-          // Re-check the server before discarding: this instance may have a stale
-          // view (another tab's edit, a flush still in flight). Only a record that
-          // is STILL an untouched scaffold gets deleted.
-          void getRecord({ data: { id } })
-            .then(({ record, entries: fresh, attachment }) => {
-              if (!isScaffoldRecord(record, fresh, prof, Boolean(attachment))) {
-                writeRecordCache(qc, id, { record, entries: fresh });
-                return;
-              }
-              return deleteRecord({ data: { id, quiet: true } });
-            })
-            .then(() => {
-              // Resolved either way — it gained content and is kept, or it is gone.
-              unmarkPendingRecord(id);
-              return qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey });
-            })
-            .catch(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }));
-        }
-        return;
-      }
-      if (snapshot !== savedSnapshotRef.current) {
-        // Write the cache synchronously, before the network call: the remounted
-        // instance hydrates within milliseconds and has to see these changes.
-        writeRecordCache(qc, id, { record: { ...h, id }, entries });
-        // Leaving with content is a decision to keep it, whatever it contains.
-        unmarkPendingRecord(id);
-        void saveRecord({ data: { id, header: h, entries } })
-          .then(() => qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey }))
-          .catch(() => {});
-      }
+      if (rowIdRef.current) auto.flush();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, []);
 
+  // Closing the tab skips the unmount above, so persist on the way out too.
+  useEffect(() => flushOnPageHide(auto), [auto]);
+
+  // A draft needs the profile to build itself and a real record needs the server
+  // copy; once either arrives the form is ready to render. The list warms the
+  // profile query, so this is normally instant.
   if (!header) return <EditorSkeleton />;
 
   const days = daysForPeriod(header.period, header.month, header.year);
@@ -265,34 +326,34 @@ export function RecordEditor({ id }: { id: string }) {
   const setCell = (day: number, patch: Partial<DtrEntry>) =>
     setRows({ ...rows, [day]: { ...row(day), ...patch } });
 
-  // Single place that writes to the server and records what's now persisted.
-  // Saving real content marks the record kept so it's never auto-discarded later —
-  // even if the user then clears it back. Saving the untouched scaffold (an
-  // auto-fill the user never changed) does not: leaving it then discards it.
+  /** Explicit Save — writes now rather than waiting for the timer. */
   async function persist(h: DtrHeader, entries: DtrEntry[]) {
-    await saveRecord({ data: { id, header: h, entries } });
-    savedSnapshotRef.current = JSON.stringify({ header: h, entries });
-    // Keep the query cache truthful — a remounted editor hydrates from it and
-    // must see what was just saved, or it would treat real content as a scaffold.
-    writeRecordCache(qc, id, { record: { ...h, id }, entries });
-    const scaffold = isScaffoldRecord(h, entries, profile);
-    if (!scaffold) keptRef.current = true;
-    // Pressing Save (or importing a log) is the user committing to this record,
-    // so it stops being a "pending" auto-fill the list is hiding.
-    unmarkPendingRecord(id);
+    // insertDraft already writes content — don't save again on first create.
+    if (!rowIdRef.current) {
+      await insertDraft();
+      return;
+    }
+    const target = rowIdRef.current;
+    await saveRecord({ data: { id: target, header: h, entries } });
+    writeRecordCache(qc, target, { record: { ...h, id: target }, entries });
+    auto.setPersisted(JSON.stringify({ header: h, entries }));
     qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey, refetchType: "none" });
   }
 
-  // A stored attachment is content: keep this record out of the scaffold discard
-  // and off the hidden-pending list the moment the file lands.
-  function handleAttachmentUploaded() {
-    keptRef.current = true;
-    unmarkPendingRecord(id);
+  /**
+   * Resolve a real row id, creating the draft's row on the spot. Used by the Save
+   * button and the attachment card: both are the user committing to this record,
+   * so a pristine auto-fill counts as intent here even though it does not on its own.
+   */
+  async function ensureRow(): Promise<string> {
+    return insertDraft();
   }
 
   async function onSave() {
     if (!header) return;
     const entries = buildEntries(rows);
+    // Cancel any armed auto-save so it cannot insert/save in parallel with us.
+    auto.setPersisted(snapshotOf(header, rows));
     setBusy(true);
     setSaveStatus("saving");
     try {
@@ -324,9 +385,13 @@ export function RecordEditor({ id }: { id: string }) {
       setRows(merged.rows);
       await persist(merged.header, buildEntries(merged.rows));
       setSaveStatus("saved");
-      toast.success(`Imported ${merged.count} day${merged.count === 1 ? "" : "s"}`, {
-        id: toastId,
-      });
+      toast.success(
+        `Imported ${merged.count} day${merged.count === 1 ? "" : "s"}` +
+          (merged.skipped
+            ? `. ${merged.skipped} day${merged.skipped === 1 ? "" : "s"} from another month skipped. Switch the sheet to that month and import again.`
+            : ""),
+        { id: toastId },
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Import failed.", { id: toastId });
     } finally {
@@ -344,7 +409,7 @@ export function RecordEditor({ id }: { id: string }) {
         header,
         days,
         entryFor: row,
-        fileName: `${APP.name}_${header.name || "record"}_${MONTHS[header.month - 1]}_${header.year}.doc`,
+        fileName: `${APP.name}_${header.name || "record"}_${MONTHS[header.month - 1]}_${header.year}.docx`,
       });
       toast.success("Word file downloaded", { id: toastId });
     } catch (e) {
@@ -481,10 +546,12 @@ export function RecordEditor({ id }: { id: string }) {
           <div className="print:order-2">
             <AttachmentCard
               kind="record"
-              id={id}
+              id={rowId ?? id}
               file={data?.attachment ?? null}
               canEdit={canEdit}
-              onUploaded={handleAttachmentUploaded}
+              // A file is real content, so uploading one creates the row if the
+              // form is still a draft.
+              onEnsureRow={ensureRow}
               // A DTR has no approval flag: the attached file IS the approval.
               badge={<ApprovedBadge approved={Boolean(data?.attachment)} />}
             />

@@ -14,5 +14,7 @@ export const Route = createFileRoute("/_app/official-business/$id")({
 
 function ObFormPage() {
   const { id } = Route.useParams();
+  // The editor picks its own instance key: it stays mounted across its own
+  // draft→real save and swaps only when the param points at another record.
   return <ObEditor id={id} />;
 }

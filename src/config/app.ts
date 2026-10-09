@@ -8,10 +8,17 @@
 export const APP = {
   name: "SwiftSlip",
   tagline: "Daily time records, simplified.",
-  logoPath: "/dtr-logo.png",
-  /** Logo lifted from public/ob_template.docx — used on the Official Business form. */
-  obLogoPath: "/ob_logo.png",
-  mindbridgeLogoPath: "/mindbridge_logo.webp",
+  /**
+   * Every brand-aware screen (DTR/OB/COS/OT previews, sidebar, login, admin,
+   * LOA header) renders the same Mindbridge artwork. Each call site keeps its
+   * own size — DTR preview uses a small `h-[42px]`, the OB/COS/OT previews
+   * use the full `w-[30%]`, auth/sidebar use `h-6`/`h-9`. PNG (not WebP) so
+   * the DTR `.docx` export can embed it as a data-URL `<img>` — Word doesn't
+   * render WebP.
+   */
+  logoPath: "/mindbridge_logo.png",
+  obLogoPath: "/mindbridge_logo.png",
+  mindbridgeLogoPath: "/mindbridge_logo.png",
   faviconPath: "/favicon.png",
 } as const;
 

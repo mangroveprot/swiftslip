@@ -15,5 +15,8 @@ export const Route = createFileRoute("/_app/records/$id")({
 
 function RecordPage() {
   const { id } = Route.useParams();
+  // The editor picks its own instance key: it stays mounted across its own
+  // draft→real save and swaps only when the param points at another record —
+  // see the comment on `RecordEditor`.
   return <RecordEditor id={id} />;
 }

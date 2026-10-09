@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -11,19 +11,31 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { deleteOtForm, getOtForm, saveOtForm } from "@/api/ot.functions";
+import { createOtForm, saveOtForm } from "@/api/ot.functions";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
+import {
+  createAutoSave,
+  flushOnPageHide,
+  type SaveStatus as AutoSaveStatus,
+} from "@/lib/auto-save";
+import {
+  isDraftId,
+  promoteDraft,
+  promoteSignatureBackup,
+  readDraft,
+  writeDraft,
+} from "@/lib/draft";
+import { localToday } from "@/lib/form-draft";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { OtEntry, OtForm } from "@/shared/types";
 import { APP } from "@/config/app";
+import { buildDraftOtForm } from "../lib/draft-form";
 import { isBlankOtEntry } from "../lib/ot-line";
-import { unmarkPendingForm } from "../lib/pending-forms";
-import { isScaffoldForm } from "../lib/scaffold";
 import { otFormQueryOptions, otFormsQueryOptions, otOtherUrlsQueryOptions } from "../queries";
 import { OtAssistantChat } from "./OtAssistantChat";
 import { OtAttachmentCard } from "./OtAttachmentCard";
@@ -32,7 +44,9 @@ import { OtFormFields } from "./OtFormFields";
 import { OtOtherAttachmentsCard } from "./OtOtherAttachmentsCard";
 import { OtPreview } from "./OtPreview";
 
-type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SaveStatus = "idle" | AutoSaveStatus;
+
+const DRAFT_FEATURE = "ot";
 
 /** OT lines worth persisting — a row counts only if it has any value. */
 function buildEntries(entries: OtEntry[]): OtEntry[] {
@@ -50,12 +64,44 @@ function writeFormCache(
   );
 }
 
+/**
+ * One editor per record — including across that record's own save. Saving a
+ * draft swaps `$id` from `draft_…` to the row `insertDraft` just created: the
+ * SAME record, so the body keeps its mount (a remount would flash the
+ * skeleton over content that never changed). Any other id is a different
+ * record and gets the fresh instance the body's mount-time `rowId` assumes.
+ */
 export function OtEditor({ id }: { id: string }) {
+  const [promotion, setPromotion] = useState<{ draft: string; real: string } | null>(null);
+  const key = promotion && promotion.real === id ? promotion.draft : id;
+  return (
+    <OtEditorBody key={key} id={id} onPromoted={(draft, real) => setPromotion({ draft, real })} />
+  );
+}
+
+function OtEditorBody({
+  id,
+  onPromoted,
+}: {
+  id: string;
+  onPromoted: (draft: string, real: string) => void;
+}) {
   const session = useSession();
   const canEdit = Boolean(session);
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
-  const { data } = useQuery(otFormQueryOptions(id));
+  // A draft id means this form does not exist in the database yet — nothing was
+  // written when the user pressed "New form", and nothing will be until they enter
+  // something of their own.
+  const isDraft = isDraftId(id);
+  const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
+  const rowIdRef = useRef<string | null>(isDraft ? null : id);
+
+  const { data } = useQuery({
+    ...otFormQueryOptions(rowId ?? ""),
+    enabled: rowId !== null,
+  });
   const profileQuery = useQuery(profileQueryOptions());
   const profile = profileQuery.data ?? null;
   const profileReady = profileQuery.data !== undefined || profileQuery.isError;
@@ -64,8 +110,8 @@ export function OtEditor({ id }: { id: string }) {
   // lists them and the print pages below render them; both read this one query.
   const others = data?.others ?? [];
   const { data: otherUrls } = useQuery({
-    ...otOtherUrlsQueryOptions(id),
-    enabled: others.length > 0,
+    ...otOtherUrlsQueryOptions(rowId ?? ""),
+    enabled: rowId !== null && others.length > 0,
   });
 
   const [form, setForm] = useState<OtForm | null>(null);
@@ -74,22 +120,90 @@ export function OtEditor({ id }: { id: string }) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const savedSnapshotRef = useRef<string>("");
-  const initialSnapshotRef = useRef<string>("");
-  const hydratedRef = useRef(false);
-  const wasScaffoldOnLoadRef = useRef(false);
-  const keptRef = useRef(false);
-  const latestRef = useRef({ form, entries, canEdit, profile });
-  latestRef.current = { form, entries, canEdit, profile };
+  const latestRef = useRef({ form, entries, canEdit });
+  latestRef.current = { form, entries, canEdit };
 
-  const mountPathRef = useRef(useRouterState({ select: (s) => s.location.pathname }));
-  const mountedAtRef = useRef(Date.now());
+  const snapshotOf = (f: OtForm, e: OtEntry[]) =>
+    JSON.stringify({ form: f, entries: buildEntries(e) });
 
-  // Load the saved form into local edit state.
+  const localRef = useRef<string | null>(null);
+  localRef.current = form ? snapshotOf(form, entries) : null;
+
+  const insertingRef = useRef<Promise<string> | null>(null);
+
+  const autoSave = useRef<ReturnType<typeof createAutoSave> | null>(null);
+  if (autoSave.current === null) {
+    autoSave.current = createAutoSave({
+      initial: "",
+      save: writeSnapshot,
+      stageLocal: () => {
+        const { form: f, entries: e } = latestRef.current;
+        if (f) writeDraft(DRAFT_FEATURE, rowIdRef.current ?? id, { form: f, entries: e });
+      },
+      onStatus: (status) => setSaveStatus(status),
+    });
+  }
+  const auto = autoSave.current;
+
+  async function insertDraft(): Promise<string> {
+    const existing = rowIdRef.current;
+    if (existing) return existing;
+    if (insertingRef.current) return insertingRef.current;
+    const { form: f, entries: e } = latestRef.current;
+    if (!f) throw new Error("This form is not ready yet.");
+    insertingRef.current = (async () => {
+      const { id: created } = await createOtForm({
+        data: { date_filed: f.date_filed || localToday() },
+      });
+      const rows = buildEntries(e);
+      // Save the content that triggered the insert in the same breath, so the form
+      // never exists holding only the auto-fill.
+      await saveOtForm({ data: { id: created, form: f, entries: rows } });
+      rowIdRef.current = created;
+      setRowId(created);
+      writeFormCache(qc, created, { form: { ...f, id: created }, entries: rows });
+      promoteSignatureBackup("ot", id, created);
+      promoteDraft(DRAFT_FEATURE, id, created, { form: f, entries: e });
+      // Mark persisted BEFORE navigate: an unmount flush must not see the draft
+      // still pending — that would insert a second, blank row.
+      auto.setPersisted(snapshotOf(f, e));
+      // Keep this same editor mounted through the swap: the wrapper's key
+      // follows this pair instead of remounting over unchanged content.
+      onPromoted(id, created);
+      navigate({ to: "/overtime/$id", params: { id: created }, replace: true });
+      qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey, refetchType: "none" });
+      return created;
+    })();
+    try {
+      return await insertingRef.current;
+    } catch (err) {
+      insertingRef.current = null;
+      throw err;
+    }
+  }
+
+  /** Everything that reaches the database goes through here. */
+  async function writeSnapshot(): Promise<void> {
+    const { form: f, entries: e } = latestRef.current;
+    if (!f) return;
+    // insertDraft already writes content — a second save races and errors.
+    if (!rowIdRef.current) {
+      await insertDraft();
+      return;
+    }
+    const rows = buildEntries(e);
+    const target = rowIdRef.current;
+    await saveOtForm({ data: { id: target, form: f, entries: rows } });
+    writeFormCache(qc, target, { form: { ...f, id: target }, entries: rows });
+    qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey, refetchType: "none" });
+  }
+
+  // Load a real form into local edit state. Nothing here needs the profile: the
+  // auto-fill comparison only applies to drafts.
   useEffect(() => {
-    if (!data || !profileReady) return;
+    if (!data) return;
     const f = data.form;
-    const localSig = readSignatureBackup("ot", id);
+    const localSig = readSignatureBackup("ot", rowId ?? id);
     const nextForm: OtForm = {
       id_number: f.id_number,
       employee_name: f.employee_name,
@@ -105,64 +219,44 @@ export function OtEditor({ id }: { id: string }) {
       attachment_approved: f.attachment_approved ?? false,
     };
     const nextEntries = buildEntries(data.entries);
-    const incoming = JSON.stringify({ form: nextForm, entries: nextEntries });
-
-    if (hydratedRef.current) {
-      const current = JSON.stringify({ form, entries: buildEntries(entries) });
-      // Unsaved local edits always win — a save's cache write or a background
-      // refetch must never clobber what the user is currently typing.
-      if (current !== savedSnapshotRef.current) return;
-      if (current === incoming) return;
-    }
-
+    const incoming = snapshotOf(nextForm, nextEntries);
+    // Unsaved local edits always win over a save's cache write or a refetch.
+    if (localRef.current !== null && localRef.current !== auto.persistedSnapshot()) return;
+    if (localRef.current === incoming) return;
     setForm(nextForm);
     setEntries(nextEntries);
-    savedSnapshotRef.current = incoming;
-    initialSnapshotRef.current = incoming;
-    wasScaffoldOnLoadRef.current = isScaffoldForm(
-      nextForm,
-      nextEntries,
-      profile,
-      Boolean(data.attachment),
-    );
-    if (!wasScaffoldOnLoadRef.current) {
-      keptRef.current = true;
-      unmarkPendingForm(id);
-    }
-    hydratedRef.current = true;
-  }, [data, id, profile, profileReady, form, entries]);
+    auto.setPersisted(incoming);
+  }, [data, profileReady, rowId, id, auto]);
+
+  // Build a draft from the profile — in the browser, with no request. The starting
+  // point becomes the baseline: whatever differs from it is something the user
+  // actually entered, and that is what creates the form.
+  useEffect(() => {
+    if (!isDraft || !profileReady || form) return;
+    const fresh = buildDraftOtForm(profile ?? undefined);
+    // A refresh mid-draft brings the locally backed-up edits back.
+    const stored = readDraft<{ form: OtForm; entries: OtEntry[] }>(DRAFT_FEATURE, id);
+    setForm(stored?.form ?? fresh);
+    setEntries(stored?.entries ?? []);
+    auto.setBaseline(snapshotOf(fresh, []));
+  }, [isDraft, profileReady, profile, form, id, auto]);
 
   // Keep a local backup of the signature so it survives a failed save.
   const sig = form?.employee_signature ?? "";
   const formLoaded = form !== null;
   useEffect(() => {
     if (!formLoaded) return;
-    saveSignatureBackup("ot", id, sig);
-  }, [formLoaded, sig, id]);
+    saveSignatureBackup("ot", rowId ?? id, sig);
+  }, [formLoaded, sig, rowId, id]);
 
-  // Auto-save: after edits settle, persist quietly in the background.
+  // The single trigger for every change: persist a draft that has become real
+  // content, or arm the tiered save for a form that already exists.
   useEffect(() => {
-    if (!hydratedRef.current || !form || !canEdit) return;
-    const rows = buildEntries(entries);
-    const snapshot = JSON.stringify({ form, entries: rows });
-    if (snapshot === savedSnapshotRef.current) return;
-    const timer = setTimeout(() => {
-      setSaveStatus("saving");
-      saveOtForm({ data: { id, form, entries: rows } })
-        .then(() => {
-          savedSnapshotRef.current = snapshot;
-          writeFormCache(qc, id, { form: { ...form, id }, entries: rows });
-          if (!isScaffoldForm(form, rows, latestRef.current.profile)) {
-            keptRef.current = true;
-            unmarkPendingForm(id);
-          }
-          qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey, refetchType: "none" });
-          setSaveStatus("saved");
-        })
-        .catch(() => setSaveStatus("error"));
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [form, entries, canEdit, id, qc]);
+    if (!form || !canEdit) return;
+    const snapshot = snapshotOf(form, entries);
+    if (rowIdRef.current) auto.arm(snapshot);
+    else if (auto.belowBaseline(snapshot)) auto.arm(snapshot);
+  }, [form, entries, canEdit, auto]);
 
   useEffect(() => {
     if (saveStatus !== "saved") return;
@@ -170,65 +264,37 @@ export function OtEditor({ id }: { id: string }) {
     return () => clearTimeout(timer);
   }, [saveStatus]);
 
-  // On leaving: discard an untouched scaffold, or flush unsaved changes.
+  // Leaving: flush only once a real row exists. A draft with no row stays in
+  // localStorage — flushing here would insert during StrictMode remounts.
   useEffect(() => {
-    const mountPath = mountPathRef.current;
-    const mountedAt = mountedAtRef.current;
     return () => {
-      const { form: f, entries: e, canEdit: editable, profile: prof } = latestRef.current;
-      if (!editable || !f) return;
-      const rows = buildEntries(e);
-      const snapshot = JSON.stringify({ form: f, entries: rows });
-      if (
-        wasScaffoldOnLoadRef.current &&
-        !keptRef.current &&
-        snapshot === initialSnapshotRef.current
-      ) {
-        const genuineExit = mountPath.endsWith(`/${id}`) && Date.now() - mountedAt > 100;
-        if (genuineExit) {
-          void getOtForm({ data: { id } })
-            .then(({ form: freshForm, entries: fresh, attachment }) => {
-              if (!isScaffoldForm(freshForm, fresh, prof, Boolean(attachment))) {
-                writeFormCache(qc, id, { form: { ...freshForm, id }, entries: fresh });
-                return;
-              }
-              return deleteOtForm({ data: { id, quiet: true } });
-            })
-            .then(() => {
-              unmarkPendingForm(id);
-              return qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey });
-            })
-            .catch(() => qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey }));
-        }
-        return;
-      }
-      if (snapshot !== savedSnapshotRef.current) {
-        writeFormCache(qc, id, { form: { ...f, id }, entries: rows });
-        unmarkPendingForm(id);
-        void saveOtForm({ data: { id, form: f, entries: rows } })
-          .then(() => qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey }))
-          .catch(() => {});
-      }
+      if (rowIdRef.current) auto.flush();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, []);
+
+  // Closing the tab skips the unmount above, so persist on the way out too.
+  useEffect(() => flushOnPageHide(auto), [auto]);
 
   if (!form) return <EditorSkeleton />;
 
+  /** Explicit Save — writes now rather than waiting for the timer. */
   async function persist(f: OtForm, rows: OtEntry[]) {
-    await saveOtForm({ data: { id, form: f, entries: rows } });
-    savedSnapshotRef.current = JSON.stringify({ form: f, entries: rows });
-    writeFormCache(qc, id, { form: { ...f, id }, entries: rows });
-    if (!isScaffoldForm(f, rows, profile)) {
-      keptRef.current = true;
-      unmarkPendingForm(id);
+    // insertDraft already writes content — don't save again on first create.
+    if (!rowIdRef.current) {
+      await insertDraft();
+      return;
     }
+    const target = rowIdRef.current;
+    await saveOtForm({ data: { id: target, form: f, entries: rows } });
+    writeFormCache(qc, target, { form: { ...f, id: target }, entries: rows });
+    auto.setPersisted(JSON.stringify({ form: f, entries: rows }));
     qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey, refetchType: "none" });
   }
 
-  function handleAttachmentUploaded() {
-    keptRef.current = true;
-    unmarkPendingForm(id);
+  /** Resolve a real row id, creating the draft's row on the spot. */
+  async function ensureRow(): Promise<string> {
+    return insertDraft();
   }
 
   // The assistant replies with a partial patch; merge it into whatever is on
@@ -242,6 +308,8 @@ export function OtEditor({ id }: { id: string }) {
   async function onSave() {
     if (!form) return;
     const rows = buildEntries(entries);
+    // Cancel any armed auto-save so it cannot insert/save in parallel with us.
+    auto.setPersisted(snapshotOf(form, entries));
     setBusy(true);
     setSaveStatus("saving");
     try {
@@ -277,12 +345,14 @@ export function OtEditor({ id }: { id: string }) {
 
   const attachmentCard = (
     <OtAttachmentCard
-      id={id}
+      id={rowId ?? id}
       form={form}
       setForm={setForm}
       canEdit={canEdit}
       attachment={data?.attachment ?? null}
-      onUploaded={handleAttachmentUploaded}
+      // A file is real content, so uploading one creates the row if the form is
+      // still a draft.
+      onEnsureRow={ensureRow}
     />
   );
 
@@ -371,12 +441,7 @@ export function OtEditor({ id }: { id: string }) {
               attachment keeps the top of the preview column. This card is
               screen-only; its printable copies are mounted in the preview
               column below. */}
-          <OtOtherAttachmentsCard
-            id={id}
-            canEdit={canEdit}
-            others={others}
-            onUploaded={handleAttachmentUploaded}
-          />
+          <OtOtherAttachmentsCard id={rowId ?? id} canEdit={canEdit} others={others} />
         </div>
 
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">

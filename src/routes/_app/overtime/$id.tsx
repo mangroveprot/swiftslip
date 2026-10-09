@@ -14,5 +14,7 @@ export const Route = createFileRoute("/_app/overtime/$id")({
 
 function OtFormPage() {
   const { id } = Route.useParams();
+  // The editor picks its own instance key: it stays mounted across its own
+  // draft→real save and swaps only when the param points at another record.
   return <OtEditor id={id} />;
 }
