@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { createObForm, saveObForm } from "@/api/official-business.functions";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
+import { FormUnavailable } from "@/components/common/FormUnavailable";
+import { isMissingRow } from "@/lib/missing-row";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -98,7 +100,7 @@ function ObEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  const { data } = useQuery({
+  const { data, error, isError } = useQuery({
     ...obFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -269,6 +271,8 @@ function ObEditorBody({
   // Closing the tab skips the unmount above, so persist on the way out too.
   useEffect(() => flushOnPageHide(auto), [auto]);
 
+  if (isError && isMissingRow(error))
+    return <FormUnavailable backTo="/official-business" label="Official Business forms" />;
   if (!form) return <EditorSkeleton />;
 
   async function persist(f: ObForm, entries: ObEntry[]) {
@@ -405,7 +409,7 @@ function ObEditorBody({
             type="button"
             className="btn btn-outline"
             aria-label="Print or save as PDF"
-            title='Open the print dialog — choose "Save as PDF" as the destination to export a PDF'
+            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
             onClick={() => window.print()}
           >
             <Printer className="size-4" aria-hidden="true" />
@@ -448,7 +452,7 @@ function ObEditorBody({
               type="button"
               className="btn btn-outline size-7 p-0"
               aria-label="Open the full view"
-              title="Full view — zoom in/out and drag the form around"
+              title="Full view: zoom in/out and drag the form around"
               onClick={() => setPreviewOpen(true)}
             >
               <Maximize2 className="size-3.5" aria-hidden="true" />
@@ -468,7 +472,7 @@ function ObEditorBody({
       <PreviewLightbox
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        title="Official Business Form — full view"
+        title="Official Business Form (full view)"
       >
         <ObPreview form={form} rows={rows} />
       </PreviewLightbox>

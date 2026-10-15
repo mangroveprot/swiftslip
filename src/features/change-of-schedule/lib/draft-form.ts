@@ -19,7 +19,9 @@ export function buildDraftCosForm(profile = EMPTY_PROFILE): CosForm {
     date_filed: localToday(),
     change_type: "",
     reasons: "",
-    approved_by: "",
+    // The approver is the Supervisor / Department Head; the received-by and
+    // processed-by blocks are other roles and stay blank.
+    approved_by: profile.supervisor,
     received_by: "",
     processed_by: "",
     approved_via_viber: false,

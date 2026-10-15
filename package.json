@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist build node_modules",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:inventory-report": "node scripts/inventory-report-golden/compare.mjs",

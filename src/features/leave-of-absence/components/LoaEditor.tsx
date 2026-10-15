@@ -14,6 +14,8 @@ import { useEffect, useRef, useState } from "react";
 import { createLoaForm, saveLoaForm } from "@/api/loa.functions";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
+import { FormUnavailable } from "@/components/common/FormUnavailable";
+import { isMissingRow } from "@/lib/missing-row";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -91,7 +93,7 @@ function LoaEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  const { data } = useQuery({
+  const { data, error, isError } = useQuery({
     ...loaFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -302,6 +304,8 @@ function LoaEditorBody({
   // Closing the tab skips the unmount above, so persist on the way out too.
   useEffect(() => flushOnPageHide(auto), [auto]);
 
+  if (isError && isMissingRow(error))
+    return <FormUnavailable backTo="/leave-of-absence" label="Leave of Absence forms" />;
   if (!form) return <EditorSkeleton />;
 
   /** Explicit Save — writes now rather than waiting for the timer. */
@@ -428,7 +432,7 @@ function LoaEditorBody({
             type="button"
             className="btn btn-outline"
             aria-label="Print or save as PDF"
-            title='Open the print dialog — choose "Save as PDF" as the destination to export a PDF'
+            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
             onClick={() => window.print()}
           >
             <Printer className="size-4" aria-hidden="true" />
@@ -495,7 +499,7 @@ function LoaEditorBody({
               type="button"
               className="btn btn-outline size-7 p-0"
               aria-label="Open the full view"
-              title="Full view — zoom in/out and drag the form around"
+              title="Full view: zoom in/out and drag the form around"
               onClick={() => setPreviewOpen(true)}
             >
               <Maximize2 className="size-3.5" aria-hidden="true" />
@@ -540,7 +544,7 @@ function LoaEditorBody({
       <PreviewLightbox
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        title="Leave of Absence Form — full view"
+        title="Leave of Absence Form (full view)"
         sheetWidth={LOA_SHEET_WIDTH}
       >
         <LoaPreview form={form} />

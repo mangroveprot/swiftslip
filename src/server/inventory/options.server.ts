@@ -36,7 +36,7 @@ function fail(message: string): OptionMutationResult {
 /** C# `Friendly(Exception)`: referential-integrity noise becomes one clear sentence. */
 function friendly(message: string): string {
   if (/FOREIGN KEY|still assigned|cannot delete/i.test(message))
-    return "Cannot delete — still referenced by other records. Reassign or remove those first.";
+    return "Cannot delete: still referenced by other records. Reassign or remove those first.";
   return message;
 }
 
@@ -226,7 +226,7 @@ export async function deleteManagedOption(
         const inUse = used[0]?.n ?? 0;
         if (inUse > 0)
           return warn(
-            `Cannot delete branch — still used by ${inUse} asset${inUse === 1 ? "" : "s"}.`,
+            `Cannot delete branch: still used by ${inUse} asset${inUse === 1 ? "" : "s"}.`,
           );
         // Locations cascade with the branch in Postgres (the original cleared
         // them explicitly only because of SQLite's FK quirks).

@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, ExternalLink, Trash2 } from "lucide-react";
+import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { deleteCosForm } from "@/api/cos.functions";
@@ -71,13 +71,10 @@ export function CosList() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto flex min-h-full max-w-6xl flex-col px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-            Change of Schedule
-          </p>
-          <h1 className="mt-1 text-4xl">Change of Schedule forms</h1>
+          <h1 className="text-4xl">Change of Schedule</h1>
         </div>
         <button className="btn btn-primary" onClick={newForm}>
           New form
@@ -97,8 +94,17 @@ export function CosList() {
           ))}
         </div>
       ) : forms ? (
-        <div className="mt-8 rounded-xl border bg-card px-4 py-10 text-center text-muted-foreground">
-          No forms yet.
+        <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="max-w-sm space-y-2">
+            <p className="text-xl font-medium text-foreground">No forms yet</p>
+            <p className="text-sm text-muted-foreground">
+              Record a Change of Schedule so the team always sees the right shift on any given day.
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={newForm}>
+            <Plus className="size-4" aria-hidden="true" />
+            Create your first form
+          </button>
         </div>
       ) : (
         <ListSkeleton />

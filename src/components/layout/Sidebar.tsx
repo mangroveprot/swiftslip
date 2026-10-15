@@ -1,7 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid } from "lucide-react";
 
 import { SignOutButton } from "@/components/common/SignOutButton";
+import { sessionQueryOptions } from "@/features/auth/queries";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "./sidebar-classes";
 import { roleLabel, NAV_SECTIONS } from "./nav-items";
 import { InstallButton } from "./InstallButton";
@@ -27,6 +29,10 @@ export function Sidebar({
   const name = label || roleLabel(role);
   // Role under the name — skipped when it would just repeat the name itself.
   const caption = label && label !== roleLabel(role) ? roleLabel(role) : undefined;
+  // Same query the route guards use, so this is a cache hit rather than a new
+  // request. Only the granted apps are needed, never the session itself.
+  const { data: session } = useQuery(sessionQueryOptions());
+  const apps = session?.apps;
 
   return (
     <SidebarShell>
@@ -68,7 +74,11 @@ export function Sidebar({
       </nav>
 
       <SidebarFooter name={name} sublabel={caption}>
-        {role === "admin" ? (
+        {/* Shown when there is more than one app to move between. Keyed on the
+            resolved grants rather than the role: a staff account given the
+            inventory alongside SwiftSlip needs this just as an admin does, and
+            a single-app account has nothing to switch to. */}
+        {apps && apps.length > 1 ? (
           <Link to="/choose" onClick={onNavigate} className={SIDEBAR_ACTION_CLASS}>
             <LayoutGrid className="size-4" aria-hidden="true" />
             Switch app

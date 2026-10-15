@@ -5,14 +5,15 @@ import { sessionQueryOptions } from "@/features/auth/queries";
 import { seo, pageTitle } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
-  // Already signed in? Skip the login page — admins land on the screen chooser.
+  // Already signed in? Skip the login page — /choose takes it from there:
+  // one granted app redirects straight in, several show the picker.
   beforeLoad: async ({ context }) => {
     const session = await context.queryClient.ensureQueryData({
       ...sessionQueryOptions(),
       revalidateIfStale: true,
     });
     if (session) {
-      throw redirect({ to: session.role === "admin" ? "/choose" : "/records" });
+      throw redirect({ to: "/choose" });
     }
   },
   head: () =>

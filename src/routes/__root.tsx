@@ -6,6 +6,7 @@ import { NotFound } from "@/components/common/NotFound";
 import { RouteError } from "@/components/common/RouteError";
 import { Toaster } from "@/components/ui/sonner";
 import { APP } from "@/config/app";
+import { ogImage } from "@/lib/seo";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -26,7 +27,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: APP.name },
       { property: "og:description", content: APP.tagline },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: ogImage },
+      { property: "og:image:alt", content: APP.name },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: ogImage },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

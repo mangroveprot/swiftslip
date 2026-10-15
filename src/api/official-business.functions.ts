@@ -7,6 +7,7 @@ import { chatObAssistant as chatObAssistantService } from "@/server/services/ob-
 import * as ob from "@/server/services/official-business.server";
 import { writeObPurpose as writeObPurposeService } from "@/server/services/ob-purpose.server";
 import * as profiles from "@/server/services/profiles.server";
+import { departmentForPosition } from "@/shared/org";
 import {
   attachmentUploadInput,
   createObFormInput,
@@ -37,7 +38,8 @@ export const createObForm = createServerFn({ method: "POST" })
     const created = await ob.createObForm(user.id, {
       id_number: profile.emp_no,
       employee_name: profile.full_name,
-      department: profile.area,
+      // The department the position belongs to — never the office branch.
+      department: profile.department || departmentForPosition(profile.designation),
       position: profile.designation,
       employee_signature: profile.signature,
       date_filed: data.date_filed ?? "",

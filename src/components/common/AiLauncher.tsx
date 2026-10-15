@@ -117,7 +117,7 @@ export function AiLauncher({
         onClick={onToggle}
         aria-label={open ? openLabel : label}
         aria-expanded={open}
-        title={open ? "Hide the assistant" : `${label} — fill this form by chatting`}
+        title={open ? "Hide the assistant" : `${label}: fill this form by chatting`}
         className="relative flex size-14 items-center justify-center rounded-full bg-linear-to-br from-regasco-light via-regasco to-regasco-deep ring-2 ring-white/80 transition-transform duration-200 hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-regasco active:scale-95 [filter:drop-shadow(0_10px_12px_rgb(0_0_0_/_0.18))]"
       >
         {/* Breathing halo — decoration, sits under the mascot. Wide enough to

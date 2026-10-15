@@ -56,7 +56,7 @@ export function ObItineraryTable({
       <div className="min-h-0 space-y-3 lg:flex-1 lg:overflow-auto">
         {rows.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-background/50 px-4 py-8 text-center text-xs text-muted-foreground">
-            No stops yet — click “Add stop” to add the first destination.
+            No stops yet. Click “Add stop” to add the first destination.
           </div>
         ) : (
           rows.map((row, i) => (

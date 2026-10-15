@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { endSession, getSessionUser, startSession } from "@/server/auth/session.server";
+import { resolveApps } from "@/server/auth/access.server";
 import { logActivity, requestIp } from "@/server/services/activity-log.server";
 import { verifyPassword } from "@/server/services/auth.server";
 import { signInInput } from "@/shared/schemas";
@@ -37,7 +38,17 @@ export const signOut = createServerFn({ method: "POST" }).handler(async () => {
   return { ok: true as const };
 });
 
-/** Who is signed in right now? `null` when nobody is. */
+/**
+ * Who is signed in right now? `null` when nobody is.
+ *
+ * Carries the resolved app grants as well as the identity. They are resolved
+ * from the database on every read rather than baked into the cookie, so an
+ * admin changing a rule takes effect on the next page load instead of waiting
+ * for the session to expire. This is display/UI only — the actual gate is
+ * `requireApp` in `server/auth/access.server.ts` plus the route guards.
+ */
 export const getSession = createServerFn({ method: "GET" }).handler(async () => {
-  return await getSessionUser();
+  const user = await getSessionUser();
+  if (!user) return null;
+  return { ...user, apps: await resolveApps(user) };
 });

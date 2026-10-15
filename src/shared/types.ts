@@ -4,13 +4,61 @@ export type Role = "admin" | "user";
 
 export type SessionUser = { id: string; role: Role; label: string; idNumber: string };
 
+/**
+ * The three applications behind the "Where would you like to go?" chooser.
+ *
+ * Only `swiftslip` and `inventory` are GRANTABLE. `admin` is deliberately
+ * excluded: the Admin Panel is gated on `role === "admin"` alone, and admins
+ * also bypass every access rule, so an `admin` rule could never take effect.
+ * Keeping it out of `GRANTABLE_APP_KEYS` means the admin UI can't offer it.
+ */
+export const APP_KEYS = ["admin", "swiftslip", "inventory"] as const;
+export type AppKey = (typeof APP_KEYS)[number];
+
+export const GRANTABLE_APP_KEYS = ["swiftslip", "inventory"] as const;
+export type GrantableAppKey = (typeof GRANTABLE_APP_KEYS)[number];
+
+/** Where each app opens. Used to skip the chooser when only one is granted. */
+export const APP_HOME = {
+  admin: "/admin",
+  swiftslip: "/records",
+  inventory: "/rgc-asset-inventory",
+} as const satisfies Record<AppKey, string>;
+
+/** How a rule is targeted. Most specific is checked first. */
+export const RULE_SCOPES = ["user", "department", "position"] as const;
+export type RuleScope = (typeof RULE_SCOPES)[number];
+
+export type AccessRule = {
+  id: string;
+  app_key: GrantableAppKey;
+  scope: RuleScope;
+  /** A users.id for `user`; the literal profile text for the other scopes. */
+  scope_value: string;
+  allow: boolean;
+};
+
 export type EmployeeProfile = {
   emp_no: string;
   full_name: string;
+  /** The job title (e.g. "IT Support") — stored on `profiles.designation`. */
   designation: string;
+  /** The office / branch the employee works at — `profiles.area`. */
   area: string;
+  /**
+   * The department the position belongs to (e.g. "Information Technology") —
+   * `profiles.department`. Auto-derived from the position when picked from the
+   * fixed list, editable on its own so an off-list position can still name one.
+   */
+  department: string;
   /** Data URL (PNG) of the saved signature — auto-filled into new forms. */
   signature: string;
+  /**
+   * Supervisor / Department Head — auto-filled into a new form's approver field
+   * (`certified_by` on a DTR record, `approved_by` on the OB / LOA / COS / OT
+   * forms). Forms keep their own editable copy; this is only the auto-fill source.
+   */
+  supervisor: string;
 };
 
 export type DtrEntry = {

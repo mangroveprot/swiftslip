@@ -4,7 +4,7 @@ import { type QuickStartOption } from "@/components/common/QuickStartChips";
 import type { ObEntry, ObForm } from "@/shared/types";
 
 const GREETING =
-  "Hi! Tell me what this official business is for — where you're going, when, and who approves it — and I'll fill in the form for you. You can also attach a photo or PDF of the request and I'll read it.";
+  "Hi! Tell me what this official business is for: where you're going, when, and who approves it. I'll fill in the form for you. You can also attach a photo or PDF of the request and I'll read it.";
 
 /** One-click starters under the greeting, tailored to the OB form. */
 const QUICK_START: QuickStartOption[] = [
@@ -42,7 +42,7 @@ export function ObAssistantChat({
       quickStart={QUICK_START}
       hints={HINTS}
       placeholder="Tell me what this OB is for…"
-      attachTitle="Attach a photo or PDF of the request — I'll read it and fill the form"
+      attachTitle="Attach a photo or PDF of the request and I'll read it and fill the form"
       launcherLabel="Chat with the OB assistant"
       launcherOpenLabel="Hide the OB assistant"
       onSubmit={async ({ messages, image, today }) => {

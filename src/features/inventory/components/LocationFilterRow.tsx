@@ -32,7 +32,7 @@ export function LocationFilterRow({
     return (
       <div className="flex items-center gap-1 text-sm">
         <span className="text-xs text-white/60">
-          No floor breakdown for this branch — showing all assets.
+          No floor breakdown for this branch, so showing all assets.
         </span>
       </div>
     );

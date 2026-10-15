@@ -7,6 +7,7 @@ import { chatOtAssistant as chatOtAssistantService } from "@/server/services/ot-
 import { writeOtReason as writeOtReasonService } from "@/server/services/ot-reason.server";
 import * as ot from "@/server/services/ot.server";
 import * as profiles from "@/server/services/profiles.server";
+import { departmentForPosition } from "@/shared/org";
 import {
   attachmentPathInput,
   attachmentUploadInput,
@@ -38,7 +39,8 @@ export const createOtForm = createServerFn({ method: "POST" })
     const created = await ot.createOtForm(user.id, {
       id_number: profile.emp_no,
       employee_name: profile.full_name,
-      department: profile.area,
+      // The department the position belongs to — never the office branch.
+      department: profile.department || departmentForPosition(profile.designation),
       position: profile.designation,
       employee_signature: profile.signature,
       date_filed: data.date_filed ?? "",

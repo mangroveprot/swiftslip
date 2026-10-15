@@ -182,7 +182,7 @@ export function AssistantChat({
         ...prev,
         {
           role: "assistant",
-          text: "Sorry — I couldn't process that. Please try again.",
+          text: "Sorry, I couldn't process that. Please try again.",
           time: nowLabel(),
           error: true,
         },
@@ -346,7 +346,7 @@ export function AssistantChat({
               </button>
             </div>
             <p className="mt-2 px-1 text-[11px] text-muted-foreground">
-              Edits apply to the form straight away — check the preview before printing.
+              Edits apply to the form straight away, so check the preview before printing.
             </p>
           </footer>
         </section>

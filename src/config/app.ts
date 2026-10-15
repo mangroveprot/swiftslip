@@ -7,7 +7,13 @@
  */
 export const APP = {
   name: "SwiftSlip",
-  tagline: "Daily time records, simplified.",
+  tagline: "Employee forms and time records, simplified.",
+  /**
+   * Absolute origin of the deployed app. Link previews (`og:image`) require a
+   * full URL — crawlers ignore a bare path — and the head is rendered before
+   * `window` exists, so this cannot be derived from `location`.
+   */
+  siteUrl: "https://regasco.dpdns.org",
   /**
    * Every brand-aware screen (DTR/OB/COS/OT previews, sidebar, login, admin,
    * LOA header) renders the same Mindbridge artwork. Each call site keeps its

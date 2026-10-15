@@ -16,6 +16,30 @@ export function formatTime12h(value: string): string {
 }
 
 /**
+ * Formats a Date as a header clock down to the minute on a 12-hour clock,
+ * e.g. "02:32 PM". Minutes are the finest unit shown, so neither seconds nor
+ * milliseconds ever appear.
+ */
+export function formatTime(date: Date = new Date()): string {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/**
+ * Formats a Date as a short calendar day, e.g. "Oct 14, 2026".
+ */
+export function formatDate(date: Date = new Date()): string {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
  * Formats an ISO timestamp as a short relative string, Twitter/Slack-style:
  * "Just now", "5m ago", "3h ago", "6d ago", then falls back to a plain date
  * once it's far enough in the past that "ago" stops being useful.

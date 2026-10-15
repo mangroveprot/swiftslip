@@ -17,7 +17,9 @@ export const EMPTY_PROFILE: EmployeeProfile = {
   full_name: "",
   designation: "",
   area: "",
+  department: "",
   signature: "",
+  supervisor: "",
 };
 
 export function buildDraftRecordHeader(profile: EmployeeProfile): DtrHeader {
@@ -30,7 +32,8 @@ export function buildDraftRecordHeader(profile: EmployeeProfile): DtrHeader {
     month: today.getMonth() + 1,
     year: today.getFullYear(),
     period: DTR_TEMPLATE.default_period,
-    certified_by: "",
+    // "Certified by" is the Supervisor / Department Head from the profile.
+    certified_by: profile.supervisor,
     employee_signature: profile.signature,
   };
 }

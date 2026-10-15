@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, ExternalLink, Trash2 } from "lucide-react";
+import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { deleteRecord } from "@/api/records.functions";
@@ -66,11 +66,10 @@ export function RecordsList() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <main className="mx-auto flex min-h-full max-w-6xl flex-col px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Attendance</p>
-          <h1 className="mt-1 text-4xl">Time records</h1>
+          <h1 className="text-4xl">Time records</h1>
         </div>
         <button className="btn btn-primary" onClick={newRecord}>
           New record
@@ -90,8 +89,17 @@ export function RecordsList() {
           ))}
         </div>
       ) : records ? (
-        <div className="mt-8 rounded-xl border bg-card px-4 py-10 text-center text-muted-foreground">
-          No records yet.
+        <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="max-w-sm space-y-2">
+            <p className="text-xl font-medium text-foreground">No records yet</p>
+            <p className="text-sm text-muted-foreground">
+              Start a Daily Time Record to log your hours and keep your sheet on track every day.
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={newRecord}>
+            <Plus className="size-4" aria-hidden="true" />
+            Create your first record
+          </button>
         </div>
       ) : (
         <ListSkeleton />

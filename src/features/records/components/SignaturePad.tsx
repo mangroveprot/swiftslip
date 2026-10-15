@@ -86,7 +86,7 @@ export function SignatureField({
           <img src={value} alt="Signature preview" className="max-h-12 max-w-full object-contain" />
         ) : (
           <span className="text-xs text-muted-foreground">
-            No signature yet — click to draw or upload
+            No signature yet. Click to draw or upload
           </span>
         )}
       </button>

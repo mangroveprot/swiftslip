@@ -1,3 +1,4 @@
+import { departmentForPosition } from "@/shared/org";
 import type { EmployeeProfile } from "@/shared/types";
 
 /**
@@ -20,7 +21,9 @@ export const EMPTY_PROFILE: EmployeeProfile = {
   full_name: "",
   designation: "",
   area: "",
+  department: "",
   signature: "",
+  supervisor: "",
 };
 
 /** `YYYY-MM-DD` for the user's local day. */
@@ -29,6 +32,15 @@ export function localToday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate(),
   ).padStart(2, "0")}`;
+}
+
+/**
+ * The department a form should print: the one stored on the profile, or the
+ * one the position implies for rows that predate migration 0023 / were never
+ * backfilled. The office branch is NOT a department, so `area` is never used.
+ */
+export function formDepartment(profile: EmployeeProfile): string {
+  return profile.department || departmentForPosition(profile.designation);
 }
 
 /** The identity auto-fill, in the shape every form screen uses. */
@@ -43,7 +55,7 @@ export function draftIdentity(profile: EmployeeProfile): {
   return {
     id_number: profile.emp_no,
     employee_name: profile.full_name,
-    department: profile.area,
+    department: formDepartment(profile),
     position: profile.designation,
     employee_signature: profile.signature,
     date_filed: localToday(),

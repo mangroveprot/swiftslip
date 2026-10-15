@@ -10,7 +10,7 @@ export function buildDraftObForm(profile = EMPTY_PROFILE): ObForm {
   return {
     ...draftIdentity(profile),
     date_of_ob: "",
-    approved_by: "",
+    approved_by: profile.supervisor,
     approved_via_viber: false,
     attachment_approved: false,
   };

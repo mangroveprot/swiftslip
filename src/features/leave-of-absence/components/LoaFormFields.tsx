@@ -84,7 +84,7 @@ function leaveSummary(form: LoaForm): string[] {
   const others = form.leave_type_other.trim();
   const type =
     form.leave_type === "Others"
-      ? [form.leave_type, others].filter(Boolean).join(" — ")
+      ? [form.leave_type, others].filter(Boolean).join(", ")
       : form.leave_type;
 
   const period =
@@ -244,7 +244,7 @@ export function LoaFormFields({
           required
           id="loa-date_from"
           invalid={rangeInvalid}
-          label="Inclusive Dates — From"
+          label="Inclusive Dates: From"
           type="date"
           value={form.date_from}
           disabled={!canEdit}
@@ -254,7 +254,7 @@ export function LoaFormFields({
           required
           id="loa-date_to"
           invalid={rangeInvalid}
-          label="Inclusive Dates — To"
+          label="Inclusive Dates: To"
           type="date"
           value={form.date_to}
           disabled={!canEdit}
@@ -275,7 +275,7 @@ export function LoaFormFields({
           />
           {rangeInvalid ? (
             <span className="mt-1 block text-xs text-destructive">
-              The From date is after the To date — check the range.
+              The From date is after the To date. Check the range.
             </span>
           ) : null}
         </label>
@@ -358,7 +358,7 @@ export function LoaFormFields({
               type="text"
               disabled={!canEdit}
               placeholder="Specify the leave type"
-              aria-label="Others — specify the leave type"
+              aria-label="Others: specify the leave type"
               value={form.leave_type_other}
               onChange={(e) => setForm({ ...form, leave_type_other: e.target.value })}
             />

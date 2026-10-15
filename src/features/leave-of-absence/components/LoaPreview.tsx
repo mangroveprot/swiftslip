@@ -32,8 +32,35 @@ const PT = {
   h10: "13.33px",
   h9: "12px",
   h8: "10.67px",
+  h7: "9.33px",
   h3: "4px",
 } as const;
+
+/** Adaptive font-size / line-height for the REASONS / REMARKS cell.
+ *
+ *  These thresholds are deliberately TIGHTER than the `REMARKS_STEPS` ladder in
+ *  `lib/word-export.ts`, and that difference is the point. Word reflows onto a
+ *  second page happily; this preview has to stay on ONE A4 sheet. A table
+ *  cell's `height` is only a MINIMUM, so a long entry grows the row instead of
+ *  clipping it — which silently pushed EMPLOYEE'S LEAVE RECORD onto page 2 with
+ *  nothing visibly broken on screen.
+ *
+ *  Measured against the named `@page loa` box (1046px tall) with an empty
+ *  sheet at 1012px, i.e. 34px of headroom for the remarks box. A 582-char
+ *  entry measures 1115px at 12pt, 1074 at 10pt, 1048 at 9pt and 1039 at 8pt —
+ *  so the ceilings below are that 34px divided by the measured height-per-char
+ *  at each size, with a little slack. Re-measure if the template's row heights
+ *  or the page margins in styles.css ever change.
+ *
+ *  Past ~2000 chars no size keeps it on one page; that is a content problem,
+ *  not a layout one, and the user needs to shorten the entry. */
+function remarksStyle(length: number): { fontSize: string; lineHeight: number } {
+  if (length > 650) return { fontSize: PT.h7, lineHeight: 1 };
+  if (length > 540) return { fontSize: PT.h8, lineHeight: 1.1 };
+  if (length > 320) return { fontSize: PT.h9, lineHeight: 1.14 };
+  if (length > 180) return { fontSize: PT.h10, lineHeight: 1.18 };
+  return { fontSize: PT.h12, lineHeight: 1.22 };
+}
 
 /** The 21-column grid of the template's main table (dxa units, sum 10812). */
 const GRID = [
@@ -137,6 +164,12 @@ export function LoaPreview({
   // switching away keeps the draft in the form but out of the sheet/export.
   const typedOthers =
     form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
+  // A pasted entry almost always ends in a newline, and that renders as a
+  // BLANK line inside the box — a line of dead space at the bottom of the
+  // remarks, which is exactly where the sheet runs out of room and spills.
+  // Trim it (and measure the shrink against the trimmed length) so the box
+  // hugs the text the user actually wrote.
+  const reasonsText = (form.reasons ?? "").trim();
   const othersText =
     (typedOthers ? `${OTHERS_TEXT_INDENT}${typedOthers}\n` : "") +
     `Others: ${OTHERS_LINE}  (${withPay}) w/ PAY                ` +
@@ -637,20 +670,20 @@ export function LoaPreview({
           <Row
             h={750}
             cells={[
-              // The three left cells form one borderless-inner column; Word
-              // renders the remarks at ~mid-height of that column, so the text
-              // lives in this middle slice (relative offset keeps layout intact).
+              // Top-aligned to match the export: the Word cell is a vertical
+              // merge set to vAlign="top", so the text starts on the first line
+              // of the remarks box and grows downward. Centring it left a dead
+              // gap above the text and pushed long entries onto a second page.
               {
                 span: 18,
                 b: "l18|r18",
+                v: "top",
                 cls: "text-center",
                 style: {
                   fontWeight: 700,
-                  fontSize: PT.h12,
-                  position: "relative",
-                  top: 8,
+                  ...remarksStyle(reasonsText.length),
                 },
-                content: form.reasons,
+                content: reasonsText,
               },
               {
                 span: 3,
@@ -662,9 +695,16 @@ export function LoaPreview({
             ]}
           />
           {/* Bottom band — left cell closes with left+bottom only, right cell
-              keeps a thin (sz6) bottom; no vertical between them (template). */}
+              keeps a thin (sz6) bottom; no vertical between them (template).
+              At the template's 765 twips this is 51px of blank padding under
+              the remarks, which is where a long entry runs out of page and
+              spills EMPLOYEE'S LEAVE RECORD onto sheet 2. Compact it to 420
+              twips once the text is long enough to need the 7pt tier, so the
+              space the user called "a lot of space at the reason" is actually
+              given back to the rest of the form. Short entries keep the
+              template's full padding. */}
           <Row
-            h={765}
+            h={reasonsText.length > 650 ? 420 : 765}
             cells={[
               { span: 18, b: "l18|b6", style: { fontSize: PT.h3 }, content: "" },
               { span: 3, b: "t18|b6|r18", style: { fontSize: PT.h3 }, content: "" },

@@ -403,6 +403,15 @@ export const upsertCodeInput = z.object({
   // creating a new one — that and the length check happen in the service so
   // the user gets a friendly message either way.
   password: z.string().optional(),
+  // The employee's Designation (office/branch), Department and Position (job
+  // title). Stored on the profile (columns `area` / `department` /
+  // `designation` — see Task 1), NOT on the account row, because they are org
+  // data the employee also edits under "My Account" and the forms already
+  // auto-fill from there. Blank or omitted leaves the stored value untouched,
+  // the same "blank = keep" rule the password uses.
+  designation: z.string().trim().max(200).optional(),
+  department: z.string().trim().max(200).optional(),
+  position: z.string().trim().max(200).optional(),
 });
 
 export const changePasswordInput = z
@@ -531,5 +540,7 @@ export const employeeProfileSchema = z.object({
   full_name: z.string(),
   designation: z.string(),
   area: z.string(),
+  department: z.string().default(""),
   signature: z.string().default(""),
+  supervisor: z.string().default(""),
 });

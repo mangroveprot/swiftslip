@@ -10,10 +10,16 @@ import { APP } from "@/config/app";
  * instead of being copied between the two.
  */
 
-/** Full-height glass panel every sidebar renders inside. */
+/**
+ * Full-height panel every sidebar renders inside.
+ *
+ * The surface is an arbitrary-value `bg-[image:…]`, not a `--color-*` theme
+ * entry: Tailwind's colour namespace only emits `background-color`, so a
+ * gradient registered there silently renders nothing at all.
+ */
 export function SidebarShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-full flex-col border-r border-white/40 bg-glass backdrop-blur-xl">
+    <div className="flex h-full flex-col border-r border-border bg-[image:var(--sidebar-surface)]">
       {children}
     </div>
   );

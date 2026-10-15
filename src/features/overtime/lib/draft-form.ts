@@ -10,7 +10,7 @@ export function buildDraftOtForm(profile = EMPTY_PROFILE): OtForm {
   return {
     ...draftIdentity(profile),
     reasons: "",
-    approved_by: "",
+    approved_by: profile.supervisor,
     received_by: "",
     processed_by: "",
     approved_via_viber: false,

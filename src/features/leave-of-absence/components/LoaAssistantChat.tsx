@@ -4,7 +4,7 @@ import { type QuickStartOption } from "@/components/common/QuickStartChips";
 import type { LoaForm } from "@/shared/types";
 
 const GREETING =
-  "Hi! Tell me why you need the leave and the dates you'll be out — and I'll fill in the LOA form for you. You can also attach a photo or PDF of the medical certificate or request and I'll read it.";
+  "Hi! Tell me why you need the leave and the dates you'll be out, and I'll fill in the LOA form for you. You can also attach a photo or PDF of the medical certificate or request and I'll read it.";
 
 /** One-click starters under the greeting, tailored to the LOA form. */
 const QUICK_START: QuickStartOption[] = [
@@ -16,7 +16,7 @@ const QUICK_START: QuickStartOption[] = [
 /** Rotating nudges on the launcher's speech bubble, tailored to the LOA form. */
 const HINTS = [
   "How can I help?",
-  "Tell me the reason and dates — I'll fill the LOA",
+  "Tell me the reason and dates and I'll fill the LOA",
   "Attach the medical certificate and I'll read it",
 ];
 
@@ -41,7 +41,7 @@ export function LoaAssistantChat({
       quickStart={QUICK_START}
       hints={HINTS}
       placeholder="Tell me what the leave is for…"
-      attachTitle="Attach a photo or PDF of the certificate/request — I'll read it and fill the form"
+      attachTitle="Attach a photo or PDF of the certificate/request and I'll read it and fill the form"
       launcherLabel="Chat with the LOA assistant"
       launcherOpenLabel="Hide the LOA assistant"
       onSubmit={async ({ messages, image, today }) => {

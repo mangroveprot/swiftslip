@@ -21,7 +21,7 @@ export function buildDraftLoaForm(profile = EMPTY_PROFILE): LoaForm {
     pay_status: "",
     reasons: "",
     report_back_date: "",
-    approved_by: "",
+    approved_by: profile.supervisor,
     approved_via_viber: false,
     attachment_approved: false,
   };

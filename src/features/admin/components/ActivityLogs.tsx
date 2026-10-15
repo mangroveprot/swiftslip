@@ -74,7 +74,7 @@ export function ActivityLogs() {
       <div>
         <h2 className="text-2xl">Activity logs</h2>
         <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Who signed in and what changed — rejected sign-in attempts included, with the IP address
+          Who signed in and what changed: rejected sign-in attempts included, with the IP address
           they came from. Kept for 30 days, then deleted automatically.
         </p>
       </div>

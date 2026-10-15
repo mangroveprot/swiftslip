@@ -82,6 +82,76 @@ const centerParagraph = (xml: string, paraId: string) =>
   insertInPPr(xml, paraId, '<w:jc w:val="center"/>');
 
 /**
+ * `w14:paraId` of the REASONS / REMARKS paragraph.
+ *
+ * Its cell is a vertical merge (`w:vMerge="restart"`) spanning the three rows of
+ * the remarks box, and the template aligns it `center` — so the text floats in
+ * the middle of a much taller box. Short entries sit in dead space; long ones
+ * start a third of the way down and then push the row past the page. Top-align
+ * makes the text start on the first line and grow downward instead.
+ */
+const REMARKS_PARA_ID = "335E2876";
+
+/**
+ * Leading + size steps for a long REASONS / REMARKS entry.
+ *
+ * The remarks box is a fixed-height merged cell — about seven lines of 12pt fit
+ * before the row outgrows the page and Word spills onto a second sheet. Past
+ * that the text has to give, so each step tightens the leading and then drops a
+ * point size. Chars that fit scale with 1/f², so 10pt with tight leading lands
+ * roughly 1.7× the plain 12pt capacity (≈800 chars) and 9pt ≈1000.
+ *
+ * `w:line` under `lineRule="auto"` counts 240ths of a single line, so 240 is
+ * single-spaced and lower values are tighter.
+ */
+const REMARKS_STEPS = [
+  { over: 1600, line: "160", sz: "16" }, // 8pt — the floor; past ~1600 chars
+  { over: 1200, line: "180", sz: "18" }, // 9pt  the sheet spills regardless
+  { over: 700, line: "200", sz: "20" }, // 10pt
+  { over: 300, line: "220", sz: "22" }, // 11pt
+] as const;
+
+/** Tighten the remarks paragraph's leading and point size for a long entry.
+ *  Entries at or under the smallest threshold are left exactly as the template
+ *  draws them. */
+function tightenRemarks(xml: string, paraId: string, length: number): string {
+  const step = REMARKS_STEPS.find((s) => length > s.over);
+  if (!step) return xml;
+
+  let out = insertInPPr(xml, paraId, `<w:spacing w:line="${step.line}" w:lineRule="auto"/>`);
+
+  // Drop the point size on the paragraph's own rPr and on every run inside it.
+  const at = out.indexOf(`w14:paraId="${paraId}"`);
+  const pEnd = at < 0 ? -1 : out.indexOf("</w:p>", at);
+  if (at >= 0 && pEnd > at) {
+    const para = out.slice(at, pEnd);
+    const shrunk = para
+      .replace(/<w:sz w:val="24"\/>/g, `<w:sz w:val="${step.sz}"/>`)
+      .replace(/<w:szCs w:val="24"\/>/g, `<w:szCs w:val="${step.sz}"/>`);
+    out = out.slice(0, at) + shrunk + out.slice(pEnd);
+  }
+  return out;
+}
+
+/** Set `w:vAlign` on the cell holding the paragraph `paraId`. Returns the xml
+ *  unchanged when the paragraph or its cell can't be matched, so a template
+ *  whose ids move degrades to the old behaviour rather than failing. */
+function vAlignCell(xml: string, paraId: string, val: "top" | "center" | "bottom"): string {
+  const at = xml.indexOf(`w14:paraId="${paraId}"`);
+  if (at < 0) return xml;
+  const tcOpen = Math.max(xml.lastIndexOf("<w:tc>", at), xml.lastIndexOf("<w:tc ", at));
+  const tcPr = xml.indexOf("<w:tcPr>", tcOpen);
+  const tcPrEnd = tcPr < 0 ? -1 : xml.indexOf("</w:tcPr>", tcPr);
+  const tcEnd = xml.indexOf("</w:tc>", at);
+  if (tcOpen < 0 || tcPr < 0 || tcPrEnd < 0 || tcEnd < 0 || tcPrEnd > tcEnd) return xml;
+  const markup = `<w:vAlign w:val="${val}"/>`;
+  const props = xml.slice(tcPr, tcPrEnd);
+  const got = /<w:vAlign[^>]*\/>/.exec(props);
+  const next = got ? props.replace(got[0], markup) : props + markup;
+  return xml.slice(0, tcPr) + next + xml.slice(tcPrEnd);
+}
+
+/**
  * The "Others:" paragraph (typed answer on top, fill line underneath).
  *
  * The answer line is tightened so it sits just above the fill line — but not
@@ -168,6 +238,11 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
   let xml = entry ? entry.asText() : "";
   if (xml) {
     for (const paraId of CENTERED_PARA_IDS) xml = centerParagraph(xml, paraId);
+    // REASONS / REMARKS starts on the first line of its merged box instead of
+    // floating mid-box — that dead gap above the text is what pushed a long
+    // entry onto a second page.
+    xml = vAlignCell(xml, REMARKS_PARA_ID, "top");
+    xml = tightenRemarks(xml, REMARKS_PARA_ID, (form.reasons ?? "").length);
     // …and tighten the answer line so it sits just above its fill line.
     xml = insertInPPr(
       xml,
@@ -196,34 +271,35 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
             `<w:r>${rPr}<w:br/></w:r>`;
           xml = xml.slice(0, runStart) + above + xml.slice(runStart);
         }
-
-        // The template ends with an invisible empty paragraph (after the last
-        // table) that still occupies a full line — with the sheet one line
-        // taller, Word spills it onto a blank second page. Pin it to 2pt for
-        // this export only; every other export stays byte-identical.
-        const sect = xml.lastIndexOf("<w:sectPr");
-        const pOpen = Math.max(xml.lastIndexOf("<w:p ", sect), xml.lastIndexOf("<w:p>", sect));
-        const pClose = pOpen < 0 ? -1 : xml.indexOf("</w:p>", pOpen);
-        if (pOpen >= 0 && pClose > pOpen) {
-          const para = xml.slice(pOpen, pClose);
-          const tight = '<w:spacing w:line="40" w:lineRule="exact"/>';
-          let fixed: string;
-          if (/<w:spacing\b[^>]*\/>/.test(para)) {
-            fixed = para.replace(/<w:spacing\b[^>]*\/>/, tight);
-          } else {
-            // spacing sits after pStyle and before jc/rPr in a valid pPr.
-            const at = ["<w:jc", "<w:rPr", "</w:pPr>"]
-              .map((t) => para.indexOf(t))
-              .filter((n) => n >= 0)
-              .sort((a, b) => a - b)[0];
-            fixed =
-              at !== undefined
-                ? para.slice(0, at) + tight + para.slice(at)
-                : para.replace(/^(<w:p(?:\s[^>]*)?>)/, "$1<w:pPr>" + tight + "</w:pPr>");
-          }
-          xml = xml.slice(0, pOpen) + fixed + xml.slice(pClose);
-        }
       }
+    }
+
+    // The template ends with an invisible empty paragraph (after the last
+    // table) that still occupies a full line. Once the sheet is even one line
+    // taller — a long REASONS / REMARKS entry, or a typed "Others" answer —
+    // Word spills that paragraph onto a blank second page. Pin it to 2pt on
+    // EVERY export, not just the ones that also carry a typed answer.
+    const sect = xml.lastIndexOf("<w:sectPr");
+    const pOpen = Math.max(xml.lastIndexOf("<w:p ", sect), xml.lastIndexOf("<w:p>", sect));
+    const pClose = pOpen < 0 ? -1 : xml.indexOf("</w:p>", pOpen);
+    if (pOpen >= 0 && pClose > pOpen) {
+      const para = xml.slice(pOpen, pClose);
+      const tight = '<w:spacing w:line="40" w:lineRule="exact"/>';
+      let fixed: string;
+      if (/<w:spacing\b[^>]*\/>/.test(para)) {
+        fixed = para.replace(/<w:spacing\b[^>]*\/>/, tight);
+      } else {
+        // spacing sits after pStyle and before jc/rPr in a valid pPr.
+        const at = ["<w:jc", "<w:rPr", "</w:pPr>"]
+          .map((t) => para.indexOf(t))
+          .filter((n) => n >= 0)
+          .sort((a, b) => a - b)[0];
+        fixed =
+          at !== undefined
+            ? para.slice(0, at) + tight + para.slice(at)
+            : para.replace(/^(<w:p(?:\s[^>]*)?>)/, "$1<w:pPr>" + tight + "</w:pPr>");
+      }
+      xml = xml.slice(0, pOpen) + fixed + xml.slice(pClose);
     }
 
     zip.file("word/document.xml", xml);

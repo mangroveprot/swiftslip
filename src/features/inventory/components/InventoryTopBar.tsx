@@ -5,6 +5,8 @@
  */
 import { useEffect, useState } from "react";
 
+import { formatDate, formatTime } from "@/shared/time";
+
 import { LocationFilterRow } from "./LocationFilterRow";
 
 type InventoryTopBarProps = {
@@ -14,25 +16,6 @@ type InventoryTopBarProps = {
   onMenuToggle: () => void;
   onFloorSelect: (floorLabel: string | null) => void;
 };
-
-function formatTime(date: Date): string {
-  // .NET "hh:mm:ss tt" — e.g. "03:04:05 PM"
-  return date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatDate(date: Date): string {
-  // .NET "MMM d, yyyy" — e.g. "Sep 29, 2026"
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 export function InventoryTopBar({
   branchSubtitle,

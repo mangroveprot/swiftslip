@@ -17,6 +17,8 @@ import { AiMascot } from "@/components/common/AiMascot";
 import { ApprovedBadge } from "@/components/common/ApprovedBadge";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
+import { FormUnavailable } from "@/components/common/FormUnavailable";
+import { isMissingRow } from "@/lib/missing-row";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -115,7 +117,7 @@ function RecordEditorBody({
 
   // Fetched only once there is a real id — a draft has nothing to load, which is
   // why opening one shows the form straight away instead of a skeleton.
-  const { data } = useQuery({
+  const { data, error, isError } = useQuery({
     ...recordQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -316,6 +318,8 @@ function RecordEditorBody({
   // A draft needs the profile to build itself and a real record needs the server
   // copy; once either arrives the form is ready to render. The list warms the
   // profile query, so this is normally instant.
+  if (isError && isMissingRow(error))
+    return <FormUnavailable backTo="/records" label="Time records" />;
   if (!header) return <EditorSkeleton />;
 
   const days = daysForPeriod(header.period, header.month, header.year);
@@ -495,7 +499,7 @@ function RecordEditorBody({
             type="button"
             className="btn btn-outline"
             aria-label="Print or save as PDF"
-            title='Open the print dialog — choose "Save as PDF" as the destination to export a PDF'
+            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
             onClick={() => window.print()}
           >
             <Printer className="size-4" aria-hidden="true" />
@@ -564,7 +568,7 @@ function RecordEditorBody({
               type="button"
               className="btn btn-outline size-7 p-0"
               aria-label="Open the full view"
-              title="Full view — zoom in/out and drag the record around"
+              title="Full view: zoom in/out and drag the record around"
               onClick={() => setPreviewOpen(true)}
             >
               <Maximize2 className="size-3.5" aria-hidden="true" />
@@ -585,7 +589,7 @@ function RecordEditorBody({
       <PreviewLightbox
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        title="Daily Time Record — full view"
+        title="Daily Time Record (full view)"
       >
         <DtrPreview template={template} header={header} days={days} entryFor={row} />
       </PreviewLightbox>

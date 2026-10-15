@@ -63,7 +63,7 @@ export function LoaOtherAttachmentsCard({
     const oversized = picked.find((file) => file.size > MAX_MB * 1024 * 1024);
     if (oversized) {
       toast.error(
-        `"${oversized.name}" is over ${MAX_MB} MB — each file must be ${MAX_MB} MB or smaller.`,
+        `"${oversized.name}" is over ${MAX_MB} MB. Each file must be ${MAX_MB} MB or smaller.`,
       );
       return;
     }
@@ -76,7 +76,7 @@ export function LoaOtherAttachmentsCard({
     if (picked.length > room) {
       toast.error(
         room <= 0
-          ? `This form already has ${MAX_FILES} files — remove one before adding another.`
+          ? `This form already has ${MAX_FILES} files, so remove one before adding another.`
           : `You can add ${room} more file${room === 1 ? "" : "s"} (up to ${MAX_FILES} total).`,
       );
       return;
@@ -238,7 +238,7 @@ export function LoaOtherAttachmentsCard({
             )}
             {busy
               ? "Uploading…"
-              : `Add files — medical, PDF, image… (up to ${MAX_FILES}, ${MAX_MB} MB each)`}
+              : `Add files: medical, PDF, image… (up to ${MAX_FILES}, ${MAX_MB} MB each)`}
           </button>
         ) : others.length ? null : (
           <p className="mt-2 text-sm text-muted-foreground">No supporting files yet.</p>

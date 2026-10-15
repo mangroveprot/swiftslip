@@ -7,7 +7,7 @@ import { pageTitle, seo } from "@/lib/seo";
 export const Route = createFileRoute("/rgc-asset-inventory/")({
   head: () =>
     seo({
-      title: pageTitle("Assets — RGC Inventory"),
+      title: pageTitle("RGC Inventory Assets"),
       description: "Browse, filter, and manage REGASCO's deployed assets.",
     }),
   component: InventoryHomePage,

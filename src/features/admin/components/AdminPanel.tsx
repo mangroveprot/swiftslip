@@ -1,9 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { History, LayoutDashboard, LayoutGrid, Menu, Users, type LucideIcon } from "lucide-react";
+import {
+  History,
+  LayoutDashboard,
+  LayoutGrid,
+  Menu,
+  ShieldCheck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useState } from "react";
 
 import { SignOutButton } from "@/components/common/SignOutButton";
+import { MobileSidebarDrawer } from "@/components/layout/MobileSidebarDrawer";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "@/components/layout/sidebar-classes";
 import {
   SidebarBrand,
@@ -15,9 +24,10 @@ import { APP } from "@/config/app";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
+import { AppAccess } from "./AppAccess";
 import { UserManagement } from "./UserManagement";
 
-type Section = "dashboard" | "users" | "logs";
+type Section = "dashboard" | "users" | "access" | "logs";
 
 type AdminItem = { id: Section; label: string; icon: LucideIcon };
 
@@ -28,6 +38,7 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
     label: "Manage",
     items: [
       { id: "users", label: "User management", icon: Users },
+      { id: "access", label: "App access", icon: ShieldCheck },
       { id: "logs", label: "Activity logs", icon: History },
     ],
   },
@@ -58,7 +69,7 @@ export function AdminPanel() {
     <div className="flex h-dvh flex-col md:grid md:grid-cols-[17rem_1fr] md:overflow-hidden">
       <aside className="no-print hidden md:block md:h-dvh md:overflow-y-auto">{sidebar}</aside>
 
-      <header className="no-print flex items-center justify-between border-b border-white/40 bg-glass px-4 py-3 backdrop-blur-xl md:hidden">
+      <header className="no-print flex items-center justify-between border-b border-border bg-glass px-4 py-3 md:hidden">
         <span className="flex items-center gap-2">
           <img
             src={APP.mindbridgeLogoPath}
@@ -77,11 +88,9 @@ export function AdminPanel() {
           {menuOpen ? "Close" : "Menu"}
         </button>
       </header>
-      {menuOpen ? (
-        <div className="no-print border-b motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-300 md:hidden">
-          {sidebar}
-        </div>
-      ) : null}
+      <MobileSidebarDrawer open={menuOpen} onClose={() => setMenuOpen(false)}>
+        {sidebar}
+      </MobileSidebarDrawer>
 
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div
@@ -92,6 +101,8 @@ export function AdminPanel() {
             <AdminDashboard />
           ) : section === "users" ? (
             <UserManagement />
+          ) : section === "access" ? (
+            <AppAccess />
           ) : (
             <ActivityLogs />
           )}

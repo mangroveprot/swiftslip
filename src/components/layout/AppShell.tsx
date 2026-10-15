@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 
 import { APP } from "@/config/app";
 import type { SessionUser } from "@/shared/types";
+import { MobileSidebarDrawer } from "./MobileSidebarDrawer";
 import { Sidebar } from "./Sidebar";
 
 /** Chrome (sidebar / mobile header) around every signed-in page. */
@@ -24,7 +25,7 @@ export function AppShell({ session, children }: { session: SessionUser; children
         <Sidebar role={session.role} label={session.label} />
       </aside>
 
-      <header className="no-print flex items-center justify-between border-b border-white/40 bg-glass px-4 py-3 backdrop-blur-xl md:hidden">
+      <header className="no-print flex items-center justify-between border-b border-border bg-glass px-4 py-3 md:hidden">
         <span className="flex items-center gap-2">
           <img
             src={APP.mindbridgeLogoPath}
@@ -39,15 +40,9 @@ export function AppShell({ session, children }: { session: SessionUser; children
           {menuOpen ? "Close" : "Menu"}
         </button>
       </header>
-      {menuOpen ? (
-        <div className="no-print border-b motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-2 motion-safe:duration-300 md:hidden">
-          <Sidebar
-            role={session.role}
-            label={session.label}
-            onNavigate={() => setMenuOpen(false)}
-          />
-        </div>
-      ) : null}
+      <MobileSidebarDrawer open={menuOpen} onClose={() => setMenuOpen(false)}>
+        <Sidebar role={session.role} label={session.label} onNavigate={() => setMenuOpen(false)} />
+      </MobileSidebarDrawer>
 
       <div
         key={page}

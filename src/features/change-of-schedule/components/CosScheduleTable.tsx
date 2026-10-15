@@ -59,7 +59,7 @@ export function CosScheduleTable({
       <div className="min-h-0 space-y-3">
         {rows.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-background/50 px-4 py-8 text-center text-xs text-muted-foreground">
-            No dates yet — click “Add date” to add the first schedule line.
+            No dates yet. Click “Add date” to add the first schedule line.
           </div>
         ) : (
           rows.map((row, i) => (
@@ -103,7 +103,7 @@ export function CosScheduleTable({
                 {/* Each SCHEDULE side is the date it changes from/to plus that
                     shift's hours — the sheet prints them as one line. */}
                 <ScheduleSide
-                  label="Schedule — From"
+                  label="Schedule: From"
                   index={i}
                   side="from"
                   date={row.from_date}
@@ -113,7 +113,7 @@ export function CosScheduleTable({
                   onChange={(patch) => update(row.idx, patch)}
                 />
                 <ScheduleSide
-                  label="Schedule — To"
+                  label="Schedule: To"
                   index={i}
                   side="to"
                   date={row.to_date}

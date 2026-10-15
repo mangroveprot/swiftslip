@@ -14,6 +14,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "user.created": "Account created",
   "user.updated": "Account updated",
   "user.deleted": "Account removed",
+  "access.updated": "App access changed",
   "asset.created": "Asset created",
   "asset.updated": "Asset edited",
   "report.downloaded": "Report downloaded",
@@ -30,7 +31,7 @@ const DANGER_ACTIONS = new Set([
 ]);
 
 /** Actions that changed something that already existed (edits) — amber, as a warning. */
-const WARNING_ACTIONS = new Set(["user.updated", "asset.updated"]);
+const WARNING_ACTIONS = new Set(["user.updated", "asset.updated", "access.updated"]);
 
 /**
  * Shared pill styling for a log action — red for failures/removals, amber

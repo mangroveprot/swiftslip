@@ -12,9 +12,9 @@ const INPUT =
   "w-full rounded-lg border bg-card px-3.5 py-2.5 text-[0.9375rem] text-foreground outline-none " +
   "transition placeholder:text-foreground/35 disabled:cursor-not-allowed disabled:opacity-60";
 const INPUT_OK =
-  "border-input hover:border-foreground/25 focus:border-ring focus:ring-4 focus:ring-ring/15";
+  "border-input hover:border-foreground/25 focus:border-ring focus:ring-1 focus:ring-ring/25";
 const INPUT_BAD =
-  "border-destructive/70 focus:border-destructive focus:ring-4 focus:ring-destructive/15";
+  "border-destructive/70 focus:border-destructive focus:ring-1 focus:ring-destructive/25";
 
 export function LoginForm() {
   const navigate = useNavigate();
@@ -74,8 +74,10 @@ export function LoginForm() {
         setFormError("Your session could not be started. Please try again.");
         return;
       }
-      // Administrators pick which app to open; staff go straight to their records.
-      await navigate({ to: confirmed.role === "admin" ? "/choose" : "/records" });
+      // Everyone lands on the chooser: it auto-redirects when only one app is
+      // granted (staff on SwiftSlip alone never see a picker) and shows the
+      // choice only when there is actually more than one to pick from.
+      await navigate({ to: "/choose" });
     } catch (err) {
       // Server-thrown messages (e.g. a pending migration) are worth showing.
       setBusy(false);
@@ -98,12 +100,7 @@ export function LoginForm() {
 
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-6">
-      <div
-        className="w-full max-w-[25rem] rounded-xl border border-border/80 bg-card p-7 sm:p-9"
-        style={{
-          boxShadow: "0 1px 2px rgba(15,23,42,0.04), 0 18px 44px -22px rgba(15,23,42,0.28)",
-        }}
-      >
+      <div className="w-full max-w-[25rem] rounded-xl border border-border/80 bg-card p-7 sm:p-9">
         <img src={APP.mindbridgeLogoPath} alt="Mindbridge" className="h-9 w-auto object-contain" />
 
         <h1 className="mt-7 font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-foreground">

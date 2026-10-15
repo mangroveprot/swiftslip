@@ -8,6 +8,33 @@ export type Database = {
   };
   public: {
     Tables: {
+      app_access_rules: {
+        Row: {
+          allow: boolean;
+          app_key: string;
+          created_at: string;
+          id: string;
+          scope: string;
+          scope_value: string;
+        };
+        Insert: {
+          allow: boolean;
+          app_key: string;
+          created_at?: string;
+          id?: string;
+          scope: string;
+          scope_value: string;
+        };
+        Update: {
+          allow?: boolean;
+          app_key?: string;
+          created_at?: string;
+          id?: string;
+          scope?: string;
+          scope_value?: string;
+        };
+        Relationships: [];
+      };
       activity_logs: {
         Row: {
           action: string;
@@ -172,28 +199,34 @@ export type Database = {
         Row: {
           access_code_id: string;
           area: string;
+          department: string;
           designation: string;
           emp_no: string;
           full_name: string;
           signature: string;
+          supervisor: string;
           updated_at: string;
         };
         Insert: {
           access_code_id: string;
           area?: string;
+          department?: string;
           designation?: string;
           emp_no?: string;
           full_name?: string;
           signature?: string;
+          supervisor?: string;
           updated_at?: string;
         };
         Update: {
           access_code_id?: string;
           area?: string;
+          department?: string;
           designation?: string;
           emp_no?: string;
           full_name?: string;
           signature?: string;
+          supervisor?: string;
           updated_at?: string;
         };
         Relationships: [

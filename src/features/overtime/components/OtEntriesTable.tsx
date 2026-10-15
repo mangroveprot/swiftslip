@@ -53,7 +53,7 @@ export function OtEntriesTable({
       <div className="min-h-0 space-y-3">
         {entries.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-background/50 px-4 py-8 text-center text-xs text-muted-foreground">
-            No dates yet — click “Add date” to add the first OT line.
+            No dates yet. Click “Add date” to add the first OT line.
           </div>
         ) : (
           entries.map((entry, i) => (

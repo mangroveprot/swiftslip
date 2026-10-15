@@ -45,7 +45,7 @@ export const AssetRow = memo(function AssetRow({
 
       <td className="asset-table__td">
         {isBlank(asset.item_id) ? (
-          <span className="asset-table__id asset-table__id--missing">— missing —</span>
+          <span className="asset-table__id asset-table__id--missing">Missing</span>
         ) : (
           <span className="asset-table__id" title={asset.item_id ?? undefined}>
             {asset.item_id}

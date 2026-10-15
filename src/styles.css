@@ -59,15 +59,28 @@
   --ring: oklch(0.33 0.09 250);
   --paper: oklch(1 0 0);
   --ink: oklch(0.2 0.02 250);
-  /* Translucent surface for chrome that should let --app-gradient show through. */
-  --glass: oklch(1 0 0 / 62%);
+  /* Solid surface for app chrome (sidebars, mobile headers). Opaque: the
+     backdrop is a soft tint, not artwork, so there is nothing worth blurring. */
+  --glass: oklch(1 0 0);
+  /* Sidebar panel surface. Deliberately NOT --glass: that token stays flat
+     white for the mobile header bars, which are top bars rather than side
+     panels and look odd carrying a vertical sweep.
+     One mint hue with a ~2-stop value shift (house style: one hue, low chroma),
+     vertical — it picks up the mint end of --app-gradient so the panel still
+     separates from the page behind it without becoming a second gradient. */
+  --sidebar-surface: linear-gradient(
+    180deg,
+    oklch(0.985 0.005 175) 0%,
+    oklch(0.963 0.013 163) 100%
+  );
+  /* Mint → cream sweep. The peach/salmon end (hue 45 and 35) was cut on
+     2026-10-14 — that orange corner read as AI-generated chrome. */
   --app-gradient: linear-gradient(
     135deg,
     oklch(0.9 0.06 175) 0%,
     oklch(0.94 0.03 120) 35%,
-    oklch(0.96 0.02 85) 55%,
-    oklch(0.92 0.05 45) 75%,
-    oklch(0.85 0.09 35) 100%
+    oklch(0.96 0.02 85) 65%,
+    oklch(0.968 0.008 85) 100%
   );
 }
 
@@ -531,9 +544,13 @@
 
   @page loa {
     size: A4 portrait;
-    /* Exact copy of the template's page margins (top 1808 / right 296 /
-       bottom 360 / left 540 twips): the 738px content box lands at [36..774]
-       so every vertical rule sits on Word's render cell-for-cell. */
+    /* Horizontal margins are an exact copy of the template's pgMar (right 296 /
+       bottom 360 / left 540 twips) so the 738px content box lands at [36..774].
+       The TOP margin is deliberately NOT 1808 twips — the template keeps its
+       logo / address / phone in a Word header (positioned inside the top
+       margin), but the browser preview renders them as inline content. 13.8mm
+       (~782 twips) plus the inline margins places the table body at the same
+       vertical position as Word's main text area. */
     margin: 13.8mm 5.22mm 6.35mm 9.53mm;
   }
 

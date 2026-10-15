@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Briefcase, Clock, ShieldCheck, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import {
   ChartContainer,
@@ -11,7 +12,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { ACTIVITY_FEED_LIMIT } from "@/shared/schemas";
-import { relativeTime } from "@/shared/time";
+import { formatDate, formatTime, relativeTime } from "@/shared/time";
 import { ACTION_LABELS, actionPillClass } from "../activity";
 import { activityFeedQueryOptions, adminStatsQueryOptions } from "../queries";
 
@@ -56,11 +57,14 @@ export function AdminDashboard() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl">Dashboard</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Portal-wide totals and the latest activity across every account.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl">Dashboard</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Portal-wide totals and the latest activity across every account.
+          </p>
+        </div>
+        <DashboardClock />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -130,6 +134,26 @@ export function AdminDashboard() {
         <SecurityLogsPanel className="order-3" />
       </div>
     </section>
+  );
+}
+
+/** Ticking date + time for the dashboard header. It lives in its own component so
+ *  the once-a-second state update never re-renders the stat cards or the chart. */
+function DashboardClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="shrink-0 text-right">
+      <p className="font-mono text-2xl font-semibold tabular-nums" title={now.toLocaleString()}>
+        {formatTime(now)}
+      </p>
+      <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">{formatDate(now)}</p>
+    </div>
   );
 }
 

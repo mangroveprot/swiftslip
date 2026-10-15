@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Clock, LayoutDashboard } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { APP } from "@/config/app";
+import type { AppKey } from "@/shared/types";
 import { sessionQueryOptions } from "../queries";
 
 /** Shared card chrome: lifts and zooms smoothly on hover (no motion if reduced).
@@ -18,10 +19,18 @@ const CARD_CLASS =
 const ENTRANCE_CLASS =
   "motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:fill-mode-both motion-safe:duration-500 motion-safe:ease-out";
 
-/** Post-login entry point (administrators only): pick which application to open.
- *  Deliberately full-screen — it sits outside the `_app` shell/sidebar. */
+/** Post-login entry point: pick which application to open. Deliberately
+ *  full-screen — it sits outside the `_app` shell/sidebar.
+ *
+ *  Only the apps `session.apps` grants are offered. This is presentation
+ *  only — each app's route guard and its server functions enforce the same
+ *  rule independently. If the grants ever resolve to nothing, fall back to
+ *  SwiftSlip so the page is never empty. */
 export function AppChooser() {
   const { data: session } = useQuery(sessionQueryOptions());
+
+  const apps = session?.apps?.length ? session.apps : ["swiftslip"];
+  const can = (key: AppKey) => apps.includes(key);
 
   return (
     <main className="flex min-h-dvh flex-col px-4 py-6 md:px-8">
@@ -53,73 +62,92 @@ export function AppChooser() {
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:260ms] flex`}>
-            <Link to="/admin" className={CARD_CLASS}>
-              <span>
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
-                  <LayoutDashboard className="size-5 text-primary" aria-hidden="true" />
+          {can("admin") ? (
+            <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:260ms] flex`}>
+              <Link to="/admin" className={CARD_CLASS}>
+                <span>
+                  <span className="relative flex h-11 w-11 items-center justify-center rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                    <img
+                      src={APP.mindbridgeLogoPath}
+                      alt=""
+                      className="h-5 w-auto object-contain"
+                    />
+                    {/* Corner badge — mirrors the "Admin" pill the admin panel header
+                      puts next to this same logo, so the two read as the same surface. */}
+                    <span className="absolute -bottom-1.5 -right-1.5 rounded-full border bg-background px-1.5 text-[9px] font-bold uppercase leading-4 tracking-wide text-primary">
+                      Admin
+                    </span>
+                  </span>
+                  <span className="mt-3 block text-base font-semibold">Admin Panel</span>
+                  <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
+                    Dashboard, user management and the DTR template create accounts, set roles and
+                    edit the sheet headings.
+                  </span>
                 </span>
-                <span className="mt-3 block text-base font-semibold">Admin Panel</span>
-                <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
-                  Dashboard, user management and the DTR template create accounts, set roles and
-                  edit the sheet headings.
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                  Open Admin Panel
+                  <ArrowRight
+                    className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
+                    aria-hidden="true"
+                  />
                 </span>
-              </span>
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
-                Open Admin Panel
-                <ArrowRight
-                  className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
-                  aria-hidden="true"
-                />
-              </span>
-            </Link>
-          </div>
+              </Link>
+            </div>
+          ) : null}
 
-          <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:120ms] flex`}>
-            <Link to="/records" className={CARD_CLASS}>
-              <span>
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
-                  <img src={APP.mindbridgeLogoPath} alt="" className="h-6 w-auto object-contain" />
+          {can("swiftslip") ? (
+            <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:120ms] flex`}>
+              <Link to="/records" className={CARD_CLASS}>
+                <span>
+                  <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                    <img
+                      src={APP.mindbridgeLogoPath}
+                      alt=""
+                      className="h-6 w-auto object-contain"
+                    />
+                  </span>
+                  <span className="mt-3 block text-base font-semibold">{APP.name}</span>
+                  <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
+                    Daily Time Records, Official Business forms and imports everything the portal
+                    does today.
+                  </span>
                 </span>
-                <span className="mt-3 block text-base font-semibold">{APP.name}</span>
-                <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
-                  Daily Time Records, Official Business forms and imports everything the portal does
-                  today.
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                  Open {APP.name}
+                  <ArrowRight
+                    className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
+                    aria-hidden="true"
+                  />
                 </span>
-              </span>
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
-                Open {APP.name}
-                <ArrowRight
-                  className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
-                  aria-hidden="true"
-                />
-              </span>
-            </Link>
-          </div>
+              </Link>
+            </div>
+          ) : null}
 
-          <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:400ms] flex`}>
-            <Link to="/rgc-asset-inventory" className={CARD_CLASS}>
-              <span>
-                <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
-                  <img src="/inventory/logo.webp" alt="" className="h-7 w-7 object-contain" />
+          {can("inventory") ? (
+            <div className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:400ms] flex`}>
+              <Link to="/rgc-asset-inventory" className={CARD_CLASS}>
+                <span>
+                  <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border bg-background motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                    <img src="/inventory/logo.webp" alt="" className="h-7 w-7 object-contain" />
+                  </span>
+                  <span className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-base font-semibold">RGC Asset Inventory</span>
+                  </span>
+                  <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
+                    Track company assets, issuances and assignments. This module is being built the
+                    door is here, the rooms come later.
+                  </span>
                 </span>
-                <span className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span className="text-base font-semibold">RGC Asset Inventory</span>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                  Open RGC Asset Inventory
+                  <ArrowRight
+                    className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
+                    aria-hidden="true"
+                  />
                 </span>
-                <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
-                  Track company assets, issuances and assignments. This module is being built the
-                  door is here, the rooms come later.
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
-                Open RGC Asset Inventory
-                <ArrowRight
-                  className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
-                  aria-hidden="true"
-                />
-              </span>
-            </Link>
-          </div>
+              </Link>
+            </div>
+          ) : null}
         </div>
       </div>
     </main>

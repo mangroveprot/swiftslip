@@ -21,7 +21,15 @@ export const upsertCode = createServerFn({ method: "POST" })
       actorName: admin.label,
       actorNumber: admin.idNumber,
       target: data.idNumber,
-      detail: `role: ${data.role}${data.id && data.password ? ", password reset" : ""}`,
+      detail: [
+        `role: ${data.role}`,
+        data.id && data.password ? "password reset" : null,
+        data.designation ? `designation: ${data.designation}` : null,
+        data.department ? `department: ${data.department}` : null,
+        data.position ? `position: ${data.position}` : null,
+      ]
+        .filter(Boolean)
+        .join(", "),
     });
     return { ok: true as const };
   });

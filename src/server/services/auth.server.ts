@@ -27,14 +27,14 @@ export async function verifyPassword(
     // admin can act on rather than a generic "wrong password".
     if (/id_number/i.test(error.message)) {
       throw new Error(
-        "Sign-in needs a pending database update — run drizzle/migrations/0007_account_id_number.sql first.",
+        "Sign-in needs a pending database update. Run drizzle/migrations/0007_account_id_number.sql first.",
       );
     }
     // The account table arrives with its rename migration too — PostgREST
     // reports unknown tables as a schema-cache miss (raw PG says "relation").
     if (/could not find the table .*users|relation .*users.* does not exist/i.test(error.message)) {
       throw new Error(
-        "Sign-in needs a pending database update — run drizzle/migrations/0010_users_rename.sql first.",
+        "Sign-in needs a pending database update. Run drizzle/migrations/0010_users_rename.sql first.",
       );
     }
     throw new Error(error.message);

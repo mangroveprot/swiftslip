@@ -404,7 +404,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
         return;
       }
     } else if (!Number.parseInt(form.typeChoice, 10)) {
-      fail("Asset type is required — tap the type to choose one.");
+      fail("Asset type is required. Tap the type to choose one.");
       return;
     } else {
       typeId = Number.parseInt(form.typeChoice, 10);
