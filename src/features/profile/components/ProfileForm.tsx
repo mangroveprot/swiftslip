@@ -13,9 +13,10 @@ import {
   departmentForPosition,
   normalizeDesignation,
   normalizePosition,
-  positionsForDepartment,
+  positionsUnder,
 } from "@/shared/org";
 import type { EmployeeProfile } from "@/shared/types";
+import { orgOptionsQueryOptions } from "@/features/admin/queries";
 import { profileQueryOptions } from "../queries";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 
@@ -43,7 +44,20 @@ export function ProfileForm() {
   const session = useSession();
   const qc = useQueryClient();
   const { data } = useQuery(profileQueryOptions());
+  // Live org lists from `org_designations` / `org_departments` /
+  // `org_positions` so the pickers reflect admin edits (add / rename /
+  // delete). The hardcoded constants stay only as a fallback for the very
+  // first render before the query resolves, and for the cases where the
+  // server returns no rows.
+  const { data: orgLists } = useQuery(orgOptionsQueryOptions());
+  const designationOptions = orgLists?.designations ?? DESIGNATIONS;
+  const baseDepartments = orgLists?.departments ?? DEPARTMENTS;
   const [form, setForm] = useState<EmployeeProfile>(empty);
+  // The last-saved profile (or whatever the server returned). Compared with
+  // `form` to decide whether Save profile can do anything — leaving the button
+  // active on a no-op save re-submits the row and flashes a "Profile saved"
+  // toast the user did nothing to earn.
+  const [original, setOriginal] = useState<EmployeeProfile>(empty);
   const [busy, setBusy] = useState(false);
   // Reported by the pickers: "Others…" selected with nothing typed in it.
   const [deptInvalid, setDeptInvalid] = useState(false);
@@ -51,8 +65,31 @@ export function ProfileForm() {
   const [positionInvalid, setPositionInvalid] = useState(false);
 
   useEffect(() => {
-    if (data) setForm(data);
+    if (data) {
+      setForm(data);
+      setOriginal(data);
+    }
   }, [data]);
+
+  // The designation a department actually keeps: a position only sticks if it
+  // fits the chosen department, otherwise it is treated as blank. Deriving it
+  // (instead of destructively clearing `form.designation` when the department
+  // changes) means a Department change that the user reverts leaves the profile
+  // byte-identical to the original — so Save stays off, which it wouldn't if the
+  // wipe had permanently dropped the position.
+  const effectiveDesignation = (p: EmployeeProfile) => {
+    const list = positionsUnder(p.department, orgLists);
+    return p.designation && list.includes(p.designation) ? p.designation : "";
+  };
+
+  const isDirty =
+    form.emp_no !== original.emp_no ||
+    form.full_name !== original.full_name ||
+    effectiveDesignation(form) !== effectiveDesignation(original) ||
+    form.area !== original.area ||
+    form.department !== original.department ||
+    form.signature !== original.signature ||
+    form.supervisor !== original.supervisor;
 
   // Designation, Department and Position are pickers rather than FIELDS entries,
   // so they are counted separately — otherwise the bar could read 100% with the
@@ -65,6 +102,16 @@ export function ProfileForm() {
       Number(form.designation.trim().length > 0);
     return Math.round(((filled + orgFilled) / (FIELDS.length + 3)) * 100);
   }, [form]);
+
+  // The department picker must be able to SHOW the department the picked
+  // position implies, even when it isn't on the shared list yet (an older
+  // position whose department was never added) — otherwise a perfectly
+  // correct value would report as "Others" and open the text box over it.
+  const impliedDepartment = departmentForPosition(form.designation);
+  const departmentOptions =
+    impliedDepartment && !baseDepartments.includes(impliedDepartment)
+      ? [...baseDepartments, impliedDepartment]
+      : baseDepartments;
 
   async function onSave() {
     // Refuse rather than store an empty value: choosing "Others…" and hitting
@@ -86,6 +133,7 @@ export function ProfileForm() {
     try {
       const saved = await saveMyProfile({ data: form });
       setForm(saved);
+      setOriginal(saved);
       await qc.invalidateQueries({ queryKey: profileQueryOptions().queryKey });
       toast.success("Profile saved");
     } catch (e) {
@@ -145,7 +193,7 @@ export function ProfileForm() {
           <OrgSelect
             id="profile-designation"
             label="Designation"
-            list={DESIGNATIONS}
+            list={designationOptions}
             value={form.area}
             placeholder="e.g. RGC Dipolog Satellite"
             allowOthers={session?.role === "admin"}
@@ -155,28 +203,24 @@ export function ProfileForm() {
           <OrgSelect
             id="profile-department"
             label="Department"
-            list={DEPARTMENTS}
+            list={departmentOptions}
             value={form.department}
             placeholder="e.g. Information Technology"
             allowOthers={session?.role === "admin"}
             onChange={(v) => {
-              setForm((prev) => {
-                // The stored position lives under exactly one department —
-                // switching department drops a position that no longer fits.
-                const next = { ...prev, department: v };
-                if (prev.designation && !positionsForDepartment(v).includes(prev.designation)) {
-                  next.designation = "";
-                }
-                return next;
-              });
+              // Only the department changes here. A position that no longer
+              // fits the new department is handled by `effectiveDesignation`
+              // (shown and saved as blank) rather than being destroyed, so a
+              // revert restores it and Save stays off.
+              setForm((prev) => ({ ...prev, department: v }));
             }}
             onValidityChange={setDepartmentInvalid}
           />
           <OrgSelect
             id="profile-position"
             label="Position"
-            list={positionsForDepartment(form.department)}
-            value={form.designation}
+            list={positionsUnder(form.department, orgLists)}
+            value={effectiveDesignation(form)}
             placeholder={form.department ? "Pick a position in this department" : "e.g. IT Support"}
             allowOthers={session?.role === "admin"}
             onChange={(v) =>
@@ -185,10 +229,13 @@ export function ProfileForm() {
                   ...prev,
                   designation: normalizePosition(v),
                 };
-                // A listed position implies its department, so the stored
-                // pair stays the one the forms will print.
+                // The department follows the position, the same way "HR
+                // Officer" implies the HR department — so it is always
+                // overwritten rather than only filling an empty field. That
+                // also repairs an older profile whose department was never
+                // stored.
                 const implied = departmentForPosition(v);
-                if (implied && !prev.department.trim()) next.department = implied;
+                if (implied) next.department = implied;
                 return next;
               })
             }
@@ -203,7 +250,7 @@ export function ProfileForm() {
         />
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button className="btn btn-primary" disabled={busy} onClick={onSave}>
+          <button className="btn btn-primary" disabled={busy || !isDirty} onClick={onSave}>
             {busy ? "Saving…" : "Save profile"}
           </button>
         </div>

@@ -30,7 +30,7 @@ export function AppShell({ session, children }: { session: SessionUser; children
           <img
             src={APP.mindbridgeLogoPath}
             alt="Mindbridge"
-            className="h-7 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
           <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
             {APP.name}

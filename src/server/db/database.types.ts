@@ -629,6 +629,63 @@ export type Database = {
           },
         ];
       };
+      org_designations: {
+        Row: {
+          created_at: string;
+          id: number;
+          value: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+          value: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          value?: string;
+        };
+        Relationships: [];
+      };
+      org_departments: {
+        Row: {
+          created_at: string;
+          id: number;
+          value: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+          value: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          value?: string;
+        };
+        Relationships: [];
+      };
+      org_positions: {
+        Row: {
+          created_at: string;
+          department: string;
+          id: number;
+          value: string;
+        };
+        Insert: {
+          created_at?: string;
+          department?: string;
+          id?: number;
+          value: string;
+        };
+        Update: {
+          created_at?: string;
+          department?: string;
+          id?: number;
+          value?: string;
+        };
+        Relationships: [];
+      };
       ot_entries: {
         Row: {
           actual_from: string;

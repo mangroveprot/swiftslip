@@ -6,6 +6,7 @@ import { deleteCode, upsertCode } from "@/api/access-codes.functions";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { TextField } from "@/components/common/FormField";
 import { OrgSelect } from "@/components/common/OrgSelect";
+import { OrgOptionDialogs, type OrgActionRequest } from "./OrgOptionDialogs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,11 +25,12 @@ import {
   departmentForPosition,
   normalizeDesignation,
   normalizePosition,
-  positionsForDepartment,
+  positionsUnder,
+  type OrgLists,
 } from "@/shared/org";
 
 import type { Role } from "@/shared/types";
-import { accessCodesQueryOptions } from "../queries";
+import { accessCodesQueryOptions, orgOptionsQueryOptions } from "../queries";
 
 type Account = {
   id: string;
@@ -72,7 +74,6 @@ function isIncomplete(a: Account) {
   );
 }
 
-/** "Gerald Vilaver" → "GV" — the initials in the row's avatar. */
 function initialsOf(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] ?? "";
@@ -481,13 +482,17 @@ export function UserManagement() {
                   <dl className="mt-2 space-y-0.5 text-xs">
                     <div className="flex gap-2">
                       <dt className="w-20 shrink-0 text-muted-foreground">Designation</dt>
-                      <dd className={`min-w-0 truncate ${a.designation ? "" : "text-muted-foreground"}`}>
+                      <dd
+                        className={`min-w-0 truncate ${a.designation ? "" : "text-muted-foreground"}`}
+                      >
                         {a.designation || "Not assigned"}
                       </dd>
                     </div>
                     <div className="flex gap-2">
                       <dt className="w-20 shrink-0 text-muted-foreground">Position</dt>
-                      <dd className={`min-w-0 truncate ${a.position ? "font-medium" : "text-muted-foreground"}`}>
+                      <dd
+                        className={`min-w-0 truncate ${a.position ? "font-medium" : "text-muted-foreground"}`}
+                      >
                         {a.position || "Not assigned"}
                       </dd>
                     </div>
@@ -564,6 +569,8 @@ function AccountDialog({
   const [departmentInvalid, setDepartmentInvalid] = useState(false);
   const [positionInvalid, setPositionInvalid] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** Which list-maintenance dialog (if any) a row's own button just opened. */
+  const [orgRequest, setOrgRequest] = useState<OrgActionRequest | null>(null);
 
   // Re-seed the form whenever a different account (or "new") is opened.
   const openKey = editing === null ? null : isNew ? "new" : (account?.id ?? null);
@@ -584,7 +591,23 @@ function AccountDialog({
 
   // The Position picker only offers what fits under the chosen Department —
   // a Position lives under exactly one Department, so the pair is the unit.
-  const positionList = positionsForDepartment(department);
+  // Both lists come from the editable org options table (falling back to the
+  // fixed constants when the migration hasn't run), so a renamed item shows up
+  // here without a code change.
+  const { data: orgLists } = useQuery({ ...orgOptionsQueryOptions(), enabled: editing !== null });
+  const baseDepartments = orgLists?.departments ?? DEPARTMENTS;
+  const designationOptions = orgLists?.designations ?? DESIGNATIONS;
+  const positionList = positionsUnder(department, orgLists);
+  // The department picker has to be able to SHOW the department the picked
+  // position implies, even when that department isn't on the shared list yet
+  // (an older position whose department was never added). Without this the
+  // picker would report a perfectly correct value as "Others" and open the
+  // text box over it.
+  const impliedDepartment = departmentForPosition(position);
+  const departmentOptions =
+    impliedDepartment && !baseDepartments.includes(impliedDepartment)
+      ? [...baseDepartments, impliedDepartment]
+      : baseDepartments;
 
   async function save() {
     if (editing === null) return;
@@ -641,96 +664,146 @@ function AccountDialog({
   }
 
   return (
-    <Dialog open={editing !== null} onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{isNew ? "Create account" : "Edit account"}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && !busy && onClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isNew ? "Create account" : "Edit account"}</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <TextField
-            label="ID Number"
-            value={idNumber}
-            onChange={setIdNumber}
-            placeholder="e.g. 2026-XXX"
-          />
-          <label className="block">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Access level
-            </span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              <option value="user">Staff</option>
-              <option value="admin">Administrator</option>
-            </select>
-          </label>
-          <OrgSelect
-            id="account-designation"
-            label="Designation"
-            list={DESIGNATIONS}
-            value={designation}
-            placeholder="e.g. RGC Dipolog Satellite"
-            onChange={(v) => setDesignation(normalizeDesignation(v))}
-            onValidityChange={setDesignationInvalid}
-          />
-          <OrgSelect
-            id="account-department"
-            label="Department"
-            list={DEPARTMENTS}
-            value={department}
-            placeholder="e.g. Information Technology"
-            onChange={(v) => {
-              setDepartment(v);
-              // A Position lives under exactly one Department — if the one
-              // already picked doesn't belong here, clear it rather than
-              // save an impossible pair.
-              if (position && !positionsForDepartment(v).includes(position)) setPosition("");
-            }}
-            onValidityChange={setDepartmentInvalid}
-          />
-          <OrgSelect
-            id="account-position"
-            label="Position"
-            list={positionList}
-            value={position}
-            placeholder={department ? "Pick a position in this department" : "e.g. IT Support"}
-            onChange={(v) => {
-              const next = normalizePosition(v);
-              setPosition(next);
-              // Picking a listed position implies its department, so an older
-              // row whose department was never stored repairs itself on save.
-              const implied = departmentForPosition(next);
-              if (implied && !department.trim()) setDepartment(implied);
-            }}
-            onValidityChange={setPositionInvalid}
-          />
-          <TextField
-            label={isNew ? "Password" : "Reset password"}
-            value={password}
-            onChange={setPassword}
-            type="password"
-            placeholder={isNew ? "" : "Leave blank to keep the current password"}
-            autoComplete="new-password"
-          />
-          {isNew ? (
-            <p className="text-xs text-muted-foreground">
-              They will sign in with this ID number and password.
-            </p>
-          ) : null}
-        </div>
+          <div className="space-y-4">
+            <TextField
+              label="ID Number"
+              value={idNumber}
+              onChange={setIdNumber}
+              placeholder="e.g. 2026-XXX"
+            />
+            <label className="block">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Access level
+              </span>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as Role)}
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="user">Staff</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </label>
+            <OrgSelect
+              id="account-designation"
+              label="Designation"
+              list={designationOptions}
+              value={designation}
+              placeholder="e.g. RGC Dipolog Satellite"
+              onChange={(v) => setDesignation(normalizeDesignation(v))}
+              onValidityChange={setDesignationInvalid}
+              actions={{
+                onAdd: () => setOrgRequest({ kind: "designation", mode: "add" }),
+                onRename: (value) => setOrgRequest({ kind: "designation", mode: "rename", value }),
+                onDelete: (value) => setOrgRequest({ kind: "designation", mode: "delete", value }),
+              }}
+            />
+            <OrgSelect
+              id="account-department"
+              label="Department"
+              list={departmentOptions}
+              value={department}
+              placeholder="e.g. Information Technology"
+              onChange={(v) => {
+                setDepartment(v);
+                // A Position lives under exactly one Department — if the one
+                // already picked doesn't belong here, clear it rather than save
+                // an impossible pair.
+                if (position && !positionsUnder(v, orgLists).includes(position)) setPosition("");
+              }}
+              onValidityChange={setDepartmentInvalid}
+              // Each row carries its own rename / trash; the panel ends with Add.
+              actions={{
+                onAdd: () => setOrgRequest({ kind: "department", mode: "add" }),
+                onRename: (value) => setOrgRequest({ kind: "department", mode: "rename", value }),
+                onDelete: (value) => setOrgRequest({ kind: "department", mode: "delete", value }),
+              }}
+            />
+            <OrgSelect
+              id="account-position"
+              label="Position"
+              list={positionList}
+              value={position}
+              placeholder={department ? "Pick a position in this department" : "e.g. IT Support"}
+              onChange={(v) => {
+                const next = normalizePosition(v);
+                setPosition(next);
+                // The department follows the position, the same way "HR
+                // Officer" implies the HR department — so it is always
+                // overwritten rather than only filling an empty field. That
+                // also repairs an older row whose department was never stored.
+                const implied = departmentForPosition(next);
+                if (implied) setDepartment(implied);
+              }}
+              onValidityChange={setPositionInvalid}
+              actions={{
+                onAdd: () => setOrgRequest({ kind: "position", mode: "add" }),
+                onRename: (value) => setOrgRequest({ kind: "position", mode: "rename", value }),
+                onDelete: (value) => setOrgRequest({ kind: "position", mode: "delete", value }),
+              }}
+            />
+            <TextField
+              label={isNew ? "Password" : "Reset password"}
+              value={password}
+              onChange={setPassword}
+              type="password"
+              placeholder={isNew ? "" : "Leave blank to keep the current password"}
+              autoComplete="new-password"
+            />
+            {isNew ? (
+              <p className="text-xs text-muted-foreground">
+                They will sign in with this ID number and password.
+              </p>
+            ) : null}
+          </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={save} disabled={busy}>
-            {busy ? (isNew ? "Creating…" : "Saving…") : isNew ? "Create account" : "Save changes"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={save} disabled={busy}>
+              {busy ? (isNew ? "Creating…" : "Saving…") : isNew ? "Create account" : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* The rename / add / delete dialogs behind each row's own buttons. */}
+      <OrgOptionDialogs
+        request={orgRequest}
+        department={department}
+        onClose={() => setOrgRequest(null)}
+        onRenamed={(kind, next) => {
+          if (kind === "designation") setDesignation(next);
+          else if (kind === "department") setDepartment(next);
+          else setPosition(next);
+        }}
+        onDeleted={(kind) => {
+          // The value is gone from the list, so drop it from the form too —
+          // otherwise saving would put the deleted name straight back on the
+          // profile. A deleted department takes its positions' pairing with it.
+          if (kind === "designation") {
+            setDesignation("");
+          } else if (kind === "department") {
+            setDepartment("");
+            setPosition("");
+          } else {
+            setPosition("");
+          }
+        }}
+        onAdded={(kind) => {
+          if (kind === "designation") setDesignationInvalid(false);
+          else if (kind === "department") setDepartmentInvalid(false);
+          else setPositionInvalid(false);
+        }}
+      />
+    </>
   );
 }

@@ -33,7 +33,7 @@ export function SidebarShell({ children }: { children: ReactNode }) {
 export function SidebarBrand({ subtitle, linkHome }: { subtitle?: string; linkHome?: boolean }) {
   const body = (
     <>
-      <img src={APP.mindbridgeLogoPath} alt="Mindbridge" className="h-6 w-auto object-contain" />
+      <img src={APP.mindbridgeLogoPath} alt="Mindbridge" className="h-10 w-auto object-contain" />
       <span
         className="mt-1.5 block text-2xl font-semibold"
         style={{ fontFamily: "var(--font-display)" }}

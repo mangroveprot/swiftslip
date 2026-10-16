@@ -32,6 +32,7 @@ export type ActivityAction =
   | "user.updated"
   | "user.deleted"
   | "access.updated"
+  | "org.updated"
   | "asset.created"
   | "asset.updated"
   | "report.downloaded";

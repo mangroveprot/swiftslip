@@ -35,6 +35,20 @@ export const DEPARTMENT_POSITIONS: Record<string, readonly string[]> = {
   Operations: ["Field Monitoring"],
 };
 
+export type DepartmentPositions = Record<string, readonly string[]>;
+
+/** The admin-editable lists behind the pickers (migrations 0024 / 0025):
+ *  designations, departments, and every position with the department it sits
+ *  under, sorted by value. */
+export type OrgLists = {
+  designations: string[];
+  departments: string[];
+  positions: Array<{ value: string; department: string }>;
+};
+
+/** The three lists an admin can maintain from a picker's own row buttons. */
+export type OrgOptionKind = "designation" | "department" | "position";
+
 export const DEPARTMENTS = Object.keys(DEPARTMENT_POSITIONS);
 
 export const POSITIONS = Object.values(DEPARTMENT_POSITIONS).flat();
@@ -97,6 +111,22 @@ export function positionsForDepartment(department: string): readonly string[] {
   const trimmed = department.trim();
   if (!trimmed) return POSITIONS;
   return DEPARTMENT_POSITIONS[trimmed] ?? POSITIONS;
+}
+
+/**
+ * Positions offered under a department, resolved against the live
+ * `org_options` table when it is loaded and the value matches a department
+ * the table actually owns, otherwise the fixed constants above. Without this
+ * fallback a position whose department was edited out of the table would
+ * silently disappear from the picker, and a profile still holding the old
+ * value would suddenly read as inconsistent.
+ */
+export function positionsUnder(department: string, lists: OrgLists | undefined): readonly string[] {
+  const trimmed = department.trim();
+  if (trimmed && lists) {
+    return lists.positions.filter((p) => p.department === trimmed).map((p) => p.value);
+  }
+  return positionsForDepartment(trimmed);
 }
 
 /**

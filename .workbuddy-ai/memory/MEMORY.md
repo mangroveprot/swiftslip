@@ -19,9 +19,12 @@
 - **No emdashes in user-visible copy** — they read as AI-written. Substitute:
   colon (clarifying aside), `, so` (consequence), period (two independent
   clauses), `(full view)` for dialog titles, ` | ` for the SEO title separator.
-- **Two exceptions, leave both alone:** lone `—` as an empty-cell /
-  missing-value placeholder (`?? "—"`, `isBlank(x) ? "—" : x`), and the
-  placeholder dashes in the form previews (logo / typed-value stand-ins).
+- **One exception remains:** the placeholder dashes in the form previews
+  (logo / typed-value stand-ins). The OrgSelect "no value" row was on the
+  old exception list but the user asked it gone on 2026-10-16, then reversed
+  that on the same day after seeing the empty row — `—` IS the correct
+  "nothing picked" cue for a list picker, and the muted `text-sm` ghost
+  text alone reads as a broken control. Keep the emdash here.
 - Emdashes inside **code comments** (~527) stay — user decided 2026-10-14.
 - Login screen: keep the **simple single centred card**. A two-column split
   with a dark navy brand panel was explicitly rejected.
@@ -52,10 +55,11 @@
 ## Single brand logo — Mindbridge only
 
 `logoPath`, `obLogoPath`, `mindbridgeLogoPath` all point at
-`public/mindbridge_logo.png`. Each call site keeps its own size (DTR preview
-`h-[42px]`, OB/COS/OT `w-[30%]`, auth/sidebar `h-6`/`h-9`). Keep it PNG — Word
-doesn't render WebP and previews load it directly. Every `.docx` template
-carries its own embedded logo, so no export injects one any more.
+`public/mindbridge_logo.png`. Each call site keeps its own size
+(auth/sidebar/mobile `h-10`, DTR preview `h-[42px]`, OB/COS/OT `w-[30%]`).
+Keep it PNG — Word doesn't render WebP and previews load it directly.
+Every `.docx` template carries its own embedded logo, so no export
+injects one any more.
 
 ## Word export pipeline (all five forms)
 
