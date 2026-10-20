@@ -97,6 +97,7 @@ export type DtrTemplate = {
 export type ObForm = {
   id_number: string;
   employee_name: string;
+  /** The template's "Department / Location" box — department, then office. */
   department: string;
   position: string;
   /** Free-text / date string as typed (e.g. "2026-09-26"). */
@@ -127,6 +128,7 @@ export type ObEntry = {
 export type LoaForm = {
   id_number: string;
   employee_name: string;
+  /** The template's "Department/Location" box — department, then office. */
   department: string;
   position: string;
   /** Free-text / date string as typed (e.g. "2026-09-26"). */
@@ -230,7 +232,7 @@ export type OtEntry = {
 export type OtForm = {
   id_number: string;
   employee_name: string;
-  /** The template's "Department/Location" box. */
+  /** The template's "Department/Location" box — department, then office. */
   department: string;
   position: string;
   /** Date & Time Filed, free text as typed. */

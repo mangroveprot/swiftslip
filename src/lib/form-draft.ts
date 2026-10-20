@@ -1,4 +1,4 @@
-import { departmentForPosition } from "@/shared/org";
+import { departmentForPosition, departmentWithLocation } from "@/shared/org";
 import type { EmployeeProfile } from "@/shared/types";
 
 /**
@@ -43,7 +43,15 @@ export function formDepartment(profile: EmployeeProfile): string {
   return profile.department || departmentForPosition(profile.designation);
 }
 
-/** The identity auto-fill, in the shape every form screen uses. */
+/**
+ * The identity auto-fill, in the shape every form screen uses.
+ *
+ * `department` is the whole "Department / Location" box, not just the
+ * department: the sheet gives that box one cell for both facts, so it is
+ * pre-filled as "IT DEP/RGC Dipolog Sat Office" instead of leaving the office
+ * half blank. It stays a single editable field — the printed form has no second
+ * cell to put the office in.
+ */
 export function draftIdentity(profile: EmployeeProfile): {
   id_number: string;
   employee_name: string;
@@ -55,7 +63,7 @@ export function draftIdentity(profile: EmployeeProfile): {
   return {
     id_number: profile.emp_no,
     employee_name: profile.full_name,
-    department: formDepartment(profile),
+    department: departmentWithLocation(formDepartment(profile), profile.area),
     position: profile.designation,
     employee_signature: profile.signature,
     date_filed: localToday(),

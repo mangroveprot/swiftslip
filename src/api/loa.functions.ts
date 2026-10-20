@@ -7,7 +7,7 @@ import { chatLoaAssistant as chatLoaAssistantService } from "@/server/services/l
 import * as loa from "@/server/services/loa.server";
 import { writeLoaReason as writeLoaReasonService } from "@/server/services/loa-reason.server";
 import * as profiles from "@/server/services/profiles.server";
-import { departmentForPosition } from "@/shared/org";
+import { departmentForPosition, departmentWithLocation } from "@/shared/org";
 import {
   attachmentPathInput,
   attachmentUploadInput,
@@ -39,8 +39,12 @@ export const createLoaForm = createServerFn({ method: "POST" })
     const created = await loa.createLoaForm(user.id, {
       id_number: profile.emp_no,
       employee_name: profile.full_name,
-      // The department the position belongs to — never the office branch.
-      department: profile.department || departmentForPosition(profile.designation),
+      // The sheet's one "Department / Location" box: the department the
+      // position belongs to, then the office branch it prints after the slash.
+      department: departmentWithLocation(
+        profile.department || departmentForPosition(profile.designation),
+        profile.area,
+      ),
       position: profile.designation,
       employee_signature: profile.signature,
       date_filed: data.date_filed ?? "",

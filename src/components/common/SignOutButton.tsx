@@ -30,16 +30,25 @@ export function SignOutButton({
   onSignOutStart,
 }: SignOutButtonProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   async function handleSignOut() {
-    setConfirmOpen(false);
+    setBusy(true);
     onSignOutStart?.();
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await signOut();
-    void navigate({ to: "/", replace: true });
+    try {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      await signOut();
+      void navigate({ to: "/", replace: true });
+    } catch (e) {
+      // A failed sign-out should drop the modal so the user can retry rather
+      // than being stuck on a spinner with no way out.
+      setBusy(false);
+      setConfirmOpen(false);
+      throw e;
+    }
   }
 
   return (
@@ -54,6 +63,8 @@ export function SignOutButton({
         title="Sign out?"
         message={`You're about to sign out. You'll need to sign in again to access ${accessName ?? APP.name}.`}
         confirmLabel="Sign out"
+        busy={busy}
+        busyLabel="Signing out…"
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => void handleSignOut()}
       />

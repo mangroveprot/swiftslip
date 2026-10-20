@@ -103,6 +103,22 @@ export function departmentForPosition(position: string): string {
 }
 
 /**
+ * The value the OB / OT / LOA sheets print in their single "Department /
+ * Location" box: the department, then the employee's Designation (the office /
+ * branch), joined by the slash the box is named with — "IT DEP/RGC Dipolog Sat
+ * Office".
+ *
+ * The office is not a department, which is why it is appended here rather than
+ * being folded into the department itself: the two facts stay separately
+ * sourced and only meet at the printed value, which is what the box asks for.
+ * Either half may be blank, and the slash is dropped rather than printed
+ * dangling, so a profile missing one of them still yields a clean string.
+ */
+export function departmentWithLocation(department: string, office: string): string {
+  return [department.trim(), office.trim()].filter(Boolean).join("/");
+}
+
+/**
  * The positions offered under a department — "" (nothing picked yet) offers
  * every position, and an unknown department offers all of them too so the
  * picker is never a dead end.
