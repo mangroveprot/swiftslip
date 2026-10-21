@@ -96,12 +96,12 @@ const URL_QUERY = {
 };
 
 /**
- * Upload / view / remove card for the document attached to an OB form or a DTR
+ * Upload / view / remove card for the document attached to a form or a DTR
  * record: ≤ 10 MB, any document type (stored-XSS MIME types refused), kept in
  * the private `swiftslip` bucket under `ApprovalSlip/<owner-id>/<row-id>-<file>`
- * and shown through 1-hour signed links. The approval badge and "Approved"
- * checkbox are passed in by `ObAttachmentCard` / `LoaAttachmentCard` via
- * `badge` / `children`.
+ * and shown through 1-hour signed links. The approval seal is passed in by the
+ * editor via `stamp`, and any extra controls (the "Approved" tick) via
+ * `children`.
  */
 export function AttachmentCard({
   kind,
@@ -111,9 +111,9 @@ export function AttachmentCard({
   onUploaded,
   onRemoved,
   onEnsureRow,
-  badge,
+  stamp,
   children,
-  cardClassName = "shrink-0 rounded-xl border bg-card p-3 shadow-sm",
+  cardClassName = "relative shrink-0 rounded-xl border bg-card p-3 shadow-sm",
 }: {
   kind: AttachmentKind;
   id: string;
@@ -127,8 +127,11 @@ export function AttachmentCard({
    *  attachment is that something. The editor resolves a real id here before the
    *  upload goes out; omitted for editors that always pass a persisted id. */
   onEnsureRow?: (() => Promise<string>) | undefined;
-  /** Status chip shown next to the title (the OB approved / not-approved badge). */
-  badge?: ReactNode;
+  /** A mark that belongs *on* the card rather than next to the title — the
+   *  approval seal. It is lifted out of the flow into the top-right corner, and
+   *  the file row gives up that corner so the mark never sits on the action
+   *  buttons. With no file it stands beside the uploader instead. */
+  stamp?: ReactNode;
   /** Extra controls under the file row (the OB "Approved" checkbox). */
   children?: ReactNode;
   /** Shell classes for the card itself. Overridable so a form can match its
@@ -273,9 +276,28 @@ export function AttachmentCard({
     }
   }
 
+  // The uploader is built once and placed two ways: full width when the card
+  // carries no mark, and sharing the row with the mark when it does. A stamp
+  // laid over the only control in an empty card reads as damage, not approval.
+  const uploadButton = (
+    <button
+      type="button"
+      className="btn btn-outline w-full justify-start"
+      disabled={!canEdit || busy}
+      onClick={() => fileInputRef.current?.click()}
+    >
+      {busy ? (
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+      ) : (
+        <Upload className="size-4" aria-hidden="true" />
+      )}
+      {busy ? "Uploading…" : canEdit ? copy.empty : "No attachment yet"}
+    </button>
+  );
+
   // The card joins the printout only when its file can actually be shown, and
   // then it always starts on a fresh page — the attachment never shares a
-  // sheet with the document. Everything except the file itself (title, badge,
+  // sheet with the document. Everything except the file itself (title, seal,
   // filename, buttons) is screen-only.
   return (
     <section
@@ -294,17 +316,24 @@ export function AttachmentCard({
         onChange={pickFile}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+      <div className="print:hidden">
         <p className="lbl flex items-center gap-1.5">
           <Paperclip className="size-3.5" aria-hidden="true" />
           {copy.title}
         </p>
-        {badge}
       </div>
+
+      {file && stamp ? (
+        <div className="pointer-events-none absolute top-3 right-3 z-10 print:hidden">{stamp}</div>
+      ) : null}
 
       {file ? (
         <div className="mt-2 space-y-2">
-          <div className="flex items-center gap-2 rounded-lg border px-3 py-2 print:rounded-none print:border-0 print:px-0 print:py-0">
+          <div
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 print:rounded-none print:border-0 print:px-0 print:py-0${
+              stamp ? " pr-20 print:pr-0" : ""
+            }`}
+          >
             <div className="min-w-0 flex-1 print:text-center">
               <p className="truncate text-sm font-medium print:hidden" title={file.name}>
                 {file.name}
@@ -385,20 +414,15 @@ export function AttachmentCard({
 
           {children}
         </div>
+      ) : stamp ? (
+        // No file yet: the mark stands beside the uploader instead of on top of
+        // it, so the button keeps its full label and its border stays unbroken.
+        <div className="mt-2 flex items-center gap-3 print:hidden">
+          <div className="min-w-0 flex-1">{uploadButton}</div>
+          <div className="shrink-0">{stamp}</div>
+        </div>
       ) : (
-        <button
-          type="button"
-          className="btn btn-outline mt-2 w-full justify-start"
-          disabled={!canEdit || busy}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {busy ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Upload className="size-4" aria-hidden="true" />
-          )}
-          {busy ? "Uploading…" : canEdit ? copy.empty : "No attachment yet"}
-        </button>
+        <div className="mt-2">{uploadButton}</div>
       )}
 
       <ConfirmDialog

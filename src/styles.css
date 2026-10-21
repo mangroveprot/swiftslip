@@ -1674,3 +1674,27 @@
     animation: none;
   }
 }
+
+/* Circular approval seal — Approved (green) / Not Approved (red).
+   Drawn as inline SVG in ApprovedStamp.tsx; `--seal-size` comes from the
+   size preset there, so the whole mark scales without losing proportions. */
+.approval-seal {
+  --ink: #3b9f4f;
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--seal-size, 64px);
+  height: var(--seal-size, 64px);
+  color: var(--ink);
+  font-family: "Bebas Neue", Impact, "Arial Narrow", sans-serif;
+  user-select: none;
+}
+
+.approval-seal.not-approved {
+  --ink: #d63a32;
+}
+
+.approval-seal svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

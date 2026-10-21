@@ -39,6 +39,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap",
       },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap",
+      },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: APP.faviconPath, type: "image/png" },
       { rel: "manifest", href: "/manifest.webmanifest" },

@@ -4,7 +4,7 @@ import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { deleteRecord } from "@/api/records.functions";
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -154,7 +154,7 @@ function RecordCard({
         }
       }}
       style={{ animationDelay: `${Math.min(index, 12) * 55}ms`, animationFillMode: "both" }}
-      className="flex cursor-pointer gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
+      className="relative flex cursor-pointer gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
@@ -189,9 +189,6 @@ function RecordCard({
           </div>
         </div>
 
-        {/* Attached file = approved on a DTR; records without one show nothing. */}
-        {r.attachment_path ? <ApprovedBadge approved className="mt-2" /> : null}
-
         <p className="mt-3 text-xs text-foreground">
           {MONTHS[r.month - 1]} {r.year} · {periodLabel(r.period as Period, r.month, r.year)}
         </p>
@@ -207,6 +204,14 @@ function RecordCard({
       </div>
 
       <RecordThumbnail status={status} hasName={Boolean(r.name)} />
+
+      {/* Attached file = approved on a DTR; records without one show nothing.
+          Laid over the card's quiet bottom-right corner rather than in the text
+          stack, so it never reads as another metadata line and never adds
+          height to the row. */}
+      {r.attachment_path ? (
+        <ApprovedStamp approved className="pointer-events-none absolute right-2 bottom-2 z-10" />
+      ) : null}
     </div>
   );
 }

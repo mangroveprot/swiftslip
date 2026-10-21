@@ -1,6 +1,4 @@
-import { Clock3 } from "lucide-react";
-
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { LoaForm } from "@/shared/types";
 
@@ -8,8 +6,8 @@ import type { LoaForm } from "@/shared/types";
  * The approval attachment for an LOA form — the OB card's behaviour in full:
  * the uploaded file IS the approval, so an upload ticks both marks
  * (`attachment_approved` and the "Approved via Viber" note) and removing the
- * file clears them again. The status badge and the "Approved" toggle live
- * here; the form itself carries no approval widget anymore.
+ * file clears them again. The seal and the "Approved" toggle live here; the
+ * form itself carries no approval widget anymore.
  */
 export function LoaAttachmentCard({
   id,
@@ -45,7 +43,7 @@ export function LoaAttachmentCard({
       id={id}
       // Same shell as the LOA's other boxes — the right column keeps its own
       // two pieces (attachment card, then live preview), just restyled.
-      cardClassName="form-fill shrink-0 rounded-2xl border bg-card p-4 shadow-sm"
+      cardClassName="form-fill relative shrink-0 rounded-2xl border bg-card p-4 shadow-sm"
       file={attachment}
       canEdit={canEdit}
       onUploaded={() => {
@@ -63,20 +61,10 @@ export function LoaAttachmentCard({
           setForm({ ...form, attachment_approved: false, approved_via_viber: false });
         }
       }}
-      badge={
-        attachment ? (
-          approved ? (
-            <ApprovedBadge approved />
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-              <Clock3 className="size-3.5" aria-hidden="true" />
-              Not approved
-            </span>
-          )
-        ) : (
-          <ApprovedBadge approved={false} />
-        )
-      }
+      // Green once approved, red while the slip (or the tick) is still missing.
+      // Laid on the card rather than in the header, with the file row leaving
+      // that corner free so the mark never covers the action buttons.
+      stamp={<ApprovedStamp approved={Boolean(attachment) && approved} />}
     >
       {attachment && canEdit ? (
         <label

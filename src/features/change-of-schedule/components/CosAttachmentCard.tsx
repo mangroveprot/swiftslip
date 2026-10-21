@@ -1,16 +1,13 @@
-import { Clock3 } from "lucide-react";
-
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { CosForm } from "@/shared/types";
 
 /**
  * The approval-slip attachment for a Change of Schedule form: the shared
- * upload/view/remove card plus the approval bits the DTR doesn't have — a
- * status badge and the single "Approved" checkbox (auto-ticked when a slip is
- * uploaded). Ticking it also drives the form's "Approved via Viber" note. With
- * no slip on the form the badge reads "Not Approved" in red instead of staying
- * hidden. Mirrors ObAttachmentCard exactly.
+ * upload/view/remove card plus the approval bits the DTR doesn't have — the
+ * seal and the single "Approved" checkbox (auto-ticked when a slip is
+ * uploaded). Ticking it also drives the form's "Approved via Viber" note.
+ * Mirrors ObAttachmentCard exactly, including the seal placement.
  */
 export function CosAttachmentCard({
   id,
@@ -61,20 +58,10 @@ export function CosAttachmentCard({
           setForm({ ...form, attachment_approved: false, approved_via_viber: false });
         }
       }}
-      badge={
-        attachment ? (
-          approved ? (
-            <ApprovedBadge approved />
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-              <Clock3 className="size-3.5" aria-hidden="true" />
-              Not approved
-            </span>
-          )
-        ) : (
-          <ApprovedBadge approved={false} />
-        )
-      }
+      // Green once approved, red while the slip (or the tick) is still missing.
+      // Laid on the card rather than in the header, with the file row leaving
+      // that corner free so the mark never covers the action buttons.
+      stamp={<ApprovedStamp approved={Boolean(attachment) && approved} />}
     >
       {attachment && canEdit ? (
         <label

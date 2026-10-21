@@ -4,7 +4,7 @@ import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { deleteOtForm } from "@/api/ot.functions";
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -137,7 +137,7 @@ function OtCard({
         }
       }}
       style={{ animationDelay: `${Math.min(index, 12) * 55}ms`, animationFillMode: "both" }}
-      className="flex cursor-pointer flex-col gap-2 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
+      className="relative flex min-h-36 cursor-pointer flex-col gap-2 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -171,7 +171,17 @@ function OtCard({
         </div>
       </div>
 
-      {f.attachment_approved ? <ApprovedBadge approved /> : null}
+      {/* Approved forms get the seal, laid over the card's quiet bottom-right
+          corner so it never sits on the department/date lines. Unapproved
+          forms show nothing at all — same rule as the DTR and OB lists. The
+          min-height holds that corner open even when a record has fewer rows. */}
+      {f.attachment_approved ? (
+        <ApprovedStamp
+          approved
+          size="sm"
+          className="pointer-events-none absolute right-2 bottom-2 z-10"
+        />
+      ) : null}
 
       <p className="text-xs text-foreground">
         {[f.department, f.position].filter(Boolean).join(" · ") || "No department / position"}

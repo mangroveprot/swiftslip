@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Eye, Pencil, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { deleteCode, upsertCode } from "@/api/access-codes.functions";
@@ -47,8 +47,8 @@ type Account = {
   created_at: string;
 };
 
-/** Which chip is selected above the list. */
-type Filter = "all" | "admin" | "staff" | "incomplete";
+/** Which tab is selected above the list. */
+type Filter = "all" | "admin" | "user" | "incomplete";
 
 function roleText(role: string) {
   return role === "admin" ? "Administrator" : "Staff";
@@ -84,7 +84,8 @@ function initialsOf(name: string) {
 const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "all", label: "All" },
   { key: "admin", label: "Administrators" },
-  { key: "staff", label: "Staff" },
+  // The role is stored as "user"; "Staff" is only what the screen calls it.
+  { key: "user", label: "Staff" },
   { key: "incomplete", label: "Incomplete" },
 ];
 
@@ -150,92 +151,102 @@ export function UserManagement() {
     }
   }
 
-  const cards = [
-    { label: "Total accounts", value: totals.accounts, tone: "" },
-    { label: "Administrators", value: totals.admins, tone: "" },
-    { label: "Staff", value: totals.staff, tone: "" },
-    {
-      label: "Incomplete profiles",
-      value: totals.incomplete,
-      tone: totals.incomplete > 0 ? "border-amber-300 bg-amber-50" : "",
-    },
-  ];
+  /** The tab counts — the header no longer repeats them in separate cards. */
+  const counts: Record<Filter, number> = {
+    all: totals.accounts,
+    admin: totals.admins,
+    user: totals.staff,
+    incomplete: totals.incomplete,
+  };
 
   return (
-    // The blurb stays visible at every width, but small and one short line, so
-    // the header never fills a short window on its own. Same sizing as the App
-    // access screen; desktop layout and colours are unchanged.
+    // Same shell as App access / Activity logs: the flat layout stays, but on
+    // the white card the rest of the admin panel uses.
     <section className="rounded-xl border bg-card p-3 sm:p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b pb-4">
         <div className="min-w-0">
-          <h2 className="text-lg sm:text-xl">User management</h2>
-          <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">
-            Every account signs in with its unique ID number and password. Administrators can edit
-            records, import files and manage this list; staff can only view, print and download.
+          <h2 className="text-3xl font-bold tracking-tight">User management</h2>
+          <p className="mt-2 max-w-[30rem] text-sm leading-6 text-muted-foreground">
+            Every account signs in with its own ID number and password. Administrators{" "}
+            <ShieldCheck
+              className="inline size-3.5 align-[-2px] text-foreground/80"
+              aria-hidden="true"
+            />{" "}
+            can edit records, import files, and manage this list. Staff{" "}
+            <Eye className="inline size-3.5 align-[-2px] text-foreground/80" aria-hidden="true" />{" "}
+            can view, print, and download.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setEditing("new")}>
-          <Plus className="size-4" aria-hidden="true" />
+        <button className="btn btn-primary ml-auto shrink-0" onClick={() => setEditing("new")}>
           Create account
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {cards.map((card) => (
-          <div key={card.label} className={`rounded-xl border bg-card p-2.5 ${card.tone}`}>
-            <p className="text-2xl font-semibold tabular-nums">{card.value}</p>
-            <p
-              className={`mt-0.5 text-xs font-medium ${
-                card.tone ? "text-amber-800" : "text-muted-foreground"
-              }`}
-            >
-              {card.label}
-            </p>
+      {/* Tabs and search share one rule: the active tab's underline sits on it
+          and the table's header row follows straight after. The counts live in
+          the tabs, so the four summary cards are gone. */}
+      <div className="mt-4">
+        <div className="border-b">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+            <div className="flex flex-wrap items-center gap-x-7">
+              {FILTERS.map((f) => {
+                const active = filter === f.key;
+                const count = counts[f.key];
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setFilter(f.key)}
+                    className={`-mb-px flex items-baseline gap-2 border-b-2 pt-1 pb-3 text-sm transition-colors ${
+                      active
+                        ? "border-primary font-medium text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {f.label}
+                    <span
+                      className={
+                        f.key === "incomplete" && count > 0
+                          ? "rounded-[3px] bg-amber-200 px-1.5 text-[11px] font-medium text-amber-950"
+                          : "text-xs font-normal text-muted-foreground"
+                      }
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="order-first w-full pb-2 sm:order-none sm:w-72">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute top-1/2 left-0 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search ID, name, position, or department…"
+                  className="h-9 border-0 bg-transparent pr-0 pl-8 shadow-none focus-visible:ring-0"
+                  aria-label="Search accounts"
+                />
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <div className="relative w-full sm:w-72 sm:flex-1">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground md:left-3"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by ID, name, position or department…"
-            className="h-8 pl-8 text-sm md:h-9 md:pl-9"
-            aria-label="Search accounts"
-          />
         </div>
-        <div className="flex flex-wrap items-center gap-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={filter === f.key}
-              onClick={() => setFilter(f.key)}
-              className={`h-7 rounded-full border px-2.5 text-xs transition-colors sm:h-8 sm:px-3 ${
-                filter === f.key
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "bg-background text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border">
         {isLoading ? (
-          <div className="space-y-2 p-4" aria-label="Loading accounts">
+          <div aria-label="Loading accounts">
             {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="size-9 shrink-0 animate-pulse rounded-full bg-muted" />
-                <div className="h-9 min-w-0 flex-1 animate-pulse rounded-md bg-muted/60 px-3 py-2" />
+              <div key={i} className="flex items-center gap-3 border-b py-5">
+                <div className="size-10 shrink-0 animate-pulse rounded-full bg-muted" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-3.5 w-40 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-28 animate-pulse rounded bg-muted/70" />
+                </div>
               </div>
             ))}
           </div>
@@ -252,27 +263,26 @@ export function UserManagement() {
           </div>
         ) : (
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[880px] text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
-                <tr className="border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <th className="min-w-56 px-4 py-3 font-semibold">Account</th>
-                  <th className="w-44 px-4 py-3 font-semibold">Designation</th>
-                  <th className="w-64 px-4 py-3 font-semibold">Position / Department</th>
-                  <th className="w-32 px-4 py-3 font-semibold">Access</th>
-                  <th className="w-28 px-4 py-3 font-semibold">Created</th>
-                  <th className="w-20 px-4 py-3 text-right font-semibold">
-                    <span className="sr-only">Actions</span>
-                  </th>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="w-28 py-3 pr-4 font-normal">ID</th>
+                  <th className="py-3 pr-4 font-normal">Name and designation</th>
+                  <th className="w-44 py-3 pr-4 font-normal">Position and department</th>
+                  <th className="w-40 py-3 pr-4 font-normal">Access</th>
+                  <th className="w-28 py-3 pr-4 font-normal">Created</th>
+                  <th className="w-24 py-3 font-normal">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody>
                 {list.map((a) => {
                   const isYou = a.id === session?.id;
                   const incomplete = isIncomplete(a);
                   const shownDepartment = displayDepartment(a);
                   return (
-                    <tr key={a.id} className="transition-colors hover:bg-muted/40">
-                      <td className="px-4 py-3.5 align-middle">
+                    <tr key={a.id} className="border-b transition-colors hover:bg-muted/30">
+                      <td className="py-5 pr-4 align-middle text-sm tabular-nums">{a.id_number}</td>
+                      <td className="py-5 pr-4 align-middle">
                         <div className="flex items-center gap-3">
                           {a.full_name ? (
                             <span
@@ -290,81 +300,80 @@ export function UserManagement() {
                             </span>
                           )}
                           <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <p className="flex items-baseline gap-2">
                               <span
-                                className="max-w-56 truncate text-sm font-semibold"
+                                className={`truncate text-sm font-semibold ${
+                                  a.full_name ? "" : "font-normal italic text-muted-foreground"
+                                }`}
                                 title={a.full_name}
                               >
                                 {a.full_name || "No name set"}
                               </span>
                               {isYou ? (
-                                <span className="rounded-full border bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                <span className="shrink-0 text-[11px] font-normal text-muted-foreground">
                                   You
                                 </span>
                               ) : null}
+                            </p>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                              {a.designation ? (
+                                <span
+                                  className="truncate text-xs text-muted-foreground"
+                                  title={a.designation}
+                                >
+                                  {a.designation}
+                                </span>
+                              ) : null}
                               {incomplete ? (
-                                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                                <span className="rounded-[3px] bg-amber-200 px-1.5 py-0.5 text-[11px] font-medium text-amber-950">
                                   Incomplete profile
                                 </span>
                               ) : null}
                             </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                              ID {a.id_number}
-                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5 align-middle">
-                        <span
-                          className={
-                            a.designation
-                              ? "block truncate text-sm"
-                              : "block truncate text-sm text-muted-foreground"
-                          }
-                          title={a.designation}
-                        >
-                          {a.designation || "Not assigned"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5 align-middle">
+                      <td className="py-5 pr-4 align-middle">
                         {a.position ? (
                           <>
-                            <span
-                              className="block truncate text-sm font-semibold"
-                              title={a.position}
-                            >
+                            <p className="truncate text-sm font-medium" title={a.position}>
                               {a.position}
-                            </span>
-                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
                               {shownDepartment || "Department not set"}
-                            </span>
+                            </p>
                           </>
                         ) : (
-                          <span className="text-sm text-muted-foreground">Not assigned</span>
+                          <p className="text-sm text-muted-foreground">Not assigned</p>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 align-middle">
-                        <span
-                          className={
-                            a.role === "admin"
-                              ? "inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-                              : "inline-flex items-center rounded-full border px-2.5 py-1 text-xs text-muted-foreground"
-                          }
-                        >
+                      <td className="py-5 pr-4 align-middle">
+                        <span className="flex items-center gap-2 text-sm">
+                          {a.role === "admin" ? (
+                            <ShieldCheck
+                              className="size-4 shrink-0 text-foreground/60"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Eye
+                              className="size-4 shrink-0 text-foreground/60"
+                              aria-hidden="true"
+                            />
+                          )}
                           {roleText(a.role)}
                         </span>
                       </td>
                       <td
-                        className="px-4 py-3.5 align-middle text-xs whitespace-nowrap text-muted-foreground tabular-nums"
+                        className="py-5 pr-4 align-middle text-sm whitespace-nowrap text-muted-foreground tabular-nums"
                         title={new Date(a.created_at).toLocaleString()}
                       >
                         {relativeTime(a.created_at)}
                       </td>
-                      <td className="px-4 py-3.5 align-middle">
-                        <div className="flex items-center justify-end gap-1">
+                      <td className="py-5 align-middle">
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             aria-label={`Edit ${a.id_number}`}
                             title="Edit"
                             onClick={() => setEditing({ ...a, role: a.role as Role })}
@@ -374,7 +383,7 @@ export function UserManagement() {
                           {isYou ? null : (
                             <button
                               type="button"
-                              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                               aria-label={`Remove ${a.id_number}`}
                               title="Remove"
                               onClick={() => setRemoving({ ...a, role: a.role as Role })}
@@ -392,18 +401,17 @@ export function UserManagement() {
           </div>
         )}
 
-        {/* Phones: one card per account, the columns stacked underneath. No
-            sideways scrolling to reach the edit buttons, and long names wrap
-            instead of being cut off. Same content, same actions. */}
+        {/* Phones: the same account, stacked. No sideways scrolling to reach
+            the edit buttons, and long names wrap instead of being cut off. */}
         {!isLoading && list.length > 0 ? (
-          <div className="mt-3 space-y-2 md:hidden">
+          <div className="md:hidden">
             {list.map((a) => {
               const isYou = a.id === session?.id;
               const incomplete = isIncomplete(a);
               const shownDepartment = displayDepartment(a);
               return (
-                <div key={a.id} className="rounded-lg border p-3">
-                  <div className="flex min-w-0 items-start gap-2.5">
+                <div key={a.id} className="border-b py-4">
+                  <div className="flex min-w-0 items-start gap-3">
                     {a.full_name ? (
                       <span
                         className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
@@ -420,17 +428,31 @@ export function UserManagement() {
                       </span>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {a.full_name || "No name set"}
+                      <p className="flex items-baseline gap-2">
+                        <span
+                          className={`truncate text-sm font-semibold ${
+                            a.full_name ? "" : "font-normal italic text-muted-foreground"
+                          }`}
+                        >
+                          {a.full_name || "No name set"}
+                        </span>
+                        {isYou ? (
+                          <span className="shrink-0 text-[11px] text-muted-foreground">You</span>
+                        ) : null}
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-                        ID {a.id_number}
+                        {a.id_number}
                       </p>
+                      {incomplete ? (
+                        <span className="mt-1 inline-block rounded-[3px] bg-amber-200 px-1.5 py-0.5 text-[11px] font-medium text-amber-950">
+                          Incomplete profile
+                        </span>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-0.5">
                       <button
                         type="button"
-                        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         aria-label={`Edit ${a.id_number}`}
                         title="Edit"
                         onClick={() => setEditing({ ...a, role: a.role as Role })}
@@ -440,7 +462,7 @@ export function UserManagement() {
                       {isYou ? null : (
                         <button
                           type="button"
-                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                           aria-label={`Remove ${a.id_number}`}
                           title="Remove"
                           onClick={() => setRemoving({ ...a, role: a.role as Role })}
@@ -451,61 +473,44 @@ export function UserManagement() {
                     </div>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span
-                      className={
-                        a.role === "admin"
-                          ? "inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
-                          : "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground"
-                      }
+                  <dl className="mt-2 grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1 text-xs">
+                    <dt className="text-muted-foreground">Designation</dt>
+                    <dd
+                      className={`min-w-0 truncate ${a.designation ? "" : "text-muted-foreground"}`}
                     >
+                      {a.designation || "Not assigned"}
+                    </dd>
+                    <dt className="text-muted-foreground">Position</dt>
+                    <dd
+                      className={`min-w-0 truncate ${a.position ? "font-medium" : "text-muted-foreground"}`}
+                    >
+                      {a.position || "Not assigned"}
+                    </dd>
+                    <dt className="text-muted-foreground">Department</dt>
+                    <dd
+                      className={`min-w-0 truncate ${shownDepartment ? "" : "text-muted-foreground"}`}
+                    >
+                      {shownDepartment || "Not set"}
+                    </dd>
+                    <dt className="text-muted-foreground">Access</dt>
+                    <dd className="flex items-center gap-1.5">
+                      {a.role === "admin" ? (
+                        <ShieldCheck
+                          className="size-3.5 shrink-0 text-foreground/60"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <Eye className="size-3.5 shrink-0 text-foreground/60" aria-hidden="true" />
+                      )}
                       {roleText(a.role)}
-                    </span>
-                    {isYou ? (
-                      <span className="rounded-full border bg-background px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        You
-                      </span>
-                    ) : null}
-                    {incomplete ? (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-                        Incomplete profile
-                      </span>
-                    ) : null}
-                    <span
-                      className="ml-auto whitespace-nowrap text-[11px] text-muted-foreground tabular-nums"
+                    </dd>
+                    <dt className="text-muted-foreground">Created</dt>
+                    <dd
+                      className="whitespace-nowrap text-muted-foreground tabular-nums"
                       title={new Date(a.created_at).toLocaleString()}
                     >
                       {relativeTime(a.created_at)}
-                    </span>
-                  </div>
-
-                  <dl className="mt-2 space-y-0.5 text-xs">
-                    <div className="flex gap-2">
-                      <dt className="w-20 shrink-0 text-muted-foreground">Designation</dt>
-                      <dd
-                        className={`min-w-0 truncate ${a.designation ? "" : "text-muted-foreground"}`}
-                      >
-                        {a.designation || "Not assigned"}
-                      </dd>
-                    </div>
-                    <div className="flex gap-2">
-                      <dt className="w-20 shrink-0 text-muted-foreground">Position</dt>
-                      <dd
-                        className={`min-w-0 truncate ${a.position ? "font-medium" : "text-muted-foreground"}`}
-                      >
-                        {a.position || "Not assigned"}
-                      </dd>
-                    </div>
-                    <div className="flex gap-2">
-                      <dt className="w-20 shrink-0 text-muted-foreground">Department</dt>
-                      <dd
-                        className={`min-w-0 truncate ${
-                          shownDepartment ? "" : "text-muted-foreground"
-                        }`}
-                      >
-                        {shownDepartment || "Not set"}
-                      </dd>
-                    </div>
+                    </dd>
                   </dl>
                 </div>
               );
@@ -514,12 +519,12 @@ export function UserManagement() {
         ) : null}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
           Showing {list.length} of {totals.accounts} accounts
         </span>
         <span className="hidden sm:inline">
-          Incomplete profiles are missing a name, designation, position or department.
+          Incomplete profiles are missing a name, designation, position, or department.
         </span>
       </div>
 

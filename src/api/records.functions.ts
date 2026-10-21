@@ -5,6 +5,7 @@ import { logActivity } from "@/server/services/activity-log.server";
 import * as attachments from "@/server/services/attachments.server";
 import * as profiles from "@/server/services/profiles.server";
 import * as records from "@/server/services/records.server";
+import { departmentForPosition, departmentWithLocation } from "@/shared/org";
 import {
   attachmentUploadInput,
   createRecordInput,
@@ -35,7 +36,13 @@ export const createRecord = createServerFn({ method: "POST" })
       emp_no: profile.emp_no,
       name: profile.full_name,
       designation: profile.designation,
-      area: profile.area,
+      // The sheet's AREA row carries the same pair as the OB/OT/LOA
+      // "Department / Location" box: the department, then the Designation
+      // (office branch), joined by the slash — "IT DEP/RGC Dipolog Sat Office".
+      area: departmentWithLocation(
+        profile.department || departmentForPosition(profile.designation),
+        profile.area,
+      ),
       employee_signature: profile.signature,
     });
     await logActivity({

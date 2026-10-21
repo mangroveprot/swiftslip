@@ -1,6 +1,4 @@
-import { Clock3 } from "lucide-react";
-
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { OtForm } from "@/shared/types";
 
@@ -8,7 +6,8 @@ import type { OtForm } from "@/shared/types";
  * The approval-slip attachment for an Overtime form — the COS/OB card's twin:
  * an uploaded slip IS the approval, so an upload ticks both marks
  * (`attachment_approved` and the "Approved via Viber" note) and removing the
- * file clears them again.
+ * file clears them again. The seal follows the OB treatment: it sits on the
+ * card's quiet corner, and beside the uploader while there is no slip.
  */
 export function OtAttachmentCard({
   id,
@@ -52,20 +51,10 @@ export function OtAttachmentCard({
           setForm({ ...form, attachment_approved: false, approved_via_viber: false });
         }
       }}
-      badge={
-        attachment ? (
-          approved ? (
-            <ApprovedBadge approved />
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-              <Clock3 className="size-3.5" aria-hidden="true" />
-              Not approved
-            </span>
-          )
-        ) : (
-          <ApprovedBadge approved={false} />
-        )
-      }
+      // Green once approved, red while the slip (or the tick) is still missing.
+      // Laid on the card rather than in the header, with the file row leaving
+      // that corner free so the mark never covers the action buttons.
+      stamp={<ApprovedStamp approved={Boolean(attachment) && approved} />}
     >
       {attachment && canEdit ? (
         <label

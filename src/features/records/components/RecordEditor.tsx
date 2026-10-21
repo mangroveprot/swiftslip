@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { importBiometricFile } from "@/api/biometric-import.functions";
 import { createRecord, saveRecord } from "@/api/records.functions";
 import { AiMascot } from "@/components/common/AiMascot";
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
@@ -557,7 +557,10 @@ function RecordEditorBody({
               // form is still a draft.
               onEnsureRow={ensureRow}
               // A DTR has no approval flag: the attached file IS the approval.
-              badge={<ApprovedBadge approved={Boolean(data?.attachment)} />}
+              // The seal is a mark *on* the card rather than a status chip in
+              // the header, so it is lifted out of the flow into the top-right
+              // corner (the file row leaves that corner free).
+              stamp={<ApprovedStamp approved={Boolean(data?.attachment)} />}
             />
           </div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">

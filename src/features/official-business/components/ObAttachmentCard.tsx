@@ -1,16 +1,15 @@
-import { Clock3 } from "lucide-react";
-
-import { ApprovedBadge } from "@/components/common/ApprovedBadge";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { ObForm } from "@/shared/types";
 
 /**
  * The approval-slip attachment for an OB form: the shared upload/view/remove
- * card plus the approval bits the DTR doesn't have — a status badge and the
- * single "Approved" checkbox (auto-ticked when a slip is uploaded). Ticking
- * it also drives the form's "Approved via Viber" note; the separate form
- * checkbox was removed as a duplicate. With no slip on the form the badge
- * reads "Not Approved" in red instead of staying hidden.
+ * card plus the approval bits the DTR doesn't have — the seal and the single
+ * "Approved" checkbox (auto-ticked when a slip is uploaded). Ticking it also
+ * drives the form's "Approved via Viber" note; the separate form checkbox was
+ * removed as a duplicate. The seal follows the DTR treatment: it sits *on* the
+ * card, in the quiet top-right corner, and beside the uploader when there is
+ * no slip yet.
  */
 export function ObAttachmentCard({
   id,
@@ -34,8 +33,8 @@ export function ObAttachmentCard({
   const approved = form.attachment_approved;
 
   function setChecked(checked: boolean) {
-    // This tick is the approval trail now: it drives both marks — the card
-    // badge and the "Approved via Viber" note on the form/preview.
+    // This tick is the approval trail now: it drives both the seal on this
+    // card and the "Approved via Viber" note on the form/preview.
     setForm({ ...form, attachment_approved: checked, approved_via_viber: checked });
   }
 
@@ -61,20 +60,11 @@ export function ObAttachmentCard({
           setForm({ ...form, attachment_approved: false, approved_via_viber: false });
         }
       }}
-      badge={
-        attachment ? (
-          approved ? (
-            <ApprovedBadge approved />
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-              <Clock3 className="size-3.5" aria-hidden="true" />
-              Not approved
-            </span>
-          )
-        ) : (
-          <ApprovedBadge approved={false} />
-        )
-      }
+      // The seal carries the whole status: green once approved, red when the
+      // slip (or the tick) is still missing. It is a mark *on* the card, so it
+      // is lifted out of the header into the top-right corner; the file row
+      // gives that corner up so the mark never covers the action buttons.
+      stamp={<ApprovedStamp approved={Boolean(attachment) && approved} />}
     >
       {attachment && canEdit ? (
         <label

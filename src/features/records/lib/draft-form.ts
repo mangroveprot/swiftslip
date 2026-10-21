@@ -1,4 +1,5 @@
 import { DTR_TEMPLATE } from "@/shared/dtr-template";
+import { departmentForPosition, departmentWithLocation } from "@/shared/org";
 import type { DtrHeader, EmployeeProfile } from "@/shared/types";
 
 /**
@@ -27,8 +28,14 @@ export function buildDraftRecordHeader(profile: EmployeeProfile): DtrHeader {
   return {
     emp_no: profile.emp_no,
     name: profile.full_name,
+    // DESIGNATION row stays the Position — the job title from the profile.
     designation: profile.designation,
-    area: profile.area,
+    // AREA row is the department/office pair, same as the other sheets'
+    // "Department / Location" box. The office alone left half the row empty.
+    area: departmentWithLocation(
+      profile.department || departmentForPosition(profile.designation),
+      profile.area,
+    ),
     month: today.getMonth() + 1,
     year: today.getFullYear(),
     period: DTR_TEMPLATE.default_period,
