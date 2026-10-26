@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 
 /**
  * Presets. A seal is drawn in a 200×200 box and scales cleanly, so the only
- * decision a caller makes is how big it should sit: `sm` in a list card, `md`
- * on a card corner, `lg` as a full document mark.
+ * decision a caller makes is how big it should sit: `xs` in a dense list card,
+ * `sm` in a roomier card, `md` on a card corner, `lg` as a full document mark.
  */
-const SIZES = { sm: "56px", md: "64px", lg: "140px" } as const;
+const SIZES = { xs: "44px", sm: "56px", md: "64px", lg: "140px" } as const;
 
 /** Scalloped ring: wavy outer edge with the centre disc punched out. */
 const SCALLOPED_RING =
@@ -24,8 +24,8 @@ type ApprovalStampProps = {
    *  "Not Approved" (red). Both are the same drawing, so the red one is never
    *  larger than the green one just because it is a longer word. */
   approved: boolean;
-  /** Preset size. `sm` for a list row, `md` for a card header, `lg` for a
-   *  full-sheet mark. */
+  /** Preset size. `xs` for a dense list card, `sm` for a list row, `md` for
+   *  a card header, `lg` for a full-sheet mark. */
   size?: keyof typeof SIZES;
   /** Layout classes only — the seal keeps its own ink and proportions. */
   className?: string;

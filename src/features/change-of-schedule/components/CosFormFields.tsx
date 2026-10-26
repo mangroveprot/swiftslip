@@ -1,9 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Loader2, Wand2, X } from "lucide-react";
+import { Loader2, PencilLine, Sparkles, X } from "lucide-react";
 
 import { writeCosReason } from "@/api/cos.functions";
 import { AiMascot } from "@/components/common/AiMascot";
-import { SignatureField } from "@/features/records/components/SignaturePad";
 import { toast } from "@/lib/toast";
 import type { CosForm } from "@/shared/types";
 
@@ -26,123 +25,184 @@ function Req() {
   );
 }
 
+/**
+ * The top of the COS sheet: the employee identity block and the two header
+ * boxes — Date Filed and the change type. The four identity values are the
+ * paper form's header boxes as underline inputs, the way the OB sheet draws
+ * them, and each one stays editable (`canEdit` gates it): the profile only
+ * seeds a new form. The editor supplies the sheet around this and the rules
+ * between its blocks.
+ */
 export function CosFormFields({
   form,
   setForm,
   canEdit,
-  savedSignature,
 }: {
   form: CosForm;
   setForm: (form: CosForm) => void;
   canEdit: boolean;
-  /** Profile signature, offered in the signature dialog as a one-click re-use. */
-  savedSignature?: string | undefined;
 }) {
+  const patch = (next: Partial<CosForm>) => setForm({ ...form, ...next });
+
   return (
-    <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        <Field
+    <div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 @xl:grid-cols-4">
+        <Identity
           required
           label="ID Number"
           value={form.id_number}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, id_number: v })}
+          onChange={(v) => patch({ id_number: v })}
         />
-        <Field
+        <Identity
           required
           label="Employee Name"
           value={form.employee_name}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, employee_name: v })}
+          onChange={(v) => patch({ employee_name: v })}
         />
-        <Field
-          label="Date Filed"
-          type="date"
-          value={form.date_filed}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, date_filed: v })}
-        />
-        <Field
+        <Identity
           required
           label="Plant / Location"
           value={form.plant_location}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, plant_location: v })}
+          onChange={(v) => patch({ plant_location: v })}
         />
-        <Field
+        <Identity
           required
           label="Position"
           value={form.position}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, position: v })}
-        />
-
-        {/* ☐ Shift Schedule   ☐ Rest Day — single choice. */}
-        <fieldset>
-          <legend className="lbl">
-            Change of Work Schedule
-            <Req />
-          </legend>
-          <div className="flex flex-wrap gap-x-6 gap-y-1.5 pt-0.5">
-            {CHANGE_TYPES.map((type) => (
-              <label key={type.value} className="flex cursor-pointer items-center gap-1.5 text-sm">
-                <input
-                  type="radio"
-                  name="cos-change-type"
-                  className="size-3.5 accent-primary"
-                  disabled={!canEdit}
-                  checked={form.change_type === type.value}
-                  onChange={() => setForm({ ...form, change_type: type.value })}
-                />
-                {type.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        {/* The effectivity date and the two SCHEDULE lines are their own list
-            now — see CosScheduleTable. */}
-      </div>
-
-      <div className="mt-3">
-        <ReasonField
-          value={form.reasons}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, reasons: v })}
+          onChange={(v) => patch({ position: v })}
         />
       </div>
+
+      <div className="mt-6 border-t pt-5">
+        <div className="grid items-end gap-4 @md:grid-cols-2">
+          <Field
+            required
+            label="Date Filed"
+            type="date"
+            value={form.date_filed}
+            disabled={!canEdit}
+            onChange={(v) => patch({ date_filed: v })}
+          />
+
+          {/* ☐ Shift Schedule   ☐ Rest Day — single choice. */}
+          <fieldset>
+            <legend className="lbl">
+              Change of Work Schedule
+              <Req />
+            </legend>
+            <div className="flex flex-wrap gap-x-6 gap-y-1.5 pt-0.5">
+              {CHANGE_TYPES.map((type) => (
+                <label
+                  key={type.value}
+                  className="flex cursor-pointer items-center gap-1.5 text-sm"
+                >
+                  <input
+                    type="radio"
+                    name="cos-change-type"
+                    className="size-3.5 accent-primary"
+                    disabled={!canEdit}
+                    checked={form.change_type === type.value}
+                    onChange={() => patch({ change_type: type.value })}
+                  />
+                  {type.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The lower half of the COS sheet — the reason and the three sign-off boxes
+ * the paper form prints under it. The editor puts the schedule block between
+ * this and the header block, then the employee signature below it.
+ */
+export function CosReasonAndApprovals({
+  form,
+  setForm,
+  canEdit,
+}: {
+  form: CosForm;
+  setForm: (form: CosForm) => void;
+  canEdit: boolean;
+}) {
+  const patch = (next: Partial<CosForm>) => setForm({ ...form, ...next });
+
+  return (
+    <div>
+      <ReasonField
+        value={form.reasons}
+        disabled={!canEdit}
+        onChange={(v) => patch({ reasons: v })}
+      />
 
       {/* The three sign-off blocks the sheet prints under the reason. */}
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <div className="mt-5 grid gap-2 sm:grid-cols-3">
         <Field
           label="Approved by"
           placeholder="Immediate Superior"
           value={form.approved_by}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, approved_by: v })}
+          onChange={(v) => patch({ approved_by: v })}
         />
         <Field
           label="Received by"
           value={form.received_by}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, received_by: v })}
+          onChange={(v) => patch({ received_by: v })}
         />
         <Field
           label="Processed by"
           placeholder="Payroll Team"
           value={form.processed_by}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, processed_by: v })}
+          onChange={(v) => patch({ processed_by: v })}
         />
       </div>
+    </div>
+  );
+}
 
-      <SignatureField
-        value={form.employee_signature}
-        disabled={!canEdit}
-        savedSignature={savedSignature}
-        onChange={(v) => setForm({ ...form, employee_signature: v })}
+/**
+ * One identity value: the label with an underline input beneath it, so a filled
+ * and an empty cell read like the paper sheet's header instead of a box dropped
+ * into the form.
+ */
+function Identity({
+  label,
+  value,
+  disabled,
+  required = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  /** Puts the red required mark after the label text. */
+  required?: boolean;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="block text-[13px] font-medium text-foreground/70">
+        {label}
+        {required ? <Req /> : null}
+      </span>
+      <input
+        type="text"
+        className="mt-1.5 w-full border-0 border-b border-transparent bg-transparent p-0 text-[15px] leading-snug font-semibold text-foreground outline-none transition-colors hover:border-border focus:border-primary/60 disabled:cursor-not-allowed disabled:text-muted-foreground"
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
       />
-    </section>
+    </label>
   );
 }
 
@@ -232,7 +292,7 @@ function ReasonField({
   async function runEnhance() {
     if (busy) return;
     if (!value.trim()) {
-      toast.error("Write a rough reason first, or use Generate.");
+      toast.error("Write a rough reason first, or use Write for me.");
       return;
     }
     setBusy("enhance");
@@ -250,16 +310,18 @@ function ReasonField({
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className="lbl mb-0">
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[13px] font-medium text-foreground/70">
           Reason/s for Change of Schedule
           <Req />
         </span>
         {!disabled ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              className={`btn btn-outline h-6 gap-1 px-2 text-[11px] ${genOpen ? "bg-primary/10 text-primary" : ""}`}
+              className={`inline-flex items-center gap-1 text-xs font-medium transition-colors ${
+                genOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
               disabled={busy !== null}
               title="Let AI write a reason from a few notes"
               onClick={() => setGenOpen((v) => !v)}
@@ -267,13 +329,13 @@ function ReasonField({
               {busy === "generate" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <AiMascot size="xs" />
+                <Sparkles className="size-3.5" aria-hidden="true" />
               )}
-              Generate
+              Write for me
             </button>
             <button
               type="button"
-              className="btn btn-outline h-6 gap-1 px-2 text-[11px]"
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               disabled={busy !== null}
               title="Let AI polish the current reason"
               onClick={runEnhance}
@@ -281,9 +343,9 @@ function ReasonField({
               {busy === "enhance" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Wand2 className="size-3.5" aria-hidden="true" />
+                <PencilLine className="size-3.5" aria-hidden="true" />
               )}
-              Enhance
+              Improve wording
             </button>
           </div>
         ) : null}
@@ -334,7 +396,7 @@ function ReasonField({
               ) : (
                 <AiMascot size="xs" />
               )}
-              Generate
+              Write it
             </button>
           </div>
         </div>

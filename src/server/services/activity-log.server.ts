@@ -8,7 +8,13 @@
 import { getRequestIP } from "@tanstack/react-start/server";
 
 import { getDb } from "@/server/db/client.server";
-import { ACTIVITY_LOG_PAGE_SIZE, type ActivityLogFeed } from "@/shared/schemas";
+import { ACTION_LABELS } from "@/shared/activity";
+import {
+  ACTIVITY_LOG_PAGE_SIZE,
+  type ActivityLogActionFilter,
+  type ActivityLogCounts,
+  type ActivityLogFeed,
+} from "@/shared/schemas";
 
 /** Rows older than this are dropped by the table's trigger and by reads. */
 const RETENTION_DAYS = 30;
@@ -35,7 +41,8 @@ export type ActivityAction =
   | "org.updated"
   | "asset.created"
   | "asset.updated"
-  | "report.downloaded";
+  | "report.downloaded"
+  | "ai.request";
 
 export type ActivityEntry = {
   action: ActivityAction;
@@ -79,10 +86,46 @@ export function requestIp(): string {
   }
 }
 
+/**
+ * Failed sign-ins inside the rolling window, per ID number and per IP.
+ *
+ * Backed by `activity_logs` rather than a per-isolate counter so the limit
+ * holds across Workers instances and cold starts. The query is cheap: the
+ * `created_at` index narrows it to the window (minutes of rows) before the
+ * action/number filters apply.
+ */
+export async function countRecentSignInFailures(
+  actorNumber: string,
+  ip: string,
+  windowMinutes: number,
+): Promise<{ byId: number; byIp: number }> {
+  const since = new Date(Date.now() - windowMinutes * 60_000).toISOString();
+  const db = getDb();
+
+  const [byId, byIp] = await Promise.all([
+    db
+      .from("activity_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "signin.failed")
+      .eq("actor_number", actorNumber)
+      .gte("created_at", since),
+    ip
+      ? db
+          .from("activity_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("action", "signin.failed")
+          .eq("ip", ip)
+          .gte("created_at", since)
+      : Promise.resolve({ count: 0 }),
+  ]);
+
+  return { byId: byId.count ?? 0, byIp: byIp.count ?? 0 };
+}
+
 /** Which actions each dashboard side-panel feed shows. */
 const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {
-  security: ["signin.success", "signin.failed", "user.created", "user.updated", "user.deleted"],
-  forms: [
+  security: ["signin.success", "signin.failed"],
+  activity: [
     "ob.created",
     "ob.deleted",
     "loa.created",
@@ -98,6 +141,13 @@ const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {
     "asset.created",
     "asset.updated",
     "report.downloaded",
+    // Admin-panel changes belong in Latest activity too, not only in the
+    // full audit log.
+    "user.created",
+    "user.updated",
+    "user.deleted",
+    "access.updated",
+    "org.updated",
   ],
 };
 
@@ -110,9 +160,9 @@ async function pruneExpired(): Promise<void> {
 }
 
 /**
- * The newest `limit` rows of one dashboard feed: `security` (sign-ins and
- * account changes) or `forms` (OB / DTR / attachment / inventory activity).
- * Prunes expired rows first, like every other read of the log.
+ * The newest `limit` rows of one dashboard feed: `security` (sign-ins) or
+ * `activity` (forms, attachments, inventory, and admin changes). Prunes
+ * expired rows first, like every other read of the log.
  */
 export async function listActivityFeed(feed: ActivityLogFeed, limit: number) {
   await pruneExpired();
@@ -132,18 +182,68 @@ export async function listActivityFeed(feed: ActivityLogFeed, limit: number) {
 }
 
 /** Filter tokens → the `action` rows they cover (see activityLogActionFilter). */
-const ACTION_GROUPS: Record<string, string[]> = {
+const ACTION_GROUPS: Record<ActivityLogActionFilter, string[]> = {
   signin: ["signin.success"],
   "signin-failed": ["signin.failed"],
+  access: ["access.updated"],
   accounts: ["user.created", "user.updated", "user.deleted"],
-  ob: ["ob.created", "ob.deleted"],
-  loa: ["loa.created", "loa.deleted"],
-  cos: ["cos.created", "cos.deleted"],
-  ot: ["ot.created", "ot.deleted"],
-  records: ["record.created", "record.deleted"],
-  attachments: ["attachment.uploaded", "attachment.removed"],
-  inventory: ["asset.created", "asset.updated", "report.downloaded"],
+  records: [
+    "ob.created",
+    "ob.deleted",
+    "loa.created",
+    "loa.deleted",
+    "cos.created",
+    "cos.deleted",
+    "ot.created",
+    "ot.deleted",
+    "record.created",
+    "record.deleted",
+    "attachment.uploaded",
+    "attachment.removed",
+    "asset.created",
+    "asset.updated",
+    "report.downloaded",
+    "org.updated",
+  ],
 };
+
+/**
+ * The five category counts plus the total, for one date range. Counts ignore
+ * the text search and the active tab on purpose: the tabs stay stable while
+ * the admin narrows the list below them.
+ */
+export async function listActivityLogCounts(filters: {
+  from?: string | undefined;
+  to?: string | undefined;
+}): Promise<ActivityLogCounts> {
+  const db = getDb();
+
+  async function countFor(actions?: string[]) {
+    let query = db.from("activity_logs").select("id", { count: "exact", head: true });
+    if (actions) query = query.in("action", actions);
+    if (filters.from) query = query.gte("created_at", filters.from);
+    if (filters.to) query = query.lt("created_at", filters.to);
+    const { count, error } = await query;
+    if (error) {
+      throw new Error(
+        `Could not count activity logs (${error.message}). ` +
+          "On a fresh setup, run the 0011_activity_logs.sql migration first.",
+      );
+    }
+    return count ?? 0;
+  }
+
+  const [all, signin, signinFailed, access, accounts, records] = await Promise.all([
+    countFor(),
+    countFor(ACTION_GROUPS.signin),
+    countFor(ACTION_GROUPS["signin-failed"]),
+    countFor(ACTION_GROUPS.access),
+    countFor(ACTION_GROUPS.accounts),
+    countFor(ACTION_GROUPS.records),
+  ]);
+
+  return { all, signin, "signin-failed": signinFailed, access, accounts, records };
+}
 
 /**
  * One filtered page of the log for the admin panel: text search, optional
@@ -152,7 +252,7 @@ const ACTION_GROUPS: Record<string, string[]> = {
  */
 export async function listActivityLogs(filters: {
   search: string;
-  action?: string | undefined;
+  action?: ActivityLogActionFilter | undefined;
   from?: string | undefined;
   to?: string | undefined;
   page: number;
@@ -169,9 +269,32 @@ export async function listActivityLogs(filters: {
     .replace(/\s+/g, " ")
     .trim();
   if (term) {
-    query = query.or(
-      `actor_name.ilike.%${term}%,actor_number.ilike.%${term}%,action.ilike.%${term}%,target.ilike.%${term}%,detail.ilike.%${term}%`,
-    );
+    const searchParts = [
+      `actor_name.ilike.%${term}%`,
+      `actor_number.ilike.%${term}%`,
+      `action.ilike.%${term}%`,
+      `target.ilike.%${term}%`,
+      `detail.ilike.%${term}%`,
+      `ip.ilike.%${term}%`,
+    ];
+    // "signed in", "approval slip", "OB created"… The raw action names are
+    // machine keys, so also match the labels the UI actually shows. Tokens
+    // (rather than the whole phrase) make "failed sign-in" find the
+    // "Sign-in failed" label even though the word order differs.
+    if (term.length >= 3) {
+      const lowered = term.toLowerCase();
+      const tokens = lowered.split(/\s+/).filter(Boolean);
+      const labelActions = Object.entries(ACTION_LABELS)
+        .filter(([, label]) => {
+          const text = label.toLowerCase();
+          return text.includes(lowered) || tokens.every((token) => text.includes(token));
+        })
+        .map(([action]) => action);
+      if (labelActions.length) {
+        searchParts.push(`action.in.(${labelActions.join(",")})`);
+      }
+    }
+    query = query.or(searchParts.join(","));
   }
   if (filters.from) query = query.gte("created_at", filters.from);
   if (filters.to) query = query.lt("created_at", filters.to);

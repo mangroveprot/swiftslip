@@ -18,12 +18,14 @@ import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
+import { PageTitle } from "@/components/common/PageTitle";
 import { isMissingRow } from "@/lib/missing-row";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { DTR_TEMPLATE } from "@/shared/dtr-template";
 import { fileToBase64 } from "@/lib/file";
+import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import { MONTHS, daysForPeriod } from "@/shared/period";
@@ -439,7 +441,7 @@ function RecordEditorBody({
             <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
               Attendance
             </p>
-            <h1 className="text-2xl font-semibold leading-tight">Daily Time Record</h1>
+            <PageTitle className="leading-tight">Daily Time Record</PageTitle>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -498,12 +500,33 @@ function RecordEditorBody({
           <button
             type="button"
             className="btn btn-outline"
-            aria-label="Print or save as PDF"
-            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
+            disabled={busy}
+            aria-label="Save as PDF"
+            title="Download this time record as a PDF file"
+            onClick={() =>
+              void savePdfFrom(
+                "dtr-sheet",
+                pdfFileName(
+                  APP.name,
+                  header?.name || "record",
+                  header ? MONTHS[header.month - 1] : undefined,
+                  header?.year,
+                ),
+              )
+            }
+          >
+            <FileDown className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Save as PDF</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            aria-label="Print"
+            title="Open the print dialog (this also prints any attached file)"
             onClick={() => window.print()}
           >
             <Printer className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Print / Save as PDF</span>
+            <span className="hidden sm:inline">Print</span>
           </button>
           <button
             type="button"

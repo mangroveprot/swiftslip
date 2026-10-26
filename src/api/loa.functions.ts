@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/server/auth/session.server";
 import { logActivity } from "@/server/services/activity-log.server";
+import { assertAiQuota, recordAiRequest } from "@/server/services/ai-quota.server";
 import * as attachments from "@/server/services/attachments.server";
 import { chatLoaAssistant as chatLoaAssistantService } from "@/server/services/loa-assistant.server";
 import * as loa from "@/server/services/loa.server";
@@ -179,13 +180,19 @@ export const removeLoaOtherAttachment = createServerFn({ method: "POST" })
 export const writeLoaReason = createServerFn({ method: "POST" })
   .validator(loaReasonInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await writeLoaReasonService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await writeLoaReasonService(data);
+    await recordAiRequest(user, "LOA reason");
+    return result;
   });
 
 export const chatLoaAssistant = createServerFn({ method: "POST" })
   .validator(loaChatInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await chatLoaAssistantService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await chatLoaAssistantService(data);
+    await recordAiRequest(user, "LOA assistant");
+    return result;
   });

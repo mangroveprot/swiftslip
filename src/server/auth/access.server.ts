@@ -6,7 +6,8 @@
  *   2. a `user` rule for that app
  *   3. a `department` rule
  *   4. a `position` rule
- *   5. nothing matched     -> the staff default (SwiftSlip yes, Inventory no)
+ *   5. nothing matched     -> the app's starting point (SwiftSlip yes,
+ *                             Inventory no, until an admin changes it)
  *
  * WHY ADMINS BYPASS EVERYTHING
  *   Two reasons. A deny rule that applied to admins could strand everyone
@@ -24,6 +25,15 @@
  *   Department scope values are matched as-is (just trimmed). Position scope
  *   values run through the POSITION_ALIASES map so an older spelling and its
  *   canonical form are the same rule as far as matching is concerned.
+ *
+ * WHY THE STARTING POINT IS A RESERVED RULE
+ *   "Everyone can open it" / "No one can open it until allowed" is per app, and
+ *   the first version of this table only had user/department/position rules.
+ *   Rather than add a second table for one boolean, the starting point is a
+ *   department-scoped rule whose `scope_value` is the reserved string below.
+ *   No real profile can have that department, so it never matches a person; it
+ *   is read explicitly by `defaultAccess` and hidden from the admin rule lists.
+ *   That keeps the migration surface at zero and the enforcement path the same.
  */
 import { normalizePosition } from "@/shared/org";
 import { getDb } from "@/server/db/client.server";
@@ -33,6 +43,9 @@ import { requireUser } from "./session.server";
 
 /** What a staff account gets before any rule is considered. */
 const STAFF_DEFAULT: GrantableAppKey[] = ["swiftslip"];
+
+/** Reserved `scope_value` that stores one app's starting point. */
+export const APP_DEFAULT_RULE_VALUE = "__app_default__";
 
 const EVERY_APP: AppKey[] = ["admin", "swiftslip", "inventory"];
 
@@ -57,6 +70,24 @@ type Rule = {
   allow: boolean;
 };
 
+/** True for the reserved row that stores an app's starting point. */
+export function isAppDefaultRule(rule: { scope: string; scope_value: string }): boolean {
+  return rule.scope === "department" && rule.scope_value === APP_DEFAULT_RULE_VALUE;
+}
+
+/**
+ * The answer before any person/department/position rule is applied: the
+ * stored starting point when an admin has set one, otherwise the built-in
+ * default (SwiftSlip open, Inventory closed).
+ */
+export function defaultAccess(
+  app: GrantableAppKey,
+  rules: Array<{ app_key: string; scope: string; scope_value: string; allow: boolean }>,
+): boolean {
+  const stored = rules.find((rule) => rule.app_key === app && isAppDefaultRule(rule));
+  return stored ? stored.allow : STAFF_DEFAULT.includes(app);
+}
+
 /** What one (row, app) pair actually resolves to. */
 export type AccessOutcome = {
   /** An administrator holds every app and cannot be restricted. */
@@ -68,9 +99,9 @@ export type AccessOutcome = {
   byScope: RuleScope | null;
   /**
    * The rule that produced this answer, so a caller can undo exactly it.
-   * Carried here rather than looked up separately: the admin grid used to keep
-   * a second query for the rule list, and if that was stale the "flip to
-   * blocked" click silently re-applied "allowed" instead.
+   * Carried here rather than looked up separately: an earlier version of the
+   * admin screen kept a second query for the rule list, and if that was stale
+   * the "flip to blocked" click silently re-applied "allowed" instead.
    */
   ruleId: string | null;
 };
@@ -123,7 +154,7 @@ export function resolveAccess(
       };
     }
   }
-  const allowed = STAFF_DEFAULT.includes(app);
+  const allowed = defaultAccess(app, rules);
   return { admin: false, allowed, byRule: false, byScope: null, ruleId: null };
 }
 

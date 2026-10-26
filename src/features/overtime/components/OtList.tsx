@@ -6,6 +6,7 @@ import { useState } from "react";
 import { deleteOtForm } from "@/api/ot.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
@@ -13,6 +14,7 @@ import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { relativeTime } from "@/shared/time";
 import { otFormsQueryOptions } from "../queries";
+import { formatOtDateFiled } from "../lib/ot-line";
 
 type OtRow = {
   id: string;
@@ -64,7 +66,7 @@ export function OtList() {
     <main className="mx-auto flex min-h-full max-w-6xl flex-col px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl">Overtime</h1>
+          <PageTitle size="xl">Overtime</PageTitle>
         </div>
         <button className="btn btn-primary" onClick={newForm}>
           New form
@@ -186,7 +188,9 @@ function OtCard({
       <p className="text-xs text-foreground">
         {[f.department, f.position].filter(Boolean).join(" · ") || "No department / position"}
       </p>
-      {f.date_filed ? <p className="text-xs text-muted-foreground">Filed: {f.date_filed}</p> : null}
+      {f.date_filed ? (
+        <p className="text-xs text-muted-foreground">Filed: {formatOtDateFiled(f.date_filed)}</p>
+      ) : null}
       {f.updated_at ? (
         <p
           className="flex items-center gap-1 text-[11px] text-muted-foreground"

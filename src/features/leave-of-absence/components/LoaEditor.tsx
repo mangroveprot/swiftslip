@@ -3,20 +3,27 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  Download,
   FileDown,
   Loader2,
   Maximize2,
   Printer,
-  Save as SaveIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { createLoaForm, saveLoaForm } from "@/api/loa.functions";
+import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
 import { isMissingRow } from "@/lib/missing-row";
-import { EditorSkeleton } from "@/components/common/Skeletons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
 import {
@@ -32,6 +39,7 @@ import {
   writeDraft,
 } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
+import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { LoaForm } from "@/shared/types";
@@ -41,6 +49,7 @@ import { buildDraftLoaForm } from "../lib/draft-form";
 import { loaFormQueryOptions, loaFormsQueryOptions, loaOtherUrlsQueryOptions } from "../queries";
 import { LoaAssistantChat } from "./LoaAssistantChat";
 import { LoaAttachmentCard } from "./LoaAttachmentCard";
+import { LoaEditorSkeleton } from "./LoaEditorSkeleton";
 import { LoaFormFields } from "./LoaFormFields";
 import { LoaOtherAttachmentsCard } from "./LoaOtherAttachmentsCard";
 import { LOA_SHEET_WIDTH, LoaPreview } from "./LoaPreview";
@@ -306,7 +315,7 @@ function LoaEditorBody({
 
   if (isError && isMissingRow(error))
     return <FormUnavailable backTo="/leave-of-absence" label="Leave of Absence forms" />;
-  if (!form) return <EditorSkeleton />;
+  if (!form) return <LoaEditorSkeleton />;
 
   /** Explicit Save — writes now rather than waiting for the timer. */
   async function persist(f: LoaForm) {
@@ -380,29 +389,92 @@ function LoaEditorBody({
     }
   }
 
+  // The header shows the save state beside the buttons (OB's treatment), so
+  // the same snapshot comparison the auto-save uses decides the wording.
+  const snapshot = localRef.current ?? "";
+  const dirty = rowIdRef.current
+    ? snapshot !== auto.persistedSnapshot()
+    : auto.belowBaseline(snapshot);
+  const statusLabel =
+    saveStatus === "saving"
+      ? "Saving…"
+      : saveStatus === "error"
+        ? "Save failed"
+        : saveStatus === "saved"
+          ? "Saved"
+          : dirty
+            ? "Unsaved changes"
+            : "";
+
   return (
-    <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
-      <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
+    <main className="flex min-h-0 flex-col px-4 py-3 md:px-6 md:py-5 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
+      <header className="no-print mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
           <Link
             to="/leave-of-absence"
-            className="btn btn-outline mt-0.5 size-9 shrink-0 p-0"
-            aria-label="Back to leave of absence forms"
-            title="Back to leave of absence forms"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
+            Leave of Absence
           </Link>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Leave of Absence
-            </p>
-            <h1 className="text-2xl font-semibold leading-tight">Leave of Absence Form</h1>
-          </div>
+          <PageTitle className="mt-2">Leave of Absence Form</PageTitle>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
+          {canEdit && statusLabel ? (
+            <span
+              className={`mr-1 text-sm ${
+                saveStatus === "error" ? "text-destructive" : "text-muted-foreground"
+              }`}
+            >
+              {statusLabel}
+            </span>
+          ) : null}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="btn btn-outline" aria-label="Export this form">
+                <Download className="size-4" aria-hidden="true" />
+                <span>Export</span>
+                <ChevronDown className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card text-foreground">
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void savePdfFrom(
+                    "loa-sheet",
+                    pdfFileName(APP.name, "LOA", form.employee_name || "form"),
+                  )
+                }
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                onSelect={() => window.setTimeout(() => window.print(), 0)}
+              >
+                <Printer className="size-4" aria-hidden="true" />
+                Print
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() => void download()}
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Download Word
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {canEdit ? (
             <button
-              className="btn btn-primary"
+              type="button"
+              className="btn bg-[#1f7a3f] text-white hover:bg-[#196634] disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -414,43 +486,12 @@ function LoaEditorBody({
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : saveStatus === "saved" ? (
                 <Check className="size-4" aria-hidden="true" />
-              ) : (
-                <SaveIcon className="size-4" aria-hidden="true" />
-              )}
-              <span className="hidden sm:inline">
-                {saveStatus === "saving"
-                  ? "Saving…"
-                  : saveStatus === "saved"
-                    ? "Saved"
-                    : saveStatus === "error"
-                      ? "Save failed"
-                      : "Save"}
-              </span>
+              ) : null}
+              <span>Save</span>
             </button>
           ) : null}
-          <button
-            type="button"
-            className="btn btn-outline"
-            aria-label="Print or save as PDF"
-            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
-            onClick={() => window.print()}
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Print / Save as PDF</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={busy}
-            aria-label="Download Word"
-            title="Download this form as a Word (.docx) file"
-            onClick={() => download()}
-          >
-            <FileDown className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Download Word</span>
-          </button>
         </div>
-      </div>
+      </header>
       {/* `minmax(0,1fr)` on the base (single) column too, not just at lg: the
           preview column holds the A4 sheet at its true 794px width, and an
           implicit `auto` track sizes to its content's minimum — the track (and
@@ -460,7 +501,7 @@ function LoaEditorBody({
           lets the column stay at the viewport width, which is what makes the
           scale drop below 1 on small screens. */}
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
-        <div className="no-print @container flex min-h-0 flex-col gap-3 lg:overflow-auto">
+        <div className="no-print flex min-h-0 flex-col gap-6 lg:overflow-auto">
           <LoaFormFields
             form={form}
             setForm={setForm}

@@ -1,8 +1,8 @@
 node_modules
 dist
+build
 .output
 .vinxi
-pnpm-lock.yaml
 package-lock.json
-bun.lock
 routeTree.gen.ts
+database.types.ts

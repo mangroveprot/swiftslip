@@ -6,6 +6,7 @@ import { useState } from "react";
 import { deleteCosForm } from "@/api/cos.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
@@ -74,7 +75,7 @@ export function CosList() {
     <main className="mx-auto flex min-h-full max-w-6xl flex-col px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl">Change of Schedule</h1>
+          <PageTitle size="xl">Change of Schedule</PageTitle>
         </div>
         <button className="btn btn-primary" onClick={newForm}>
           New form

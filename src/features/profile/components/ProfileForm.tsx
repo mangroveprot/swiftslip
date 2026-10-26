@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSession } from "@/features/auth/use-session";
 import { SignatureField } from "@/features/records/components/SignaturePad";
 import { OrgSelect } from "@/components/common/OrgSelect";
+import { PageTitle } from "@/components/common/PageTitle";
 import { toast } from "@/lib/toast";
 import {
   DEPARTMENTS,
@@ -107,7 +108,7 @@ export function ProfileForm() {
   // position implies, even when it isn't on the shared list yet (an older
   // position whose department was never added) — otherwise a perfectly
   // correct value would report as "Others" and open the text box over it.
-  const impliedDepartment = departmentForPosition(form.designation);
+  const impliedDepartment = departmentForPosition(form.designation, orgLists);
   const departmentOptions =
     impliedDepartment && !baseDepartments.includes(impliedDepartment)
       ? [...baseDepartments, impliedDepartment]
@@ -148,7 +149,9 @@ export function ProfileForm() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Account</p>
-          <h1 className="mt-1 text-4xl">My profile</h1>
+          <PageTitle size="xl" className="mt-1">
+            My profile
+          </PageTitle>
           <p className="mt-2 text-sm text-muted-foreground">
             These details and your signature fill in automatically whenever you create a new time
             record or form. Your supervisor pre-fills the approver field on each one.
@@ -229,13 +232,16 @@ export function ProfileForm() {
                   ...prev,
                   designation: normalizePosition(v),
                 };
-                // The department follows the position, the same way "HR
-                // Officer" implies the HR department — so it is always
-                // overwritten rather than only filling an empty field. That
-                // also repairs an older profile whose department was never
-                // stored.
-                const implied = departmentForPosition(v);
-                if (implied) next.department = implied;
+                // The department follows the position only when the current
+                // one can't hold it — a department the person just picked by
+                // hand must stay picked. Otherwise choosing a position under
+                // "IT DEP" silently rewrote the department back to
+                // "Information Technology".
+                const implied = departmentForPosition(v, orgLists);
+                const current = prev.department.trim();
+                if (implied && !positionsUnder(current, orgLists).includes(next.designation)) {
+                  next.department = implied;
+                }
                 return next;
               })
             }

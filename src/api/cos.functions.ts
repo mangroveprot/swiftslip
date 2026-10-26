@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/server/auth/session.server";
 import { logActivity } from "@/server/services/activity-log.server";
+import { assertAiQuota, recordAiRequest } from "@/server/services/ai-quota.server";
 import * as attachments from "@/server/services/attachments.server";
 import { chatCosAssistant as chatCosAssistantService } from "@/server/services/cos-assistant.server";
 import { writeCosReason as writeCosReasonService } from "@/server/services/cos-reason.server";
@@ -125,13 +126,19 @@ export const removeCosAttachment = createServerFn({ method: "POST" })
 export const writeCosReason = createServerFn({ method: "POST" })
   .validator(cosReasonInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await writeCosReasonService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await writeCosReasonService(data);
+    await recordAiRequest(user, "COS reason");
+    return result;
   });
 
 export const chatCosAssistant = createServerFn({ method: "POST" })
   .validator(cosChatInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await chatCosAssistantService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await chatCosAssistantService(data);
+    await recordAiRequest(user, "COS assistant");
+    return result;
   });

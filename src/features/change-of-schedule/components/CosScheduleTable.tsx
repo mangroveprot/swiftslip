@@ -45,9 +45,9 @@ export function CosScheduleTable({
   }
 
   return (
-    <section className="form-fill flex min-h-0 flex-col rounded-xl border bg-card p-3 shadow-sm">
-      <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold">Schedule</h2>
+    <section className="flex min-h-0 flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-bold tracking-tight">Schedule</h2>
         {canEdit ? (
           <button type="button" className="btn btn-outline" disabled={busy} onClick={addRow}>
             <Plus className="size-4" aria-hidden="true" />
@@ -56,16 +56,20 @@ export function CosScheduleTable({
         ) : null}
       </div>
 
-      <div className="min-h-0 space-y-3">
+      <div className={rows.length > 1 ? "mt-4 min-h-0 space-y-6" : "mt-4 min-h-0"}>
         {rows.length === 0 ? (
-          <div className="rounded-lg border border-dashed bg-background/50 px-4 py-8 text-center text-xs text-muted-foreground">
+          <div className="rounded-lg border border-dashed bg-background/50 px-4 py-8 text-center text-sm text-muted-foreground">
             No dates yet. Click “Add date” to add the first schedule line.
           </div>
         ) : (
           rows.map((row, i) => (
             <div
               key={row.idx}
-              className="rounded-lg border bg-card p-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-300"
+              className={
+                i > 0
+                  ? "border-t pt-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-300"
+                  : "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-300"
+              }
             >
               <div className="mb-2.5 flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">

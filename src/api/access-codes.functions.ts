@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import { requireAdmin, requireUser } from "@/server/auth/session.server";
+import { requireAdmin, requireUser, startSession } from "@/server/auth/session.server";
 import { logActivity } from "@/server/services/activity-log.server";
 import * as accessCodes from "@/server/services/access-codes.server";
 import { changePasswordInput, idInput, upsertCodeInput } from "@/shared/schemas";
@@ -55,5 +55,9 @@ export const changeMyPassword = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await requireUser();
     await accessCodes.changeOwnPassword(user.id, data.currentPassword, data.newPassword);
+    // Re-issue this device's cookie against the new password hash. Every other
+    // device holds a cookie with the old fingerprint and is signed out on its
+    // next request; this one stays usable.
+    await startSession(user);
     return { ok: true as const };
   });

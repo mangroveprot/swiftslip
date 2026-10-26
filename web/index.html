@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SwiftSlip</title>
+    <meta name="description" content="Employee forms and time records, simplified." />
+    <meta name="author" content="SwiftSlip" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!-- Installable as an app (Chrome/Edge) and addable to the iOS home screen. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SwiftSlip" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
+    <!-- Default link preview for crawlers that don't run JS. Keep in step with src/config/app.ts.
+         Per-route titles/descriptions are set at runtime from each route's `head` (src/lib/seo.ts). -->
+    <meta property="og:title" content="SwiftSlip" />
+    <meta property="og:description" content="Employee forms and time records, simplified." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://regasco.dpdns.org/mindbridge_logo.png" />
+    <meta property="og:image:alt" content="SwiftSlip" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://regasco.dpdns.org/mindbridge_logo.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

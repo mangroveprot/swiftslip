@@ -1,129 +1,117 @@
 # SwiftSlip — Daily Time Records
 
-Password-protected DTR portal: fill in time records, import biometric logs (AI-assisted),
-print or download as Word. Built with TanStack Start (React 19, file-based routing, server
-functions), Supabase (Postgres), Tailwind v4 and shadcn/ui.
+Password-protected DTR portal: fill in time records and employee forms (OB, LOA, change of
+schedule, overtime), import biometric logs (AI-assisted), print or download as Word/PDF, plus an
+RGC asset-inventory module. A **Vite + React 19 single-page app** (`web/`) talking to an
+**Express API** (`api/`) over JSON, on Supabase (Postgres) and a second RGC Postgres database.
 
 ## Quick start
 
 ```sh
 npm install
-cp .env.example .env     # then fill in the values
-npm run dev              # prints the local URL
+npm run setup            # creates api/.env (and web/.env) from the examples
+# fill in api/.env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SESSION_SECRET (+ optional keys)
+npm run dev              # API on :9095, web on :8080 (web proxies /api → the API)
 ```
 
-| Script              | What it does                     |
-| ------------------- | -------------------------------- |
-| `npm run dev`       | Dev server                       |
-| `npm run build`     | Production build (`.output/`)    |
-| `npm run typecheck` | `tsc --noEmit`                   |
-| `npm run lint`      | ESLint, incl. architecture rules |
-| `npm run format`    | Prettier                         |
+| Script               | What it does                                                   |
+| -------------------- | -------------------------------------------------------------- |
+| `npm run dev`        | API + web together (`dev:api` / `dev:web` run one of them)     |
+| `npm run build`      | Builds `api` (`api/build`) and `web` (`web/dist`)            |
+| `npm start`          | Build, then run the API and serve the built web app (`preview`) |
+| `npm run typecheck`  | `tsc --noEmit` in every workspace                              |
+| `npm run lint`       | ESLint in every workspace                                      |
+| `npm run format`     | Prettier                                                       |
 
-## Architecture
-
-The app is one deployable, but the code is split so the **frontend and backend can't reach
-into each other** (ESLint enforces it).
+## Repo layout
 
 ```
-src/
-├── config/          ← ALL configuration. The only place that reads process.env
-│   ├── app.ts            static, non-secret settings (app name, cookie name, defaults)
-│   ├── env.server.ts     validated server env  →  getServerConfig()
-│   └── env.client.ts     browser-safe VITE_* env
-│
-├── shared/          ← used by BOTH sides: pure types, zod schemas, date/period logic
-│
-├── server/          ← BACKEND. Server-only (*.server.ts), never bundled to the browser
-│   ├── db/               Supabase admin client + generated DB types
-│   ├── auth/             session cookie, password hashing, requireUser / requireAdmin
-│   ├── services/         business logic + queries (records, template, access codes, import)
-│   └── errors/           SSR error capture / error page
-│
-├── api/             ← THE BOUNDARY. createServerFn wrappers: validate → authorize → call a service
-│
-├── features/        ← FRONTEND, by feature (auth, records, admin, template)
-│   └── <feature>/{components,lib,queries.ts}
-│
-├── components/      ← shared UI: ui/ (shadcn), layout/ (AppShell, Sidebar), common/
-├── routes/          ← routing only. Thin files that compose features
-├── lib/             ← small frontend helpers (cn, seo, error reporting)
-│
-├── router.tsx  start.ts  server.ts  routeTree.gen.ts   ← framework entry points (keep at root)
+swiftslip/
+├─ api/      Express API   (@swiftslip/api)   port 9095 — controller → service → repository
+├─ web/      Vite SPA      (@swiftslip/web)   port 8080 — React, TanStack Router + Query
+├─ shared/   zod schemas + types (@swiftslip/shared) — imported as @swiftslip/shared/<file>
+└─ package.json   npm workspaces
 ```
 
-**Dependency rule** — arrows only point down this list:
+The three workspaces only meet in `shared/`. The web app reaches the backend **only** through
+`web/src/lib/api-client.ts` (base URL `VITE_API_URL`, default `/api`), so `web/` and `api/` can be
+split into separate repos with no code change (copy `shared/` into both, or publish it).
 
-`routes → features → components/lib → api → server → config/shared`
+### API (`api/src`)
 
-- `features/`, `components/`, `routes/`, `lib/` **must not** import `@/server/*` — they call `@/api/*`.
-- `server/` and `api/` **must not** import UI code.
-- `shared/` imports neither side (and not React).
+```
+core/        config (the ONLY place that reads process.env), BaseRepository/BaseService, Supabase + Postgres clients
+common/      global router, validate() / rate-limit middleware, ErrorResponse + codes, ApiResponse
+apps/<module>/{controllers,routes,services,repositories,types}
+```
 
-**A request, end to end:** a component calls `saveRecord()` from `@/api/records.functions` →
-the server function validates the payload with a zod schema from `@/shared/schemas`, calls
-`requireUser()`, then delegates to `@/server/services/records.server` → which queries Supabase
-through `getDb()`.
+Wire format: success `{ success: true, document | documents, total? }`, failure
+`{ success: false, error: { status, code, message, suggestions } }`. Services never throw (they return
+`ServiceResponse`); repositories throw `ErrorResponse`. The endpoint list is in
+`MIGRATION_CHECKLIST.md` §4.
 
-## Environment & config
+### Web (`web/src`)
 
-Everything configurable lives in `src/config/`; **change env behaviour there and nowhere else.**
+```
+main.tsx, router.tsx     entry points (routeTree.gen.ts is generated by the router plugin)
+routes/                  routing only — thin files that compose features
+features/<x>/            components, lib, queries.ts (TanStack Query options)
+components/              ui/ (shadcn), layout/, common/
+api/*.functions.ts       typed fetch wrappers, one per API module (call the API through api-client)
+lib/api-client.ts        the one fetch wrapper: credentials, envelope parsing, ApiError
+config/                  app.ts (static settings), env.client.ts
+```
 
-| Variable                    | Required | Purpose                                                    |
-| --------------------------- | :------: | ---------------------------------------------------------- |
-| `SUPABASE_URL`              |    ✓     | Supabase project URL                                       |
-| `SUPABASE_SERVICE_ROLE_KEY` |    ✓     | Server-only admin key (bypasses RLS)                       |
-| `SESSION_SECRET`            |    ✓     | Signs the login cookie, 32+ chars (`openssl rand -hex 32`) |
-| `GEMINI_API_KEY`            |          | Enables AI biometric import; blank = feature off           |
-| `GEMINI_MODEL`              |          | Overrides the default in `config/app.ts`                   |
-| `DATABASE_URL`              |          | Only for `drizzle-kit` migrations                          |
+**A request, end to end:** a component calls `saveRecord({ data })` from `@/api/records.functions` →
+`api-client` sends `PUT /api/records/:id` with the session cookie → the API validates the body with
+the zod schema from `shared/`, checks the session, runs `RecordService` → `RecordRepository` →
+Supabase, and answers with the envelope. A failure becomes an `ApiError` whose `.message` the UI
+toasts as before.
 
-- `.env.example` is the committed template; `.env` (git-ignored) holds real values.
-  Vite also honours `.env.local`, `.env.production`, etc.
-- On deploy (Cloudflare/Nitro), set the same variables in your host's dashboard.
-- Values are validated with zod on first use. A missing/short value fails fast with a message
-  listing exactly what's wrong.
-- Never put a secret in a `VITE_*` variable — those are bundled into browser JS.
+## Environment
 
-**Adding a variable:** (1) add it to `EnvSchema` in `config/env.server.ts`, (2) expose it in
-`buildConfig()`, (3) add it to `.env.example`. Consume it via `getServerConfig()`.
+All secrets live in **`api/.env`** (see `api/.env.example`): `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET` (32+ chars, `openssl rand -hex 32`), optional
+`GEMINI_API_KEY` / `GEMINI_MODEL`, optional `RGC_INVENTORY_DATABASE_URL` (unset = inventory answers
+503), `CORS_ORIGIN`, `PORT`. New variables go in `api/src/core/config/index.ts` **and**
+`api/.env.example`, nowhere else. In production `CORS_ORIGIN` is required (the app refuses to boot
+without it), and set `TRUST_PROXY=1` when a reverse proxy sits in front of the API.
+
+The web app has one variable, `VITE_API_URL` (`web/.env.example`). Leave it blank in development
+(Vite proxies `/api` → `http://localhost:9095`) and when `/api` is served from the same domain.
+For an API on its own domain set it to `https://api.example.com/api` and add the site's origin to
+`CORS_ORIGIN`. Never put a secret in a `VITE_*` variable.
+
+**Why two `.env` files?** `api/.env` holds server secrets and is only ever read by Node.
+`web/.env` is read by Vite at *build* time and everything in it ends up in public browser JS, so it
+may only hold non-secret `VITE_*` values. Keeping them apart means a secret can never be bundled
+into the site by accident. `web/.env` is optional (blank = same-origin `/api`).
+
+**Security headers.** The old server entry added HSTS, CSP, `X-Frame-Options` etc. Now `vite preview`
+(`npm start`) sends them (`securityHeaders()` in `web/vite.config.ts`) and `web/public/_headers` is the
+copy for Cloudflare Pages / Netlify. Any other static host must send the same list. If the API is on
+its own domain its origin is added to `connect-src` automatically for preview; add it by hand in
+`_headers`.
 
 ## Routing
 
-File-based (TanStack Router). URLs are unchanged:
-
-```
-routes/
-├── __root.tsx                 html shell, providers, 404 + error UI
-├── index.tsx                  /                 login (signed in: admin → /choose, staff → /records)
-├── choose.tsx                 /choose           admin-only app picker (SwiftSlip / RGC Asset Inventory)
-├── rgc-asset-inventory.tsx    /rgc-asset-inventory   admin-only placeholder page, own chrome
-├── _app.tsx                   pathless layout: auth guard + AppShell for everything below
-└── _app/
-    ├── records/index.tsx      /records
-    ├── records/$id.tsx        /records/:id
-    ├── admin.tsx              /admin            (admin-only guard)
-    ├── change-rest-day.tsx    /change-rest-day
-    └── change-time-schedule.tsx
-```
-
-- **Auth is enforced once**, in `_app.tsx`'s `beforeLoad`. Any file dropped into `routes/_app/`
-  is automatically protected and wrapped in the app shell — no per-page wrapper or redirect logic.
-- Role checks go in that route's own `beforeLoad` (see `_app/admin.tsx`). The server functions
-  re-check permissions independently, so the UI guard is convenience, not security.
-- Below `_app`, read the user with `useSession()` (`features/auth/use-session.ts`).
-- Use `seo()` / `pageTitle()` from `lib/seo.ts` for `<head>` metadata.
+File-based (TanStack Router), client-side. `_app.tsx`'s `beforeLoad` asks `GET /api/auth/session`
+once and guards everything under `routes/_app/`; `admin.tsx` and the inventory routes add their own
+checks. Those guards are convenience — **the API re-checks every request** (`authenticate`,
+`authorizeAdmin`, `requireApp`). Use `seo()` / `pageTitle()` from `lib/seo.ts` for `<head>` metadata.
+A static host must serve `index.html` for unknown paths (SPA fallback).
 
 ## Recipes
 
-**New page:** create `routes/_app/my-page.tsx` (`createFileRoute("/_app/my-page")`), keep the
-component in `features/<x>/components/`, add a link in `components/layout/nav-items.ts`.
+**New endpoint:** zod schema in `shared/src/schemas.ts` → repository/service/controller/routes in
+`api/src/apps/<module>` (mount it in `common/global-router/index.ts`, new error kinds in
+`utils/error/codes.ts`) → a typed wrapper in `web/src/api/*.functions.ts` → a query/mutation in the
+feature that uses it.
 
-**New endpoint:** add a zod schema in `shared/schemas.ts` → a service function in
-`server/services/` → a thin `createServerFn` in `api/*.functions.ts` (call `requireUser()` or
-`requireAdmin()` first) → a query/mutation hook in the relevant `features/<x>/`.
+**New page:** `routes/_app/my-page.tsx` (`createFileRoute("/_app/my-page")`), component in
+`features/<x>/components/`, link in `components/layout/nav-items.ts`.
 
 ## Database
 
-Migrations live in `drizzle/migrations/` (SQL, applied in order). Generated Supabase types are in
-`src/server/db/database.types.ts`.
+Migrations live in `api/drizzle/migrations/` (SQL, applied in order; the database must be at **0026**).
+The API's generated Supabase types are in `api/src/core/framework/databases/supabase/database.types.ts`.

@@ -2,7 +2,8 @@ import { getDb } from "@/server/db/client.server";
 import type { ObEntry, ObForm } from "@/shared/types";
 
 export async function listObForms(ownerId: string) {
-  const { data } = await getDb()
+  const db = getDb();
+  const { data } = await db
     .from("ob_forms")
     // `attachment_approved` rides along so the list can badge approved forms.
     .select(
@@ -10,7 +11,33 @@ export async function listObForms(ownerId: string) {
     )
     .eq("owner_id", ownerId)
     .order("updated_at", { ascending: false });
-  return data ?? [];
+  const forms = data ?? [];
+  if (!forms.length) return [];
+
+  // The list filters and cards both need the To field, which lives on the
+  // itinerary rows. Fetch them in one query instead of one request per form.
+  const { data: entries } = await db
+    .from("ob_entries")
+    .select("form_id,to_place")
+    .in(
+      "form_id",
+      forms.map((form) => form.id),
+    )
+    .order("idx");
+
+  const destinations = new Map<string, string[]>();
+  for (const entry of entries ?? []) {
+    const value = entry.to_place?.trim();
+    if (!value) continue;
+    const list = destinations.get(entry.form_id) ?? [];
+    if (!list.includes(value)) list.push(value);
+    destinations.set(entry.form_id, list);
+  }
+
+  return forms.map((form) => ({
+    ...form,
+    destinations: destinations.get(form.id) ?? [],
+  }));
 }
 
 export async function getObForm(id: string, ownerId: string) {

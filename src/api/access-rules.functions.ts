@@ -2,7 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
 import { requireAdmin } from "@/server/auth/session.server";
-import { resolveAccess } from "@/server/auth/access.server";
+import {
+  APP_DEFAULT_RULE_VALUE,
+  defaultAccess,
+  isAppDefaultRule,
+  resolveAccess,
+} from "@/server/auth/access.server";
 import { logActivity } from "@/server/services/activity-log.server";
 import { getDb } from "@/server/db/client.server";
 import { idInput } from "@/shared/schemas";
@@ -10,7 +15,6 @@ import { departmentForPosition, normalizePosition } from "@/shared/org";
 import {
   GRANTABLE_APP_KEYS,
   RULE_SCOPES,
-  type AccessRule,
   type GrantableAppKey,
   type Role,
   type RuleScope,
@@ -23,32 +27,9 @@ const ruleInput = z.object({
   allow: z.boolean(),
 });
 
-/**
- * Every rule, joined with the label it applies to. Admin-only — the rules are
- * the thing this whole feature exists to manage.
- *
- * Rules that target a user are labelled with that account's ID number and name
- * so an admin is not reading raw UUIDs.
- */
-export const listAccessRules = createServerFn({ method: "GET" }).handler(async () => {
-  await requireAdmin();
-  const db = getDb();
-  const [rulesRes, usersRes] = await Promise.all([
-    db.from("app_access_rules").select("id,app_key,scope,scope_value,allow").order("scope"),
-    db.from("users").select("id,id_number"),
-  ]);
-  if (rulesRes.error) {
-    // Migration 0022 has not been run — report it rather than pretending there
-    // are no rules, which would hide the reason nothing is being enforced.
-    throw new Error(
-      "This needs a pending database update. Run drizzle/migrations/0022_app_access_rules.sql first.",
-    );
-  }
-  const ids = new Map((usersRes.data ?? []).map((u) => [u.id, u.id_number]));
-  return ((rulesRes.data ?? []) as AccessRule[]).map((r) => ({
-    ...r,
-    scope_value: r.scope === "user" ? (ids.get(r.scope_value) ?? r.scope_value) : r.scope_value,
-  }));
+const appDefaultInput = z.object({
+  app_key: z.enum(GRANTABLE_APP_KEYS),
+  allow: z.boolean(),
 });
 
 /** Create or replace one rule. The unique index makes it an upsert. */
@@ -57,6 +38,12 @@ export const setAccessRule = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const admin = await requireAdmin();
     const db = getDb();
+    // The starting point lives in this table under a reserved value; only
+    // `setAppDefault` may write it, so a department picker can never turn it
+    // into a real department rule.
+    if (data.scope === "department" && data.scope_value.trim() === APP_DEFAULT_RULE_VALUE) {
+      throw new Error("That name is reserved.");
+    }
     // Stored canonically. `resolveAccess` compares canonically too, so this is
     // tidiness rather than correctness — but it keeps the table readable.
     // Department scope_value is trimmed directly; position scope is
@@ -77,13 +64,53 @@ export const setAccessRule = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+    // A user rule stores an id; the log should name the person, not the UUID.
+    let shownValue = scopeValue;
+    if (data.scope === "user") {
+      const { data: person } = await db
+        .from("users")
+        .select("id_number")
+        .eq("id", scopeValue)
+        .maybeSingle();
+      shownValue = person?.id_number ?? "removed account";
+    }
     await logActivity({
       action: "access.updated",
       actorId: admin.id,
       actorName: admin.label,
       actorNumber: admin.idNumber,
-      target: `${data.app_key} · ${data.scope}: ${scopeValue}`,
+      target: `${data.app_key} · ${data.scope}: ${shownValue}`,
       detail: data.allow ? "granted" : "denied",
+    });
+    return { ok: true as const };
+  });
+
+/** Change what every staff account gets for one app before any rule applies. */
+export const setAppDefault = createServerFn({ method: "POST" })
+  .validator(appDefaultInput)
+  .handler(async ({ data }) => {
+    const admin = await requireAdmin();
+    const { error } = await getDb()
+      .from("app_access_rules")
+      .upsert(
+        {
+          app_key: data.app_key,
+          scope: "department",
+          scope_value: APP_DEFAULT_RULE_VALUE,
+          allow: data.allow,
+        },
+        { onConflict: "app_key,scope,scope_value" },
+      )
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    await logActivity({
+      action: "access.updated",
+      actorId: admin.id,
+      actorName: admin.label,
+      actorNumber: admin.idNumber,
+      target: `${data.app_key} · starting point`,
+      detail: data.allow ? "everyone allowed" : "no one allowed until granted",
     });
     return { ok: true as const };
   });
@@ -92,51 +119,79 @@ export const deleteAccessRule = createServerFn({ method: "POST" })
   .validator(idInput)
   .handler(async ({ data }) => {
     const admin = await requireAdmin();
-    const { error } = await getDb().from("app_access_rules").delete().eq("id", data.id);
+    const db = getDb();
+    // Read it first so the activity log can say what was removed instead of
+    // recording a bare UUID.
+    const { data: rule } = await db
+      .from("app_access_rules")
+      .select("app_key,scope,scope_value")
+      .eq("id", data.id)
+      .maybeSingle();
+    const { error } = await db.from("app_access_rules").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    let target = data.id;
+    if (rule) {
+      let shownValue = rule.scope_value;
+      if (rule.scope === "user") {
+        const { data: person } = await db
+          .from("users")
+          .select("id_number")
+          .eq("id", rule.scope_value)
+          .maybeSingle();
+        shownValue = person?.id_number ?? "removed account";
+      }
+      target = `${rule.app_key} · ${rule.scope}: ${shownValue}`;
+    }
     await logActivity({
       action: "access.updated",
       actorId: admin.id,
       actorName: admin.label,
       actorNumber: admin.idNumber,
-      target: data.id,
+      target,
       detail: "rule removed",
     });
     return { ok: true as const };
   });
 
-/**
- * One row per account, department and position, with the access each one
- * actually resolves to per app.
- *
- * The EFFECTIVE answer is computed server-side by the same `resolveAccess` the
- * route guards use. Recomputing precedence in the browser is how an admin
- * screen ends up confidently showing something the guards disagree with — so
- * this returns the outcome, not the raw rules, and the grid just renders it.
- */
-/** One row of the admin grid. `kind` is the rule scope it writes. */
-type OverviewRow = {
-  kind: RuleScope;
-  scope: RuleScope;
-  scopeValue: string;
-  label: string;
-  secondary: string;
+type OverviewPerson = {
+  id: string;
+  idNumber: string;
+  name: string;
   department: string;
   position: string;
-  /** Account rows only: the grid lists administrators in their own section,
-   *  because their cells are fixed and clicking them does nothing. */
   isAdmin: boolean;
   apps: ReturnType<typeof resolveAccess>[];
 };
 
+type OverviewRule = {
+  id: string;
+  app_key: GrantableAppKey;
+  scope: RuleScope;
+  scope_value: string;
+  allow: boolean;
+};
+
+/**
+ * Everyone and every effective access, plus the explicit rules and each app's
+ * starting point.
+ *
+ * The EFFECTIVE answer is computed server-side by the same `resolveAccess` the
+ * route guards use. Recomputing precedence in the browser is how an admin
+ * screen ends up confidently showing something the guards disagree with — so
+ * this returns outcomes, not raw rules for the browser to interpret.
+ *
+ * The reserved starting-point rows are taken out of `rules` (they are not
+ * real people, departments, or positions) and returned separately in
+ * `defaults`.
+ */
 export const getAccessOverview = createServerFn({ method: "GET" }).handler(
-  // The explicit return type matters: without it the literal scope types widen
-  // to `string` across the server-function boundary and the admin grid stops
-  // type-checking against its own data.
   async (): Promise<{
-    accounts: OverviewRow[];
-    departments: OverviewRow[];
-    positions: OverviewRow[];
+    people: OverviewPerson[];
+    rules: OverviewRule[];
+    defaults: Record<GrantableAppKey, boolean>;
+    departments: string[];
+    positions: string[];
   }> => {
     await requireAdmin();
     const db = getDb();
@@ -163,17 +218,27 @@ export const getAccessOverview = createServerFn({ method: "GET" }).handler(
     } else if (profilesRes.error) {
       throw new Error(profilesRes.error.message);
     }
-    const rules = (rulesRes.data ?? []) as {
+
+    const rules = (rulesRes.data ?? []) as Array<{
       id: string;
       app_key: string;
       scope: string;
       scope_value: string;
       allow: boolean;
-    }[];
+    }>;
+    const visibleRules: OverviewRule[] = rules
+      .filter((rule) => !isAppDefaultRule(rule))
+      .map((rule) => ({
+        id: rule.id,
+        app_key: rule.app_key as GrantableAppKey,
+        scope: rule.scope as RuleScope,
+        scope_value: rule.scope_value,
+        allow: rule.allow,
+      }));
 
     const byAccount = new Map((profileRows ?? []).map((p) => [p.access_code_id, p] as const));
 
-    const accounts: OverviewRow[] = (usersRes.data ?? []).map<OverviewRow>((u) => {
+    const people: OverviewPerson[] = (usersRes.data ?? []).map((u) => {
       const profile = byAccount.get(u.id);
       const subject = {
         role: u.role as Role,
@@ -182,111 +247,44 @@ export const getAccessOverview = createServerFn({ method: "GET" }).handler(
         position: profile?.designation ?? "",
       };
       return {
-        // `kind` is the rule scope, so an account row is "user" — the same value
-        // the rule it writes carries.
-        kind: "user",
-        scope: "user",
-        scopeValue: u.id,
-        label: u.id_number,
-        secondary: profile?.full_name ?? "",
+        id: u.id,
+        idNumber: u.id_number,
+        name: profile?.full_name ?? "",
         department: subject.department,
         position: subject.position,
         isAdmin: u.role === "admin",
         apps: GRANTABLE_APP_KEYS.map((app) => resolveAccess(app, subject, rules)),
       };
     });
+    // Blank names last: an unnamed account is still usable, but it should not
+    // sit above real names in the By person list.
+    people.sort((a, b) => (a.name || "\uffff").localeCompare(b.name || "\uffff"));
 
-    // Departments and positions are the distinct values actually in use — the
-    // ones a rule could ever match. A listed department with nobody in it has no
-    // effect, so there is nothing to show for it.
-    const seenDept = new Set<string>();
-    const seenPos = new Set<string>();
-    const deptRows: OverviewRow[] = [];
-    const posRows: OverviewRow[] = [];
-
-    const group = (
-      scope: "department" | "position",
-      label: string,
-      secondary: string,
-      into: OverviewRow[],
-    ) => {
-      if (!label) return;
-      const subject = {
-        role: "user" as Role,
-        department: scope === "department" ? label : "",
-        position: scope === "position" ? label : "",
-      };
-      into.push({
-        kind: scope as RuleScope,
-        scope: scope as RuleScope,
-        scopeValue: label,
-        label,
-        secondary,
-        department: subject.department,
-        position: subject.position,
-        isAdmin: false,
-        apps: GRANTABLE_APP_KEYS.map((app) => resolveAccess(app, subject, rules)),
-      });
-    };
-
+    // The values an admin can pick. Rules for a department or position that has
+    // since emptied out are kept: removing one should still be possible.
+    const departmentSet = new Set<string>();
+    const positionSet = new Set<string>();
     for (const p of profileRows ?? []) {
-      // The department the profile stores — never the office branch (`area`).
       const dept = p.department ?? "";
-      if (dept && !seenDept.has(dept)) {
-        seenDept.add(dept);
-        group("department", dept, "", deptRows);
-      }
+      if (dept) departmentSet.add(dept);
       const pos = normalizePosition(p.designation ?? "");
-      if (pos && !seenPos.has(pos)) {
-        seenPos.add(pos);
-        group("position", pos, "", posRows);
-      }
+      if (pos) positionSet.add(pos);
+    }
+    for (const rule of visibleRules) {
+      if (rule.scope === "department") departmentSet.add(rule.scope_value);
+      if (rule.scope === "position") positionSet.add(rule.scope_value);
     }
 
-    return { accounts, departments: deptRows, positions: posRows };
+    const defaults = Object.fromEntries(
+      GRANTABLE_APP_KEYS.map((app) => [app, defaultAccess(app, rules)]),
+    ) as Record<GrantableAppKey, boolean>;
+
+    return {
+      people,
+      rules: visibleRules,
+      defaults,
+      departments: [...departmentSet].sort((a, b) => a.localeCompare(b)),
+      positions: [...positionSet].sort((a, b) => a.localeCompare(b)),
+    };
   },
 );
-
-/**
- * Distinct Departments and Positions already in use on the profiles, so an
- * admin picks from real values instead of typing a spelling that silently
- * matches nobody.
- */
-export const listOrgValues = createServerFn({ method: "GET" }).handler(async () => {
-  await requireAdmin();
-  const db = getDb();
-  // First try with the department column (migration 0023), fall back if it's
-  // not there yet.
-  const { data: profilesWithDept, error: deptError } = await db
-    .from("profiles")
-    .select("department,designation");
-  if (!deptError && profilesWithDept) {
-    const departments = new Set<string>();
-    const positions = new Set<string>();
-    for (const p of profilesWithDept ?? []) {
-      const dept = p.department ?? "";
-      if (dept) departments.add(dept);
-      const pos = normalizePosition(p.designation ?? "");
-      if (pos) positions.add(pos);
-    }
-    return {
-      departments: [...departments].sort((a, b) => a.localeCompare(b)),
-      positions: [...positions].sort((a, b) => a.localeCompare(b)),
-    };
-  }
-  // Migration 0023 not applied yet — derive department from position names.
-  const { data, error } = await db.from("profiles").select("designation");
-  if (error) throw new Error(error.message);
-  const departments = new Set<string>();
-  const positions = new Set<string>();
-  for (const p of data ?? []) {
-    const pos = normalizePosition(p.designation ?? "");
-    if (pos) positions.add(pos);
-    const dept = departmentForPosition(pos);
-    if (dept) departments.add(dept);
-  }
-  return {
-    departments: [...departments].sort((a, b) => a.localeCompare(b)),
-    positions: [...positions].sort((a, b) => a.localeCompare(b)),
-  };
-});

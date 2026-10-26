@@ -37,3 +37,7 @@ dist-ssr
 !.env.example
 ACTIVITY_LOG.md
 CLAUDE.md
+
+# API build output
+build
+

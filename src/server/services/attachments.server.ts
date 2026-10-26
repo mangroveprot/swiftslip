@@ -5,18 +5,111 @@ const BUCKET = "swiftslip";
 /** Every user's documents live in their own folder: ApprovalSlip/<their id>/. */
 const ROOT = "ApprovalSlip";
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
 /**
- * The bucket accepts any MIME type (PDF, images, Word, Excel, …) by design —
- * only stored-XSS vectors are turned away, since signed URLs serve whatever is
- * stored with the declared content type.
+ * Accepted uploads. The browser-declared MIME type is only a claim, so every
+ * entry also checks the file's first bytes: nothing is stored as a PDF unless
+ * it actually starts with `%PDF-`. The list is deliberately narrow — HTML, SVG,
+ * scripts and archives are refused because a signed URL would serve them.
  */
-const BLOCKED_TYPES = new Set([
-  "text/html",
-  "application/xhtml+xml",
-  "image/svg+xml",
-  "text/javascript",
-  "application/javascript",
-]);
+function startsWith(bytes: Uint8Array, signature: number[], offset = 0): boolean {
+  return signature.every((byte, index) => bytes[offset + index] === byte);
+}
+
+function ascii(text: string): number[] {
+  return [...text].map((char) => char.charCodeAt(0));
+}
+
+/** ZIP container shared by the Open XML formats (.docx / .xlsx / .pptx). */
+const ZIP = [0x50, 0x4b, 0x03, 0x04];
+/** Legacy Office compound-file header (.doc / .xls / .ppt). */
+const OLE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+
+const WORD_XML = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const SHEET_XML = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const SLIDES_XML = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+const ALLOWED_TYPES: Record<string, (bytes: Uint8Array) => boolean> = {
+  "application/pdf": (bytes) => startsWith(bytes, ascii("%PDF-")),
+  "image/png": (bytes) => startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  "image/jpeg": (bytes) => startsWith(bytes, [0xff, 0xd8, 0xff]),
+  "image/gif": (bytes) => startsWith(bytes, ascii("GIF8")),
+  "image/webp": (bytes) => startsWith(bytes, ascii("RIFF")) && startsWith(bytes, ascii("WEBP"), 8),
+  "image/bmp": (bytes) => startsWith(bytes, ascii("BM")),
+  // Plain text has no signature; rejecting NUL bytes keeps obvious binaries out.
+  "text/plain": (bytes) => !bytes.includes(0),
+  [WORD_XML]: (bytes) => startsWith(bytes, ZIP),
+  [SHEET_XML]: (bytes) => startsWith(bytes, ZIP),
+  [SLIDES_XML]: (bytes) => startsWith(bytes, ZIP),
+  "application/msword": (bytes) => startsWith(bytes, OLE),
+  "application/vnd.ms-excel": (bytes) => startsWith(bytes, OLE),
+  "application/vnd.ms-powerpoint": (bytes) => startsWith(bytes, OLE),
+};
+
+/** Extension → type, used when the browser reports an empty MIME type. */
+const EXTENSION_TYPES: Record<string, string> = {
+  pdf: "application/pdf",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  bmp: "image/bmp",
+  txt: "text/plain",
+  doc: "application/msword",
+  docx: WORD_XML,
+  xls: "application/vnd.ms-excel",
+  xlsx: SHEET_XML,
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: SLIDES_XML,
+};
+
+/** The declared type, or the extension when the browser sent nothing useful. */
+function uploadType(declared: string, filename: string): string {
+  const type = (declared.split(";")[0] ?? "").trim().toLowerCase();
+  if (type && type !== "application/octet-stream") return type;
+  const extension = filename.split(".").pop()?.toLowerCase() ?? "";
+  return EXTENSION_TYPES[extension] ?? "";
+}
+
+/**
+ * Types to try, declared type first. Windows sometimes reports an Office file
+ * as `application/msword` even when the bytes are a `.docx` ZIP, so the
+ * extension is kept as a second opinion — the signature still has to agree
+ * with whichever type is finally stored.
+ */
+function candidateTypes(declared: string, filename: string): string[] {
+  const candidates = [uploadType(declared, filename)];
+  const extension = filename.split(".").pop()?.toLowerCase() ?? "";
+  const fallback = EXTENSION_TYPES[extension] ?? "";
+  if (fallback && !candidates.includes(fallback)) candidates.push(fallback);
+  return candidates.filter((type) => type !== "" && ALLOWED_TYPES[type]);
+}
+
+/**
+ * Decode and validate one upload. Returns the bytes plus the confirmed type
+ * and filename; throws a user-facing message on anything not accepted.
+ */
+function readUpload(input: { filename: string; contentType: string; base64: string }) {
+  const candidates = candidateTypes(input.contentType, input.filename);
+  if (candidates.length === 0) {
+    throw new Error("That file type can't be stored here. Attach a PDF, image or Office document.");
+  }
+
+  const buffer = Buffer.from(input.base64, "base64");
+  if (!buffer.byteLength) throw new Error("That file is empty or could not be read.");
+  if (buffer.byteLength > ATTACHMENT_MAX_BYTES) {
+    throw new Error("Attachments must be 10 MB or smaller.");
+  }
+
+  const bytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  const contentType = candidates.find((type) => ALLOWED_TYPES[type]?.(bytes));
+  if (!contentType) {
+    throw new Error("That file's contents don't match its type. Please pick the original file.");
+  }
+
+  return { buffer, contentType, name: safeFilename(input.filename) };
+}
 
 /** Signed download links live for an hour — long enough to view or re-download. */
 const URL_TTL_SECONDS = 60 * 60;
@@ -85,18 +178,7 @@ export async function uploadAttachment(
   if (rowError) throw new Error(rowError.message);
   if (!row) throw new Error(`${entity} not found.`);
 
-  const contentType = (input.contentType.split(";")[0] ?? "").trim().toLowerCase();
-  if (BLOCKED_TYPES.has(contentType)) {
-    throw new Error("That file type can't be stored here. Use a PDF, image or Office document.");
-  }
-
-  const buffer = Buffer.from(input.base64, "base64");
-  if (!buffer.byteLength) throw new Error("That file is empty or could not be read.");
-  if (buffer.byteLength > ATTACHMENT_MAX_BYTES) {
-    throw new Error("Attachments must be 10 MB or smaller.");
-  }
-
-  const name = safeFilename(input.filename);
+  const { buffer, contentType, name } = readUpload(input);
   const path = `${ROOT}/${ownerId}/${row.id}-${name}`;
 
   await ensureBucket();
@@ -254,17 +336,7 @@ export async function uploadOtherAttachment(
     throw new Error(`A form can hold up to ${OTHER_ATTACHMENTS_MAX} additional files.`);
   }
 
-  const contentType = (input.contentType.split(";")[0] ?? "").trim().toLowerCase();
-  if (BLOCKED_TYPES.has(contentType)) {
-    throw new Error("That file type can't be stored here. Use a PDF, image or Office document.");
-  }
-  const buffer = Buffer.from(input.base64, "base64");
-  if (!buffer.byteLength) throw new Error("That file is empty or could not be read.");
-  if (buffer.byteLength > ATTACHMENT_MAX_BYTES) {
-    throw new Error("Attachments must be 10 MB or smaller.");
-  }
-
-  const name = safeFilename(input.filename);
+  const { buffer, contentType, name } = readUpload(input);
   const unique = crypto.randomUUID().slice(0, 8);
   const path = `${ROOT}/${ownerId}/${row.id}-extra-${unique}-${name}`;
 

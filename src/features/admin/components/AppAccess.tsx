@@ -1,107 +1,119 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, ChevronRight, Minus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  Briefcase,
+  Building2,
+  Check,
+  Loader2,
+  Plus,
+  Search,
+  ShieldCheck,
+  User,
+  X,
+} from "lucide-react";
+import { useState } from "react";
 
-import { deleteAccessRule, getAccessOverview, setAccessRule } from "@/api/access-rules.functions";
+import {
+  deleteAccessRule,
+  getAccessOverview,
+  setAccessRule,
+  setAppDefault,
+} from "@/api/access-rules.functions";
+import { PageTitle } from "@/components/common/PageTitle";
 import { toast } from "@/lib/toast";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { GRANTABLE_APP_KEYS, type GrantableAppKey, type RuleScope } from "@/shared/types";
-
-/** The admin's other filters are hand-rolled selects; this is the same class
- *  string Activity logs uses, so all three screens match pixel for pixel. */
-const SELECT_CLASS =
-  "h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:h-9 md:px-3";
 
 const APP_LABELS: Record<GrantableAppKey, string> = {
   swiftslip: "SwiftSlip",
   inventory: "Inventory",
 };
 
-/** Badges on each row. The scope is still stored as "department" in the
- *  database — it reads the profile's `area` — but everything the user sees
- *  calls that field Department. */
-const SCOPE_LABEL: Record<RuleScope, string> = {
-  user: "Account",
+const SCOPE_LABELS: Record<RuleScope, string> = {
+  user: "Person",
   department: "Department",
   position: "Position",
 };
 
-const GROUPS: Array<{ key: string; title: string; hint: string }> = [
-  { key: "admin", title: "Administrators", hint: "Always have every app. Not changeable here." },
-  { key: "user", title: "Accounts", hint: "Applies to this one person." },
-  {
-    key: "department",
-    title: "Departments",
-    hint: "Applies to everyone whose profile has this Department.",
-  },
-  {
-    key: "position",
-    title: "Positions",
-    hint: "Applies to everyone whose profile has this Position.",
-  },
-];
+const PERSON_STATES = [
+  { value: "follow", label: "Follow rules" },
+  { value: "allow", label: "Allow" },
+  { value: "block", label: "Block" },
+] as const;
 
-type Outcome = {
-  admin: boolean;
-  allowed: boolean;
-  byRule: boolean;
-  byScope: string | null;
-  ruleId: string | null;
-};
+type PersonState = (typeof PERSON_STATES)[number]["value"];
 
-type Row = {
-  kind: RuleScope;
-  scopeValue: string;
-  label: string;
-  secondary: string;
-  department: string;
-  position: string;
-  isAdmin: boolean;
-  apps: Outcome[];
-};
+type Overview = Awaited<ReturnType<typeof getAccessOverview>>;
+type Person = Overview["people"][number];
+type Rule = Overview["rules"][number];
+type Outcome = Person["apps"][number];
 
-const rowKey = (r: Row) => `${r.kind}:${r.scopeValue}`;
+function outcomeOf(person: Person, app: GrantableAppKey): Outcome | undefined {
+  return person.apps[GRANTABLE_APP_KEYS.indexOf(app)];
+}
 
-/** The three settings a cell can hold. "default" means no rule at all. */
-type CellState = "allowed" | "blocked" | "default";
+function roleText(person: Person) {
+  return person.isAdmin ? "Administrator" : "Staff";
+}
 
 /**
- * Who may open which application.
+ * Why this person currently has or does not have the app. The outcome comes
+ * from the server's `resolveAccess`, so this sentence can only describe what
+ * the route guards actually do.
+ */
+function reasonFor(person: Person, app: GrantableAppKey) {
+  const outcome = outcomeOf(person, app);
+  if (!outcome) return "";
+  if (outcome.admin) return "Administrator — every app is always open.";
+  if (outcome.byScope === "user") {
+    return outcome.allowed
+      ? "Allowed by a rule on this person."
+      : "Blocked by a rule on this person.";
+  }
+  if (outcome.byScope === "department") {
+    return person.department
+      ? `${outcome.allowed ? "Allowed" : "Blocked"} by a rule on the ${person.department} department.`
+      : `${outcome.allowed ? "Allowed" : "Blocked"} by a department rule.`;
+  }
+  if (outcome.byScope === "position") {
+    return person.position
+      ? `${outcome.allowed ? "Allowed" : "Blocked"} by a rule on the ${person.position} position.`
+      : `${outcome.allowed ? "Allowed" : "Blocked"} by a position rule.`;
+  }
+  return outcome.allowed ? "Allowed by the starting point." : "Not allowed by the starting point.";
+}
+
+/**
+ * Who may open each application.
  *
- * A matrix rather than a create-form because the question an administrator
- * actually asks is "who can get into the Inventory" — one column to scan, with
- * the current state visible rather than only the rules someone remembers making.
+ * Two ways in, because administrators ask two different questions: "who has
+ * the Inventory?" (By app) and "what can this person open?" (By person). Both
+ * read the same server-computed outcome, so the screen cannot disagree with
+ * the guard that actually enforces access.
  *
- * Every cell shows the EFFECTIVE outcome, computed server-side by the same
- * `resolveAccess` the route guards use (api/access-rules.functions.ts), so this
- * screen cannot drift from what actually enforces access.
- *
- *   Always          an administrator — locked
- *   Allowed         an explicit rule says yes
- *   Blocked         an explicit rule says no
- *   On by default   no rule; open to everyone anyway
- *   Off by default  no rule; not open to everyone
- *
- * Clicking cycles default → Allowed → Blocked → default, so removing a rule is
- * the same gesture as adding one.
+ * Administrators bypass everything. Their rows are shown, marked, and never
+ * offered a control that would silently do nothing.
  */
 export function AppAccess() {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState("");
-  const [scope, setScope] = useState<RuleScope | "all">("all");
-  const [overridesOnly, setOverridesOnly] = useState(false);
-  const [appFilter, setAppFilter] = useState<GrantableAppKey | "all">("all");
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const [perPage, setPerPage] = useState(25);
+  const [tab, setTab] = useState<"app" | "person">("app");
+  const [appKey, setAppKey] = useState<GrantableAppKey>(GRANTABLE_APP_KEYS[0]);
+  const [personId, setPersonId] = useState<string | null>(null);
+  const [appSearch, setAppSearch] = useState("");
+  const [personSearch, setPersonSearch] = useState("");
+  const [showWho, setShowWho] = useState(false);
+  const [addMode, setAddMode] = useState<"allow" | "block" | null>(null);
 
   const overview = useQuery({ queryKey: ["access-overview"], queryFn: () => getAccessOverview() });
 
-  const refresh = () => {
-    void qc.invalidateQueries({ queryKey: ["access-overview"] });
-    setSelected(new Set());
-  };
+  const refresh = () => qc.invalidateQueries({ queryKey: ["access-overview"] });
 
   const setRule = useMutation({
     mutationFn: setAccessRule,
@@ -109,641 +121,894 @@ export function AppAccess() {
     onError: (e: Error) => toast.error(e.message || "Could not save that change."),
   });
   const removeRule = useMutation({
-    mutationFn: deleteAccessRule,
-    onSuccess: refresh,
+    mutationFn: (vars: { id: string; message: string }) =>
+      deleteAccessRule({ data: { id: vars.id } }),
+    onSuccess: async (_result, vars) => {
+      await refresh();
+      // The row/list has updated by now, so the toast confirms a visible
+      // change instead of racing it.
+      toast.success(vars.message);
+    },
     onError: (e: Error) => toast.error(e.message || "Could not remove that rule."),
   });
+  const defaultMutation = useMutation({
+    mutationFn: setAppDefault,
+    onSuccess: refresh,
+    onError: (e: Error) => toast.error(e.message || "Could not change the starting point."),
+  });
 
-  /**
-   * The rule behind a cell comes from the overview, never a second query — a
-   * stale rule list made "flip to blocked" silently re-apply "allowed".
-   */
-  async function setState(row: Row, app: GrantableAppKey, next: CellState) {
-    const outcome = row.apps[GRANTABLE_APP_KEYS.indexOf(app)];
+  const busy = setRule.isPending || removeRule.isPending || defaultMutation.isPending;
+
+  const data = overview.data;
+  const people = data?.people ?? [];
+  const selectedPerson = people.find((p) => p.id === personId) ?? people[0] ?? null;
+
+  const appTerm = appSearch.trim().toLowerCase();
+  const visibleApps = GRANTABLE_APP_KEYS.filter(
+    (app) => !appTerm || APP_LABELS[app].toLowerCase().includes(appTerm),
+  );
+
+  const personTerm = personSearch.trim().toLowerCase();
+  const visiblePeople = people.filter((p) => {
+    if (!personTerm) return true;
+    return `${p.name} ${p.idNumber} ${p.department} ${p.position} ${roleText(p)}`
+      .toLowerCase()
+      .includes(personTerm);
+  });
+
+  const canOpen = (app: GrantableAppKey) =>
+    people.filter((person) => outcomeOf(person, app)?.allowed).length;
+
+  async function setPersonAccess(person: Person, app: GrantableAppKey, next: PersonState) {
+    const outcome = outcomeOf(person, app);
     if (!outcome || outcome.admin) return;
     try {
-      if (next === "default") {
-        // Back to inherited: the rule goes away entirely.
-        if (outcome.ruleId) await removeRule.mutateAsync({ data: { id: outcome.ruleId } });
+      if (next === "follow") {
+        // Back to inherited: remove this person's own rule entirely.
+        if (outcome.byScope === "user" && outcome.ruleId) {
+          await removeRule.mutateAsync({
+            id: outcome.ruleId,
+            message: `${person.name || person.idNumber} now follows the rules for ${APP_LABELS[app]}.`,
+          });
+        }
         return;
       }
       await setRule.mutateAsync({
         data: {
           app_key: app,
-          scope: row.kind,
-          scope_value: row.scopeValue,
-          allow: next === "allowed",
+          scope: "user",
+          scope_value: person.id,
+          allow: next === "allow",
         },
       });
     } catch {
-      // The mutation's onError already surfaced it.
+      // onError already surfaced it.
     }
   }
 
-  const data = overview.data;
-  const term = filter.trim().toLowerCase();
-
-  // Rows per group under the search box and Overrides only, but ignoring the
-  // scope chip. The chip counts read from here: "All" has to keep saying 9
-  // while you are looking at Administrators, otherwise the number moves
-  // whenever you click something else and stops meaning anything.
-  const scoped = useMemo(() => {
-    if (!data) return [];
-    // Administrators are listed apart: their cells are fixed, so a flat column
-    // of "Always" reads as broken rather than intentional.
-    const byKey: Record<string, Row[]> = {
-      admin: data.accounts.filter((r) => r.isAdmin),
-      user: data.accounts.filter((r) => !r.isAdmin),
-      department: data.departments,
-      position: data.positions,
-    };
-    return GROUPS.map((g) => {
-      let rows = byKey[g.key] ?? [];
-      if (term) {
-        rows = rows.filter((r) =>
-          `${r.label} ${r.secondary} ${r.department} ${r.position}`.toLowerCase().includes(term),
-        );
-      }
-      if (overridesOnly) rows = rows.filter((r) => r.apps.some((a) => a.byRule));
-      return { ...g, rows };
-    }).filter((g) => g.rows.length > 0);
-  }, [data, term, overridesOnly]);
-
-  /** How many rows the scope chip would show — stable across scope changes. */
-  const groupCount = (key: string) =>
-    key === "all"
-      ? scoped.reduce((n, g) => n + g.rows.length, 0)
-      : (scoped.find((g) => g.key === key)?.rows.length ?? 0);
-
-  const groups = scope === "all" ? scoped : scoped.filter((g) => g.key === scope);
-  const totalRows = groups.reduce((n, g) => n + g.rows.length, 0);
-  const visibleApps = appFilter === "all" ? [...GRANTABLE_APP_KEYS] : [appFilter];
-
-  // "N of M can open" under each column header.
-  const summary = (app: GrantableAppKey) => {
-    let can = 0;
-    let of = 0;
-    for (const g of groups) {
-      for (const r of g.rows) {
-        const outcome = r.apps[GRANTABLE_APP_KEYS.indexOf(app)];
-        if (!outcome) continue;
-        of += 1;
-        if (outcome.allowed) can += 1;
-      }
-    }
-    return { can, of };
-  };
-
-  // Pagination is applied across the whole flattened list, so the footer count
-  // is honest about what is hidden.
-  let budget = perPage;
-  const paged = groups.map((g) => {
-    const take = Math.max(0, Math.min(g.rows.length, budget));
-    budget -= take;
-    return { ...g, visible: g.rows.slice(0, take) };
-  });
-
-  const toggleGroup = (key: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
-  const toggleRow = (key: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-
-  const allKeys = groups.flatMap((g) => g.rows.map(rowKey));
-  const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
-
-  /** Apply one access value to every selected row for the chosen app. */
-  async function bulk(app: GrantableAppKey, allow: boolean) {
-    const rows = allKeys
-      .map((k) => groups.flatMap((g) => g.rows).find((r) => rowKey(r) === k))
-      .filter((r): r is Row => Boolean(r));
+  async function chooseDefault(app: GrantableAppKey, allow: boolean) {
+    if (!data || data.defaults[app] === allow) return;
     try {
-      for (const r of rows) {
-        const outcome = r.apps[GRANTABLE_APP_KEYS.indexOf(app)];
-        if (!outcome || outcome.admin) continue;
-        // Already in the requested state — skip so clearing is not undone.
-        if (outcome.allowed === allow && (allow || !outcome.byRule)) continue;
-        if (allow) {
-          await setRule.mutateAsync({
-            data: { app_key: app, scope: r.kind, scope_value: r.scopeValue, allow: true },
-          });
-        } else if (outcome.ruleId) {
-          await removeRule.mutateAsync({ data: { id: outcome.ruleId } });
-        }
-      }
-      refresh();
+      await defaultMutation.mutateAsync({ data: { app_key: app, allow } });
     } catch {
-      // surfaced by onError
+      // onError already surfaced it.
     }
+  }
+
+  async function addRule(scope: RuleScope, scopeValue: string) {
+    if (!addMode) return;
+    try {
+      await setRule.mutateAsync({
+        data: {
+          app_key: appKey,
+          scope,
+          scope_value: scopeValue,
+          allow: addMode === "allow",
+        },
+      });
+      setAddMode(null);
+    } catch {
+      // Stay open so the admin can pick something else.
+    }
+  }
+
+  function removeRuleFor(rule: Rule) {
+    const person =
+      rule.scope === "user" ? people.find((candidate) => candidate.id === rule.scope_value) : null;
+    const target = person
+      ? person.name || person.idNumber
+      : rule.scope === "user"
+        ? "the deleted account"
+        : rule.scope_value;
+    removeRule.mutate({
+      id: rule.id,
+      message: `Removed the ${APP_LABELS[rule.app_key]} ${rule.allow ? "allow" : "block"} rule for ${target}.`,
+    });
   }
 
   const error = overview.error instanceof Error ? overview.error.message : null;
 
-  // The blurb stays visible at every width (hiding it behind a "?" read as
-  // inconsistent), but it is one short line: the detail lives in the How-it-works
-  // block at the bottom, so the header never fills a short window on its own and
-  // pushes the list below the fold. Colours and the desktop matrix are unchanged.
   return (
     <section className="rounded-xl border bg-card p-3 sm:p-4">
-      <h2 className="text-lg sm:text-xl">App access</h2>
-      <p className="mt-0.5 text-xs text-muted-foreground">
-        Who can open each app. Pick a setting to change it; administrators always have everything.
-      </p>
-
-      {/* Toolbar. Everything here wraps: a non-wrapping child here has a
-          min-content width wider than a phone, and a flex item will not shrink
-          below it — which pushed the whole card off the screen rather than
-          scrolling the table. */}
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        {/* Same shape as the account search on User management: the shared
-            `Input` plus an icon inside it. This was a bare `.inp` with no icon
-            and a hard width, which is why it did not match anything else. */}
-        <div className="relative w-full sm:w-64">
-          <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground md:left-3"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            className="h-8 pl-8 text-sm md:h-9 md:pl-9"
-            value={filter}
-            placeholder="Search by name, ID number, department…"
-            aria-label="Filter"
-            onChange={(e) => setFilter(e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1">
-          <ScopeChip active={scope === "all"} onClick={() => setScope("all")}>
-            All {groupCount("all")}
-          </ScopeChip>
-          {GROUPS.map((g) => (
-            <ScopeChip
-              key={g.key}
-              active={scope === g.key}
-              onClick={() => setScope(g.key as RuleScope | "all")}
-            >
-              {g.title} {groupCount(g.key)}
-            </ScopeChip>
-          ))}
-        </div>
-
-        <label className="flex cursor-pointer items-center gap-1.5 text-xs sm:ml-auto">
-          <input
-            type="checkbox"
-            checked={overridesOnly}
-            onChange={(e) => setOverridesOnly(e.target.checked)}
-          />
-          Overrides only
-        </label>
-
-        <select
-          className={SELECT_CLASS}
-          value={appFilter}
-          aria-label="Application"
-          onChange={(e) => setAppFilter(e.target.value as GrantableAppKey | "all")}
-        >
-          <option value="all">App: All</option>
-          {GRANTABLE_APP_KEYS.map((a) => (
-            <option key={a} value={a}>
-              App: {APP_LABELS[a]}
-            </option>
-          ))}
-        </select>
+      <div className="min-w-0">
+        <PageTitle as="h2">App access</PageTitle>
+        <p className="mt-2 max-w-[34rem] text-sm leading-6 text-muted-foreground">
+          Decide who can open each app. Start from an app to see who has it, or start from a person
+          to see everything they can open.
+        </p>
       </div>
+
+      <div className="mt-8 flex flex-wrap items-center gap-x-7">
+        {(
+          [
+            { key: "app", label: "By app" },
+            { key: "person", label: "By person" },
+          ] as const
+        ).map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            aria-pressed={tab === item.key}
+            onClick={() => setTab(item.key)}
+            className={`border-b-2 pt-1 pb-3 text-sm transition-colors ${
+              tab === item.key
+                ? "border-primary font-medium text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 border-t" />
 
       {error ? (
         <p className="mt-4 text-sm text-destructive">{error}</p>
-      ) : overview.isLoading ? (
-        <div className="mt-4 h-72 w-full animate-pulse rounded-md bg-muted" />
-      ) : totalRows === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">
-          {term || overridesOnly || scope !== "all"
-            ? "Nothing matches the current filter."
-            : "No accounts yet."}
-        </p>
+      ) : overview.isLoading || !data ? (
+        <AccessSkeleton />
       ) : (
-        <>
-          {/* Desktop: the matrix. Phones get cards instead (below) — a sideways
-              scroll to reach the two app controls never got usable. */}
-          <div className="mt-4 hidden max-w-full overflow-x-auto rounded-lg border md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/40 text-left">
-                  <th className="w-8 py-2 pl-3">
-                    <input
-                      type="checkbox"
-                      aria-label="Select all"
-                      checked={allSelected}
-                      onChange={() => setSelected(allSelected ? new Set() : new Set(allKeys))}
-                    />
-                  </th>
-                  {/* Not "Who" — a row is not always a person. A Department or
-                    Position row applies to a group, so the header has to cover
-                    both. */}
-                  <th className="py-2 font-medium text-muted-foreground">Applies to</th>
-                  {visibleApps.map((app) => {
-                    const s = summary(app);
+        <div className="mt-5 grid gap-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-0">
+          <aside className="min-w-0 lg:pr-6">
+            <div className="relative border-b border-input transition-colors focus-within:border-primary">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-0 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                type="search"
+                value={tab === "app" ? appSearch : personSearch}
+                onChange={(e) =>
+                  tab === "app" ? setAppSearch(e.target.value) : setPersonSearch(e.target.value)
+                }
+                placeholder={
+                  tab === "app" ? "Search apps" : "Search name, ID, position, or department…"
+                }
+                className="h-9 border-0 bg-transparent pr-0 pl-8 shadow-none focus-visible:ring-0"
+                aria-label={tab === "app" ? "Search apps" : "Search people"}
+              />
+            </div>
+
+            <div className="mt-1 max-h-[28rem] overflow-y-auto">
+              {tab === "app" ? (
+                visibleApps.length ? (
+                  visibleApps.map((app) => {
+                    const active = appKey === app;
                     return (
-                      <th key={app} className="w-40 py-2 pr-3 text-right max-md:w-32 max-md:pr-2">
-                        <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          {APP_LABELS[app]}
-                        </span>
-                        <span className="block text-[10px] font-normal text-muted-foreground/80">
-                          {s.can} of {s.of} can open
-                        </span>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-
-              {paged.map((group) => {
-                const isCollapsed = collapsed.has(group.key);
-                return (
-                  <tbody key={group.key}>
-                    {/* Group header — a plain section title like the sidebar's
-                        "Security" / "Activity": bold text, no fill, rows sit
-                        indented underneath it. Doubles as the collapse toggle. */}
-                    <tr>
-                      <td className="pt-3 pb-1 pl-3" colSpan={2 + visibleApps.length}>
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <button
-                            type="button"
-                            className="flex items-center gap-1 text-sm font-semibold text-foreground/80"
-                            onClick={() => toggleGroup(group.key)}
-                            aria-expanded={!isCollapsed}
+                      <button
+                        key={app}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          setAppKey(app);
+                          setShowWho(false);
+                        }}
+                        className={`flex w-full flex-col gap-0.5 border-b px-3 py-3 text-left transition-colors ${
+                          active ? "bg-primary/[0.06]" : "hover:bg-muted/40"
+                        }`}
+                      >
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span
+                            className={`truncate text-sm ${active ? "font-semibold" : "font-medium"}`}
                           >
-                            {isCollapsed ? (
-                              <ChevronRight className="size-3.5" aria-hidden="true" />
-                            ) : (
-                              <ChevronDown className="size-3.5" aria-hidden="true" />
-                            )}
-                            {group.title}
-                          </button>
-                          <span className="rounded-full border px-1.5 text-[10px] font-medium text-muted-foreground">
-                            {group.rows.length}
+                            {APP_LABELS[app]}
                           </span>
-                          <span className="text-[11px] font-normal text-muted-foreground">
-                            {group.hint}
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {canOpen(app)} of {people.length} can open
                           </span>
-                        </div>
-                      </td>
-                    </tr>
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <p className="px-3 py-6 text-sm text-muted-foreground">No apps match.</p>
+                )
+              ) : visiblePeople.length ? (
+                visiblePeople.map((person) => {
+                  const active = selectedPerson?.id === person.id;
+                  return (
+                    <button
+                      key={person.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setPersonId(person.id)}
+                      className={`flex w-full flex-col gap-0.5 border-b px-3 py-2.5 text-left transition-colors ${
+                        active ? "bg-primary/[0.06]" : "hover:bg-muted/40"
+                      }`}
+                    >
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span
+                          className={`truncate text-sm ${
+                            person.name
+                              ? active
+                                ? "font-semibold"
+                                : "font-medium"
+                              : "font-normal italic text-muted-foreground"
+                          }`}
+                        >
+                          {person.name || "No name set"}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {roleText(person)}
+                        </span>
+                      </span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {person.idNumber}
+                        {person.department ? ` · ${person.department}` : ""}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <p className="px-3 py-6 text-sm text-muted-foreground">
+                  {people.length ? "No people match." : "No accounts yet."}
+                </p>
+              )}
+            </div>
+          </aside>
 
-                    {!isCollapsed
-                      ? group.visible.map((row, i) => {
-                          const key = rowKey(row);
-                          return (
-                            <tr key={key} className="transition-colors hover:bg-muted/40">
-                              <td className="py-1.5 pr-2 pl-7 align-middle">
-                                <input
-                                  type="checkbox"
-                                  aria-label={`Select ${row.label}`}
-                                  checked={selected.has(key)}
-                                  onChange={() => toggleRow(key)}
-                                />
-                              </td>
-                              <td className="min-w-0 py-1.5 pr-3 align-middle">
-                                <div className="flex min-w-0 items-center gap-2">
-                                  {/* An ID number broken across lines reads as two
-                                    different values. */}
-                                  <span className="font-medium whitespace-nowrap">{row.label}</span>
-                                  {row.secondary ? (
-                                    <span className="min-w-0 truncate text-xs text-muted-foreground">
-                                      {row.secondary}
-                                    </span>
-                                  ) : null}
-                                  <span className="ml-auto mr-2 rounded-full border px-1.5 py-px text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    {SCOPE_LABEL[row.kind]}
-                                  </span>
-                                </div>
-                              </td>
-                              {visibleApps.map((app) => {
-                                const outcome = row.apps[GRANTABLE_APP_KEYS.indexOf(app)];
-                                if (!outcome) return null;
-                                return (
-                                  <td
-                                    key={app}
-                                    className="py-1.5 pr-3 text-right align-middle max-md:pr-2"
-                                  >
-                                    <AccessCell
-                                      outcome={outcome}
-                                      busy={setRule.isPending || removeRule.isPending}
-                                      onChange={(next) => void setState(row, app, next)}
-                                    />
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })
-                      : null}
-                  </tbody>
-                );
-              })}
-            </table>
+          <div
+            // key forces a remount on tab or selection change, replaying the
+            // enter animation the same way InventoryLayout does on route change.
+            key={tab === "app" ? `app:${appKey}` : `person:${selectedPerson?.id ?? "none"}`}
+            className="min-w-0 lg:border-l lg:pl-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out"
+          >
+            {tab === "app" ? (
+              <AppDetail
+                app={appKey}
+                people={people}
+                rules={data.rules}
+                defaultAllow={data.defaults[appKey]}
+                showWho={showWho}
+                busy={busy}
+                removingId={
+                  removeRule.isPending && removeRule.variables ? removeRule.variables.id : null
+                }
+                onToggleWho={() => setShowWho((value) => !value)}
+                onDefault={(allow) => void chooseDefault(appKey, allow)}
+                onRemove={removeRuleFor}
+                onAdd={(mode) => setAddMode(mode)}
+              />
+            ) : selectedPerson ? (
+              <PersonDetail
+                person={selectedPerson}
+                busy={busy}
+                onSet={(app, next) => void setPersonAccess(selectedPerson, app, next)}
+              />
+            ) : (
+              <div className="py-10 text-center">
+                <p className="text-sm font-medium">No accounts yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Create an account in User management to give it access.
+                </p>
+              </div>
+            )}
           </div>
-
-          {/* Phones: one card per row, the app controls stacked underneath. No
-              sideways scrolling, and the name wraps instead of being cut off. */}
-          <div className="mt-3 space-y-3 md:hidden">
-            {paged.map((group) => {
-              const isCollapsed = collapsed.has(group.key);
-              return (
-                <div key={group.key}>
-                  {/* Group header — plain section title, matching the sidebar
-                      "Security" / "Activity" pattern: bold, no fill. */}
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 pt-1 pb-1 text-sm font-semibold text-foreground/80"
-                    onClick={() => toggleGroup(group.key)}
-                    aria-expanded={!isCollapsed}
-                  >
-                    {isCollapsed ? (
-                      <ChevronRight className="size-3.5" aria-hidden="true" />
-                    ) : (
-                      <ChevronDown className="size-3.5" aria-hidden="true" />
-                    )}
-                    {group.title}
-                    <span className="rounded-full border px-1.5 text-[10px] font-medium text-muted-foreground">
-                      {group.rows.length}
-                    </span>
-                  </button>
-                  {!isCollapsed ? (
-                    <div className="space-y-1.5 pl-3">
-                      {group.visible.map((row) => {
-                        const key = rowKey(row);
-                        return (
-                          <div key={key} className="rounded-lg border p-2.5">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <input
-                                type="checkbox"
-                                aria-label={`Select ${row.label}`}
-                                checked={selected.has(key)}
-                                onChange={() => toggleRow(key)}
-                              />
-                              <span className="min-w-0 truncate font-medium">{row.label}</span>
-                              <span className="ml-auto shrink-0 rounded-full border px-1.5 py-px text-[10px] uppercase tracking-wide text-muted-foreground">
-                                {SCOPE_LABEL[row.kind]}
-                              </span>
-                            </div>
-                            {row.secondary ? (
-                              <div className="mt-0.5 pl-6 text-[11px] text-muted-foreground">
-                                {row.secondary}
-                              </div>
-                            ) : null}
-                            <div className="mt-2 space-y-1.5">
-                              {visibleApps.map((app) => {
-                                const outcome = row.apps[GRANTABLE_APP_KEYS.indexOf(app)];
-                                if (!outcome) return null;
-                                return (
-                                  <div
-                                    key={app}
-                                    className="flex items-center justify-between gap-2"
-                                  >
-                                    <span className="text-xs text-muted-foreground">
-                                      {APP_LABELS[app]}
-                                    </span>
-                                    <AccessCell
-                                      outcome={outcome}
-                                      busy={setRule.isPending || removeRule.isPending}
-                                      onChange={(next) => void setState(row, app, next)}
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </>
+        </div>
       )}
 
-      {/* Bulk bar — only while something is ticked. */}
-      {selected.size > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
-          <span className="text-xs text-muted-foreground">{selected.size} selected</span>
-          {GRANTABLE_APP_KEYS.map((app) => (
-            <span key={app} className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={setRule.isPending || removeRule.isPending}
-                onClick={() => void bulk(app, true)}
-              >
-                Allow {APP_LABELS[app]}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={setRule.isPending || removeRule.isPending}
-                onClick={() => void bulk(app, false)}
-              >
-                Block {APP_LABELS[app]}
-              </Button>
-            </span>
-          ))}
-          <button
-            type="button"
-            className="ml-auto text-xs text-muted-foreground underline"
-            onClick={() => setSelected(new Set())}
-          >
-            Clear selection
-          </button>
-        </div>
+      {addMode && data ? (
+        <AddRuleDialog
+          key={`${appKey}:${addMode}`}
+          appKey={appKey}
+          kind={addMode}
+          people={data.people}
+          departments={data.departments}
+          positions={data.positions}
+          rules={data.rules}
+          busy={setRule.isPending}
+          onClose={() => setAddMode(null)}
+          onSubmit={(scope, value) => void addRule(scope, value)}
+        />
       ) : null}
-
-      {/* Footer */}
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-        <span>
-          Showing {Math.min(perPage, totalRows)} of {totalRows}
-          {/* When a group chip is on, the denominator is what All holds — so
-              the row count never silently shrinks under you. */}
-          {scope !== "all" && groupCount("all") !== totalRows
-            ? ` (${groupCount("all")} in all)`
-            : ""}
-        </span>
-        <span className="hidden md:inline">
-          · New apps appear as extra columns; scroll sideways, the name column stays put.
-        </span>
-        <label className="ml-auto flex items-center gap-1.5">
-          Rows per page
-          <select
-            className="h-7 rounded border bg-background px-1.5"
-            value={perPage}
-            onChange={(e) => setPerPage(Number(e.target.value))}
-          >
-            {[10, 25, 50, 100].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {/* What each value means. A two-column definition list rather than a
-          wrapping flex row — the pills and their explanations drifted apart
-          the moment the text wrapped. */}
-      <div className="mt-4 border-t pt-3">
-        <h4 className="text-xs font-semibold text-foreground">Key</h4>
-        {/* The pill column is sized to the widest pill, not a guess: at 11rem
-            the ~4.5rem pills left 100px of dead space between each one and its
-            explanation, which read as four unrelated captions. */}
-        <dl className="mt-2 grid gap-x-3 gap-y-2 text-xs text-muted-foreground sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-center">
-          <dt>
-            <Legend tone="always">Always</Legend>
-          </dt>
-          <dd>An administrator. They have every app, and it cannot be changed here.</dd>
-
-          <dt>
-            <Legend tone="allowed">Allowed</Legend>
-          </dt>
-          <dd>A rule on this row allows this app.</dd>
-
-          <dt>
-            <Legend tone="blocked">Blocked</Legend>
-          </dt>
-          <dd>A rule on this row blocks this app.</dd>
-
-          <dt>
-            <Legend tone="default">By default</Legend>
-          </dt>
-          <dd>No rule on this row. Staff can use SwiftSlip this way, but not the Inventory.</dd>
-        </dl>
-        <p className="mt-3 max-w-2xl text-xs text-muted-foreground">
-          If more than one could apply, the narrowest wins: the person&apos;s own choice beats their
-          Department&apos;s, which beats their Position&apos;s. The Admin Panel is not listed here —
-          it is granted by the Administrator access level alone.
-        </p>
-      </div>
     </section>
   );
 }
 
-function ScopeChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={`h-6 rounded-full border px-2 text-[11px] transition-colors ${
-        // Byte-for-byte the filter chips on User management — same height,
-        // same solid-fill active state, same inactive border. A tint here
-        // looked tidier in isolation but made the two screens disagree.
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "bg-background text-muted-foreground hover:bg-muted"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Legend({
-  tone,
-  children,
-}: {
-  tone: "always" | "allowed" | "blocked" | "default";
-  children: React.ReactNode;
-}) {
-  const toneClass =
-    tone === "blocked"
-      ? "border-destructive/40 bg-destructive/10 text-destructive"
-      : tone === "default"
-        ? // Was dashed + muted-foreground: on the card background that is all
-          // but invisible, and the one entry people most need to recognise.
-          "border-border bg-muted/70 text-foreground/80 border-dashed"
-        : "border-primary/40 bg-primary/15 text-primary";
-  // "By default" carries no mark on purpose — it means no rule was set, and a
-  // tick there would claim a grant that does not exist.
-  const mark =
-    tone === "default" ? null : tone === "blocked" ? (
-      <Minus className="size-3" />
-    ) : (
-      <Check className="size-3" />
-    );
-  return (
-    <span
-      className={`inline-flex w-full items-center justify-center gap-1 rounded-full border px-2 py-0.5 font-medium ${toneClass}`}
-    >
-      {mark}
-      {children}
-    </span>
-  );
-}
-
-function AccessCell({
-  outcome,
+function AppDetail({
+  app,
+  people,
+  rules,
+  defaultAllow,
+  showWho,
   busy,
-  onChange,
+  removingId,
+  onToggleWho,
+  onDefault,
+  onRemove,
+  onAdd,
 }: {
-  outcome: Outcome;
+  app: GrantableAppKey;
+  people: Person[];
+  rules: Rule[];
+  defaultAllow: boolean;
+  showWho: boolean;
   busy: boolean;
-  onChange: (next: CellState) => void;
+  removingId: string | null;
+  onToggleWho: () => void;
+  onDefault: (allow: boolean) => void;
+  onRemove: (rule: Rule) => void;
+  onAdd: (mode: "allow" | "block") => void;
 }) {
-  // Administrators are locked in: shown as a static pill rather than a control
-  // that silently does nothing when clicked.
-  if (outcome.admin) {
-    return (
-      <span
-        className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2.5 py-1 text-xs font-medium text-primary"
-        title="Administrators always have access to every app."
-      >
-        <Check className="size-3.5" aria-hidden="true" />
-        Always
-      </span>
-    );
-  }
-
-  const value: CellState = outcome.byRule ? (outcome.allowed ? "allowed" : "blocked") : "default";
-  const inherited = outcome.allowed ? "On by default" : "Off by default";
-
-  const tone =
-    value === "allowed"
-      ? "border-primary/40 bg-primary/15 text-primary"
-      : value === "blocked"
-        ? "border-destructive/40 bg-destructive/10 text-destructive"
-        : "border-dashed text-muted-foreground";
+  const can = people.filter((person) => outcomeOf(person, app)?.allowed).length;
+  const appRules = rules.filter((rule) => rule.app_key === app);
+  const allowed = appRules.filter((rule) => rule.allow);
+  const blocked = appRules.filter((rule) => !rule.allow);
 
   return (
-    <select
-      className={`h-8 rounded-full border px-2 text-xs font-medium ${tone} disabled:opacity-60`}
-      value={value}
-      disabled={busy}
-      aria-label="Access"
-      title="Pick what this row gets for this app."
-      onChange={(e) => onChange(e.target.value as CellState)}
+    <div>
+      <h3 className="text-2xl font-semibold tracking-tight">{APP_LABELS[app]}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {can} of {people.length} {people.length === 1 ? "person" : "people"} can open this app.
+        {people.length ? (
+          <>
+            {" "}
+            <button
+              type="button"
+              onClick={onToggleWho}
+              className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
+            >
+              {showWho ? "Hide list" : "See who"}
+            </button>
+          </>
+        ) : null}
+      </p>
+
+      {showWho ? (
+        <div
+          key="who-list"
+          className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out"
+        >
+          <WhoList app={app} people={people} />
+        </div>
+      ) : null}
+
+      <section className="mt-6">
+        <h4 className="text-sm font-semibold">Starting point</h4>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          What a staff account gets before any rule on this app is applied.
+        </p>
+        <div className="mt-2 overflow-hidden rounded-lg border">
+          {[
+            {
+              allow: true,
+              title: "Everyone can open it",
+              detail: "Staff see this app unless a rule blocks them.",
+            },
+            {
+              allow: false,
+              title: "No one can open it until allowed",
+              detail: "Staff need an allow rule to see this app.",
+            },
+          ].map((option) => (
+            <label
+              key={String(option.allow)}
+              className={`flex cursor-pointer items-start gap-3 border-b px-3 py-2.5 transition-colors last:border-b-0 ${
+                defaultAllow === option.allow ? "bg-primary/[0.04]" : "hover:bg-muted/40"
+              }`}
+            >
+              <input
+                type="radio"
+                name={`starting-point-${app}`}
+                className="mt-0.5 accent-primary"
+                checked={defaultAllow === option.allow}
+                disabled={busy}
+                onChange={() => onDefault(option.allow)}
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">{option.title}</span>
+                <span className="block text-xs text-muted-foreground">{option.detail}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <RuleSection
+        title="Always allowed"
+        hint="These people, departments, or positions can open it even when the starting point is closed."
+        rules={allowed}
+        people={people}
+        busy={busy}
+        removingId={removingId}
+        onRemove={onRemove}
+        onAdd={() => onAdd("allow")}
+      />
+      <RuleSection
+        title="Blocked"
+        hint="These people, departments, or positions can't open it, even if the starting point is open."
+        rules={blocked}
+        people={people}
+        busy={busy}
+        removingId={removingId}
+        onRemove={onRemove}
+        onAdd={() => onAdd("block")}
+      />
+
+      <p className="mt-6 max-w-2xl border-t pt-3 text-xs leading-5 text-muted-foreground">
+        Administrators always have every app and can&apos;t be limited here. When rules overlap, the
+        narrowest wins: a person&apos;s own rule beats their department&apos;s, which beats their
+        position&apos;s.
+      </p>
+    </div>
+  );
+}
+
+function WhoList({ app, people }: { app: GrantableAppKey; people: Person[] }) {
+  return (
+    <div className="mt-4 overflow-hidden rounded-lg border">
+      {people.length ? (
+        people.map((person) => {
+          const outcome = outcomeOf(person, app);
+          const allowed = Boolean(outcome?.allowed);
+          return (
+            <div
+              key={person.id}
+              className="flex items-start gap-3 border-b px-3 py-2.5 last:border-b-0"
+            >
+              {person.isAdmin ? (
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              ) : allowed ? (
+                <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              ) : (
+                <X className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="flex items-baseline gap-2">
+                  <span
+                    className={`truncate text-sm font-medium ${
+                      person.name ? "" : "italic text-muted-foreground"
+                    }`}
+                  >
+                    {person.name || "No name set"}
+                  </span>
+                  <span className="shrink-0 text-xs font-normal text-muted-foreground">
+                    {person.idNumber}
+                  </span>
+                </p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {reasonFor(person, app)}
+                </p>
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <p className="px-3 py-4 text-sm text-muted-foreground">No accounts yet.</p>
+      )}
+    </div>
+  );
+}
+
+function RuleSection({
+  title,
+  hint,
+  rules,
+  people,
+  busy,
+  removingId,
+  onRemove,
+  onAdd,
+}: {
+  title: string;
+  hint: string;
+  rules: Rule[];
+  people: Person[];
+  busy: boolean;
+  removingId: string | null;
+  onRemove: (rule: Rule) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <section className="mt-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <h4 className="text-sm font-semibold">{title}</h4>
+        {rules.length ? (
+          <span className="text-xs text-muted-foreground">{rules.length}</span>
+        ) : null}
+      </div>
+      <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+
+      {rules.length ? (
+        <div className="mt-2">
+          {rules.map((rule) => (
+            <RuleRow
+              key={rule.id}
+              rule={rule}
+              people={people}
+              busy={busy}
+              removing={rule.id === removingId}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">Nobody added yet.</p>
+      )}
+
+      <button
+        type="button"
+        onClick={onAdd}
+        className="mt-2 flex w-full items-center gap-2 rounded-md border border-dashed px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:border-input hover:bg-muted/40 hover:text-foreground"
+      >
+        <Plus className="size-4 shrink-0" aria-hidden="true" />
+        Add a department, position, or person
+      </button>
+    </section>
+  );
+}
+
+function RuleRow({
+  rule,
+  people,
+  busy,
+  removing,
+  onRemove,
+}: {
+  rule: Rule;
+  people: Person[];
+  busy: boolean;
+  removing: boolean;
+  onRemove: (rule: Rule) => void;
+}) {
+  const person = rule.scope === "user" ? people.find((p) => p.id === rule.scope_value) : null;
+  const removed = rule.scope === "user" && !person;
+  const primary = person
+    ? person.name || "No name set"
+    : removed
+      ? "Removed account"
+      : rule.scope_value;
+  const secondary = person
+    ? `${person.idNumber} · ${SCOPE_LABELS[rule.scope]}`
+    : removed
+      ? "Person · no longer signed in"
+      : SCOPE_LABELS[rule.scope];
+  const Icon = rule.scope === "user" ? User : rule.scope === "department" ? Building2 : Briefcase;
+  const noName = removed || (person ? !person.name : false);
+
+  return (
+    <div
+      className={`flex items-center gap-3 border-b py-2.5 transition-opacity last:border-b-0 ${
+        removing ? "opacity-60" : ""
+      }`}
+      aria-busy={removing}
     >
-      <option value="default">{inherited}</option>
-      <option value="allowed">Allowed</option>
-      <option value="blocked">Blocked</option>
-    </select>
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="size-3.5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p
+          className={`truncate text-sm font-medium ${noName ? "italic text-muted-foreground" : ""}`}
+        >
+          {primary}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {removing ? "Removing…" : secondary}
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onRemove(rule)}
+        aria-label={removing ? `Removing ${primary}` : `Remove ${primary}`}
+        aria-busy={removing}
+        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive disabled:opacity-50"
+      >
+        {removing ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        ) : (
+          <X className="size-4" aria-hidden="true" />
+        )}
+      </button>
+    </div>
+  );
+}
+
+function PersonDetail({
+  person,
+  busy,
+  onSet,
+}: {
+  person: Person;
+  busy: boolean;
+  onSet: (app: GrantableAppKey, next: PersonState) => void;
+}) {
+  const meta = [`ID ${person.idNumber}`, person.position, person.department]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div>
+      <h3 className="text-2xl font-semibold tracking-tight">
+        {person.name || <span className="italic text-muted-foreground">No name set</span>}
+      </h3>
+      <p className="mt-1 text-sm text-muted-foreground">{meta}</p>
+      {person.isAdmin ? (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground/70" aria-hidden="true" />
+          <p>Administrator — every app is always open. Admin access can&apos;t be limited here.</p>
+        </div>
+      ) : (
+        <p className="mt-2 max-w-[38rem] text-xs leading-5 text-muted-foreground">
+          Follow rules uses the starting point and any department or position rules. Allow or Block
+          overrides them for this person only.
+        </p>
+      )}
+
+      <div className="mt-4 border-t">
+        {GRANTABLE_APP_KEYS.map((app) => {
+          const outcome = outcomeOf(person, app);
+          if (!outcome) return null;
+          const state: PersonState =
+            outcome.byScope === "user" ? (outcome.allowed ? "allow" : "block") : "follow";
+          return (
+            <div
+              key={app}
+              className="flex flex-col gap-3 border-b py-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  {outcome.allowed ? (
+                    <Check className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                  ) : (
+                    <X className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  )}
+                  <span>
+                    {APP_LABELS[app]}: {outcome.allowed ? "can open" : "can't open"}
+                  </span>
+                </p>
+                <p className="mt-0.5 pl-6 text-xs text-muted-foreground">
+                  {reasonFor(person, app)}
+                </p>
+              </div>
+
+              {person.isAdmin ? (
+                <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-md border bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                  <ShieldCheck className="size-3.5" aria-hidden="true" />
+                  Always
+                </span>
+              ) : (
+                <div
+                  role="radiogroup"
+                  aria-label={`${APP_LABELS[app]} access for ${person.name || person.idNumber}`}
+                  className="inline-flex w-fit shrink-0 rounded-md border bg-muted/30 p-0.5"
+                >
+                  {PERSON_STATES.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={state === option.value}
+                      disabled={busy}
+                      onClick={() => onSet(app, option.value)}
+                      className={`rounded px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-60 ${
+                        state === option.value
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AddRuleDialog({
+  appKey,
+  kind,
+  people,
+  departments,
+  positions,
+  rules,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  appKey: GrantableAppKey;
+  kind: "allow" | "block";
+  people: Person[];
+  departments: string[];
+  positions: string[];
+  rules: Rule[];
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (scope: RuleScope, value: string) => void;
+}) {
+  const [scope, setScope] = useState<RuleScope>("user");
+  const [term, setTerm] = useState("");
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const appRules = rules.filter((rule) => rule.app_key === appKey);
+
+  const rows =
+    scope === "user"
+      ? people
+          .filter((person) => !person.isAdmin)
+          .map((person) => ({
+            value: person.id,
+            label: person.name || "No name set",
+            secondary: `${person.idNumber}${person.position ? ` · ${person.position}` : ""}`,
+            search: `${person.name} ${person.idNumber} ${person.position} ${person.department}`,
+          }))
+      : (scope === "department" ? departments : positions).map((value) => {
+          const count = people.filter(
+            (person) => (scope === "department" ? person.department : person.position) === value,
+          ).length;
+          return {
+            value,
+            label: value,
+            secondary: count ? `${count} ${count === 1 ? "person" : "people"}` : "No one currently",
+            search: value,
+          };
+        });
+
+  const query = term.trim().toLowerCase();
+  const filtered = rows.filter((row) => !query || row.search.toLowerCase().includes(query));
+
+  const isAlready = (value: string) =>
+    appRules.some(
+      (rule) =>
+        rule.scope === scope && rule.scope_value === value && rule.allow === (kind === "allow"),
+    );
+
+  const currentState = (value: string) =>
+    appRules.find((rule) => rule.scope === scope && rule.scope_value === value) ?? null;
+
+  return (
+    <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            {kind === "allow" ? "Allow access to" : "Block access to"} {APP_LABELS[appKey]}
+          </DialogTitle>
+          <DialogDescription>
+            Pick a person, department, or position. The rule applies only to this app.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-wrap items-center gap-1 rounded-md border bg-muted/30 p-0.5">
+          {(["user", "department", "position"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={scope === value}
+              onClick={() => {
+                setScope(value);
+                setPicked(null);
+                setTerm("");
+              }}
+              className={`flex-1 rounded px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                scope === value
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {SCOPE_LABELS[value]}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder={scope === "user" ? "Search name, ID, or position…" : `Search ${scope}s…`}
+            className="pl-8"
+            aria-label={`Search ${scope}s`}
+          />
+        </div>
+
+        <div className="max-h-64 overflow-y-auto rounded-md border">
+          {filtered.length ? (
+            filtered.map((row) => {
+              const already = isAlready(row.value);
+              const current = currentState(row.value);
+              const active = picked === row.value;
+              return (
+                <button
+                  key={row.value}
+                  type="button"
+                  disabled={already}
+                  onClick={() => setPicked(row.value)}
+                  className={`flex w-full items-center gap-3 border-b px-3 py-2.5 text-left transition-colors last:border-b-0 ${
+                    active ? "bg-primary/[0.06]" : "hover:bg-muted/40"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{row.label}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {row.secondary}
+                    </span>
+                  </span>
+                  {already ? (
+                    <span className="shrink-0 text-[11px] text-muted-foreground">Added</span>
+                  ) : current ? (
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      {current.allow ? "Allowed" : "Blocked"}
+                    </span>
+                  ) : null}
+                  {active ? (
+                    <Check className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                  ) : null}
+                </button>
+              );
+            })
+          ) : (
+            <p className="px-3 py-6 text-center text-sm text-muted-foreground">
+              {scope === "user" ? "No staff accounts match." : "Nothing matches."}
+            </p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <button type="button" className="btn btn-outline" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!picked || busy || isAlready(picked)}
+            onClick={() => picked && onSubmit(scope, picked)}
+          >
+            {busy ? "Saving…" : kind === "allow" ? "Allow" : "Block"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AccessSkeleton() {
+  return (
+    <div className="mt-5 grid gap-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-0" aria-hidden="true">
+      <div className="lg:pr-6">
+        <div className="h-9 border-b bg-muted/40" />
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="space-y-2 border-b py-3">
+            <div className="h-3.5 w-32 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-20 animate-pulse rounded bg-muted/70" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-4 lg:border-l lg:pl-6">
+        <div className="h-7 w-40 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-16 animate-pulse rounded-lg bg-muted/60" />
+        ))}
+      </div>
+    </div>
   );
 }

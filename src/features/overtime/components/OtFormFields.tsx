@@ -1,9 +1,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Loader2, Wand2, X } from "lucide-react";
+import { Loader2, PencilLine, Sparkles, X } from "lucide-react";
 
 import { writeOtReason } from "@/api/ot.functions";
 import { AiMascot } from "@/components/common/AiMascot";
-import { SignatureField } from "@/features/records/components/SignaturePad";
 import { toast } from "@/lib/toast";
 import type { OtForm } from "@/shared/types";
 
@@ -15,94 +14,158 @@ function Req() {
   );
 }
 
+/**
+ * The top of the OT sheet: the employee identity block and the Date & Time
+ * Filed box. The four identity values are the paper form's header boxes as
+ * underline inputs, the way the OB sheet draws them, and each one stays editable
+ * (`canEdit` gates it): the profile only seeds a new form. The editor supplies
+ * the sheet around this and the rules between its blocks.
+ */
 export function OtFormFields({
   form,
   setForm,
   canEdit,
-  savedSignature,
 }: {
   form: OtForm;
   setForm: (form: OtForm) => void;
   canEdit: boolean;
-  savedSignature?: string | undefined;
 }) {
+  const patch = (next: Partial<OtForm>) => setForm({ ...form, ...next });
+
   return (
-    <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        <Field
+    <div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 @xl:grid-cols-4">
+        <Identity
           required
           label="ID Number"
           value={form.id_number}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, id_number: v })}
+          onChange={(v) => patch({ id_number: v })}
         />
-        <Field
+        <Identity
           required
           label="Employee Name"
           value={form.employee_name}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, employee_name: v })}
+          onChange={(v) => patch({ employee_name: v })}
         />
-        <Field
-          label="Date & Time Filed"
-          placeholder="e.g. 10/06/2026 3:30 PM"
-          value={form.date_filed}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, date_filed: v })}
-        />
-        <Field
+        <Identity
           required
           label="Department / Location"
           value={form.department}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, department: v })}
+          onChange={(v) => patch({ department: v })}
         />
-        <Field
+        <Identity
           required
           label="Position"
           value={form.position}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, position: v })}
+          onChange={(v) => patch({ position: v })}
         />
       </div>
 
-      <div className="mt-3">
-        <ReasonField
-          value={form.reasons}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, reasons: v })}
-        />
+      {/* The one dated box of the header, capped so a lone field doesn't stretch
+          the whole width of the sheet. `datetime-local` gives it the native
+          calendar + clock picker the other forms' dated boxes have, while still
+          keeping the time this sheet prints. */}
+      <div className="mt-6 border-t pt-5">
+        <div className="max-w-sm">
+          <Field
+            label="Date & Time Filed"
+            type="datetime-local"
+            value={form.date_filed}
+            disabled={!canEdit}
+            onChange={(v) => patch({ date_filed: v })}
+          />
+        </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+/**
+ * The lower half of the OT sheet — the reason and the three sign-off boxes
+ * the paper form prints under it. The editor puts the entries block between
+ * this and the header block, then the employee signature below it.
+ */
+export function OtReasonAndApprovals({
+  form,
+  setForm,
+  canEdit,
+}: {
+  form: OtForm;
+  setForm: (form: OtForm) => void;
+  canEdit: boolean;
+}) {
+  const patch = (next: Partial<OtForm>) => setForm({ ...form, ...next });
+
+  return (
+    <div>
+      <ReasonField
+        value={form.reasons}
+        disabled={!canEdit}
+        onChange={(v) => patch({ reasons: v })}
+      />
+
+      <div className="mt-5 grid gap-2 sm:grid-cols-3">
         <Field
           label="Approved by"
           placeholder="Supervisor / Department Head or Manager"
           value={form.approved_by}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, approved_by: v })}
+          onChange={(v) => patch({ approved_by: v })}
         />
         <Field
           label="Received by"
           value={form.received_by}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, received_by: v })}
+          onChange={(v) => patch({ received_by: v })}
         />
         <Field
           label="Processed by"
           value={form.processed_by}
           disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, processed_by: v })}
+          onChange={(v) => patch({ processed_by: v })}
         />
       </div>
+    </div>
+  );
+}
 
-      <SignatureField
-        value={form.employee_signature}
-        disabled={!canEdit}
-        savedSignature={savedSignature}
-        onChange={(v) => setForm({ ...form, employee_signature: v })}
+/**
+ * One identity value: the label with an underline input beneath it, so a filled
+ * and an empty cell read like the paper sheet's header instead of a box dropped
+ * into the form.
+ */
+function Identity({
+  label,
+  value,
+  disabled,
+  required = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  /** Puts the red required mark after the label text. */
+  required?: boolean;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="block text-[13px] font-medium text-foreground/70">
+        {label}
+        {required ? <Req /> : null}
+      </span>
+      <input
+        type="text"
+        className="mt-1.5 w-full border-0 border-b border-transparent bg-transparent p-0 text-[15px] leading-snug font-semibold text-foreground outline-none transition-colors hover:border-border focus:border-primary/60 disabled:cursor-not-allowed disabled:text-muted-foreground"
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
       />
-    </section>
+    </label>
   );
 }
 
@@ -112,6 +175,7 @@ function Field({
   disabled,
   required = false,
   placeholder,
+  type = "text",
   onChange,
 }: {
   label: string;
@@ -119,6 +183,8 @@ function Field({
   disabled: boolean;
   required?: boolean;
   placeholder?: string;
+  /** `datetime-local` gives the dated box the native calendar/clock picker. */
+  type?: string;
   onChange: (v: string) => void;
 }) {
   return (
@@ -129,7 +195,7 @@ function Field({
       </span>
       <input
         className="inp"
-        type="text"
+        type={type}
         disabled={disabled}
         placeholder={placeholder}
         value={value}
@@ -185,7 +251,7 @@ function ReasonField({
   async function runEnhance() {
     if (busy) return;
     if (!value.trim()) {
-      toast.error("Write a rough reason first, or use Generate.");
+      toast.error("Write a rough reason first, or use Write for me.");
       return;
     }
     setBusy("enhance");
@@ -209,10 +275,12 @@ function ReasonField({
           <Req />
         </span>
         {!disabled ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              className={`btn btn-outline h-6 gap-1 px-2 text-[11px] ${genOpen ? "bg-primary/10 text-primary" : ""}`}
+              className={`inline-flex items-center gap-1 text-xs font-medium transition-colors ${
+                genOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
               disabled={busy !== null}
               title="Let AI write a reason from a few notes"
               onClick={() => setGenOpen((v) => !v)}
@@ -220,13 +288,13 @@ function ReasonField({
               {busy === "generate" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <AiMascot size="xs" />
+                <Sparkles className="size-3.5" aria-hidden="true" />
               )}
-              Generate
+              Write for me
             </button>
             <button
               type="button"
-              className="btn btn-outline h-6 gap-1 px-2 text-[11px]"
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               disabled={busy !== null}
               title="Let AI polish the current reason"
               onClick={runEnhance}
@@ -234,9 +302,9 @@ function ReasonField({
               {busy === "enhance" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Wand2 className="size-3.5" aria-hidden="true" />
+                <PencilLine className="size-3.5" aria-hidden="true" />
               )}
-              Enhance
+              Improve wording
             </button>
           </div>
         ) : null}
@@ -287,7 +355,7 @@ function ReasonField({
               ) : (
                 <AiMascot size="xs" />
               )}
-              Generate
+              Write it
             </button>
           </div>
         </div>

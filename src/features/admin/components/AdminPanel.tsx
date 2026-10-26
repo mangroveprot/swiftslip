@@ -9,7 +9,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { MobileSidebarDrawer } from "@/components/layout/MobileSidebarDrawer";
@@ -22,6 +22,7 @@ import {
 } from "@/components/layout/sidebar-ui";
 import { APP } from "@/config/app";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import type { ActivityLogActionFilter } from "@/shared/schemas";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
 import { AppAccess } from "./AppAccess";
@@ -53,14 +54,27 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
 export function AdminPanel() {
   const { data: session } = useQuery(sessionQueryOptions());
   const [section, setSection] = useState<Section>("dashboard");
+  const [logFilter, setLogFilter] = useState<ActivityLogActionFilter | "all">("all");
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // A dashboard link can open Activity logs already narrowed to sign-ins.
+  const navigate = (next: Section, filter?: ActivityLogActionFilter) => {
+    if (next === "logs") setLogFilter(filter ?? "all");
+    setSection(next);
+  };
+  // The session query is seeded by the route loader, but the query cache is not
+  // available on the first client paint. Keep the footer's initial markup
+  // identical on both sides, then fill in the name after mount.
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const sidebar = (
     <AdminSidebar
       section={section}
-      onSelect={(next) => setSection(next)}
-      label={session?.label}
-      idNumber={session?.idNumber}
+      onSelect={(next) => navigate(next)}
+      label={mounted ? session?.label : undefined}
+      idNumber={mounted ? session?.idNumber : undefined}
       onNavigate={() => setMenuOpen(false)}
     />
   );
@@ -95,16 +109,16 @@ export function AdminPanel() {
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div
           key={section}
-          className={`${section === "dashboard" ? "max-w-[100rem]" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out`}
+          className={`${section === "dashboard" ? "max-w-6xl" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out`}
         >
           {section === "dashboard" ? (
-            <AdminDashboard />
+            <AdminDashboard onNavigate={navigate} />
           ) : section === "users" ? (
             <UserManagement />
           ) : section === "access" ? (
             <AppAccess />
           ) : (
-            <ActivityLogs />
+            <ActivityLogs initialFilter={logFilter} />
           )}
         </div>
       </div>
@@ -154,10 +168,9 @@ function AdminSidebar({
 
       <SidebarFooter
         name={label || "Administrator"}
-        // The ID number under the full name — the old second line repeated
-        // "Administrator" for no reason. Hidden for cookies issued before the
-        // session carried the ID number (sign in again to get it).
-        sublabel={idNumber || undefined}
+        // The ID number under the full name. Hide it when the account has no
+        // display name yet (label is the ID) so the footer doesn't repeat it.
+        sublabel={idNumber && idNumber !== label ? idNumber : undefined}
       >
         <Link to="/choose" onClick={onNavigate} className={SIDEBAR_ACTION_CLASS}>
           <LayoutGrid className="size-4" aria-hidden="true" />

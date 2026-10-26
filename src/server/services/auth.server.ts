@@ -1,14 +1,10 @@
+import {
+  hashPassword,
+  passwordHashNeedsUpgrade,
+  verifyPasswordHash,
+} from "@/server/auth/password.server";
 import { getDb } from "@/server/db/client.server";
-import { hashPassword, verifyPasswordHash } from "@/server/auth/password.server";
 import type { Role, SessionUser } from "@/shared/types";
-
-/**
- * Escape a value so it can be matched verbatim with ILIKE — case-insensitive
- * equality without turning `%` / `_` in the ID number into wildcards.
- */
-function escapeLike(value: string) {
-  return value.replace(/[\\%_]/g, (m) => `\\${m}`);
-}
 
 /** Returns the account for that ID number + password, or `null` if either is wrong. */
 export async function verifyPassword(
@@ -17,10 +13,16 @@ export async function verifyPassword(
 ): Promise<SessionUser | null> {
   const normalized = idNumber.trim();
   if (!normalized) return null;
-  const { data, error } = await getDb()
+
+  // Exact match, deliberately. The unique index on `users.id_number` is
+  // case-sensitive, so an ILIKE lookup could return two rows (and `.maybeSingle()`
+  // would then throw, locking both accounts out). Sign-in has to use the same
+  // comparison the index guarantees.
+  const db = getDb();
+  const { data, error } = await db
     .from("users")
     .select("id,role,id_number,password_hash")
-    .ilike("id_number", escapeLike(normalized))
+    .eq("id_number", normalized)
     .maybeSingle();
   if (error) {
     // The id_number column arrives with a migration — fail with something the
@@ -39,12 +41,25 @@ export async function verifyPassword(
     }
     throw new Error(error.message);
   }
-  if (!data || !verifyPasswordHash(password, data.password_hash)) return null;
+  if (!data || !(await verifyPasswordHash(password, data.password_hash))) return null;
+
+  // Transparent upgrade: a correct sign-in is the only moment the plaintext is
+  // available, so it is also the moment to move a legacy (or older-iteration)
+  // hash to the current scheme. A failure here must never block the login.
+  if (passwordHashNeedsUpgrade(data.password_hash)) {
+    try {
+      const upgraded = await hashPassword(password);
+      await db.from("users").update({ password_hash: upgraded }).eq("id", data.id);
+    } catch (upgradeError) {
+      console.error("[auth] Could not upgrade the password hash:", upgradeError);
+    }
+  }
+
   // The sidebar's "Signed in as …" uses the profile's real full name (the old
   // free-text label column is gone), falling back to the ID number when the
   // employee hasn't filled in their profile yet. A failed profile lookup must
   // never block signing in — the ID number always works.
-  const { data: profile } = await getDb()
+  const { data: profile } = await db
     .from("profiles")
     .select("full_name")
     .eq("access_code_id", data.id)

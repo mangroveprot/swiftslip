@@ -16,6 +16,7 @@ export function SignatureField({
   required = false,
   savedSignature,
   onChange,
+  variant = "default",
 }: {
   value: string;
   disabled: boolean;
@@ -29,6 +30,11 @@ export function SignatureField({
    */
   savedSignature?: string | undefined;
   onChange: (dataUrl: string) => void;
+  /**
+   * `ob` keeps the same label row and clickable preview button as every other
+   * form, but drops the extra top divider — the OB sheet already draws one.
+   */
+  variant?: "default" | "ob";
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -44,9 +50,9 @@ export function SignatureField({
   }
 
   return (
-    <div className="mt-3 border-t pt-3">
+    <div className={variant === "ob" ? "" : "mt-3 border-t pt-3"}>
       <div className="flex items-center justify-between gap-2">
-        <p className="lbl mb-0">
+        <p className={variant === "ob" ? "text-[13px] font-medium text-foreground/70" : "lbl mb-0"}>
           Employee signature
           {required ? (
             <span aria-hidden="true" className="ml-0.5 text-destructive">

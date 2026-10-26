@@ -3,20 +3,28 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  Download,
   FileDown,
   Loader2,
   Maximize2,
   Printer,
-  Save as SaveIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { createCosForm, saveCosForm } from "@/api/cos.functions";
+import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
 import { isMissingRow } from "@/lib/missing-row";
-import { EditorSkeleton } from "@/components/common/Skeletons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSession } from "@/features/auth/use-session";
+import { SignatureField } from "@/features/records/components/SignaturePad";
 import { profileQueryOptions } from "@/features/profile/queries";
 import {
   createAutoSave,
@@ -31,6 +39,7 @@ import {
   writeDraft,
 } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
+import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { CosForm, CosSchedule } from "@/shared/types";
@@ -40,7 +49,8 @@ import { isBlankSchedule } from "../lib/schedule-line";
 import { cosFormQueryOptions, cosFormsQueryOptions } from "../queries";
 import { CosAssistantChat } from "./CosAssistantChat";
 import { CosAttachmentCard } from "./CosAttachmentCard";
-import { CosFormFields } from "./CosFormFields";
+import { CosEditorSkeleton } from "./CosEditorSkeleton";
+import { CosFormFields, CosReasonAndApprovals } from "./CosFormFields";
 import { CosPreview } from "./CosPreview";
 import { CosScheduleTable } from "./CosScheduleTable";
 
@@ -272,7 +282,7 @@ function CosEditorBody({
 
   if (isError && isMissingRow(error))
     return <FormUnavailable backTo="/change-of-schedule" label="Change of Schedule forms" />;
-  if (!form) return <EditorSkeleton />;
+  if (!form) return <CosEditorSkeleton />;
 
   /** Explicit Save — writes now rather than waiting for the timer. */
   async function persist(f: CosForm, schedules: CosSchedule[]) {
@@ -356,29 +366,92 @@ function CosEditorBody({
     />
   );
 
+  // The header shows the save state beside the buttons (the OB treatment), so
+  // the same snapshot comparison the auto-save uses decides the wording.
+  const snapshot = localRef.current ?? "";
+  const dirty = rowIdRef.current
+    ? snapshot !== auto.persistedSnapshot()
+    : auto.belowBaseline(snapshot);
+  const statusLabel =
+    saveStatus === "saving"
+      ? "Saving…"
+      : saveStatus === "error"
+        ? "Save failed"
+        : saveStatus === "saved"
+          ? "Saved"
+          : dirty
+            ? "Unsaved changes"
+            : "";
+
   return (
-    <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
-      <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
+    <main className="flex min-h-0 flex-col px-4 py-3 md:px-6 md:py-5 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
+      <header className="no-print mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
           <Link
             to="/change-of-schedule"
-            className="btn btn-outline mt-0.5 size-9 shrink-0 p-0"
-            aria-label="Back to change of schedule forms"
-            title="Back to change of schedule forms"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
+            Change of Schedule
           </Link>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Change of Schedule
-            </p>
-            <h1 className="text-2xl font-semibold leading-tight">Change of Schedule Form</h1>
-          </div>
+          <PageTitle className="mt-2">Change of Schedule Form</PageTitle>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
+          {canEdit && statusLabel ? (
+            <span
+              className={`mr-1 text-sm ${
+                saveStatus === "error" ? "text-destructive" : "text-muted-foreground"
+              }`}
+            >
+              {statusLabel}
+            </span>
+          ) : null}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="btn btn-outline" aria-label="Export this form">
+                <Download className="size-4" aria-hidden="true" />
+                <span>Export</span>
+                <ChevronDown className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card text-foreground">
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void savePdfFrom(
+                    "cos-sheet",
+                    pdfFileName(APP.name, "COS", form.employee_name || "form"),
+                  )
+                }
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                onSelect={() => window.setTimeout(() => window.print(), 0)}
+              >
+                <Printer className="size-4" aria-hidden="true" />
+                Print
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() => void download()}
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Download Word
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {canEdit ? (
             <button
-              className="btn btn-primary"
+              type="button"
+              className="btn bg-[#1f7a3f] text-white hover:bg-[#196634] disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -390,53 +463,38 @@ function CosEditorBody({
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : saveStatus === "saved" ? (
                 <Check className="size-4" aria-hidden="true" />
-              ) : (
-                <SaveIcon className="size-4" aria-hidden="true" />
-              )}
-              <span className="hidden sm:inline">
-                {saveStatus === "saving"
-                  ? "Saving…"
-                  : saveStatus === "saved"
-                    ? "Saved"
-                    : saveStatus === "error"
-                      ? "Save failed"
-                      : "Save"}
-              </span>
+              ) : null}
+              <span>Save</span>
             </button>
           ) : null}
-          <button
-            type="button"
-            className="btn btn-outline"
-            aria-label="Print or save as PDF"
-            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
-            onClick={() => window.print()}
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Print / Save as PDF</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={busy}
-            aria-label="Download Word"
-            title="Download this form as a Word (.docx) file"
-            onClick={() => download()}
-          >
-            <FileDown className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Download Word</span>
-          </button>
         </div>
-      </div>
+      </header>
 
       <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
-        <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-auto">
-          <CosFormFields
-            form={form}
-            setForm={setForm}
-            canEdit={canEdit}
-            savedSignature={profile?.signature}
-          />
-          <CosScheduleTable rows={rows} setRows={setRows} canEdit={canEdit} busy={busy} />
+        {/* The sheet: one borderless card holding every block of the form — the
+            OB editor's left column. `form-fill` is what keeps the filled inputs
+            the COS cards always had; `@container` is what the blocks inside
+            measure their columns against. The rules between blocks are the
+            editor's, so each piece works on its own. */}
+        <div className="no-print form-fill @container min-h-0 rounded-xl bg-card p-5 sm:p-6 lg:overflow-y-auto lg:p-8">
+          <CosFormFields form={form} setForm={setForm} canEdit={canEdit} />
+
+          <div className="mt-6 border-t pt-5">
+            <CosScheduleTable rows={rows} setRows={setRows} canEdit={canEdit} busy={busy} />
+          </div>
+
+          <div className="mt-6 border-t pt-5">
+            <CosReasonAndApprovals form={form} setForm={setForm} canEdit={canEdit} />
+          </div>
+
+          <div className="mt-6 border-t pt-5">
+            <SignatureField
+              value={form.employee_signature}
+              disabled={!canEdit}
+              savedSignature={profile?.signature}
+              onChange={(v) => setForm({ ...form, employee_signature: v })}
+            />
+          </div>
         </div>
 
         {/* Attachment first, always — but on print it drops back below the

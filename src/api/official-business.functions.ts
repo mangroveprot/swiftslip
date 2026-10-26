@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/server/auth/session.server";
 import { logActivity } from "@/server/services/activity-log.server";
+import { assertAiQuota, recordAiRequest } from "@/server/services/ai-quota.server";
 import * as attachments from "@/server/services/attachments.server";
 import { chatObAssistant as chatObAssistantService } from "@/server/services/ob-assistant.server";
 import * as ob from "@/server/services/official-business.server";
@@ -131,13 +132,19 @@ export const removeObAttachment = createServerFn({ method: "POST" })
 export const writeObPurpose = createServerFn({ method: "POST" })
   .validator(obPurposeInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await writeObPurposeService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await writeObPurposeService(data);
+    await recordAiRequest(user, "OB purpose");
+    return result;
   });
 
 export const chatObAssistant = createServerFn({ method: "POST" })
   .validator(obChatInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await chatObAssistantService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await chatObAssistantService(data);
+    await recordAiRequest(user, "OB assistant");
+    return result;
   });

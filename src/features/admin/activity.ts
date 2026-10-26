@@ -1,25 +1,5 @@
-/** Plain-English label for every activity-log action — shared by the admin
- *  dashboard's side panels and the full activity-logs table. */
-export const ACTION_LABELS: Record<string, string> = {
-  "signin.success": "Signed in",
-  "signin.failed": "Sign-in failed",
-  "ob.created": "OB created",
-  "ob.deleted": "OB removed",
-  "loa.created": "LOA created",
-  "loa.deleted": "LOA removed",
-  "record.created": "DTR record created",
-  "record.deleted": "DTR record removed",
-  "attachment.uploaded": "Approval slip uploaded",
-  "attachment.removed": "Approval slip removed",
-  "user.created": "Account created",
-  "user.updated": "Account updated",
-  "user.deleted": "Account removed",
-  "access.updated": "App access changed",
-  "org.updated": "Org list changed",
-  "asset.created": "Asset created",
-  "asset.updated": "Asset edited",
-  "report.downloaded": "Report downloaded",
-};
+/** Re-exported so the dashboard keeps importing labels from this module. */
+export { ACTION_LABELS } from "@/shared/activity";
 
 /** Actions that failed or destroyed data (failed sign-ins, removals) — red. */
 const DANGER_ACTIONS = new Set([
@@ -27,6 +7,8 @@ const DANGER_ACTIONS = new Set([
   "user.deleted",
   "ob.deleted",
   "loa.deleted",
+  "cos.deleted",
+  "ot.deleted",
   "record.deleted",
   "attachment.removed",
 ]);

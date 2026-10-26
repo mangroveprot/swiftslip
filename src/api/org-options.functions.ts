@@ -1,17 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { requireAdmin } from "@/server/auth/session.server";
+import { requireAdmin, requireUser } from "@/server/auth/session.server";
 import { logActivity } from "@/server/services/activity-log.server";
 import * as orgOptions from "@/server/services/org-options.server";
 
 /**
- * The admin-editable Department / Position lists behind the user-management
- * and My Account pickers. Admin-only — these lists feed the dropdowns
- * everyone picks from.
+ * The admin-editable Designation / Department / Position lists behind the
+ * pickers. Any signed-in account may READ them: every picker (including the
+ * employee's own "My Account" form) needs the same live list, and a staff
+ * account is exactly who must see a department the admin just added. Reading
+ * was admin-only before, so a staff page got an error, fell back to the
+ * hardcoded constants, and never showed the new department.
+ *
+ * Changing the lists stays admin-only — see the mutations below.
  */
 export const listOrgOptions = createServerFn({ method: "GET" }).handler(async () => {
-  await requireAdmin();
+  await requireUser();
   return await orgOptions.listOrgOptions();
 });
 

@@ -1,5 +1,7 @@
 import { getDb } from "@/server/db/client.server";
+import { escapeLike } from "@/server/db/filters";
 import { hashPassword, verifyPasswordHash } from "@/server/auth/password.server";
+import { PASSWORD_MIN_LENGTH } from "@/shared/schemas";
 import type { Role } from "@/shared/types";
 
 async function countAdmins(excludingId?: string) {
@@ -16,7 +18,10 @@ async function idNumberInUse(idNumber: string, excludingId?: string) {
   let query = db
     .from("users")
     .select("id", { count: "exact", head: true })
-    .eq("id_number", idNumber);
+    // Case-insensitive so "jd123" can't be created beside "JD123". The unique
+    // index itself is case-sensitive, so this check is what keeps the two
+    // spellings from colliding at sign-in (which is an exact match).
+    .ilike("id_number", escapeLike(idNumber));
   if (excludingId) query = query.neq("id", excludingId);
   const { count, error } = await query;
   if (error) throw migrationOrThrow(error.message);
@@ -175,16 +180,19 @@ export async function upsertAccessCode(input: {
       throw new Error("Keep at least one administrator account.");
     }
 
-    if (input.password && input.password.length < 4) {
-      throw new Error("Password must be at least 4 characters.");
+    if (input.password && input.password.length < PASSWORD_MIN_LENGTH) {
+      throw new Error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
     }
     if (await idNumberInUse(idNumber, input.id)) {
       throw new Error("That ID number is already in use.");
     }
+    // Hashing is async (PBKDF2); only run it when a new password was supplied,
+    // so an edit that only changes the role leaves the hash untouched.
+    const passwordHash = input.password ? await hashPassword(input.password) : undefined;
     const updatePayload = {
       id_number: idNumber,
       role: input.role,
-      ...(input.password ? { password_hash: hashPassword(input.password) } : {}),
+      ...(passwordHash ? { password_hash: passwordHash } : {}),
     };
 
     const { error } = await db.from("users").update(updatePayload).eq("id", input.id);
@@ -204,8 +212,8 @@ export async function upsertAccessCode(input: {
     return;
   }
 
-  if (!input.password || input.password.length < 4) {
-    throw new Error("Password must be at least 4 characters.");
+  if (!input.password || input.password.length < PASSWORD_MIN_LENGTH) {
+    throw new Error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
   }
   if (await idNumberInUse(idNumber)) {
     throw new Error("That ID number is already in use.");
@@ -213,7 +221,7 @@ export async function upsertAccessCode(input: {
   const insertPayload = {
     id_number: idNumber,
     role: input.role,
-    password_hash: hashPassword(input.password),
+    password_hash: await hashPassword(input.password),
   };
   const { data: created, error } = await db
     .from("users")
@@ -275,8 +283,8 @@ export async function changeOwnPassword(
   currentPassword: string,
   newPassword: string,
 ) {
-  if (newPassword.length < 4) {
-    throw new Error("Password must be at least 4 characters.");
+  if (newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new Error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
   }
   const db = getDb();
   const { data: row } = await db
@@ -284,12 +292,12 @@ export async function changeOwnPassword(
     .select("password_hash")
     .eq("id", accessCodeId)
     .maybeSingle();
-  if (!row || !verifyPasswordHash(currentPassword, row.password_hash)) {
+  if (!row || !(await verifyPasswordHash(currentPassword, row.password_hash))) {
     throw new Error("Current password is incorrect.");
   }
   const { error } = await db
     .from("users")
-    .update({ password_hash: hashPassword(newPassword) })
+    .update({ password_hash: await hashPassword(newPassword) })
     .eq("id", accessCodeId);
   if (error) throw new Error(error.message);
 }

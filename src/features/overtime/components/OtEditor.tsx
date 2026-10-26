@@ -3,21 +3,29 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  Download,
   FileDown,
   Loader2,
   Maximize2,
   Printer,
-  Save as SaveIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { createOtForm, saveOtForm } from "@/api/ot.functions";
+import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
 import { isMissingRow } from "@/lib/missing-row";
-import { EditorSkeleton } from "@/components/common/Skeletons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSession } from "@/features/auth/use-session";
+import { SignatureField } from "@/features/records/components/SignaturePad";
 import { profileQueryOptions } from "@/features/profile/queries";
 import {
   createAutoSave,
@@ -32,6 +40,7 @@ import {
   writeDraft,
 } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
+import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { OtEntry, OtForm } from "@/shared/types";
@@ -42,7 +51,8 @@ import { otFormQueryOptions, otFormsQueryOptions, otOtherUrlsQueryOptions } from
 import { OtAssistantChat } from "./OtAssistantChat";
 import { OtAttachmentCard } from "./OtAttachmentCard";
 import { OtEntriesTable } from "./OtEntriesTable";
-import { OtFormFields } from "./OtFormFields";
+import { OtEditorSkeleton } from "./OtEditorSkeleton";
+import { OtFormFields, OtReasonAndApprovals } from "./OtFormFields";
 import { OtOtherAttachmentsCard } from "./OtOtherAttachmentsCard";
 import { OtPreview } from "./OtPreview";
 
@@ -280,7 +290,7 @@ function OtEditorBody({
 
   if (isError && isMissingRow(error))
     return <FormUnavailable backTo="/overtime" label="Overtime forms" />;
-  if (!form) return <EditorSkeleton />;
+  if (!form) return <OtEditorSkeleton />;
 
   /** Explicit Save — writes now rather than waiting for the timer. */
   async function persist(f: OtForm, rows: OtEntry[]) {
@@ -360,29 +370,92 @@ function OtEditorBody({
     />
   );
 
+  // The header shows the save state beside the buttons (the OB treatment), so
+  // the same snapshot comparison the auto-save uses decides the wording.
+  const snapshot = localRef.current ?? "";
+  const dirty = rowIdRef.current
+    ? snapshot !== auto.persistedSnapshot()
+    : auto.belowBaseline(snapshot);
+  const statusLabel =
+    saveStatus === "saving"
+      ? "Saving…"
+      : saveStatus === "error"
+        ? "Save failed"
+        : saveStatus === "saved"
+          ? "Saved"
+          : dirty
+            ? "Unsaved changes"
+            : "";
+
   return (
-    <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
-      <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
+    <main className="flex min-h-0 flex-col px-4 py-3 md:px-6 md:py-5 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
+      <header className="no-print mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
           <Link
             to="/overtime"
-            className="btn btn-outline mt-0.5 size-9 shrink-0 p-0"
-            aria-label="Back to overtime forms"
-            title="Back to overtime forms"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
+            Overtime
           </Link>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Overtime
-            </p>
-            <h1 className="text-2xl font-semibold leading-tight">Overtime Authorization Form</h1>
-          </div>
+          <PageTitle className="mt-2">Overtime Authorization Form</PageTitle>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
+          {canEdit && statusLabel ? (
+            <span
+              className={`mr-1 text-sm ${
+                saveStatus === "error" ? "text-destructive" : "text-muted-foreground"
+              }`}
+            >
+              {statusLabel}
+            </span>
+          ) : null}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="btn btn-outline" aria-label="Export this form">
+                <Download className="size-4" aria-hidden="true" />
+                <span>Export</span>
+                <ChevronDown className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card text-foreground">
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void savePdfFrom(
+                    "ot-sheet",
+                    pdfFileName(APP.name, "OT", form.employee_name || "form"),
+                  )
+                }
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                onSelect={() => window.setTimeout(() => window.print(), 0)}
+              >
+                <Printer className="size-4" aria-hidden="true" />
+                Print
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() => void download()}
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Download Word
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {canEdit ? (
             <button
-              className="btn btn-primary"
+              type="button"
+              className="btn bg-[#1f7a3f] text-white hover:bg-[#196634] disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -394,58 +467,48 @@ function OtEditorBody({
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : saveStatus === "saved" ? (
                 <Check className="size-4" aria-hidden="true" />
-              ) : (
-                <SaveIcon className="size-4" aria-hidden="true" />
-              )}
-              <span className="hidden sm:inline">
-                {saveStatus === "saving"
-                  ? "Saving…"
-                  : saveStatus === "saved"
-                    ? "Saved"
-                    : saveStatus === "error"
-                      ? "Save failed"
-                      : "Save"}
-              </span>
+              ) : null}
+              <span>Save</span>
             </button>
           ) : null}
-          <button
-            type="button"
-            className="btn btn-outline"
-            aria-label="Print or save as PDF"
-            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
-            onClick={() => window.print()}
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Print / Save as PDF</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={busy}
-            aria-label="Download Word"
-            title="Download this form as a Word (.docx) file"
-            onClick={() => download()}
-          >
-            <FileDown className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Download Word</span>
-          </button>
         </div>
-      </div>
+      </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
-        <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-auto">
-          <OtFormFields
-            form={form}
-            setForm={setForm}
-            canEdit={canEdit}
-            savedSignature={profile?.signature}
-          />
-          <OtEntriesTable entries={entries} setEntries={setEntries} canEdit={canEdit} busy={busy} />
-          {/* The other documents sit at the bottom of the form — the approval
-              attachment keeps the top of the preview column. This card is
-              screen-only; its printable copies are mounted in the preview
-              column below. */}
-          <OtOtherAttachmentsCard id={rowId ?? id} canEdit={canEdit} others={others} />
+        {/* The sheet: one borderless card holding every block of the form — the
+            OB editor's left column. The scrollbar lives on the CARD, not on a
+            wrapper around it: a wrapper scrolls whatever it holds, so the bar
+            ran down the gutter past a gap and a second card and read as a bare
+            line with nothing attached to it. On the card it means "this card
+            scrolls", the way the OB and COS sheets do. The right corners are
+            left square so the bar runs flush down a straight edge instead of
+            sitting in the notch a rounded corner leaves. `form-fill` is what
+            keeps the filled inputs the OT cards always had; `@container` is
+            what the blocks inside measure their columns against. */}
+        <div className="no-print form-fill @container min-h-0 rounded-l-xl bg-card p-5 sm:p-6 lg:overflow-y-auto lg:p-8">
+          <OtFormFields form={form} setForm={setForm} canEdit={canEdit} />
+
+          <div className="mt-6 border-t pt-5">
+            <OtEntriesTable
+              entries={entries}
+              setEntries={setEntries}
+              canEdit={canEdit}
+              busy={busy}
+            />
+          </div>
+
+          <div className="mt-6 border-t pt-5">
+            <OtReasonAndApprovals form={form} setForm={setForm} canEdit={canEdit} />
+          </div>
+
+          <div className="mt-6 border-t pt-5">
+            <SignatureField
+              value={form.employee_signature}
+              disabled={!canEdit}
+              savedSignature={profile?.signature}
+              onChange={(v) => setForm({ ...form, employee_signature: v })}
+            />
+          </div>
         </div>
 
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
@@ -468,6 +531,18 @@ function OtEditorBody({
             {/* The editor's rows as they stand — NOT the persisted subset — so
                 adding an OT line shows up in the sheet straight away. */}
             <OtPreview sheetId="ot-sheet" form={form} entries={entries} />
+          </div>
+          {/* The extra supporting documents. They used to sit at the bottom of
+              the FORM column, which is its own scroll area — so the card was
+              always below the fold and users never learned it existed. This
+              column has spare room under the preview, and the card is now
+              always on screen next to the approval attachment at the top. The
+              cap keeps a full set of files (8, each with an inline image
+              preview) from crowding the preview out of the column: past it the
+              card scrolls itself. Screen-only, like the card always was — its
+              printable copies are mounted below. */}
+          <div className="no-print max-h-[45%] shrink-0 overflow-y-auto">
+            <OtOtherAttachmentsCard id={rowId ?? id} canEdit={canEdit} others={others} />
           </div>
           {/* The printable "other attachments", after everything else on paper.
               They have to live HERE, in the column that isn't `.no-print`, and

@@ -1,0 +1,38 @@
+/** One `assets` row joined with its lookups and desktop detail (aliases `t_`, `b_`, …). */
+export type AssetJoinRow = {
+  asset_id: number;
+  item_id: string | null;
+  type_id: number | null;
+  branch_id: number | null;
+  location_id: number | null;
+  cubicle_seat: string | null;
+  assigned_to: string | null;
+  department_id: number | null;
+  status_id: number | null;
+  condition_id: number | null;
+  floor_label: string | null;
+  installed_flag: boolean | null;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  t_id: number | null;
+  t_name: string | null;
+  t_category: string | null;
+  b_id: number | null;
+  b_name: string | null;
+  l_id: number | null;
+  l_name: string | null;
+  d_id: number | null;
+  d_name: string | null;
+  s_id: number | null;
+  s_name: string | null;
+  s_color_tag: string | null;
+  c_id: number | null;
+  c_name: string | null;
+  dd_asset_id: number | null;
+  monitor_brand: string | null;
+  monitor_serial: string | null;
+  keyboard_brand: string | null;
+  keyboard_serial: string | null;
+  mouse_serial: string | null;
+};

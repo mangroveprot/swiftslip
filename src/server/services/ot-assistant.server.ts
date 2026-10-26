@@ -20,7 +20,7 @@ const PROMPT =
   'The "form" is OPTIONAL. Include it only when the message changes a field, and only\n' +
   "the keys you are changing. Allowed keys:\n" +
   "- id_number, employee_name, department, position (plain text)\n" +
-  "- date_filed (free text; the sheet prints a date and time)\n" +
+  "- date_filed (YYYY-MM-DDTHH:MM, e.g. \"2026-10-06T15:30\" — the date AND time it was filed)\n" +
   "- reasons (the Reason for Overtime body)\n" +
   "- approved_by, received_by, processed_by (plain text)\n" +
   "Never include employee_signature. Signatures are never generated.\n" +

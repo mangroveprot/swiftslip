@@ -16,6 +16,14 @@ import type {
   Period,
 } from "./types";
 
+/**
+ * Largest base64 payload accepted over the wire: 10 MB of file bytes plus the
+ * ~4/3 expansion of base64, with a little JSON headroom. The services still
+ * enforce the real 10 MB limit after decoding; this bound stops an oversized
+ * body from being buffered and decoded in the first place.
+ */
+export const MAX_UPLOAD_BASE64 = Math.ceil((10 * 1024 * 1024 * 4) / 3) + 64;
+
 const period = z
   .string()
   .refine(isPeriod, "Invalid period")
@@ -42,45 +50,44 @@ export const idInput = z.object({ id });
 export const deleteRowInput = idInput.extend({ quiet: z.boolean().optional() });
 
 /** One page of the admin activity log (server-enforced page size). */
-export const ACTIVITY_LOG_PAGE_SIZE = 20;
+export const ACTIVITY_LOG_PAGE_SIZE = 25;
 
-/** Which slice of the log a row-filter selects; the server expands it to actions. */
+/** Which slice of the log a tab selects; the server expands it to actions. */
 export const activityLogActionFilter = z.enum([
   "signin",
   "signin-failed",
+  "access",
   "accounts",
-  "ob",
-  "loa",
-  "cos",
-  "ot",
   "records",
-  "attachments",
-  "inventory",
 ]);
 export type ActivityLogActionFilter = z.infer<typeof activityLogActionFilter>;
+
+/** Tab counts for a date range, independent of the current search/tab. */
+export type ActivityLogCounts = Record<"all" | ActivityLogActionFilter, number>;
+
+const activityTimestamp = z.string().refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date");
+
+export const activityLogRangeInput = z.object({
+  from: activityTimestamp.optional(),
+  to: activityTimestamp.optional(),
+});
 
 export const listActivityLogsInput = z.object({
   search: z.string().trim().max(100).default(""),
   action: activityLogActionFilter.optional(),
-  from: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
-    .optional(),
-  to: z
-    .string()
-    .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
-    .optional(),
+  from: activityTimestamp.optional(),
+  to: activityTimestamp.optional(),
   page: z.number().int().min(1).default(1),
 });
 
-/** Dashboard side-panel feeds: security events or form activity, newest first. */
+/** Dashboard side-panel feeds: security events or general activity, newest first. */
 export const activityLogFeedInput = z.object({
-  feed: z.enum(["security", "forms"]),
+  feed: z.enum(["security", "activity"]),
 });
 export type ActivityLogFeed = z.infer<typeof activityLogFeedInput>["feed"];
 
 /** How many rows each dashboard feed shows. */
-export const ACTIVITY_FEED_LIMIT = 10;
+export const ACTIVITY_FEED_LIMIT = 20;
 
 export const createRecordInput = z.object({
   month: z.number().int().min(1).max(12),
@@ -267,7 +274,7 @@ export const cosChatInput = z.object({
   image: z
     .object({
       mimeType: z.string().min(1).max(100),
-      base64: z.string().min(1),
+      base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
     })
     .optional(),
 });
@@ -357,7 +364,7 @@ export const otChatInput = z.object({
   image: z
     .object({
       mimeType: z.string().min(1).max(100),
-      base64: z.string().min(1),
+      base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
     })
     .optional(),
 });
@@ -385,7 +392,7 @@ export const attachmentUploadInput = z.object({
   id,
   filename: z.string().min(1).max(200),
   contentType: z.string().min(1).max(150),
-  base64: z.string().min(1),
+  base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
 });
 
 /** One of the form's additional supporting files, identified by its stored path. */
@@ -401,7 +408,9 @@ export const upsertCodeInput = z.object({
   role: roleSchema,
   // Optional when editing (blank = keep the current password). Required when
   // creating a new one — that and the length check happen in the service so
-  // the user gets a friendly message either way.
+  // the user gets a friendly message either way. The length floor itself is
+  // `PASSWORD_MIN_LENGTH`, deliberately short: an admin resetting a password
+  // types a PIN, not a passphrase.
   password: z.string().optional(),
   // The employee's Designation (office/branch), Department and Position (job
   // title). Stored on the profile (columns `area` / `department` /
@@ -414,10 +423,24 @@ export const upsertCodeInput = z.object({
   position: z.string().trim().max(200).optional(),
 });
 
+/**
+ * Shortest password the app accepts, in ONE place.
+ *
+ * The office wants short, easy-to-type passwords ("1234"), so the floor is a
+ * PIN-style 4 characters and nothing in the app may be stricter than this:
+ * the sign-in form, the admin's reset field and the schema validator all read
+ * it from here. Before this constant the limit was written out as a bare `4`
+ * in four different files, which is how a field ends up refusing a password
+ * the server would have accepted.
+ */
+export const PASSWORD_MIN_LENGTH = 4;
+
 export const changePasswordInput = z
   .object({
     currentPassword: z.string().min(1, "Enter your current password."),
-    newPassword: z.string().min(4, "New password must be at least 4 characters."),
+    newPassword: z
+      .string()
+      .min(PASSWORD_MIN_LENGTH, `New password must be at least ${PASSWORD_MIN_LENGTH} characters.`),
     confirmPassword: z.string(),
   })
   .refine((v) => v.newPassword === v.confirmPassword, {
@@ -426,9 +449,9 @@ export const changePasswordInput = z
   });
 
 export const importBiometricInput = z.object({
-  filename: z.string(),
-  mimeType: z.string(),
-  base64: z.string().min(1),
+  filename: z.string().max(200),
+  mimeType: z.string().max(150),
+  base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
 });
 
 // AI help for the OB itinerary "Purpose(s)" field.
@@ -458,7 +481,7 @@ export const obChatInput = z.object({
   image: z
     .object({
       mimeType: z.string().min(1).max(100),
-      base64: z.string().min(1),
+      base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
     })
     .optional(),
 });
@@ -511,7 +534,7 @@ export const loaChatInput = z.object({
   image: z
     .object({
       mimeType: z.string().min(1).max(100),
-      base64: z.string().min(1),
+      base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
     })
     .optional(),
 });

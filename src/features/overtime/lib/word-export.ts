@@ -5,7 +5,7 @@ import { base64ToBytes, fitSignature, naturalSize, toBase64 } from "@/lib/signat
 import { formatClock } from "@/lib/clock";
 import { formatMonthDayYear } from "@/shared/period";
 import type { OtEntry, OtForm } from "@/shared/types";
-import { formatOtHours } from "./ot-line";
+import { formatOtDateFiled, formatOtHours } from "./ot-line";
 
 // The export fills a tokenized copy of the company's real Word form
 // (public/ot_template.docx — tokenized by scripts/ot-template-tokenize.mjs) so
@@ -51,7 +51,7 @@ export async function downloadOtWord({
     employee_name: form.employee_name ?? "",
     department: form.department ?? "",
     position: form.position ?? "",
-    date_filed: form.date_filed ?? "",
+    date_filed: formatOtDateFiled(form.date_filed ?? ""),
     // One entry per OT line — the template repeats its value row over this list.
     entries: entries.length
       ? entries.map((e) => ({

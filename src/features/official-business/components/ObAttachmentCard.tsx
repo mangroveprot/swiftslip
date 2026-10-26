@@ -39,47 +39,51 @@ export function ObAttachmentCard({
   }
 
   return (
-    <AttachmentCard
-      kind="ob"
-      onEnsureRow={onEnsureRow}
-      id={id}
-      file={attachment}
-      canEdit={canEdit}
-      onUploaded={() => {
-        // An uploaded slip IS the approval — tick both marks automatically so
-        // nobody confirms the same thing twice. The box stays toggleable for
-        // the odd slip that shouldn't count yet.
-        setForm({ ...form, attachment_approved: true, approved_via_viber: true });
-        onUploaded?.();
-      }}
-      onRemoved={() => {
-        // The server cleared the approval along with the file — keep local
-        // state in step so the next auto-save can't resurrect it (or the
-        // "Approved via Viber" note that now follows it).
-        if (form.attachment_approved || form.approved_via_viber) {
-          setForm({ ...form, attachment_approved: false, approved_via_viber: false });
-        }
-      }}
-      // The seal carries the whole status: green once approved, red when the
-      // slip (or the tick) is still missing. It is a mark *on* the card, so it
-      // is lifted out of the header into the top-right corner; the file row
-      // gives that corner up so the mark never covers the action buttons.
-      stamp={<ApprovedStamp approved={Boolean(attachment) && approved} />}
-    >
+    <div>
+      <AttachmentCard
+        kind="ob"
+        onEnsureRow={onEnsureRow}
+        id={id}
+        file={attachment}
+        canEdit={canEdit}
+        onUploaded={() => {
+          // An uploaded slip IS the approval — tick both marks automatically so
+          // nobody confirms the same thing twice. The box stays toggleable for
+          // the odd slip that shouldn't count yet.
+          setForm({ ...form, attachment_approved: true, approved_via_viber: true });
+          onUploaded?.();
+        }}
+        onRemoved={() => {
+          // The server cleared the approval along with the file — keep local
+          // state in step so the next auto-save can't resurrect it (or the
+          // "Approved via Viber" note that now follows it).
+          if (form.attachment_approved || form.approved_via_viber) {
+            setForm({ ...form, attachment_approved: false, approved_via_viber: false });
+          }
+        }}
+        // The seal carries the whole status: green once approved, red when the
+        // slip (or the tick) is still missing. It is a mark *on* the card, so it
+        // is lifted out of the header into the top-right corner; the file row
+        // gives that corner up so the mark never covers the action buttons.
+        stamp={<ApprovedStamp approved={Boolean(attachment) && approved} />}
+      />
+
+      {/* Below the card, as on the paper form: the tick is part of the Approval
+          section, not another line inside the upload box. */}
       {attachment && canEdit ? (
         <label
-          className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground print:hidden"
+          className="mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-foreground print:hidden"
           title='Marking this approved also checks "Approved via Viber" on the form'
         >
           <input
             type="checkbox"
-            className="size-4 accent-primary"
+            className="size-4 accent-[#2f9e44]"
             checked={approved}
             onChange={(e) => setChecked(e.target.checked)}
           />
           Approved
         </label>
       ) : null}
-    </AttachmentCard>
+    </div>
   );
 }

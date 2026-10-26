@@ -128,13 +128,13 @@ export function LoaOtherAttachmentsCard({
   return (
     // Screen-only, whatever is attached: the printable copies are mounted in the
     // preview column instead (see the note above).
-    <section className="form-fill shrink-0 rounded-2xl border bg-card p-4 shadow-sm print:hidden">
+    <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm print:hidden">
       <input
         ref={inputRef}
         type="file"
         multiple
         className="hidden"
-        accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.webp"
+        accept="application/pdf,image/png,image/jpeg,image/gif,image/webp,image/bmp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
         disabled={!canEdit || busy}
         onChange={(e) => {
           // `input.files` is a LIVE FileList — clearing `input.value` below

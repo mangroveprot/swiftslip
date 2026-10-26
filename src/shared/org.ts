@@ -98,8 +98,17 @@ export function normalizePosition(value: string): string {
  * auto-filling a fresh pick. Looked up in canonical form, so a legacy spelling
  * on an old profile still resolves.
  */
-export function departmentForPosition(position: string): string {
-  return POSITION_DEPARTMENTS[normalizePosition(position)] ?? "";
+export function departmentForPosition(position: string, lists?: OrgLists): string {
+  const normalized = normalizePosition(position);
+  if (!normalized) return "";
+  // The live table wins. A department an admin added, renamed, or moved a
+  // position into is what the pickers show, so it must also be what the
+  // position implies. Reading only the fixed constants here made a picker
+  // snap a freshly chosen department straight back to the old constant name
+  // (pick "IT DEP", the form reverts it to "Information Technology").
+  const live = lists?.positions.find((p) => p.value === normalized);
+  if (live) return live.department;
+  return POSITION_DEPARTMENTS[normalized] ?? "";
 }
 
 /**
@@ -140,7 +149,12 @@ export function positionsForDepartment(department: string): readonly string[] {
 export function positionsUnder(department: string, lists: OrgLists | undefined): readonly string[] {
   const trimmed = department.trim();
   if (trimmed && lists) {
-    return lists.positions.filter((p) => p.department === trimmed).map((p) => p.value);
+    const live = lists.positions.filter((p) => p.department === trimmed).map((p) => p.value);
+    // A department the table lists no positions under yet (one the admin just
+    // added) must not be a dead end — fall through to the constant pairs and,
+    // for a name nothing knows, to every position. An empty dropdown is what
+    // makes a stored position look lost the moment its department moves.
+    if (live.length) return live;
   }
   return positionsForDepartment(trimmed);
 }

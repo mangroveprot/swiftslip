@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { Check, Loader2, Wand2, X } from "lucide-react";
+import { Check, Loader2, PencilLine, Sparkles, X } from "lucide-react";
 
 import { writeLoaReason } from "@/api/loa.functions";
 import { AiMascot } from "@/components/common/AiMascot";
@@ -143,7 +143,7 @@ export function LoaFormFields({
   }
 
   return (
-    <section className="form-fill shrink-0 rounded-2xl border bg-card p-4 shadow-sm">
+    <section className="form-fill @container shrink-0 rounded-xl bg-card p-5 sm:p-6 lg:p-8">
       {/* Title row — every box on this form carries one, in the same style the
           other cards on the page use, so the form reads as a labelled box
           rather than a bare field grid. The right half is the form's status:
@@ -190,13 +190,16 @@ export function LoaFormFields({
           ))}
         </p>
       ) : null}
-      {/* Four columns in the sheet's own order — row 1 is ID / Name / Department
-          (double width), row 2 the filing context and the inclusive range, row
-          3 the remaining boxes. The column count follows THIS panel's width, not
-          the window's: the live preview keeps a fixed slice of the screen, so a
-          viewport breakpoint would squeeze four fields into a narrow strip. */}
-      <div className="grid gap-3 @min-[26rem]:grid-cols-2 @min-[44rem]:grid-cols-4">
-        <Field
+      {/* The identity row leads the sheet — the paper form's header boxes, drawn
+          the way the OB sheet draws them: label over an underline input, four
+          across once this sheet is wide enough. They stay editable (LOA's
+          behaviour is untouched); this is the row an employee corrects when the
+          profile behind it has gone stale. The column count follows THIS
+          sheet's width, not the window's: the live preview keeps a fixed slice
+          of the screen, so a viewport breakpoint would squeeze four fields into
+          a narrow strip. */}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 @xl:grid-cols-4">
+        <Identity
           required
           id="loa-id_number"
           label="ID Number"
@@ -204,7 +207,7 @@ export function LoaFormFields({
           disabled={!canEdit}
           onChange={(v) => setForm({ ...form, id_number: v })}
         />
-        <Field
+        <Identity
           required
           id="loa-employee_name"
           label="Employee Name"
@@ -212,16 +215,15 @@ export function LoaFormFields({
           disabled={!canEdit}
           onChange={(v) => setForm({ ...form, employee_name: v })}
         />
-        <Field
+        <Identity
           required
           id="loa-department"
-          className="@min-[26rem]:col-span-2"
           label="Department / Location"
           value={form.department}
           disabled={!canEdit}
           onChange={(v) => setForm({ ...form, department: v })}
         />
-        <Field
+        <Identity
           required
           id="loa-position"
           label="Position"
@@ -229,152 +231,157 @@ export function LoaFormFields({
           disabled={!canEdit}
           onChange={(v) => setForm({ ...form, position: v })}
         />
-        <Field
-          required
-          id="loa-date_filed"
-          label="Date Filed"
-          type="date"
-          value={form.date_filed}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, date_filed: v })}
-        />
-
-        {/* Inclusive dates; the computed-but-editable day count follows. */}
-        <Field
-          required
-          id="loa-date_from"
-          invalid={rangeInvalid}
-          label="Inclusive Dates: From"
-          type="date"
-          value={form.date_from}
-          disabled={!canEdit}
-          onChange={(v) => updateDates({ date_from: v })}
-        />
-        <Field
-          required
-          id="loa-date_to"
-          invalid={rangeInvalid}
-          label="Inclusive Dates: To"
-          type="date"
-          value={form.date_to}
-          disabled={!canEdit}
-          onChange={(v) => updateDates({ date_to: v })}
-        />
-        <label className="block">
-          <span className="lbl">
-            Number of Days Applied
-            <Req />
-          </span>
-          <input
-            className="inp"
-            type="text"
-            disabled={!canEdit}
-            placeholder="e.g. 2 or 4 hours"
-            value={form.days_applied}
-            onChange={(e) => setForm({ ...form, days_applied: e.target.value })}
-          />
-          {rangeInvalid ? (
-            <span className="mt-1 block text-xs text-destructive">
-              The From date is after the To date. Check the range.
-            </span>
-          ) : null}
-        </label>
-
-        {/* ( ) w/ PAY  ( ) w/o PAY — single choice. */}
-        <fieldset id="loa-pay">
-          <legend className="lbl">
-            Pay
-            <Req />
-          </legend>
-          <div className="flex flex-wrap gap-x-10 gap-y-1.5">
-            <label className="flex cursor-pointer items-center gap-1.5 text-sm">
-              <input
-                type="radio"
-                name="loa-pay-status"
-                className="size-3.5 accent-primary"
-                disabled={!canEdit}
-                checked={form.pay_status === "with_pay"}
-                onChange={() => setForm({ ...form, pay_status: "with_pay" })}
-              />
-              w/ PAY
-            </label>
-            <label className="flex cursor-pointer items-center gap-1.5 text-sm">
-              <input
-                type="radio"
-                name="loa-pay-status"
-                className="size-3.5 accent-primary"
-                disabled={!canEdit}
-                checked={form.pay_status === "without_pay"}
-                onChange={() => setForm({ ...form, pay_status: "without_pay" })}
-              />
-              w/o PAY
-            </label>
-          </div>
-        </fieldset>
-
-        <Field
-          required
-          id="loa-report_back_date"
-          label="To report back for work on"
-          type="date"
-          value={form.report_back_date}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, report_back_date: v })}
-        />
-        <Field
-          required
-          id="loa-approved_by"
-          label="Approved by (Supervisor / Dept. Head)"
-          value={form.approved_by}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, approved_by: v })}
-        />
-
-        {/* KINDLY MARK APPROPRIATE BOX — single choice. It sits under the rows of
-            boxes so all seven options fit on one line wherever there's width. */}
-        <fieldset id="loa-leave_type" className="@min-[26rem]:col-span-2 @min-[44rem]:col-span-4">
-          <legend className="lbl">
-            Kindly mark appropriate box
-            <Req />
-          </legend>
-          <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-            {LEAVE_TYPES.map((type) => (
-              <label key={type} className="flex cursor-pointer items-center gap-1.5 text-sm">
-                <input
-                  type="radio"
-                  name="loa-leave-type"
-                  className="size-3.5 accent-primary"
-                  disabled={!canEdit}
-                  checked={form.leave_type === type}
-                  onChange={() => setForm({ ...form, leave_type: type })}
-                />
-                {type}
-              </label>
-            ))}
-          </div>
-          {form.leave_type === "Others" ? (
-            <input
-              className="inp mt-2"
-              type="text"
-              disabled={!canEdit}
-              placeholder="Specify the leave type"
-              aria-label="Others: specify the leave type"
-              value={form.leave_type_other}
-              onChange={(e) => setForm({ ...form, leave_type_other: e.target.value })}
-            />
-          ) : null}
-        </fieldset>
-
-        {/* Approval lives on the approval attachment, OB-style (upload ticks
-            it, removal clears it) — the form carries no widget for it. */}
-        <ReasonField
-          value={form.reasons}
-          disabled={!canEdit}
-          onChange={(v) => setForm({ ...form, reasons: v })}
-        />
       </div>
 
-      <div id="loa-signature">
+      <div className="mt-6 border-t pt-5">
+        <div className="grid gap-3 @min-[26rem]:grid-cols-2 @min-[44rem]:grid-cols-4">
+          <Field
+            required
+            id="loa-date_filed"
+            label="Date Filed"
+            type="date"
+            value={form.date_filed}
+            disabled={!canEdit}
+            onChange={(v) => setForm({ ...form, date_filed: v })}
+          />
+
+          {/* Inclusive dates; the computed-but-editable day count follows. */}
+          <Field
+            required
+            id="loa-date_from"
+            invalid={rangeInvalid}
+            label="Inclusive Dates: From"
+            type="date"
+            value={form.date_from}
+            disabled={!canEdit}
+            onChange={(v) => updateDates({ date_from: v })}
+          />
+          <Field
+            required
+            id="loa-date_to"
+            invalid={rangeInvalid}
+            label="Inclusive Dates: To"
+            type="date"
+            value={form.date_to}
+            disabled={!canEdit}
+            onChange={(v) => updateDates({ date_to: v })}
+          />
+          <label className="block">
+            <span className="lbl">
+              Number of Days Applied
+              <Req />
+            </span>
+            <input
+              className="inp"
+              type="text"
+              disabled={!canEdit}
+              placeholder="e.g. 2 or 4 hours"
+              value={form.days_applied}
+              onChange={(e) => setForm({ ...form, days_applied: e.target.value })}
+            />
+            {rangeInvalid ? (
+              <span className="mt-1 block text-xs text-destructive">
+                The From date is after the To date. Check the range.
+              </span>
+            ) : null}
+          </label>
+
+          {/* ( ) w/ PAY  ( ) w/o PAY — single choice. */}
+          <fieldset id="loa-pay">
+            <legend className="lbl">
+              Pay
+              <Req />
+            </legend>
+            <div className="flex flex-wrap gap-x-10 gap-y-1.5">
+              <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+                <input
+                  type="radio"
+                  name="loa-pay-status"
+                  className="size-3.5 accent-primary"
+                  disabled={!canEdit}
+                  checked={form.pay_status === "with_pay"}
+                  onChange={() => setForm({ ...form, pay_status: "with_pay" })}
+                />
+                w/ PAY
+              </label>
+              <label className="flex cursor-pointer items-center gap-1.5 text-sm">
+                <input
+                  type="radio"
+                  name="loa-pay-status"
+                  className="size-3.5 accent-primary"
+                  disabled={!canEdit}
+                  checked={form.pay_status === "without_pay"}
+                  onChange={() => setForm({ ...form, pay_status: "without_pay" })}
+                />
+                w/o PAY
+              </label>
+            </div>
+          </fieldset>
+
+          <Field
+            required
+            id="loa-report_back_date"
+            label="To report back for work on"
+            type="date"
+            value={form.report_back_date}
+            disabled={!canEdit}
+            onChange={(v) => setForm({ ...form, report_back_date: v })}
+          />
+          <Field
+            required
+            id="loa-approved_by"
+            label="Approved by (Supervisor / Dept. Head)"
+            value={form.approved_by}
+            disabled={!canEdit}
+            onChange={(v) => setForm({ ...form, approved_by: v })}
+          />
+
+          {/* KINDLY MARK APPROPRIATE BOX — single choice. It sits under the rows of
+            boxes so all seven options fit on one line wherever there's width. */}
+          <fieldset id="loa-leave_type" className="@min-[26rem]:col-span-2 @min-[44rem]:col-span-4">
+            <legend className="lbl">
+              Kindly mark appropriate box
+              <Req />
+            </legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              {LEAVE_TYPES.map((type) => (
+                <label key={type} className="flex cursor-pointer items-center gap-1.5 text-sm">
+                  <input
+                    type="radio"
+                    name="loa-leave-type"
+                    className="size-3.5 accent-primary"
+                    disabled={!canEdit}
+                    checked={form.leave_type === type}
+                    onChange={() => setForm({ ...form, leave_type: type })}
+                  />
+                  {type}
+                </label>
+              ))}
+            </div>
+            {form.leave_type === "Others" ? (
+              <input
+                className="inp mt-2"
+                type="text"
+                disabled={!canEdit}
+                placeholder="Specify the leave type"
+                aria-label="Others: specify the leave type"
+                value={form.leave_type_other}
+                onChange={(e) => setForm({ ...form, leave_type_other: e.target.value })}
+              />
+            ) : null}
+          </fieldset>
+
+          {/* Approval lives on the approval attachment, OB-style (upload ticks
+            it, removal clears it) — the form carries no widget for it. */}
+          <ReasonField
+            value={form.reasons}
+            disabled={!canEdit}
+            onChange={(v) => setForm({ ...form, reasons: v })}
+          />
+        </div>
+      </div>
+
+      <div id="loa-signature" className="mt-6 border-t pt-5">
         <SignatureField
           required
           value={form.employee_signature}
@@ -436,6 +443,47 @@ function Field({
 }
 
 /**
+ * One identity box at the top of the sheet: the paper form's header values as
+ * a label over an underline input, the way the OB sheet draws them. The id is
+ * what the "Still needed" line jumps to, and the red mark says the sheet can't
+ * do without it — the input itself is ordinary, editable text.
+ */
+function Identity({
+  label,
+  value,
+  disabled,
+  required = false,
+  id,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  /** Puts the red required mark after the label text. */
+  required?: boolean;
+  /** Where the heading line's "still needed" links jump to. */
+  id?: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="block text-[13px] font-medium text-foreground/70">
+        {label}
+        {required ? <Req /> : null}
+      </span>
+      <input
+        id={id}
+        type="text"
+        className="mt-1.5 w-full border-0 border-b border-transparent bg-transparent p-0 text-[15px] leading-snug font-semibold text-foreground outline-none transition-colors hover:border-border focus:border-primary/60 disabled:cursor-not-allowed disabled:text-muted-foreground"
+        disabled={disabled}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
+/**
  * The Reasons / Remarks field with two AI helpers:
  *  - Generate: the user types a few notes/instructions and the AI writes a short,
  *    professional reason from them.
@@ -484,7 +532,7 @@ function ReasonField({
   async function runEnhance() {
     if (busy) return;
     if (!value.trim()) {
-      toast.error("Write a rough reason first, or use Generate.");
+      toast.error("Write a rough reason first, or use Write for me.");
       return;
     }
     setBusy("enhance");
@@ -508,10 +556,12 @@ function ReasonField({
           <Req />
         </span>
         {!disabled ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             <button
               type="button"
-              className={`btn btn-outline h-6 gap-1 px-2 text-[11px] ${genOpen ? "bg-primary/10 text-primary" : ""}`}
+              className={`inline-flex items-center gap-1 text-xs font-medium transition-colors ${
+                genOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              }`}
               disabled={busy !== null}
               title="Let AI write a reason from a few notes"
               onClick={() => setGenOpen((v) => !v)}
@@ -519,13 +569,13 @@ function ReasonField({
               {busy === "generate" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <AiMascot size="xs" />
+                <Sparkles className="size-3.5" aria-hidden="true" />
               )}
-              Generate
+              Write for me
             </button>
             <button
               type="button"
-              className="btn btn-outline h-6 gap-1 px-2 text-[11px]"
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               disabled={busy !== null}
               title="Let AI polish the current reason"
               onClick={runEnhance}
@@ -533,9 +583,9 @@ function ReasonField({
               {busy === "enhance" ? (
                 <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
               ) : (
-                <Wand2 className="size-3.5" aria-hidden="true" />
+                <PencilLine className="size-3.5" aria-hidden="true" />
               )}
-              Enhance
+              Improve wording
             </button>
           </div>
         ) : null}
@@ -586,7 +636,7 @@ function ReasonField({
               ) : (
                 <AiMascot size="xs" />
               )}
-              Generate
+              Write it
             </button>
           </div>
         </div>

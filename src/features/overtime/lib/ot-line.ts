@@ -13,6 +13,25 @@ export function formatOtDate(date: string): string {
   return date ? formatMonthDayYear(date) : "";
 }
 
+/**
+ * The "Date & Time Filed" box as the sheet prints it. The editor holds the
+ * calendar picker's `YYYY-MM-DDTHH:MM`, so it reads `10/06/2026 3:30 PM`; a
+ * date-only value (a fresh draft) prints just the date, and anything else — an
+ * older form's hand-typed text — is printed as-is rather than rewritten.
+ */
+export function formatOtDateFiled(value: string): string {
+  const v = (value ?? "").trim();
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(v);
+  if (!iso) return v;
+  const [, y, m, d, hh, mm] = iso;
+  const date = `${m}/${d}/${y}`;
+  if (!hh) return date;
+  const hour = Number(hh);
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${date} ${hour12}:${mm} ${suffix}`;
+}
+
 /** A from/to pair, e.g. "08am - 05pm" ("" when neither end is set). */
 export function formatOtHours(from: string, to: string): string {
   return [formatClock(from), formatClock(to)].filter(Boolean).join(" - ");

@@ -1,7 +1,7 @@
 import { APP } from "@/config/app";
 import { formatMonthDayYear } from "@/shared/period";
 import type { OtEntry, OtForm } from "@/shared/types";
-import { formatOtHours } from "../lib/ot-line";
+import { formatOtDateFiled, formatOtHours } from "../lib/ot-line";
 
 // Matches public/ot_template.docx: 65%-gray header fill, black bold text, and
 // FOUR separate bordered boxes stacked with gaps — the same construction the OB
@@ -73,7 +73,11 @@ export function OtPreview({
           <tr>
             <OtField label="Department/Location:" value={form.department} />
             <OtField label="Position:" value={form.position} />
-            <OtField label="Date & Time Filed:" value={form.date_filed} highlight />
+            <OtField
+              label="Date & Time Filed:"
+              value={formatOtDateFiled(form.date_filed)}
+              highlight
+            />
           </tr>
         </tbody>
       </table>

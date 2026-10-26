@@ -1,0 +1,236 @@
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+
+import { deleteRecord } from "@/api/records.functions";
+import { ApprovedStamp } from "@/components/common/ApprovedStamp";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { PageTitle } from "@/components/common/PageTitle";
+import { ListSkeleton } from "@/components/common/Skeletons";
+import { profileQueryOptions } from "@/features/profile/queries";
+import { newDraftId } from "@/lib/draft";
+import { toast } from "@/lib/toast";
+import { useNow } from "@/lib/use-now";
+import { MONTHS, periodLabel, periodRange } from "@swiftslip/shared/period";
+import { relativeTime } from "@swiftslip/shared/time";
+import type { Period } from "@swiftslip/shared/types";
+import { recordsQueryOptions } from "../queries";
+
+type RecordRow = {
+  id: string;
+  name: string;
+  emp_no: string;
+  month: number;
+  year: number;
+  period: string;
+  /** A DTR counts as approved once a file is attached (no approval flag). */
+  attachment_path: string | null;
+  updated_at: string;
+};
+
+type Status = "upcoming" | "active" | "closing" | "closed";
+
+export function RecordsList() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { data: records } = useQuery(recordsQueryOptions());
+  // Warm the profile while the list is on screen: a new record is built from it
+  // the moment "New record" is pressed, and fetching it only at that point would
+  // put a skeleton in front of the user for data we already could have had.
+  useQuery(profileQueryOptions());
+  const [pendingDelete, setPendingDelete] = useState<RecordRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const now = useNow();
+
+  // A draft exists only in the browser, so there is nothing here to filter out —
+  // the list shows exactly the records that are in the database.
+  const visible = records ?? [];
+
+  function newRecord() {
+    navigate({ to: "/records/$id", params: { id: newDraftId() } });
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleteBusy(true);
+    try {
+      await deleteRecord({ data: { id: pendingDelete.id } });
+      await qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey });
+      toast.success(`Deleted "${pendingDelete.name || "Untitled record"}"`);
+      setPendingDelete(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete that record.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
+  return (
+    <main className="mx-auto flex min-h-full max-w-6xl flex-col px-6 py-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <PageTitle size="xl">Time records</PageTitle>
+        </div>
+        <button className="btn btn-primary" onClick={newRecord}>
+          New record
+        </button>
+      </div>
+
+      {visible.length > 0 ? (
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map((r, i) => (
+            <RecordCard
+              key={r.id}
+              record={r as RecordRow}
+              index={i}
+              now={now}
+              onDelete={() => setPendingDelete(r as RecordRow)}
+            />
+          ))}
+        </div>
+      ) : records ? (
+        <div className="mt-8 flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+          <div className="max-w-sm space-y-2">
+            <p className="text-xl font-medium text-foreground">No records yet</p>
+            <p className="text-sm text-muted-foreground">
+              Start a Daily Time Record to log your hours and keep your sheet on track every day.
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={newRecord}>
+            <Plus className="size-4" aria-hidden="true" />
+            Create your first record
+          </button>
+        </div>
+      ) : (
+        <ListSkeleton />
+      )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && !deleteBusy && setPendingDelete(null)}
+        title={`Delete "${pendingDelete?.name || "Untitled record"}"?`}
+        description="This permanently removes the record and all its daily entries. This can't be undone."
+        confirmLabel="Delete"
+        busy={deleteBusy}
+        onConfirm={confirmDelete}
+      />
+    </main>
+  );
+}
+
+function RecordCard({
+  record: r,
+  index,
+  now,
+  onDelete,
+}: {
+  record: RecordRow;
+  index: number;
+  now: Date;
+  onDelete: () => void;
+}) {
+  const navigate = useNavigate();
+  const { start, end } = periodRange(r.period as Period, r.month, r.year);
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === r.year && today.getMonth() + 1 === r.month;
+  const todayDay = today.getDate();
+
+  let status: Status = "closed";
+  if (isCurrentMonth) {
+    if (todayDay < start) status = "upcoming";
+    else if (todayDay === end) status = "closing";
+    else if (todayDay <= end) status = "active";
+  }
+
+  return (
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => navigate({ to: "/records/$id", params: { id: r.id } })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          navigate({ to: "/records/$id", params: { id: r.id } });
+        }
+      }}
+      style={{ animationDelay: `${Math.min(index, 12) * 55}ms`, animationFillMode: "both" }}
+      className="relative flex cursor-pointer gap-3 rounded-xl border bg-card p-4 transition-colors hover:border-primary/40 hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p
+              className={`truncate text-sm font-medium ${r.name ? "" : "italic text-muted-foreground"}`}
+            >
+              {r.name || "Untitled record"}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{r.emp_no || "No employee no."}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Link
+              to="/records/$id"
+              params={{ id: r.id }}
+              onClick={(e) => e.stopPropagation()}
+              className="btn btn-outline gap-1 px-2.5 py-1 text-xs"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+              Open
+            </Link>
+            <button
+              className="btn gap-1 px-2.5 py-1 text-xs text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <p className="mt-3 text-xs text-foreground">
+          {MONTHS[r.month - 1]} {r.year} · {periodLabel(r.period as Period, r.month, r.year)}
+        </p>
+        {r.updated_at ? (
+          <p
+            className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"
+            title={new Date(r.updated_at).toLocaleString()}
+          >
+            <Clock className="size-3" aria-hidden="true" />
+            Updated {relativeTime(r.updated_at, now)}
+          </p>
+        ) : null}
+      </div>
+
+      <RecordThumbnail status={status} hasName={Boolean(r.name)} />
+
+      {/* Attached file = approved on a DTR; records without one show nothing.
+          Laid over the card's quiet bottom-right corner rather than in the text
+          stack, so it never reads as another metadata line and never adds
+          height to the row. */}
+      {r.attachment_path ? (
+        <ApprovedStamp approved className="pointer-events-none absolute right-2 bottom-2 z-10" />
+      ) : null}
+    </div>
+  );
+}
+
+/** Lightweight placeholder standing in for the DTR sheet — no per-record fetch. */
+function RecordThumbnail({ status, hasName }: { status: Status; hasName: boolean }) {
+  const tinted = (status === "active" || status === "closing") && hasName;
+  return (
+    <div className="h-[6.25rem] w-[4.75rem] shrink-0 rounded-sm border bg-paper p-1.5 shadow-sm">
+      <div className={`h-1.5 rounded-sm ${tinted ? "bg-accent/35" : "bg-muted"}`} />
+      <div className="mt-1.5 flex flex-col gap-1">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className={`h-0.5 rounded-full ${tinted && i < 3 ? "bg-accent/30" : "bg-muted"}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}

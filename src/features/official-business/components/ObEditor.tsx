@@ -3,20 +3,28 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  Download,
   FileDown,
   Loader2,
   Maximize2,
   Printer,
-  Save as SaveIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createObForm, saveObForm } from "@/api/official-business.functions";
+import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
 import { isMissingRow } from "@/lib/missing-row";
-import { EditorSkeleton } from "@/components/common/Skeletons";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useSession } from "@/features/auth/use-session";
+import { SignatureField } from "@/features/records/components/SignaturePad";
 import { profileQueryOptions } from "@/features/profile/queries";
 import {
   createAutoSave,
@@ -31,14 +39,17 @@ import {
   writeDraft,
 } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
+import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { ObEntry, ObForm } from "@/shared/types";
 import { APP } from "@/config/app";
 import { buildDraftObForm } from "../lib/draft-form";
+import { splitDestinations } from "../lib/places";
 import { obFormQueryOptions, obFormsQueryOptions } from "../queries";
 import { ObAssistantChat } from "./ObAssistantChat";
 import { ObAttachmentCard } from "./ObAttachmentCard";
+import { ObEditorSkeleton } from "./ObEditorSkeleton";
 import { ObFormFields } from "./ObFormFields";
 import { ObItineraryTable } from "./ObItineraryTable";
 import { ObPreview } from "./ObPreview";
@@ -107,6 +118,26 @@ function ObEditorBody({
   const profileQuery = useQuery(profileQueryOptions());
   const profile = profileQuery.data ?? null;
   const profileReady = profileQuery.data !== undefined || profileQuery.isError;
+
+  // The form's place pickers offer destinations already used on other OB forms.
+  // The list is usually warm from the previous screen; on a direct load it is
+  // one cached request that the itinerary shares.
+  const formsQuery = useQuery(obFormsQueryOptions());
+  const placeOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    // The employee's own office/branch is the most likely starting point, so it
+    // is always offered even when no previous OB form has used it yet.
+    if (profile?.area) seen.set(profile.area.toLowerCase(), profile.area);
+    for (const item of formsQuery.data ?? []) {
+      for (const destination of item.destinations) {
+        for (const part of splitDestinations(destination)) {
+          const key = part.toLowerCase();
+          if (!seen.has(key)) seen.set(key, part);
+        }
+      }
+    }
+    return [...seen.values()].sort((a, b) => a.localeCompare(b));
+  }, [formsQuery.data, profile?.area]);
 
   const [form, setForm] = useState<ObForm | null>(null);
   const [rows, setRows] = useState<ObEntry[]>([]);
@@ -273,7 +304,22 @@ function ObEditorBody({
 
   if (isError && isMissingRow(error))
     return <FormUnavailable backTo="/official-business" label="Official Business forms" />;
-  if (!form) return <EditorSkeleton />;
+  if (!form) return <ObEditorSkeleton />;
+
+  const snapshot = localRef.current ?? "";
+  const dirty = rowIdRef.current
+    ? snapshot !== auto.persistedSnapshot()
+    : auto.belowBaseline(snapshot);
+  const statusLabel =
+    saveStatus === "saving"
+      ? "Saving…"
+      : saveStatus === "error"
+        ? "Save failed"
+        : saveStatus === "saved"
+          ? "Saved"
+          : dirty
+            ? "Unsaved changes"
+            : "";
 
   async function persist(f: ObForm, entries: ObEntry[]) {
     // insertDraft already writes content — don't save again on first create.
@@ -358,28 +404,74 @@ function ObEditorBody({
   );
 
   return (
-    <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
-      <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
+    <main className="flex min-h-0 flex-col px-4 py-3 md:px-6 md:py-5 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
+      <header className="no-print mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
           <Link
             to="/official-business"
-            className="btn btn-outline mt-0.5 size-9 shrink-0 p-0"
-            aria-label="Back to official business forms"
-            title="Back to official business forms"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
+            Official Business
           </Link>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Official Business
-            </p>
-            <h1 className="text-2xl font-semibold leading-tight">Official Business Form</h1>
-          </div>
+          <PageTitle className="mt-2">Official Business Form</PageTitle>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
+          {canEdit && statusLabel ? (
+            <span
+              className={`mr-1 text-sm ${
+                saveStatus === "error" ? "text-destructive" : "text-muted-foreground"
+              }`}
+            >
+              {statusLabel}
+            </span>
+          ) : null}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="btn btn-outline" aria-label="Export this form">
+                <Download className="size-4" aria-hidden="true" />
+                <span>Export</span>
+                <ChevronDown className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card text-foreground">
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void savePdfFrom(
+                    "ob-sheet",
+                    pdfFileName(APP.name, "OB", form.employee_name || "form"),
+                  )
+                }
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                onSelect={() => window.setTimeout(() => window.print(), 0)}
+              >
+                <Printer className="size-4" aria-hidden="true" />
+                Print
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() => void download()}
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Download Word
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {canEdit ? (
             <button
-              className="btn btn-primary"
+              type="button"
+              className="btn bg-[#1f7a3f] text-white hover:bg-[#196634] disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -391,63 +483,45 @@ function ObEditorBody({
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : saveStatus === "saved" ? (
                 <Check className="size-4" aria-hidden="true" />
-              ) : (
-                <SaveIcon className="size-4" aria-hidden="true" />
-              )}
-              <span className="hidden sm:inline">
-                {saveStatus === "saving"
-                  ? "Saving…"
-                  : saveStatus === "saved"
-                    ? "Saved"
-                    : saveStatus === "error"
-                      ? "Save failed"
-                      : "Save"}
-              </span>
+              ) : null}
+              <span>Save</span>
             </button>
           ) : null}
-          <button
-            type="button"
-            className="btn btn-outline"
-            aria-label="Print or save as PDF"
-            title='Open the print dialog and choose "Save as PDF" as the destination to export a PDF'
-            onClick={() => window.print()}
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Print / Save as PDF</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={busy}
-            aria-label="Download Word"
-            title="Download this form as a Word (.docx) file"
-            onClick={() => download()}
-          >
-            <FileDown className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Download Word</span>
-          </button>
         </div>
-      </div>
-      <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
-        <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-hidden">
-          <ObFormFields
-            form={form}
-            setForm={setForm}
-            canEdit={canEdit}
-            savedSignature={profile?.signature}
-          />
-          <ObItineraryTable rows={rows} setRows={setRows} canEdit={canEdit} busy={busy} />
+      </header>
+
+      <div className="grid min-h-0 flex-1 gap-6 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <div className="no-print @container min-h-0 rounded-xl bg-card p-5 sm:p-6 lg:overflow-y-auto lg:p-8">
+          <ObFormFields form={form} setForm={setForm} canEdit={canEdit} />
+
+          <div className="mt-6 border-t pt-5">
+            <ObItineraryTable
+              rows={rows}
+              setRows={setRows}
+              canEdit={canEdit}
+              busy={busy}
+              placeOptions={placeOptions}
+            />
+          </div>
+
+          <div className="mt-6 border-t pt-5">
+            <SignatureField
+              variant="ob"
+              value={form.employee_signature}
+              disabled={!canEdit}
+              savedSignature={profile?.signature}
+              onChange={(v) => setForm({ ...form, employee_signature: v })}
+            />
+          </div>
         </div>
 
-        {/* Attachment first, always — but on print it drops back below the
-            sheet (`print:order`) so a slip still follows the form on its own
-            page. */}
+        {/* The attachment stays first in the preview column, and on paper it
+            drops below the sheet (`print:order`) so a slip still follows the
+            form on its own page. */}
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
           <div className="print:order-2">{attachmentCard}</div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-              Live preview
-            </p>
+            <p className="text-sm font-semibold">Preview</p>
             <button
               type="button"
               className="btn btn-outline size-7 p-0"

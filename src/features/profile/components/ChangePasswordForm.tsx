@@ -3,6 +3,7 @@ import { useState } from "react";
 import { changeMyPassword } from "@/api/access-codes.functions";
 import { TextField } from "@/components/common/FormField";
 import { toast } from "@/lib/toast";
+import { PASSWORD_MIN_LENGTH } from "@/shared/schemas";
 
 export function ChangePasswordForm() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -65,6 +66,11 @@ export function ChangePasswordForm() {
             <span className="text-xs text-muted-foreground">{strength.label}</span>
           </div>
         ) : null}
+        {/* The floor is a short PIN on purpose — say so, so nobody wonders
+            whether a 4-digit password was really accepted. */}
+        <p className="text-xs text-muted-foreground">
+          At least {PASSWORD_MIN_LENGTH} characters. A short PIN like 1234 is fine.
+        </p>
         <TextField
           label="Confirm new password"
           value={confirmPassword}
@@ -77,7 +83,9 @@ export function ChangePasswordForm() {
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <button
             className="btn btn-primary"
-            disabled={busy || !currentPassword || newPassword.length < 4 || mismatch}
+            disabled={
+              busy || !currentPassword || newPassword.length < PASSWORD_MIN_LENGTH || mismatch
+            }
             onClick={onSubmit}
           >
             {busy ? "Updating…" : "Update password"}
@@ -92,7 +100,7 @@ export function ChangePasswordForm() {
 function passwordStrength(password: string): { percent: number; label: string; color: string } {
   if (!password) return { percent: 0, label: "", color: "" };
   let score = 0;
-  if (password.length >= 4) score += 1;
+  if (password.length >= PASSWORD_MIN_LENGTH) score += 1;
   if (password.length >= 8) score += 1;
   if (/[0-9]/.test(password)) score += 1;
   if (/[^a-zA-Z0-9]/.test(password)) score += 1;

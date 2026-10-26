@@ -6,6 +6,7 @@ import { useState } from "react";
 import { deleteLoaForm } from "@/api/loa.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
@@ -67,7 +68,7 @@ export function LoaList() {
     <main className="mx-auto flex min-h-full max-w-6xl flex-col px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl">Leave of Absence</h1>
+          <PageTitle size="xl">Leave of Absence</PageTitle>
         </div>
         <button className="btn btn-primary" onClick={newForm}>
           New form

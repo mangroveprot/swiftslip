@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
+import { PageTitle } from "@/components/common/PageTitle";
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { APP } from "@/config/app";
 import type { AppKey } from "@/shared/types";
@@ -54,7 +55,7 @@ export function AppChooser() {
 
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center py-10">
         <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 motion-safe:ease-out">
-          <h1 className="text-3xl font-semibold md:text-4xl">Where would you like to go?</h1>
+          <PageTitle className="md:text-4xl">Where would you like to go?</PageTitle>
           <p className="mt-2 text-sm text-muted-foreground">
             Choose an option to continue. You can come back here any time with{" "}
             <span className="font-medium text-foreground">Switch app</span> in the sidebar.

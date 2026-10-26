@@ -6,6 +6,7 @@ import { deleteCode, upsertCode } from "@/api/access-codes.functions";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { TextField } from "@/components/common/FormField";
 import { OrgSelect } from "@/components/common/OrgSelect";
+import { PageTitle } from "@/components/common/PageTitle";
 import { OrgOptionDialogs, type OrgActionRequest } from "./OrgOptionDialogs";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,7 @@ import {
 
 import type { Role } from "@/shared/types";
 import { accessCodesQueryOptions, orgOptionsQueryOptions } from "../queries";
+import { PASSWORD_MIN_LENGTH } from "@/shared/schemas";
 
 type Account = {
   id: string;
@@ -163,9 +165,9 @@ export function UserManagement() {
     // Same shell as App access / Activity logs: the flat layout stays, but on
     // the white card the rest of the admin panel uses.
     <section className="rounded-xl border bg-card p-3 sm:p-4">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b pb-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h2 className="text-3xl font-bold tracking-tight">User management</h2>
+          <PageTitle as="h2">User management</PageTitle>
           <p className="mt-2 max-w-[30rem] text-sm leading-6 text-muted-foreground">
             Every account signs in with its own ID number and password. Administrators{" "}
             <ShieldCheck
@@ -182,61 +184,61 @@ export function UserManagement() {
         </button>
       </div>
 
-      {/* Tabs and search share one rule: the active tab's underline sits on it
-          and the table's header row follows straight after. The counts live in
-          the tabs, so the four summary cards are gone. */}
-      <div className="mt-4">
-        <div className="border-b">
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-            <div className="flex flex-wrap items-center gap-x-7">
-              {FILTERS.map((f) => {
-                const active = filter === f.key;
-                const count = counts[f.key];
-                return (
-                  <button
-                    key={f.key}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setFilter(f.key)}
-                    className={`-mb-px flex items-baseline gap-2 border-b-2 pt-1 pb-3 text-sm transition-colors ${
-                      active
-                        ? "border-primary font-medium text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
+      {/* The tabs and the search each carry their own underline, and a separate
+          rule below them opens the table. The counts live in the tabs, so the
+          four summary cards are gone. */}
+      <div className="mt-8">
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-center gap-x-7">
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              const count = counts[f.key];
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setFilter(f.key)}
+                  className={`-mb-px flex items-baseline gap-2 border-b-2 pt-1 pb-3 text-sm transition-colors ${
+                    active
+                      ? "border-primary font-medium text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {f.label}
+                  <span
+                    className={
+                      f.key === "incomplete" && count > 0
+                        ? "rounded-[3px] bg-logo/15 px-1.5 py-px text-[11px] font-semibold text-logo-ink"
+                        : "text-xs font-normal text-muted-foreground"
+                    }
                   >
-                    {f.label}
-                    <span
-                      className={
-                        f.key === "incomplete" && count > 0
-                          ? "rounded-[3px] bg-amber-200 px-1.5 text-[11px] font-medium text-amber-950"
-                          : "text-xs font-normal text-muted-foreground"
-                      }
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-            <div className="order-first w-full pb-2 sm:order-none sm:w-72">
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-0 size-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <Input
-                  type="search"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search ID, name, position, or department…"
-                  className="h-9 border-0 bg-transparent pr-0 pl-8 shadow-none focus-visible:ring-0"
-                  aria-label="Search accounts"
-                />
-              </div>
+          <div className="order-first w-full sm:order-none sm:w-72">
+            <div className="relative border-b border-input transition-colors focus-within:border-primary">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-0 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search ID, name, position, or department…"
+                className="h-9 border-0 bg-transparent pr-0 pl-8 shadow-none focus-visible:ring-0"
+                aria-label="Search accounts"
+              />
             </div>
           </div>
         </div>
+
+        <div className="mt-3 border-t" />
 
         {isLoading ? (
           <div aria-label="Loading accounts">
@@ -325,7 +327,7 @@ export function UserManagement() {
                                 </span>
                               ) : null}
                               {incomplete ? (
-                                <span className="rounded-[3px] bg-amber-200 px-1.5 py-0.5 text-[11px] font-medium text-amber-950">
+                                <span className="rounded-[3px] bg-logo/15 px-1.5 py-0.5 text-[11px] font-semibold text-logo-ink">
                                   Incomplete profile
                                 </span>
                               ) : null}
@@ -444,7 +446,7 @@ export function UserManagement() {
                         {a.id_number}
                       </p>
                       {incomplete ? (
-                        <span className="mt-1 inline-block rounded-[3px] bg-amber-200 px-1.5 py-0.5 text-[11px] font-medium text-amber-950">
+                        <span className="mt-1 inline-block rounded-[3px] bg-logo/15 px-1.5 py-0.5 text-[11px] font-semibold text-logo-ink">
                           Incomplete profile
                         </span>
                       ) : null}
@@ -578,6 +580,10 @@ function AccountDialog({
   const [orgRequest, setOrgRequest] = useState<OrgActionRequest | null>(null);
 
   // Re-seed the form whenever a different account (or "new") is opened.
+  //
+  // The org lists are read BEFORE that re-seed: the department an older row
+  // implies is looked up in the live table, so seeding needs it.
+  const { data: orgLists } = useQuery({ ...orgOptionsQueryOptions(), enabled: editing !== null });
   const openKey = editing === null ? null : isNew ? "new" : (account?.id ?? null);
   const [openId, setOpenId] = useState<string | null>(null);
   if (openKey && openKey !== openId) {
@@ -589,7 +595,7 @@ function AccountDialog({
     // A stored department wins; an older row falls back to the one its
     // position implies until someone picks one outright.
     setDepartment(
-      isNew ? "" : account?.department || departmentForPosition(account?.position ?? ""),
+      isNew ? "" : account?.department || departmentForPosition(account?.position ?? "", orgLists),
     );
     setPosition(isNew ? "" : (account?.position ?? ""));
   }
@@ -599,7 +605,6 @@ function AccountDialog({
   // Both lists come from the editable org options table (falling back to the
   // fixed constants when the migration hasn't run), so a renamed item shows up
   // here without a code change.
-  const { data: orgLists } = useQuery({ ...orgOptionsQueryOptions(), enabled: editing !== null });
   const baseDepartments = orgLists?.departments ?? DEPARTMENTS;
   const designationOptions = orgLists?.designations ?? DESIGNATIONS;
   const positionList = positionsUnder(department, orgLists);
@@ -608,7 +613,7 @@ function AccountDialog({
   // (an older position whose department was never added). Without this the
   // picker would report a perfectly correct value as "Others" and open the
   // text box over it.
-  const impliedDepartment = departmentForPosition(position);
+  const impliedDepartment = departmentForPosition(position, orgLists);
   const departmentOptions =
     impliedDepartment && !baseDepartments.includes(impliedDepartment)
       ? [...baseDepartments, impliedDepartment]
@@ -636,6 +641,13 @@ function AccountDialog({
     }
     if (positionInvalid) {
       toast.error("Please specify the position, or pick one from the list.");
+      return;
+    }
+    // A reset is what an admin types in a hurry. Refuse it here, with the same
+    // short floor the server enforces, instead of letting the request fail
+    // after the dialog has closed over it.
+    if (password && password.length < PASSWORD_MIN_LENGTH) {
+      toast.error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
       return;
     }
     setBusy(true);
@@ -740,12 +752,15 @@ function AccountDialog({
               onChange={(v) => {
                 const next = normalizePosition(v);
                 setPosition(next);
-                // The department follows the position, the same way "HR
-                // Officer" implies the HR department — so it is always
-                // overwritten rather than only filling an empty field. That
-                // also repairs an older row whose department was never stored.
-                const implied = departmentForPosition(next);
-                if (implied) setDepartment(implied);
+                // The department follows the position only when the current one
+                // can't hold it — a department the admin just picked by hand
+                // must stay picked, or choosing a position under "IT DEP"
+                // silently rewrote the department back to "Information
+                // Technology".
+                const implied = departmentForPosition(next, orgLists);
+                if (implied && !positionsUnder(department, orgLists).includes(next)) {
+                  setDepartment(implied);
+                }
               }}
               onValidityChange={setPositionInvalid}
               actions={{

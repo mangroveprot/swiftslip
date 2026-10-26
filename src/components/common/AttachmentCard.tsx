@@ -311,7 +311,7 @@ export function AttachmentCard({
         ref={fileInputRef}
         type="file"
         className="hidden"
-        accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.webp"
+        accept="application/pdf,image/png,image/jpeg,image/gif,image/webp,image/bmp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
         disabled={!canEdit || busy}
         onChange={pickFile}
       />

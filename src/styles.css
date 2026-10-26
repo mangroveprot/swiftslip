@@ -23,6 +23,18 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-tint: var(--accent-tint);
   --color-accent-tint-foreground: var(--accent-tint-foreground);
+  /* Mindbridge logo orange (sampled from the mark) - status chips that need
+     the brand hue rather than the softer --accent terracotta. The ink is the
+     readable counterpart for a soft tinted chip: white on the logo orange
+     itself is only ~3:1, too thin at 11px. */
+  --color-logo: #e96f22;
+  --color-logo-ink: #a54506;
+  /* Dashboard accent: the editorial green from the dashboard mock. Kept
+     separate from --primary so the rest of the admin panel stays navy. */
+  --color-dashboard-accent: var(--dashboard-accent);
+  --color-dashboard-rule: var(--dashboard-rule);
+  --color-dashboard-soft: var(--dashboard-soft);
+  --color-dashboard-current: var(--dashboard-current);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -57,6 +69,10 @@
   --border: oklch(0.86 0.012 85);
   --input: oklch(0.86 0.012 85);
   --ring: oklch(0.33 0.09 250);
+  --dashboard-accent: #2f9e44;
+  --dashboard-rule: #2f6b4f;
+  --dashboard-soft: #e8f4eb;
+  --dashboard-current: #b2dfc0;
   --paper: oklch(1 0 0);
   --ink: oklch(0.2 0.02 250);
   /* Solid surface for app chrome (sidebars, mobile headers). Opaque: the

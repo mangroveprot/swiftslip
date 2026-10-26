@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireUser } from "@/server/auth/session.server";
 import { logActivity } from "@/server/services/activity-log.server";
+import { assertAiQuota, recordAiRequest } from "@/server/services/ai-quota.server";
 import * as attachments from "@/server/services/attachments.server";
 import { chatOtAssistant as chatOtAssistantService } from "@/server/services/ot-assistant.server";
 import { writeOtReason as writeOtReasonService } from "@/server/services/ot-reason.server";
@@ -184,13 +185,19 @@ export const removeOtOtherAttachment = createServerFn({ method: "POST" })
 export const writeOtReason = createServerFn({ method: "POST" })
   .validator(otReasonInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await writeOtReasonService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await writeOtReasonService(data);
+    await recordAiRequest(user, "OT reason");
+    return result;
   });
 
 export const chatOtAssistant = createServerFn({ method: "POST" })
   .validator(otChatInput)
   .handler(async ({ data }) => {
-    await requireUser();
-    return await chatOtAssistantService(data);
+    const user = await requireUser();
+    await assertAiQuota(user);
+    const result = await chatOtAssistantService(data);
+    await recordAiRequest(user, "OT assistant");
+    return result;
   });

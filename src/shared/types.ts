@@ -29,15 +29,6 @@ export const APP_HOME = {
 export const RULE_SCOPES = ["user", "department", "position"] as const;
 export type RuleScope = (typeof RULE_SCOPES)[number];
 
-export type AccessRule = {
-  id: string;
-  app_key: GrantableAppKey;
-  scope: RuleScope;
-  /** A users.id for `user`; the literal profile text for the other scopes. */
-  scope_value: string;
-  allow: boolean;
-};
-
 export type EmployeeProfile = {
   emp_no: string;
   full_name: string;

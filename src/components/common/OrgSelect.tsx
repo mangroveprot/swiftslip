@@ -100,10 +100,19 @@ export function OrgSelect({
   const [picked, setPicked] = useState(listed);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const customOpen = picked === OTHERS;
-  const invalid = needsSpecification(picked, value);
-  /** What the closed control shows. */
-  const display = customOpen ? trimmed : picked;
+  // Whether "Others…" was actually chosen in this visit — NOT whether the
+  // stored value happens to be off-list. A value nobody here invented (an older
+  // spelling, or a department / position an admin has since renamed) must show
+  // as one plain field, or every such profile grows a second input under the
+  // dropdown as soon as the page loads. Only an explicit pick reveals the box.
+  const [chosen, setChosen] = useState(false);
+  const customOpen = picked === OTHERS && chosen;
+  // Only an open, still-empty Others box is a problem. An off-list value that
+  // predates the list is not — refusing to save it would lock the person out of
+  // saving anything else on the same form.
+  const invalid = customOpen && needsSpecification(picked, value);
+  /** What the closed control shows; an off-list value shows itself. */
+  const display = picked === OTHERS ? trimmed : picked;
 
   useEffect(() => {
     onValidityChange?.(invalid);
@@ -149,6 +158,8 @@ export function OrgSelect({
 
   function pick(next: string) {
     setPicked(next);
+    // Only choosing Others opens the text box — picking a real row closes it.
+    setChosen(next === OTHERS);
     // Others starts blank rather than keeping the old value, so an empty box
     // is unambiguous ("not set yet") — and the sentinel itself never reaches
     // the parent as a value.
@@ -264,6 +275,16 @@ export function OrgSelect({
           </div>
         ) : null}
       </div>
+
+      {/* An off-list value is explained rather than silently swapped for a
+          text box: the person can see what is stored and what to do about it. */}
+      {offList && !customOpen ? (
+        <span className="mt-1 block text-xs text-muted-foreground">
+          {allowOthers
+            ? `“${trimmed}” isn’t on the shared list. Pick “Others…” to change it.`
+            : `“${trimmed}” isn’t on the shared list. An administrator can add it.`}
+        </span>
+      ) : null}
 
       {customOpen ? (
         <>
