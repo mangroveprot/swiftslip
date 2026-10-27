@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 
 import { AiMascot } from "./AiMascot";
 import { cn } from "@/lib/utils";
@@ -10,16 +11,27 @@ const HINT_INTERVAL = 3600;
     the page settling. */
 const FIRST_HINT_DELAY = 1200;
 
+/** Whether the nudge was closed during this page load. It is a plain in-memory
+    flag on purpose: nothing is written to the browser, so the hints are back on
+    the very next reload, on every screen size. The earlier version saved a
+    timestamp in localStorage, and one press of the X then silenced the bubble
+    on every form — including on a phone, where it looked like the hints simply
+    did not exist. A dismissal now only lasts while that page stays open. */
+let dismissedForPageLoad = false;
+
 /**
  * The floating launcher for a form's AI assistant: the mascot inside a pulsing
  * circle, with a speech bubble beside it that pops in with a nudge ("How can I
  * help?") and then rotates through a couple more, tailored to what that
  * assistant can actually do for that form.
  *
- * The bubble is `aria-hidden` — it is a decorative pointer at a button that
- * already carries its own label and title. It also retreats whenever the chat
- * window is open, so it never sits over the transcript, and it is not rendered
- * below `min-[26rem]`, where there is no room for it beside the mascot.
+ * The bubble carries its own close button: closing it hides the nudge for the
+ * rest of this page load, and a reload brings it back. Nothing is written to the
+ * browser, so it can never go permanently silent. The mascot button keeps its
+ * label and title meanwhile, so nothing is lost. It also retreats whenever the
+ * chat window is open, so it never sits over the transcript, and it is
+ * width-capped to the screen instead of being dropped on narrow ones, so a
+ * phone shows the nudge too.
  *
  * The motion is the `.ai-*` keyframes in `styles.css`: a bubble that springs
  * out of the mascot's corner, a rocking mascot, a breathing halo and a
@@ -49,19 +61,34 @@ export function AiLauncher({
   // than sitting there invisible.
   const [live, setLive] = useState(false);
   const [shown, setShown] = useState(false);
+  // Seeded from the page-load flag, so closing it on one form also keeps it
+  // quiet on the next form until the page is reloaded.
+  const [dismissed, setDismissed] = useState(dismissedForPageLoad);
+
+  function dismissHints() {
+    dismissedForPageLoad = true;
+    setDismissed(true);
+    setShown(false);
+    window.setTimeout(() => setLive(false), 180);
+  }
 
   // Closed: wait a beat, mount the bubble, show it, then rotate the hint.
   // Open: unmount it entirely.
   useEffect(() => {
-    if (open || hint.length === 0) {
+    if (open || dismissed || hint.length === 0) {
       setLive(false);
       setShown(false);
       return;
     }
+    // `live` and `shown` go true together: the bubble then mounts already
+    // carrying `ai-bubble-pop`, and the animation plays from its own `from`
+    // state. The old two-step dance needed a `requestAnimationFrame` between
+    // the two, and a frame that never arrives (a background tab) left the
+    // bubble mounted at the vanish animation's final opacity of 0 — invisible,
+    // on every form, with nothing on screen to explain why.
     const appear = window.setTimeout(() => {
       setLive(true);
-      // Next frame, so the pop animation has a "before" state to start from.
-      requestAnimationFrame(() => setShown(true));
+      setShown(true);
     }, FIRST_HINT_DELAY);
     const rotate = window.setInterval(() => setTip((i) => (i + 1) % hint.length), HINT_INTERVAL);
     return () => {
@@ -71,24 +98,25 @@ export function AiLauncher({
     // `hint` is a module-level constant in each caller, so the length is a
     // stable dependency — depending on the array itself would re-run this on
     // every render.
-  }, [open, hint.length]);
+  }, [open, dismissed, hint.length]);
 
   return (
     <div className="flex flex-col items-end gap-2">
-      {/* Below `min-[26rem]` there is no room for a bubble beside a 3.5rem
-          mascot, so it is dropped there rather than allowed to overflow. */}
-      {live && !open ? (
-        <div aria-hidden="true" className="hidden min-[26rem]:block">
-          {/* Sharp-cornered white bubble, matching the reference balloon: crisp corners
-              and a clean pointed tail. White fill means the tail is white too,
-              so the two fuse into one silhouette and a border is never needed
-              (a 1px line cannot survive the tail join anyway — it has nowhere
-              to go round the corner). `shadow-lg` is what lifts it off the
-              page, since a white shape on warm paper needs separation more
-              than it needs a fill. */}
+      {/* Shown at every width. It used to be hidden below `min-[26rem]`, which
+          left a phone with the mascot and no words at all. The width is capped
+          to the viewport instead, so a narrow screen wraps the hint onto a few
+          lines rather than letting it spill off the left edge. */}
+      {live && !open && !dismissed ? (
+        <div className="max-w-[calc(100vw_-_2rem)]">
+          {/* The nudge follows the theme: a light card on the light theme and a
+              dark one on the dark theme. A hairline border (not just a shadow)
+              keeps it separate from the white sheet behind it, so it reads as
+              the assistant talking rather than as part of the form. Soft rounded
+              corners and a small rounded tail, filled with the same colour as
+              the bubble, so the two fuse into one silhouette. */}
           <div
             className={cn(
-              "relative rounded-[3px] bg-card px-3.5 py-2 text-xs font-medium leading-snug text-foreground shadow-lg",
+              "relative max-w-full rounded-xl border border-border bg-card py-2 pl-3.5 pr-8 text-xs font-medium leading-snug text-foreground shadow-lg",
               shown ? "ai-bubble-pop" : "ai-bubble-vanish",
             )}
           >
@@ -96,18 +124,26 @@ export function AiLauncher({
             <span key={tip} className="ai-hint-fade block">
               {hint[tip]}
             </span>
-            {/* Tail: a CSS triangle (two transparent borders + one coloured)
-                rather than a rotated square — a square leaves a blunt 90°
-                point, this gives a true sharp tip. Same fill, tucked up so the
-                join with the bubble's bottom edge is seamless.
-
-                A downward-pointing triangle needs a *top* border in the colour
-                and both side borders transparent. The side widths must be
-                declared explicitly too: an omitted border-width falls back to
-                `medium` with `currentColor`, which paints a stray sliver.
-                `border-t-card` matches the bubble's fill, not `bg-card` —
-                border colours come from the palette, not the background. */}
-            <span className="ai-tail-pop absolute -bottom-[6px] right-5 size-0 border-t-[8px] border-t-card border-l-[8px] border-r-[8px] border-l-transparent border-r-transparent" />
+            {/* Closes the nudge for this page load. A real button, so it takes
+                focus and carries a name of its own. */}
+            <button
+              type="button"
+              onClick={dismissHints}
+              aria-label="Hide these hints"
+              title="Hide these hints"
+              className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-foreground/40"
+            >
+              <X className="size-3" aria-hidden="true" />
+            </button>
+            {/* Tail: a small rounded square turned 45° and tucked under the
+                bottom edge, so the point where it meets the bubble is a soft
+                diagonal instead of a hairline join. Same fill as the bubble,
+                so the two read as one silhouette. Matches the rounded arrow in
+                the reference. */}
+            <span
+              aria-hidden="true"
+              className="ai-tail-pop absolute -bottom-1 right-5 size-3 rotate-45 rounded-[3px] border-b border-r border-border bg-card"
+            />
           </div>
         </div>
       ) : null}

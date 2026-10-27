@@ -45,7 +45,7 @@ export function ConfirmModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       // Block the overlay click while busy so a slow action can't be cancelled
       // out from under itself.
       onClick={busy ? undefined : onCancel}
@@ -54,19 +54,19 @@ export function ConfirmModal({
       aria-label={title}
     >
       <div
-        className="bg-white rounded-lg w-full max-w-sm shadow-xl"
+        className="bg-card text-card-foreground rounded-lg w-full max-w-sm shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-5 py-4 border-b border-slate-200">
+        <div className="px-5 py-4 border-b border-border">
           <h2 className="text-base font-semibold">{title}</h2>
         </div>
         <div className="px-5 py-4">
-          <p className="text-sm text-slate-600">{message}</p>
+          <p className="text-sm text-muted-foreground">{message}</p>
         </div>
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
           <button
             type="button"
-            className="px-4 py-1.5 rounded-md text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onCancel}
             disabled={busy}
           >

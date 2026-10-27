@@ -8,6 +8,32 @@
     <meta name="author" content="SwiftSlip" />
     <meta name="theme-color" content="#ffffff" />
 
+    <!-- Theme, applied before the first paint.
+         The saved choice (light / dark / system) lives in localStorage, per
+         browser, never on the account — see src/lib/theme.ts for why. This
+         inline copy runs before any pixel is drawn so a reload never flashes
+         white; the app's own module keeps it in step after that. Keep the key,
+         the class name and the `system` default identical to that file. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("swiftslip-theme");
+          var pref = saved === "light" || saved === "dark" ? saved : "system";
+          var dark =
+            pref === "dark" ||
+            (pref === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute("content", dark ? "#151a21" : "#ffffff");
+        } catch (e) {
+          /* Storage blocked: fall through to the light default. */
+        }
+      })();
+    </script>
+
     <!-- Installable as an app (Chrome/Edge) and addable to the iOS home screen. -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

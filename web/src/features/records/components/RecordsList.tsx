@@ -222,12 +222,12 @@ function RecordThumbnail({ status, hasName }: { status: Status; hasName: boolean
   const tinted = (status === "active" || status === "closing") && hasName;
   return (
     <div className="h-[6.25rem] w-[4.75rem] shrink-0 rounded-sm border bg-paper p-1.5 shadow-sm">
-      <div className={`h-1.5 rounded-sm ${tinted ? "bg-accent/35" : "bg-muted"}`} />
+      <div className={`h-1.5 rounded-sm ${tinted ? "bg-accent/35" : "bg-ink/10"}`} />
       <div className="mt-1.5 flex flex-col gap-1">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className={`h-0.5 rounded-full ${tinted && i < 3 ? "bg-accent/30" : "bg-muted"}`}
+            className={`h-0.5 rounded-full ${tinted && i < 3 ? "bg-accent/30" : "bg-ink/10"}`}
           />
         ))}
       </div>

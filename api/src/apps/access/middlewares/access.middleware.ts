@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import type { GrantableAppKey } from '@swiftslip/shared/types';
+import type { InternalAppKey } from '@swiftslip/shared/types';
 import { ErrorResponse } from '../../../common/shared/utils/error';
 import { AccessService } from '../services';
 
@@ -8,9 +8,12 @@ import { AccessService } from '../services';
  * every read and mutation of a grantable app goes through it.
  *
  *   router.use(authenticate, requireApp('swiftslip'));
+ *
+ * Typed to this host's own apps: an app on another host has no route here, so
+ * asking for a guard on one is a compile error instead of a permanent 403.
  */
 export const requireApp =
-  (app: GrantableAppKey) =>
+  (app: InternalAppKey) =>
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = req.user;

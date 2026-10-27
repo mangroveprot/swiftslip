@@ -109,7 +109,7 @@ export function InventoryLayout() {
 
   return (
     <InventoryShellContext.Provider value={shell}>
-      <div className="rgc-inventory flex h-dvh overflow-hidden relative text-slate-800">
+      <div className="rgc-inventory flex h-dvh overflow-hidden relative bg-background text-foreground">
         <InventorySidebar shell={shell} />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">

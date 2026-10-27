@@ -34,7 +34,7 @@ const securityHeaders = (apiOrigin: string) => ({
     "object-src 'none'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: blob: https://*.supabase.co",
+    "img-src 'self' data: blob: https://*.supabase.co https://ticketing.regasco.ph:2424",
     "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src 'self' https://*.supabase.co${apiOrigin ? ` ${apiOrigin}` : ""}`,
     "worker-src 'self' blob:",

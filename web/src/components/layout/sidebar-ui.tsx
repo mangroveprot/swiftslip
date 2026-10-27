@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { APP } from "@/config/app";
+import { ThemeToggle } from "./ThemeToggle";
 
 /**
  * Building blocks shared by the SwiftSlip portal sidebar and the Admin
@@ -76,7 +77,7 @@ export function SidebarSection({ label, children }: { label: string; children: R
 /** Right-aligned pill marking a nav row whose screen isn't built yet. */
 export function SidebarSoonBadge() {
   return (
-    <span className="ml-auto shrink-0 rounded-full border border-border bg-white/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+    <span className="ml-auto shrink-0 rounded-full border border-border bg-card/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
       Soon
     </span>
   );
@@ -94,6 +95,8 @@ function initialsOf(name: string) {
  * Footer pinned under the nav: avatar + the signed-in user's name over a
  * caption (role or employee number), then the plain icon rows passed as
  * children (Switch app / Install / Sign out).
+ * The theme toggle sits beside the name, at the top-right of the footer — the
+ * one spot that is always visible in both the portal and the Admin Panel.
  */
 export function SidebarFooter({
   name,
@@ -113,12 +116,13 @@ export function SidebarFooter({
         >
           {initialsOf(name)}
         </span>
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">{name}</span>
           {sublabel ? (
             <span className="block truncate text-xs text-muted-foreground">{sublabel}</span>
           ) : null}
         </span>
+        <ThemeToggle />
       </div>
       <div className="space-y-0.5">{children}</div>
     </footer>

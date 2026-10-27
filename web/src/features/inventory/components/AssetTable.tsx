@@ -72,7 +72,7 @@ export const AssetTable = memo(function AssetTable({
       <div className="asset-table__toolbar">
         <div className="relative w-full sm:w-80">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
             viewBox="0 0 20 20"
             fill="none"
             aria-hidden="true"
@@ -124,7 +124,7 @@ export const AssetTable = memo(function AssetTable({
               <th className="asset-table__th w-9">
                 <input
                   type="checkbox"
-                  className="rounded border-slate-300 text-brand focus:ring-brand/30"
+                  className="rounded border-input text-brand focus:ring-brand/30"
                   checked={allSelected}
                   onChange={(e) => onSelectAllChanged(e.target.checked)}
                 />
@@ -143,8 +143,8 @@ export const AssetTable = memo(function AssetTable({
             {assets.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-6 py-14 text-center">
-                  <p className="text-sm font-medium text-slate-700">No assets match this view</p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="text-sm font-medium text-foreground">No assets match this view</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Adjust filters or clear search to see more records.
                   </p>
                 </td>
@@ -169,8 +169,8 @@ export const AssetTable = memo(function AssetTable({
 
       <div className="asset-table__footer">
         <span className="asset-table__meta">
-          Showing <strong className="text-slate-700">{assets.length}</strong> of{" "}
-          <strong className="text-slate-700">{totalCount}</strong> assets
+          Showing <strong className="text-foreground">{assets.length}</strong> of{" "}
+          <strong className="text-foreground">{totalCount}</strong> assets
         </span>
       </div>
     </div>

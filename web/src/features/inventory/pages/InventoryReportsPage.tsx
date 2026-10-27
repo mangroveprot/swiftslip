@@ -90,7 +90,7 @@ export function InventoryReportsPage() {
             </div>
             <button
               type="button"
-              className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold bg-[#F25A0B] text-white shadow-lg shadow-black/25 hover:bg-[#d94f0a] disabled:opacity-50"
+              className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold bg-logo-bright text-white shadow-lg shadow-black/25 hover:bg-logo-hover disabled:opacity-50"
               disabled={busy || document == null || branchId == null}
               onClick={() => void downloadExcel()}
             >
@@ -116,29 +116,29 @@ export function InventoryReportsPage() {
 
         <div className="flex-1 min-h-0 overflow-y-auto">
           {shellLoading || (branchId != null && isLoading) ? (
-            <p className="text-sm text-slate-400">Loading report…</p>
+            <p className="text-sm text-muted-foreground">Loading report…</p>
           ) : branchId == null ? (
-            <div className="bg-white border border-slate-200 rounded-lg px-5 py-10 text-center">
-              <p className="text-sm text-slate-600">
+            <div className="bg-card text-card-foreground border border-border rounded-lg px-5 py-10 text-center">
+              <p className="text-sm text-muted-foreground">
                 Select a branch to preview its inventory report.
               </p>
             </div>
           ) : isError || document == null ? (
-            <div className="bg-white border border-slate-200 rounded-lg px-5 py-10 text-center">
-              <p className="text-sm text-slate-600">Could not build the report.</p>
+            <div className="bg-card text-card-foreground border border-border rounded-lg px-5 py-10 text-center">
+              <p className="text-sm text-muted-foreground">Could not build the report.</p>
               {isError && error ? (
                 <p className="text-xs text-red-600 mt-2">{messageOf(error)}</p>
               ) : null}
             </div>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-              <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+            <div className="bg-card text-card-foreground border border-border rounded-lg overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">
+                  <p className="text-sm font-semibold text-foreground truncate">
                     {document.branchName}
                   </p>
                 </div>
-                <span className="text-xs text-slate-400 shrink-0">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {document.sheets.length} floor sheet{document.sheets.length === 1 ? "" : "s"}
                 </span>
               </div>
@@ -154,7 +154,10 @@ export function InventoryReportsPage() {
                         : "report-floor-panel report-floor-panel--hidden"
                     }
                   >
-                    <div className="overflow-x-auto">
+                    {/* Paper stays light in both themes: this block is a preview
+                        of a printed sheet, so it keeps the look it will have on
+                        paper (same rule as the DTR preview and the PDF). */}
+                    <div className="overflow-x-auto bg-white text-slate-700">
                       <table className="report-sheet w-full text-xs border-collapse">
                         <thead>
                           <tr>
@@ -216,7 +219,8 @@ export function InventoryReportsPage() {
                       </table>
                     </div>
 
-                    <div className="px-4 py-4 border-t border-slate-100 space-y-1">
+                    {/* Totals footer of the same printed sheet — stays on paper too. */}
+                    <div className="px-4 py-4 border-t border-slate-100 space-y-1 bg-white text-slate-700">
                       <p className="text-xs font-semibold text-slate-700">TOTAL OF:</p>
                       {sheet.totals.length === 0 ? (
                         <p className="text-xs text-slate-400">0 items</p>
@@ -237,7 +241,7 @@ export function InventoryReportsPage() {
               })}
 
               {/* Excel-style sheet tabs */}
-              <div className="flex items-end gap-0 px-2 pt-2 bg-slate-100 border-t border-slate-200 overflow-x-auto no-scrollbar">
+              <div className="flex items-end gap-0 px-2 pt-2 bg-secondary border-t border-border overflow-x-auto no-scrollbar">
                 {document.sheets.map((sheet, idx) => (
                   <button
                     type="button"

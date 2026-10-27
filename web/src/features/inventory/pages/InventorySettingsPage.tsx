@@ -122,7 +122,7 @@ export function InventorySettingsPage() {
 
         <div className="flex-1 min-h-0 overflow-y-auto">
           {options == null && !isError ? (
-            <p className="text-sm text-slate-400">Loading…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : options == null ? null : (
             <div className="max-w-3xl space-y-6">
               <OptionManager

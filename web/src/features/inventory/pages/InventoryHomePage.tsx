@@ -366,7 +366,7 @@ export function InventoryHomePage() {
         </div>
 
         {isLoading ? (
-          <p className="text-sm text-slate-400 shrink-0">Loading…</p>
+          <p className="text-sm text-muted-foreground shrink-0">Loading…</p>
         ) : (
           <>
             <div className="shrink-0">

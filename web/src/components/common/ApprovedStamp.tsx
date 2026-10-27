@@ -74,6 +74,12 @@ export function ApprovedStamp({ approved, size = "md", className }: ApprovalStam
           <path id={arcBottomId} d="M38,100 A62,62 0 0 0 162,100" />
         </defs>
 
+        {/* A washed back disc in the seal's own paper colour. The seal is a
+            stamp ON a sheet, so its middle is the sheet, not whatever panel
+            happens to sit behind it: on the dark theme a card-coloured middle
+            turned the mark into a dark hole with green crumbs around it. */}
+        <circle cx="100" cy="100" r="99" fill="var(--seal-paper)" />
+
         <g mask={`url(#${gapId})`} fill="currentColor">
           <path d={SCALLOPED_RING} fillRule="evenodd" />
           <circle cx="100" cy="100" r="38" />
@@ -113,7 +119,7 @@ export function ApprovedStamp({ approved, size = "md", className }: ApprovalStam
               // disappear. Pinning the length keeps the whole word on the ink.
               textLength="150"
               lengthAdjust="spacingAndGlyphs"
-              fill="#fff"
+              fill="var(--seal-gap)"
             >
               APPROVED
             </text>
@@ -125,7 +131,7 @@ export function ApprovedStamp({ approved, size = "md", className }: ApprovalStam
               fontSize="34"
               textLength="140"
               lengthAdjust="spacingAndGlyphs"
-              fill="#fff"
+              fill="var(--seal-gap)"
             >
               NOT APPROVED
             </text>

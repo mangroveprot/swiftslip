@@ -164,7 +164,9 @@ export function LoginForm() {
                 Password
               </label>
               {capsLock ? (
-                <span className="text-xs font-medium text-amber-800">Caps Lock is on</span>
+                <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                  Caps Lock is on
+                </span>
               ) : null}
             </div>
             <div className="relative mt-2">

@@ -3,6 +3,7 @@ import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { normalizePosition } from '@swiftslip/shared/org';
 import {
   GRANTABLE_APP_KEYS,
+  isExternalApp,
   type AppKey,
   type GrantableAppKey,
   type Role,
@@ -23,7 +24,7 @@ import {
   type Rule,
 } from '../utils';
 
-const EVERY_APP: AppKey[] = ['admin', 'swiftslip', 'inventory'];
+const EVERY_APP: AppKey[] = ['admin', 'swiftslip', 'inventory', 'ticketing'];
 
 export type OverviewPerson = {
   id: string;
@@ -65,6 +66,9 @@ class AccessService extends BaseService<
   /**
    * Apps this account may open. Used by the session read and the route guards.
    * Throws (callers wrap it): it is plumbing, not an endpoint.
+   *
+   * An app on another host (`ticketing`) is included: the chooser must be able
+   * to offer its card, and no server guard here can enforce it anyway.
    */
   async resolveApps(user: SessionUser): Promise<AppKey[]> {
     if (user.role === 'admin') return EVERY_APP;
@@ -84,9 +88,16 @@ class AccessService extends BaseService<
     );
   }
 
-  /** The real enforcement behind the route guards (see `requireApp`). */
+  /**
+   * The real enforcement behind the route guards (see `requireApp`).
+   *
+   * Only apps this host serves have a guard, so `admin` and an external app
+   * (`ticketing`) are always refused here - a 403 on `ticketing` is expected
+   * and correct: there is no local route for it to protect.
+   */
   async canAccess(user: SessionUser, app: AppKey): Promise<boolean> {
     if (user.role === 'admin') return true;
+    if (app === 'admin' || isExternalApp(app)) return false;
     return (await this.resolveApps(user)).includes(app);
   }
 

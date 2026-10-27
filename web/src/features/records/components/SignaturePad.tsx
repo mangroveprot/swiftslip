@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { normalizeSignature } from "@/lib/signature";
 
 type Mode = "draw" | "upload";
 
@@ -17,6 +18,7 @@ export function SignatureField({
   savedSignature,
   onChange,
   variant = "default",
+  paperWidth = "fit",
 }: {
   value: string;
   disabled: boolean;
@@ -35,6 +37,16 @@ export function SignatureField({
    * form, but drops the extra top divider — the OB sheet already draws one.
    */
   variant?: "default" | "ob";
+  /**
+   * How wide the white paper behind the signature is.
+   *
+   * `fit` hugs the signature itself, so a small squiggle doesn't put a full-width
+   * white bar across a dark form (a signature is ink on paper, so the paper has
+   * to stay — it is the only thing that makes black ink visible on a dark page).
+   * `full` keeps the wide strip; only My Account asks for it, where the field is
+   * the thing being authored and the empty state matters more than the flash.
+   */
+  paperWidth?: "fit" | "full";
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -44,8 +56,10 @@ export function SignatureField({
     setOpen(true);
   }
 
-  function apply() {
-    onChange(draft);
+  async function apply() {
+    // Tidy whatever was drawn or picked before it goes on the form, so every
+    // signature lands the same size no matter how it was made.
+    onChange(await normalizeSignature(draft));
     setOpen(false);
   }
 
@@ -86,14 +100,18 @@ export function SignatureField({
         type="button"
         disabled={disabled}
         onClick={openEditor}
-        className="mt-2 flex h-14 w-full items-center justify-center rounded-md border border-dashed border-border bg-background px-3"
+        className={`mt-2 flex h-14 items-center justify-center rounded-md border border-dashed border-border bg-paper px-3 ${
+          paperWidth === "full" || !value ? "w-full" : "w-fit min-w-[8rem] max-w-full"
+        }`}
       >
         {value ? (
-          <img src={value} alt="Signature preview" className="max-h-12 max-w-full object-contain" />
+          <img
+            src={value}
+            alt="Signature preview"
+            className="max-h-12 w-auto max-w-full object-contain"
+          />
         ) : (
-          <span className="text-xs text-muted-foreground">
-            No signature yet. Click to draw or upload
-          </span>
+          <span className="text-xs text-ink/60">No signature yet. Click to draw or upload</span>
         )}
       </button>
 
@@ -112,7 +130,7 @@ export function SignatureField({
           <img
             src={savedSignature}
             alt="My Account signature"
-            className="h-10 w-auto max-w-[9rem] shrink-0 object-contain"
+            className="h-10 w-auto max-w-[9rem] shrink-0 rounded bg-paper object-contain px-1"
           />
           <span className="text-xs text-muted-foreground">
             <span className="block font-medium text-foreground">My Account signature</span>
@@ -251,8 +269,11 @@ function SignaturePad({
     const reader = new FileReader();
     reader.onload = () => {
       const result = typeof reader.result === "string" ? reader.result : "";
-      onChange(result);
+      // A photo is thousands of pixels wide and a cropped scan is a few hundred.
+      // Cropping to the ink and scaling fixes both, so the preview (and the form)
+      // shows the signature itself rather than its original pixel size.
       setMode("upload");
+      void normalizeSignature(result).then(onChange);
     };
     reader.readAsDataURL(file);
   }
@@ -298,7 +319,7 @@ function SignaturePad({
       {mode === "draw" ? (
         <canvas
           ref={canvasRef}
-          className="h-40 w-full cursor-crosshair rounded-md border border-border bg-white touch-none"
+          className="h-40 w-full cursor-crosshair rounded-md border border-border bg-paper touch-none"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -320,7 +341,7 @@ function SignaturePad({
             const f = e.dataTransfer.files?.[0];
             if (f) onUpload(f);
           }}
-          className="flex h-40 w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border bg-background disabled:cursor-not-allowed"
+          className="flex h-40 w-full cursor-pointer items-center justify-center rounded-md border border-dashed border-border bg-paper disabled:cursor-not-allowed"
         >
           {value ? (
             <img
@@ -329,9 +350,7 @@ function SignaturePad({
               className="max-h-36 max-w-full object-contain"
             />
           ) : (
-            <p className="text-xs text-muted-foreground">
-              Click to browse, or drag and drop a PNG or JPG
-            </p>
+            <p className="text-xs text-ink/60">Click to browse, or drag and drop a PNG or JPG</p>
           )}
         </button>
       )}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/signature";
 import { formatPeriodDateRange, formatShortDate } from "@swiftslip/shared/period";
 import type { DtrEntry, DtrHeader, DtrTemplate } from "@swiftslip/shared/types";
+import { withRestDayRemarks } from "./rest-day";
 
 // The export fills a tokenized copy of the company's real Word form
 // (public/dtr_template.docx — tokenized by scripts/dtr-template-tokenize.mjs) so
@@ -206,7 +207,7 @@ export async function downloadDtrWord({
     // One entry per day — the template repeats its value row over this list.
     entries: days.length
       ? days.map((d) => {
-          const e = entryFor(d);
+          const e = withRestDayRemarks(entryFor(d), d, header);
           return {
             date: formatShortDate(d, header.month, header.year),
             time_in: e.time_in ?? "",

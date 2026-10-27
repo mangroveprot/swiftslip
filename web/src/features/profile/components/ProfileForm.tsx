@@ -252,6 +252,7 @@ export function ProfileForm() {
         <SignatureField
           value={form.signature}
           disabled={busy}
+          paperWidth="full"
           onChange={(v) => setForm({ ...form, signature: v })}
         />
 

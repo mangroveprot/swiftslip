@@ -50,9 +50,9 @@ const PLACE_LIMIT = 8;
 
 /* The filter mock's quiet green, kept local to this page rather than changing
    the app-wide primary colour. */
-const FILTER_ACTIVE = "bg-[#e8f4eb] text-[#2f9e44]";
-const FILTER_ACTIVE_ROW = "bg-[#e8f4eb]";
-const FILTER_ACCENT = "accent-[#2f9e44]";
+const FILTER_ACTIVE = "bg-dashboard-soft text-dashboard-accent";
+const FILTER_ACTIVE_ROW = "bg-dashboard-soft";
+const FILTER_ACCENT = "accent-dashboard-accent";
 
 export function ObList() {
   const navigate = useNavigate();
@@ -411,7 +411,7 @@ function ObFilters({
 
 function SelectedPlaceChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-[#b2dfc0] bg-[#e8f4eb] px-2.5 py-1 text-xs font-medium text-[#2f6b4f]">
+    <span className="inline-flex items-center gap-1 rounded-full border border-dashboard-current bg-dashboard-soft px-2.5 py-1 text-xs font-medium text-dashboard-rule">
       {label}
       <button
         type="button"

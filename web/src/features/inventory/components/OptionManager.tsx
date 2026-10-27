@@ -87,14 +87,16 @@ export function OptionManager({
 
   return (
     <>
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
+      <div className="bg-card text-card-foreground border border-border rounded-lg overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold">{title}</h2>
-            {description ? <p className="text-xs text-slate-400 mt-0.5">{description}</p> : null}
+            {description ? (
+              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+            ) : null}
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-xs text-slate-400">{options.length} total</span>
+            <span className="text-xs text-muted-foreground">{options.length} total</span>
             <button
               type="button"
               className="text-xs font-medium text-brand hover:underline"
@@ -106,10 +108,10 @@ export function OptionManager({
         </div>
 
         {showAddRow ? (
-          <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center gap-2">
+          <div className="px-5 py-3 border-b border-border bg-secondary flex flex-wrap items-center gap-2">
             <input
               type="text"
-              className="flex-1 min-w-[12rem] border border-slate-300 rounded-md text-sm px-3 py-1.5"
+              className="flex-1 min-w-[12rem] border border-input rounded-md text-sm px-3 py-1.5 bg-background text-foreground"
               placeholder={placeholder}
               value={draftName}
               onChange={(e) => setDraftName(e.target.value)}
@@ -117,7 +119,7 @@ export function OptionManager({
             />
             <button
               type="button"
-              className="px-3 py-1.5 rounded-md text-sm bg-brand-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50"
               disabled={busy}
               onClick={saveAdd}
             >
@@ -125,7 +127,7 @@ export function OptionManager({
             </button>
             <button
               type="button"
-              className="px-3 py-1.5 rounded-md text-sm text-slate-600 hover:bg-slate-100"
+              className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-secondary"
               disabled={busy}
               onClick={cancelEdit}
             >
@@ -136,25 +138,25 @@ export function OptionManager({
 
         {options.length === 0 && !showAddRow ? (
           <div className="px-5 py-8 text-center">
-            <p className="text-sm text-slate-600">No {title.toLowerCase()} yet.</p>
-            <p className="text-xs text-slate-400 mt-1">Add one to use it on assets.</p>
+            <p className="text-sm text-muted-foreground">No {title.toLowerCase()} yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add one to use it on assets.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {options.map((option) => (
               <div key={option.id} className="px-5 py-3 flex items-center gap-3">
                 {editingId === option.id ? (
                   <>
                     <input
                       type="text"
-                      className="flex-1 min-w-0 border border-slate-300 rounded-md text-sm px-3 py-1.5"
+                      className="flex-1 min-w-0 border border-input rounded-md text-sm px-3 py-1.5 bg-background text-foreground"
                       value={draftName}
                       onChange={(e) => setDraftName(e.target.value)}
                       onKeyDown={onDraftKeyDown}
                     />
                     <button
                       type="button"
-                      className="px-3 py-1.5 rounded-md text-sm bg-brand-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50"
                       disabled={busy}
                       onClick={saveEdit}
                     >
@@ -162,7 +164,7 @@ export function OptionManager({
                     </button>
                     <button
                       type="button"
-                      className="px-3 py-1.5 rounded-md text-sm text-slate-600 hover:bg-slate-100"
+                      className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-secondary"
                       disabled={busy}
                       onClick={cancelEdit}
                     >
@@ -172,8 +174,8 @@ export function OptionManager({
                 ) : (
                   <>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{option.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
+                      <p className="text-sm font-medium text-foreground truncate">{option.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {option.usage_count === 1 ? "1 asset" : `${option.usage_count} assets`}
                       </p>
                     </div>
@@ -181,7 +183,7 @@ export function OptionManager({
                       type="button"
                       title="Edit"
                       aria-label="Edit"
-                      className="p-1.5 rounded-md text-slate-400 hover:text-brand-600 hover:bg-slate-100"
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-brand-600 hover:bg-secondary"
                       onClick={() => startEdit(option)}
                     >
                       <svg
@@ -203,7 +205,7 @@ export function OptionManager({
                       type="button"
                       title="Delete"
                       aria-label="Delete"
-                      className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
                       onClick={() => setDeleteTarget(option)}
                     >
                       <svg
@@ -231,18 +233,18 @@ export function OptionManager({
 
       {deleteTarget != null ? (
         <div
-          className="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
           onClick={() => setDeleteTarget(null)}
         >
           <div
-            className="bg-white rounded-lg w-full max-w-sm shadow-xl"
+            className="bg-card text-card-foreground rounded-lg w-full max-w-sm shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-5 py-4 border-b border-slate-200">
+            <div className="px-5 py-4 border-b border-border">
               <h2 className="text-base font-semibold">Delete {singular.toLowerCase()}?</h2>
             </div>
             <div className="px-5 py-4">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted-foreground">
                 Remove <span className="font-medium">{deleteTarget.name}</span>?
                 {deleteTarget.usage_count > 0 ? (
                   <span className="block mt-2 text-amber-700">
@@ -250,14 +252,14 @@ export function OptionManager({
                     {deleteTarget.usage_count === 1 ? "" : "s"}. Reassign those first.
                   </span>
                 ) : (
-                  <span className="block mt-2 text-slate-500">This can’t be undone.</span>
+                  <span className="block mt-2 text-muted-foreground">This can’t be undone.</span>
                 )}
               </p>
             </div>
-            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
               <button
                 type="button"
-                className="px-4 py-1.5 rounded-md text-sm text-slate-600 hover:bg-slate-50"
+                className="px-4 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-secondary"
                 onClick={() => setDeleteTarget(null)}
               >
                 Cancel

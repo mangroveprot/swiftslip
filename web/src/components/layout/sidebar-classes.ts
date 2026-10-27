@@ -21,7 +21,7 @@ export function sidebarRowClass({
       ? "cursor-not-allowed text-muted-foreground/70"
       : active
         ? "bg-accent-tint font-medium text-accent-tint-foreground"
-        : "text-foreground/75 hover:bg-white/60 hover:text-foreground",
+        : "text-foreground/75 hover:bg-card/60 hover:text-foreground",
   );
 }
 
@@ -32,4 +32,4 @@ export function sidebarRowClass({
  * share this one class.
  */
 export const SIDEBAR_ACTION_CLASS =
-  "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm text-foreground/75 transition-colors hover:bg-white/60 hover:text-foreground";
+  "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm text-foreground/75 transition-colors hover:bg-card/60 hover:text-foreground";

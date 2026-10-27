@@ -77,7 +77,7 @@ export function ObAttachmentCard({
         >
           <input
             type="checkbox"
-            className="size-4 accent-[#2f9e44]"
+            className="size-4 accent-dashboard-accent"
             checked={approved}
             onChange={(e) => setChecked(e.target.checked)}
           />

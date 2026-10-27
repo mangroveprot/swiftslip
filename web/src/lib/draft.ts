@@ -13,6 +13,8 @@
  * point of the design.
  */
 
+import { backupKey, readSignatureBackup, safeRemoveItem, safeSetItem } from "./signature";
+
 /** Marks an id as client-side only. Never sent to the server — it is not a UUID. */
 const DRAFT_MARK = "draft_";
 
@@ -105,14 +107,8 @@ export function promoteDraft<T>(feature: string, draftId: string, realId: string
  */
 export function promoteSignatureBackup(prefix: string, draftId: string, realId: string): void {
   if (typeof window === "undefined" || draftId === realId) return;
-  try {
-    const from = `${prefix}-sig:${draftId}`;
-    const value = window.localStorage.getItem(from);
-    if (!value) return;
-    window.localStorage.setItem(`${prefix}-sig:${realId}`, value);
-    window.localStorage.removeItem(from);
-  } catch {
-    // Same rationale as the draft backup — a missing signature is recoverable,
-    // the profile copy still fills the field.
-  }
+  const value = readSignatureBackup(prefix, draftId);
+  if (!value) return;
+  safeSetItem(backupKey(prefix, realId), JSON.stringify({ data: value, savedAt: Date.now() }));
+  safeRemoveItem(backupKey(prefix, draftId));
 }

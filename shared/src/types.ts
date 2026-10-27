@@ -5,25 +5,53 @@ export type Role = "admin" | "user";
 export type SessionUser = { id: string; role: Role; label: string; idNumber: string };
 
 /**
- * The three applications behind the "Where would you like to go?" chooser.
+ * The applications behind the "Where would you like to go?" chooser.
  *
- * Only `swiftslip` and `inventory` are GRANTABLE. `admin` is deliberately
- * excluded: the Admin Panel is gated on `role === "admin"` alone, and admins
- * also bypass every access rule, so an `admin` rule could never take effect.
- * Keeping it out of `GRANTABLE_APP_KEYS` means the admin UI can't offer it.
+ * Only `swiftslip`, `inventory` and `ticketing` are GRANTABLE. `admin` is
+ * deliberately excluded: the Admin Panel is gated on `role === "admin"` alone,
+ * and admins also bypass every access rule, so an `admin` rule could never take
+ * effect. Keeping it out of `GRANTABLE_APP_KEYS` means the admin UI can't offer
+ * it.
  */
-export const APP_KEYS = ["admin", "swiftslip", "inventory"] as const;
+export const APP_KEYS = ["admin", "swiftslip", "inventory", "ticketing"] as const;
 export type AppKey = (typeof APP_KEYS)[number];
 
-export const GRANTABLE_APP_KEYS = ["swiftslip", "inventory"] as const;
+export const GRANTABLE_APP_KEYS = ["swiftslip", "inventory", "ticketing"] as const;
 export type GrantableAppKey = (typeof GRANTABLE_APP_KEYS)[number];
 
-/** Where each app opens. Used to skip the chooser when only one is granted. */
+/** Apps this app hosts itself, each with a route and a server guard. */
+export type InternalAppKey = Exclude<AppKey, ExternalAppKey>;
+
+/** Where each internal app opens. Used to skip the chooser when one is granted. */
 export const APP_HOME = {
   admin: "/admin",
   swiftslip: "/records",
   inventory: "/rgc-asset-inventory",
-} as const satisfies Record<AppKey, string>;
+} as const satisfies Record<InternalAppKey, string>;
+
+/**
+ * An app that lives on another host. It has no route and no server guard here,
+ * so its access rule can only decide whether the chooser offers the card.
+ *
+ * The URL and logo are absolute by necessity - the browser loads them, not this
+ * app's router, and the card opens them in a new tab.
+ */
+export const EXTERNAL_APPS = {
+  ticketing: {
+    label: "Regasco Ticketing System",
+    url: "https://ticketing.regasco.ph:2424/regasco-ticketing-system",
+    logo: "https://ticketing.regasco.ph:2424/regasco-ticketing-system/assets/logo.png",
+    description:
+      "Raise and track IT support tickets. Opens in a new browser tab, so this page stays where it is.",
+  },
+} as const;
+
+export type ExternalAppKey = keyof typeof EXTERNAL_APPS;
+
+/** True for an app served by another host, so callers skip routing to it. */
+export function isExternalApp(app: AppKey): app is ExternalAppKey {
+  return app in EXTERNAL_APPS;
+}
 
 /** How a rule is targeted. Most specific is checked first. */
 export const RULE_SCOPES = ["user", "department", "position"] as const;

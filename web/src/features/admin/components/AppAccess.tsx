@@ -34,6 +34,7 @@ import { GRANTABLE_APP_KEYS, type GrantableAppKey, type RuleScope } from "@swift
 const APP_LABELS: Record<GrantableAppKey, string> = {
   swiftslip: "SwiftSlip",
   inventory: "Inventory",
+  ticketing: "Ticketing",
 };
 
 const SCOPE_LABELS: Record<RuleScope, string> = {

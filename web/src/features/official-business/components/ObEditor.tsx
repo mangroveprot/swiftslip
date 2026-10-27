@@ -10,7 +10,7 @@ import {
   Maximize2,
   Printer,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Component, useEffect, useMemo, useRef, useState } from "react";
 
 import { createObForm, saveObForm } from "@/api/official-business.functions";
 import { PageTitle } from "@/components/common/PageTitle";
@@ -31,16 +31,11 @@ import {
   flushOnPageHide,
   type SaveStatus as AutoSaveStatus,
 } from "@/lib/auto-save";
-import {
-  isDraftId,
-  promoteDraft,
-  promoteSignatureBackup,
-  readDraft,
-  writeDraft,
-} from "@/lib/draft";
+import { isDraftId, promoteDraft, readDraft, writeDraft } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
+import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
-import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
+import { deleteSignatureBackup, readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { ObEntry, ObForm } from "@swiftslip/shared/types";
 import { APP } from "@/config/app";
@@ -88,7 +83,9 @@ export function ObEditor({ id }: { id: string }) {
   const [promotion, setPromotion] = useState<{ draft: string; real: string } | null>(null);
   const key = promotion && promotion.real === id ? promotion.draft : id;
   return (
-    <ObEditorBody key={key} id={id} onPromoted={(draft, real) => setPromotion({ draft, real })} />
+    <ObEditorErrorBoundary id={id}>
+      <ObEditorBody key={key} id={id} onPromoted={(draft, real) => setPromotion({ draft, real })} />
+    </ObEditorErrorBoundary>
   );
 }
 
@@ -156,6 +153,11 @@ function ObEditorBody({
 
   const insertingRef = useRef<Promise<string> | null>(null);
 
+  // The signature value that is already safe (loaded from the server or written
+  // by a successful save). The backup effect skips it, so an unchanged signature
+  // never recreates a backup right after we deleted one.
+  const savedSigRef = useRef<string | undefined>(undefined);
+
   const autoSave = useRef<ReturnType<typeof createAutoSave> | null>(null);
   if (autoSave.current === null) {
     autoSave.current = createAutoSave({
@@ -184,11 +186,14 @@ function ObEditorBody({
       // Save the content that triggered the insert in the same breath, so the form
       // never exists holding only the auto-fill.
       await saveObForm({ data: { id: created, form: f, entries } });
+      // The signature reached the server, so neither key is needed any more.
+      deleteSignatureBackup("ob", created);
+      deleteSignatureBackup("ob", id);
+      savedSigRef.current = f.employee_signature;
       rowIdRef.current = created;
       // Write cache BEFORE setRowId triggers a re-render that starts the query.
       writeFormCache(qc, created, { form: { ...f, id: created }, entries });
       setRowId(created);
-      promoteSignatureBackup("ob", id, created);
       promoteDraft(DRAFT_FEATURE, id, created, { form: f, entries: r });
       // Mark persisted BEFORE navigate: an unmount flush must not see the draft
       // still pending — that would insert a second, blank row.
@@ -220,6 +225,8 @@ function ObEditorBody({
     const entries = buildRows(r);
     const target = rowIdRef.current;
     await saveObForm({ data: { id: target, form: f, entries } });
+    deleteSignatureBackup("ob", target);
+    savedSigRef.current = f.employee_signature;
     writeFormCache(qc, target, { form: { ...f, id: target }, entries });
     qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
   }
@@ -249,6 +256,7 @@ function ObEditorBody({
     if (localRef.current === incoming) return;
     setForm(nextForm);
     setRows(nextRows);
+    savedSigRef.current = nextForm.employee_signature;
     auto.setPersisted(incoming);
   }, [data, profileReady, rowId, id, auto]);
 
@@ -270,9 +278,18 @@ function ObEditorBody({
   // changes — and skips the pre-hydration render where form is still null.
   const sig = form?.employee_signature;
   const formLoaded = form !== null;
+  const sigBackupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!formLoaded) return;
-    saveSignatureBackup("ob", rowId ?? id, sig);
+    if (sigBackupTimeoutRef.current) clearTimeout(sigBackupTimeoutRef.current);
+    sigBackupTimeoutRef.current = setTimeout(() => {
+      // A save may have landed during the debounce window — nothing to back up.
+      if (sig === savedSigRef.current) return;
+      void saveSignatureBackup("ob", rowId ?? id, sig);
+    }, 500);
+    return () => {
+      if (sigBackupTimeoutRef.current) clearTimeout(sigBackupTimeoutRef.current);
+    };
   }, [formLoaded, sig, rowId, id]);
 
   // The single trigger for every change: persist a draft that has become real
@@ -329,6 +346,7 @@ function ObEditorBody({
     }
     const target = rowIdRef.current;
     await saveObForm({ data: { id: target, form: f, entries } });
+    deleteSignatureBackup("ob", target);
     writeFormCache(qc, target, { form: { ...f, id: target }, entries });
     auto.setPersisted(JSON.stringify({ form: f, entries }));
     qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
@@ -452,7 +470,7 @@ function ObEditorBody({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"
-                onSelect={() => window.setTimeout(() => window.print(), 0)}
+                onSelect={() => printSheet()}
               >
                 <Printer className="size-4" aria-hidden="true" />
                 Print
@@ -471,7 +489,7 @@ function ObEditorBody({
           {canEdit ? (
             <button
               type="button"
-              className="btn bg-[#1f7a3f] text-white hover:bg-[#196634] disabled:opacity-60"
+              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -552,4 +570,45 @@ function ObEditorBody({
       </PreviewLightbox>
     </main>
   );
+}
+
+/**
+ * Local error boundary so a storage or rendering problem inside the OB editor
+ * does not replace the whole page with the root route error fallback.
+ */
+class ObEditorErrorBoundary extends Component<
+  { id: string; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { id: string; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  override componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("ObEditor error boundary caught an error:", error, info);
+  }
+
+  override render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 text-center">
+        <p className="text-sm font-medium text-destructive">The editor could not load.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Try refreshing the page. Your work is backed up locally.
+        </p>
+        <button
+          type="button"
+          className="btn btn-primary mt-4"
+          onClick={() => window.location.reload()}
+        >
+          Refresh
+        </button>
+      </div>
+    );
+  }
 }

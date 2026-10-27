@@ -37,7 +37,7 @@ export const AssetRow = memo(function AssetRow({
       <td className="asset-table__td" onClick={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
-          className="rounded border-slate-300 text-brand focus:ring-brand/30"
+          className="rounded border-input text-brand focus:ring-brand/30"
           checked={selected}
           onChange={(e) => onSelectedChanged(asset.asset_id, e.target.checked)}
         />
@@ -61,14 +61,14 @@ export const AssetRow = memo(function AssetRow({
         {isBlank(asset.assigned_to) ? (
           <span className="asset-table__unassigned">Unassigned</span>
         ) : (
-          <span className="text-slate-700">{asset.assigned_to}</span>
+          <span className="text-foreground">{asset.assigned_to}</span>
         )}
       </td>
 
-      <td className="asset-table__td text-slate-600 truncate hidden md:table-cell">
+      <td className="asset-table__td text-muted-foreground truncate hidden md:table-cell">
         {asset.department?.department_name ?? "—"}
       </td>
-      <td className="asset-table__td text-slate-600 truncate hidden md:table-cell">
+      <td className="asset-table__td text-muted-foreground truncate hidden md:table-cell">
         {isBlank(asset.cubicle_seat) ? "—" : asset.cubicle_seat}
       </td>
 

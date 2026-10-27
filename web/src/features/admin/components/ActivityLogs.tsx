@@ -58,6 +58,7 @@ const RANGES: ReadonlyArray<{ key: Range; label: string }> = [
 const APP_NAMES: Record<string, string> = {
   swiftslip: "SwiftSlip",
   inventory: "Inventory",
+  ticketing: "Ticketing",
 };
 
 const SCOPE_NAMES: Record<string, string> = {

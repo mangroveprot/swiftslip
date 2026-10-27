@@ -26,9 +26,23 @@
   /* Mindbridge logo orange (sampled from the mark) - status chips that need
      the brand hue rather than the softer --accent terracotta. The ink is the
      readable counterpart for a soft tinted chip: white on the logo orange
-     itself is only ~3:1, too thin at 11px. */
-  --color-logo: #e96f22;
-  --color-logo-ink: #a54506;
+     itself is only ~3:1, too thin at 11px.
+     Values live in :root / .dark (--logo-mark, --logo-ink) so dark mode can
+     lift them; a literal here would be frozen for both themes. */
+  --color-logo: var(--logo-mark);
+  --color-logo-ink: var(--logo-ink);
+  --color-logo-hover: var(--logo-hover);
+  /* Bolder sibling of --color-logo for the inventory report action, which used
+     a brighter orange (#f25a0b vs #e96f22) so it stands off a dense table. */
+  --color-logo-bright: var(--logo-bright);
+  /* Confirm / submit green. The "New record" button in the COS, LOA, OB and
+     OT editors and the inventory report export action all used to carry this
+     hex by hand; one token now so the shade is edited in a single place. */
+  --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
+  /* Ink that sits ON the success fill. Kept as its own token because dark mode
+     flips the fill to cream, and white on cream would be unreadable. */
+  --color-success-foreground: var(--success-foreground);
   /* Dashboard accent: the editorial green from the dashboard mock. Kept
      separate from --primary so the rest of the admin panel stays navy. */
   --color-dashboard-accent: var(--dashboard-accent);
@@ -73,6 +87,13 @@
   --dashboard-rule: #2f6b4f;
   --dashboard-soft: #e8f4eb;
   --dashboard-current: #b2dfc0;
+  --logo-mark: #e96f22;
+  --logo-ink: #a54506;
+  --logo-hover: #d94f0a;
+  --logo-bright: #f25a0b;
+  --success: #1f7a3f;
+  --success-hover: #196634;
+  --success-foreground: oklch(0.99 0.005 85);
   --paper: oklch(1 0 0);
   --ink: oklch(0.2 0.02 250);
   /* Solid surface for app chrome (sidebars, mobile headers). Opaque: the
@@ -97,6 +118,94 @@
     oklch(0.94 0.03 120) 35%,
     oklch(0.96 0.02 85) 65%,
     oklch(0.968 0.008 85) 100%
+  );
+}
+
+/* ── Dark theme ───────────────────────────────────────────────────────────
+   Opt-in and remembered per browser (localStorage key `swiftslip-theme`),
+   never on the account. The `dark` class is set on <html> by the pre-paint
+   script in index.html — so a reload never flashes white — and kept in step
+   after that by `lib/theme.ts`.
+   Only token values change here. Every component already paints from these
+   tokens, so light mode is untouched and nothing needs duplicating. Three
+   rules when editing this block:
+   • Chrome is NEUTRAL: page, cards, sidebar and borders carry no hue at all
+     (chroma 0.004-0.006). The old navy tint read as "a blue app switched to
+     dark"; the reference is a near-black desk with warm ink on it.
+   • ONE signature colour: cream. It is the highlight on the active nav row and
+     the fill of every primary / success action, always with dark ink on top.
+   • The brand accents keep their hue so they still belong: logo orange (45),
+     chart green (the dashboard tokens), terracotta (45) and red (27). The
+     green is deliberately NOT dulled - it is the only saturated hue left on
+     the dashboard, and the bars and meters have to stay readable.
+   Cream is the same warm value the light theme's page leans on, so the two
+   themes still read as the same product. */
+.dark {
+  /* Tells the browser to draw form controls, scrollbars and the caret dark. */
+  color-scheme: dark;
+
+  --background: oklch(0.185 0.004 250);
+  --foreground: oklch(0.95 0.004 85);
+  --card: oklch(0.235 0.004 250);
+  --card-foreground: oklch(0.95 0.004 85);
+  /* Cream primary: the dark twin of the light theme's warm ink. Buttons flip
+     to dark text, which is the only readable pairing on a cream fill. */
+  --primary: oklch(0.93 0.012 85);
+  --primary-foreground: oklch(0.2 0.01 250);
+  --secondary: oklch(0.3 0.004 250);
+  --secondary-foreground: oklch(0.93 0.004 85);
+  --muted: oklch(0.275 0.004 250);
+  --muted-foreground: oklch(0.72 0.006 85);
+  --accent: oklch(0.72 0.12 55);
+  --accent-foreground: oklch(0.18 0.02 250);
+  /* Active nav row: a cream highlight on the darker sidebar surface, so the
+     selected item is the one warm block in a neutral panel. */
+  --accent-tint: oklch(0.93 0.012 85);
+  --accent-tint-foreground: oklch(0.2 0.01 250);
+  --destructive: oklch(0.68 0.18 27);
+  --destructive-foreground: oklch(0.16 0.02 27);
+  --border: oklch(0.33 0.005 250);
+  --input: oklch(0.33 0.005 250);
+  --ring: oklch(0.86 0.012 85);
+  /* Chart green stays green: bars, by-form-type meters and the soft chips keep
+     the dashboard's one saturated hue instead of following the chrome. */
+  --dashboard-accent: #51cf66;
+  --dashboard-rule: #74c69d;
+  --dashboard-soft: #1e2a22;
+  /* The outlined "current week" bar: a light green that still reads as the same
+     family as the drawn bars, instead of a dark green sinking into the card. */
+  --dashboard-current: #a3e6b0;
+  --logo-mark: #f2812f;
+  --logo-ink: #ffb27a;
+  --logo-hover: #ff9550;
+  --logo-bright: #ff7a2f;
+  /* Green action buttons (New record / Save) take the cream signature here too;
+     the success hue itself is only kept for status meaning. */
+  --success: oklch(0.93 0.012 85);
+  --success-hover: oklch(0.87 0.014 85);
+  --success-foreground: oklch(0.2 0.01 250);
+  /* A seal is a stamp on PAPER, so the paper does not darken with the theme:
+     only the cut-outs in its ring and banner fill with the surface colour. On
+     dark they fill with the same cream a printed sheet would sit on, which is
+     what keeps the mark legible instead of turning into negative space. */
+  --seal-gap: oklch(0.93 0.012 85);
+  /* --paper / --ink are deliberately NOT overridden: they paint the printable
+     sheets (DTR, LOA, OB, OT previews and their skeletons) and the record
+     thumbnails. A form has to look on screen the way it will look on paper, so
+     the sheet stays white with dark ink in both themes — the same rule the
+     inventory report preview follows. */
+  --glass: oklch(0.22 0.004 250);
+  /* Same one-hue sweep as light mode, dropped to a dark value shift so the
+     panel still separates from the page behind it. No mint left in it: the
+     tint was what made dark mode look like a different product. */
+  --sidebar-surface: linear-gradient(180deg, oklch(0.25 0.005 250) 0%, oklch(0.21 0.005 250) 100%);
+  /* Ink → near-black sweep: warm at the top corner, cooler at the bottom, the
+     same direction the light theme travels so the page keeps its depth. */
+  --app-gradient: linear-gradient(
+    135deg,
+    oklch(0.225 0.006 250) 0%,
+    oklch(0.2 0.005 250) 55%,
+    oklch(0.185 0.004 250) 100%
   );
 }
 
@@ -498,6 +607,30 @@
     display: none !important;
   }
 
+  /* Floating layers portal straight to <body>, so they sit OUTSIDE every
+     `.no-print` subtree. A dropdown still open — or caught mid exit-animation —
+     when Print is chosen therefore used to land in the snapshot, most visibly
+     on phones and narrow windows where the export menu covers the sheet.
+     Matched by attribute rather than by position so every module's menu is
+     covered at once: dropdowns, popovers, tooltips and their dialogs. The
+     wrapper rules repeat the `hidden` attribute: a menu kept in the DOM after
+     it closes (Radix leaves the portal box behind to animate out) is only
+     marked `hidden`, which a plain `display: block` would draw anyway. */
+  [data-radix-popper-content-wrapper],
+  [data-radix-portal],
+  [role="menu"],
+  [role="listbox"],
+  [role="tooltip"],
+  [role="dialog"],
+  [role="alertdialog"],
+  [data-radix-popper-content-wrapper][hidden],
+  [data-radix-portal][hidden],
+  [role="menu"][hidden],
+  [role="listbox"][hidden],
+  [role="dialog"][hidden] {
+    display: none !important;
+  }
+
   .no-print {
     display: none !important;
   }
@@ -615,7 +748,7 @@
 /* --- Base, scoped to the inventory shell (source: global body/h1-h3/a). --- */
 @layer base {
   .rgc-inventory {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family:
       "Segoe UI",
       system-ui,
@@ -626,15 +759,15 @@
   }
 
   .rgc-inventory h1 {
-    @apply text-2xl font-semibold tracking-tight text-slate-900;
+    @apply text-2xl font-semibold tracking-tight text-foreground;
   }
 
   .rgc-inventory h2 {
-    @apply text-xl font-semibold tracking-tight text-slate-900;
+    @apply text-xl font-semibold tracking-tight text-foreground;
   }
 
   .rgc-inventory h3 {
-    @apply text-lg font-semibold text-slate-900;
+    @apply text-lg font-semibold text-foreground;
   }
 
   .rgc-inventory a {
@@ -753,48 +886,48 @@
 
   /* Assets page metric cards — idle plain; active shows full ring in accent color */
   .stat-card {
-    @apply relative overflow-hidden rounded-xl border border-slate-200/80 bg-white p-4
+    @apply relative overflow-hidden rounded-xl border border-border bg-card p-4
            shadow-xs appearance-none cursor-pointer transition-shadow;
   }
 
   .stat-card__label {
-    @apply text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400;
+    @apply text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground;
   }
 
   .stat-card__icon {
-    @apply flex h-8 w-8 items-center justify-center rounded-lg shrink-0 bg-slate-100 text-slate-500;
+    @apply flex h-8 w-8 items-center justify-center rounded-lg shrink-0 bg-muted text-muted-foreground;
   }
 
   .stat-card__value {
-    @apply mt-3 flex items-baseline gap-1.5 text-2xl font-bold leading-none text-slate-800;
+    @apply mt-3 flex items-baseline gap-1.5 text-2xl font-bold leading-none text-foreground;
   }
 
   .stat-card__unit {
-    @apply text-xs font-medium normal-case tracking-normal text-slate-400;
+    @apply text-xs font-medium normal-case tracking-normal text-muted-foreground;
   }
 
   .stat-card--inuse .stat-card__value {
-    @apply text-emerald-600;
+    @apply text-emerald-600 dark:text-emerald-400;
   }
 
   .stat-card--inuse .stat-card__icon {
-    @apply bg-emerald-50 text-emerald-600;
+    @apply bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400;
   }
 
   .stat-card--available .stat-card__value {
-    @apply text-orange-500;
+    @apply text-orange-500 dark:text-orange-400;
   }
 
   .stat-card--available .stat-card__icon {
-    @apply bg-orange-50 text-orange-500;
+    @apply bg-orange-50 text-orange-500 dark:bg-orange-500/15 dark:text-orange-400;
   }
 
   .stat-card--unassigned .stat-card__value {
-    @apply text-slate-800;
+    @apply text-foreground;
   }
 
   .stat-card--unassigned .stat-card__icon {
-    @apply bg-rose-50 text-rose-500;
+    @apply bg-rose-50 text-rose-500 dark:bg-rose-500/15 dark:text-rose-400;
   }
 
   .stat-card--active {
@@ -802,7 +935,7 @@
   }
 
   .stat-card--total.stat-card--active {
-    @apply ring-2 ring-slate-600;
+    @apply ring-2 ring-ring;
   }
 
   .stat-card--inuse.stat-card--active {
@@ -819,7 +952,7 @@
 
   /* Active filter “lens” — appears only while the inventory view is constrained */
   .filter-lens {
-    @apply relative overflow-hidden rounded-lg border border-slate-200/90 bg-white shadow-xs;
+    @apply relative overflow-hidden rounded-lg border border-border bg-card shadow-xs;
     animation: filter-lens-in 220ms ease-out;
   }
 
@@ -854,11 +987,11 @@
   }
 
   .filter-lens__title {
-    @apply text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400 leading-none;
+    @apply text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground leading-none;
   }
 
   .filter-lens__count {
-    @apply mt-0.5 text-sm text-slate-500 leading-snug;
+    @apply mt-0.5 text-sm text-muted-foreground leading-snug;
   }
 
   .filter-lens__chips {
@@ -866,21 +999,21 @@
   }
 
   .filter-lens__chip {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50
-           px-2 py-1 text-xs text-slate-700 transition-colors hover:border-slate-300 hover:bg-white;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-border bg-muted
+           px-2 py-1 text-xs text-foreground transition-colors hover:border-border hover:bg-card;
   }
 
   .filter-lens__chip-key {
-    @apply font-semibold uppercase tracking-wide text-[0.6rem] text-slate-400;
+    @apply font-semibold uppercase tracking-wide text-[0.6rem] text-muted-foreground;
   }
 
   .filter-lens__chip-val {
-    @apply font-medium text-slate-700 max-w-[10rem] truncate;
+    @apply font-medium text-foreground max-w-[10rem] truncate;
   }
 
   .filter-lens__reset {
-    @apply shrink-0 rounded-md border border-slate-200 bg-white px-3 py-1.5
-           text-xs font-semibold text-slate-700 transition-colors
+    @apply shrink-0 rounded-md border border-border bg-card px-3 py-1.5
+           text-xs font-semibold text-foreground transition-colors
            hover:border-brand/40 hover:bg-brand/5 hover:text-brand;
   }
 
@@ -912,11 +1045,11 @@
 
   /* Enterprise asset inventory table — fills remaining height; rows scroll inside */
   .asset-table {
-    @apply flex flex-col min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-xs;
+    @apply flex flex-col min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xs;
   }
 
   .asset-table__toolbar {
-    @apply shrink-0 flex flex-col gap-3 border-b border-slate-200/80 bg-linear-to-b from-slate-50 to-white
+    @apply shrink-0 flex flex-col gap-3 border-b border-border bg-linear-to-b from-secondary to-card
            p-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4;
   }
 
@@ -925,8 +1058,8 @@
   }
 
   .asset-table__search {
-    @apply w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-800
-           shadow-xs placeholder:text-slate-400
+    @apply w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm text-foreground
+           shadow-xs placeholder:text-muted-foreground
            focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20;
   }
 
@@ -935,21 +1068,21 @@
   }
 
   .asset-table__type {
-    @apply shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition-colors
-           hover:bg-white hover:text-slate-700 hover:shadow-xs;
+    @apply shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors
+           hover:bg-card hover:text-foreground hover:shadow-xs;
   }
 
   .asset-table__type--active {
-    @apply bg-white text-slate-800 shadow-xs ring-1 ring-slate-200/90;
+    @apply bg-card text-foreground shadow-xs ring-1 ring-border;
   }
 
   .asset-table__head {
-    @apply border-b border-slate-200/70 text-left;
+    @apply border-b border-border text-left;
   }
 
   .asset-table__th {
-    @apply sticky top-0 z-[1] border-r border-slate-200/50 px-2 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-slate-500 last:border-r-0;
-    background-color: rgb(248 250 252);
+    @apply sticky top-0 z-[1] border-r border-border px-2 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground last:border-r-0;
+    background-color: var(--muted);
   }
 
   .asset-table__th--actions {
@@ -962,7 +1095,7 @@
   }
 
   .asset-table__row {
-    @apply border-b border-slate-200/55 transition-colors;
+    @apply border-b border-border transition-colors;
     /* Rows outside the scroll viewport are skipped for style/layout/paint
        entirely — typically only ~8 of the up-to-33 rows are on screen, so this
        is the biggest per-frame saving while scrolling. `auto 45px` keeps the
@@ -987,7 +1120,7 @@
   }
 
   .asset-table__row:hover {
-    @apply bg-slate-50/80;
+    @apply bg-secondary/60;
   }
 
   .asset-table__row--selected {
@@ -999,11 +1132,11 @@
   }
 
   .asset-table__td {
-    @apply border-r border-slate-200/40 px-2 py-2 align-middle last:border-r-0;
+    @apply border-r border-border px-2 py-2 align-middle last:border-r-0;
   }
 
   .asset-table__id {
-    @apply inline-block max-w-full truncate font-medium text-slate-800;
+    @apply inline-block max-w-full truncate font-medium text-foreground;
   }
 
   .asset-table__id--missing {
@@ -1011,34 +1144,34 @@
   }
 
   .asset-table__type-chip {
-    @apply inline-flex max-w-full truncate text-slate-600;
+    @apply inline-flex max-w-full truncate text-muted-foreground;
   }
 
   .asset-table__unassigned {
-    @apply text-xs font-medium text-slate-400;
+    @apply text-xs font-medium text-muted-foreground;
   }
 
   .asset-table__badge {
-    @apply inline-flex max-w-full truncate items-center rounded-md border border-slate-200/60 bg-white px-2 py-0.5 text-xs font-medium;
+    @apply inline-flex max-w-full truncate items-center rounded-md border border-border bg-card px-2 py-0.5 text-xs font-medium;
   }
 
   .asset-table__actions {
     /* No box-shadow here: the old `-8px 0 12px -10px` "pinned column" shadow
        painted a gray smudge over the Condition column, because this cell is a
        plain (non-sticky) <td> — nothing ever scrolls underneath it. */
-    @apply bg-white;
+    @apply bg-card;
   }
 
   .asset-table__row:hover .asset-table__actions {
-    @apply bg-slate-50;
+    @apply bg-secondary;
   }
 
   .asset-table__row--selected .asset-table__actions {
-    background-color: rgb(239 246 255); /* brand/5-ish */
+    background-color: var(--accent-tint);
   }
 
   .asset-table__icon-btn {
-    @apply rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-brand-600;
+    @apply rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-brand-600;
   }
 
   .asset-table__icon-btn--danger {
@@ -1046,7 +1179,7 @@
   }
 
   .asset-table__footer {
-    @apply shrink-0 flex flex-col items-end justify-end gap-2 border-t border-slate-200/80 bg-slate-50/60 px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-end;
+    @apply shrink-0 flex flex-col items-end justify-end gap-2 border-t border-border bg-secondary/60 px-4 py-2.5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-end;
   }
 
   .asset-table__meta strong {
@@ -1054,8 +1187,8 @@
   }
 
   .asset-table__page-btn {
-    @apply rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600
-           shadow-xs transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40;
+    @apply rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground
+           shadow-xs transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   /* Sidebar shell — photo is the stage; controls stay quiet on top */
@@ -1122,27 +1255,27 @@
   }
 
   .sidebar-branch-menu {
-    @apply absolute left-3.5 right-3.5 mt-1.5 z-50 py-1 max-h-56 overflow-y-auto bg-white;
+    @apply absolute left-3.5 right-3.5 mt-1.5 z-50 py-1 max-h-56 overflow-y-auto bg-card;
     border-radius: 0.5rem;
-    border: 1px solid rgba(15, 23, 42, 0.08);
+    border: 1px solid var(--border);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
     animation: dropdown-in 0.18s ease-out;
     transform-origin: top center;
   }
 
   .sidebar-branch-option {
-    @apply w-full text-left px-3 py-2 text-sm text-slate-700 cursor-pointer;
+    @apply w-full text-left px-3 py-2 text-sm text-foreground cursor-pointer;
     background: transparent;
     border: 0;
   }
 
   .sidebar-branch-option:hover {
-    background: #f8fafc;
+    background: var(--muted);
   }
 
   .sidebar-branch-option--selected {
-    background: #eff6ff;
-    color: #1d4ed8;
+    background: var(--accent-tint);
+    color: var(--accent-tint-foreground);
     font-weight: 600;
   }
 
@@ -1696,6 +1829,13 @@
    size preset there, so the whole mark scales without losing proportions. */
 .approval-seal {
   --ink: #3b9f4f;
+  /* The seal carries its own paper. A stamp is ink on a sheet, so the disc
+     under it is white in BOTH themes — a card-coloured middle on the dark
+     theme read as a dark hole punched through the mark. */
+  --seal-paper: #fff;
+  /* What shows through the ring's cut-outs and the banner's letters. It is the
+     paper under the seal, not the panel behind it, so it follows --seal-paper. */
+  --seal-gap: #fff;
   display: inline-block;
   flex-shrink: 0;
   width: var(--seal-size, 64px);

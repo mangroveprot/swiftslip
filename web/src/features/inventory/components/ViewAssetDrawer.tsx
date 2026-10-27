@@ -51,27 +51,27 @@ type ViewAssetDrawerProps = {
 };
 
 const INP =
-  "w-full border border-slate-200 rounded-md text-sm px-2 py-1.5 bg-white text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-200";
+  "w-full border border-input rounded-md text-sm px-2 py-1.5 bg-background text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30";
 const SEL =
-  "w-full border border-slate-200 rounded-md text-sm px-2 py-1.5 bg-white text-slate-800 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-200";
+  "w-full border border-input rounded-md text-sm px-2 py-1.5 bg-background text-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30";
 const HEADER_PILL_SELECT =
   "header-pill-select rounded-md border border-white/50 bg-white/10 px-2.5 py-1 text-xs font-medium text-white outline-none focus:outline-none focus:ring-0";
 const HEADER_NEW_INPUT =
   "header-new-input rounded-md border border-white bg-white/15 px-2 py-1 text-xs text-white placeholder:text-white/50 outline-none focus:outline-none focus:ring-0";
 const CONFIRM_BTN =
-  "shrink-0 rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700";
+  "shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground";
 
 function cardClass(active: boolean): string {
   return (
     "rounded-lg border px-3 py-2.5 text-left transition-colors " +
-    (active ? "border-slate-300 bg-slate-50" : "border-slate-100 bg-slate-50/80")
+    (active ? "border-border bg-secondary" : "border-border bg-secondary/60")
   );
 }
 
 function rowClass(active: boolean): string {
   return (
-    "flex items-start justify-between gap-3 border-b border-slate-100 pb-2 rounded -mx-1 px-1 " +
-    (active ? "bg-slate-50" : "cursor-pointer hover:bg-slate-50/80")
+    "flex items-start justify-between gap-3 border-b border-border pb-2 rounded -mx-1 px-1 " +
+    (active ? "bg-secondary" : "cursor-pointer hover:bg-secondary/60")
   );
 }
 
@@ -83,7 +83,7 @@ function desktopLine(brand: string | null | undefined, serial: string | null | u
 function Chevron({ light = false }: { light?: boolean }) {
   const cls = light
     ? "h-4 w-4 shrink-0 opacity-80 group-hover:opacity-100"
-    : "h-4 w-4 shrink-0 text-slate-400 group-hover:text-slate-500";
+    : "h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground";
   return (
     <svg
       className={cls}
@@ -607,19 +607,16 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div
-        className="absolute inset-0 bg-slate-900/40 animate-[fadeIn_.2s_ease-out]"
+        className="absolute inset-0 bg-black/50 animate-[fadeIn_.2s_ease-out]"
         onClick={requestClose}
       />
 
-      <aside className="relative z-10 flex h-full w-full max-w-md flex-col bg-white shadow-2xl animate-[slideIn_.22s_ease-out]">
+      <aside className="relative z-10 flex h-full w-full max-w-md flex-col bg-card text-card-foreground shadow-2xl animate-[slideIn_.22s_ease-out]">
         <div
           className="relative overflow-hidden bg-brand-700 bg-cover bg-center px-5 pt-5 pb-8 text-white"
           style={{ backgroundImage: "url('/inventory/banner.webp')" }}
         >
-          <div
-            className="absolute inset-0 bg-slate-900/35 pointer-events-none"
-            aria-hidden="true"
-          />
+          <div className="absolute inset-0 bg-black/35 pointer-events-none" aria-hidden="true" />
           <button
             type="button"
             className="absolute right-2 top-2 z-20 flex h-11 w-11 items-center justify-center rounded-md text-white/90 hover:bg-white/20 hover:text-white"
@@ -693,15 +690,15 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     value={form.typeChoice}
                     onChange={(e) => choiceChanged("typeChoice")(e.target.value)}
                   >
-                    <option value="" className="text-slate-800">
+                    <option value="" className="text-foreground">
                       Select type
                     </option>
                     {assetTypes.map((t) => (
-                      <option key={t.type_id} value={t.type_id} className="text-slate-800">
+                      <option key={t.type_id} value={t.type_id} className="text-foreground">
                         {t.type_name}
                       </option>
                     ))}
-                    <option value="new" className="text-slate-800">
+                    <option value="new" className="text-foreground">
                       + Add new type…
                     </option>
                   </select>,
@@ -719,19 +716,19 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                         value={form.typeNewCategory}
                         onChange={(e) => upd({ typeNewCategory: e.target.value })}
                       >
-                        <option value="peripheral" className="text-slate-800">
+                        <option value="peripheral" className="text-foreground">
                           Peripheral
                         </option>
-                        <option value="desktop" className="text-slate-800">
+                        <option value="desktop" className="text-foreground">
                           Desktop
                         </option>
-                        <option value="laptop" className="text-slate-800">
+                        <option value="laptop" className="text-foreground">
                           Laptop
                         </option>
-                        <option value="printer" className="text-slate-800">
+                        <option value="printer" className="text-foreground">
                           Printer
                         </option>
-                        <option value="network" className="text-slate-800">
+                        <option value="network" className="text-foreground">
                           Network
                         </option>
                       </select>
@@ -763,11 +760,11 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     onChange={(e) => choiceChanged("statusChoice")(e.target.value)}
                   >
                     {statusOptions.map((opt) => (
-                      <option key={opt.status_id} value={opt.status_id} className="text-slate-800">
+                      <option key={opt.status_id} value={opt.status_id} className="text-foreground">
                         {opt.status_name}
                       </option>
                     ))}
-                    <option value="new" className="text-slate-800">
+                    <option value="new" className="text-foreground">
                       + New status…
                     </option>
                   </select>,
@@ -803,19 +800,19 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     value={form.conditionChoice}
                     onChange={(e) => choiceChanged("conditionChoice")(e.target.value)}
                   >
-                    <option value="" className="text-slate-800">
+                    <option value="" className="text-foreground">
                       No condition
                     </option>
                     {conditionOptions.map((opt) => (
                       <option
                         key={opt.condition_id}
                         value={opt.condition_id}
-                        className="text-slate-800"
+                        className="text-foreground"
                       >
                         {opt.condition_name}
                       </option>
                     ))}
-                    <option value="new" className="text-slate-800">
+                    <option value="new" className="text-foreground">
                       + New condition…
                     </option>
                   </select>,
@@ -845,12 +842,12 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
               Placement
             </h3>
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <div className={cardClass(activeField === "branch")}>
-                <dt className="text-xs text-slate-400">Branch</dt>
+                <dt className="text-xs text-muted-foreground">Branch</dt>
                 <dd className="mt-0.5">
                   {activeField === "branch" ? (
                     <div className="field-editor-in space-y-1.5">
@@ -897,7 +894,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       className="group flex max-w-full items-center gap-1.5 text-left"
                       onClick={() => activate("branch")}
                     >
-                      <span className="font-medium text-slate-800 truncate">
+                      <span className="font-medium text-foreground truncate">
                         {displayBranchName}
                       </span>
                       <Chevron />
@@ -907,7 +904,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
               </div>
 
               <div className={cardClass(activeField === "floor")}>
-                <dt className="text-xs text-slate-400">Floor</dt>
+                <dt className="text-xs text-muted-foreground">Floor</dt>
                 <dd className="mt-0.5">
                   {activeField === "floor" ? (
                     <div className="field-editor-in space-y-1.5">
@@ -953,7 +950,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       className="group flex max-w-full items-center gap-1.5 text-left"
                       onClick={() => activate("floor")}
                     >
-                      <span className="font-medium text-slate-800 truncate">
+                      <span className="font-medium text-foreground truncate">
                         {isBlank(displayFloor) ? "—" : displayFloor}
                       </span>
                       <Chevron />
@@ -963,7 +960,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
               </div>
 
               <div className={`${cardClass(activeField === "cubicle")} col-span-2`}>
-                <dt className="text-xs text-slate-400">Cubicle / seat</dt>
+                <dt className="text-xs text-muted-foreground">Cubicle / seat</dt>
                 <dd className="mt-0.5">
                   {activeField === "cubicle" ? (
                     <input
@@ -984,7 +981,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       className="group inline-flex items-center gap-1.5 text-left"
                       onClick={() => activate("cubicle")}
                     >
-                      <span className="font-medium text-slate-800">
+                      <span className="font-medium text-foreground">
                         {isBlank(form.cubicle) ? "—" : form.cubicle}
                       </span>
                       <Chevron />
@@ -996,12 +993,12 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
           </section>
 
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
               Assignment
             </h3>
             <dl className="space-y-2 text-sm">
               <div className={rowClass(activeField === "assigned")}>
-                <dt className="text-slate-500 shrink-0">Assigned to</dt>
+                <dt className="text-muted-foreground shrink-0">Assigned to</dt>
                 <dd className="min-w-0 flex-1">
                   {activeField === "assigned" ? (
                     <input
@@ -1022,7 +1019,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       className="group flex w-full min-w-0 items-center justify-end gap-1.5 text-right"
                       onClick={() => activate("assigned")}
                     >
-                      <span className="font-medium text-slate-800 truncate">
+                      <span className="font-medium text-foreground truncate">
                         {isBlank(form.assignedTo) ? "Unassigned" : form.assignedTo}
                       </span>
                       <Chevron />
@@ -1032,7 +1029,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
               </div>
 
               <div className={rowClass(activeField === "department")}>
-                <dt className="text-slate-500 shrink-0">Department</dt>
+                <dt className="text-muted-foreground shrink-0">Department</dt>
                 <dd className="min-w-0 flex-1">
                   {activeField === "department" ? (
                     <div className="field-editor-in ml-auto w-full max-w-[14rem] space-y-1.5 text-left">
@@ -1078,7 +1075,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       className="group flex w-full min-w-0 items-center justify-end gap-1.5 text-right"
                       onClick={() => activate("department")}
                     >
-                      <span className="font-medium text-slate-800 truncate">
+                      <span className="font-medium text-foreground truncate">
                         {isBlank(displayDepartmentName) ? "—" : displayDepartmentName}
                       </span>
                       <Chevron />
@@ -1091,7 +1088,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
 
           {selectedTypeIsDesktop ? (
             <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
                 Desktop kit
               </h3>
               <dl className="space-y-2 text-sm">
@@ -1099,7 +1096,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                   className={rowClass(activeField === "monitor")}
                   onClick={() => activateIfIdle("monitor")}
                 >
-                  <dt className="text-slate-500 shrink-0 pt-0.5">Monitor</dt>
+                  <dt className="text-muted-foreground shrink-0 pt-0.5">Monitor</dt>
                   <dd className="min-w-0 flex-1">
                     {activeField === "monitor" ? (
                       <div
@@ -1129,7 +1126,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       </div>
                     ) : (
                       <div className="group flex w-full min-w-0 items-center justify-end gap-1.5 py-0.5 text-right">
-                        <span className="min-w-0 truncate text-slate-800">
+                        <span className="min-w-0 truncate text-foreground">
                           {desktopLine(form.monitorBrand, form.monitorSerial)}
                         </span>
                         <Chevron />
@@ -1142,7 +1139,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                   className={rowClass(activeField === "keyboard")}
                   onClick={() => activateIfIdle("keyboard")}
                 >
-                  <dt className="text-slate-500 shrink-0 pt-0.5">Keyboard</dt>
+                  <dt className="text-muted-foreground shrink-0 pt-0.5">Keyboard</dt>
                   <dd className="min-w-0 flex-1">
                     {activeField === "keyboard" ? (
                       <div
@@ -1172,7 +1169,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       </div>
                     ) : (
                       <div className="group flex w-full min-w-0 items-center justify-end gap-1.5 py-0.5 text-right">
-                        <span className="min-w-0 truncate text-slate-800">
+                        <span className="min-w-0 truncate text-foreground">
                           {desktopLine(form.keyboardBrand, form.keyboardSerial)}
                         </span>
                         <Chevron />
@@ -1182,7 +1179,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                 </div>
 
                 <div className={rowClass(activeField === "mouse")}>
-                  <dt className="text-slate-500 shrink-0 pt-0.5">Mouse</dt>
+                  <dt className="text-muted-foreground shrink-0 pt-0.5">Mouse</dt>
                   <dd className="min-w-0 flex-1">
                     {activeField === "mouse" ? (
                       <input
@@ -1202,7 +1199,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                         className="group flex w-full min-w-0 items-center justify-end gap-1.5 py-0.5 text-right"
                         onClick={() => activate("mouse")}
                       >
-                        <span className="min-w-0 truncate text-slate-800">
+                        <span className="min-w-0 truncate text-foreground">
                           {isBlank(form.mouseSerial) ? "—" : form.mouseSerial}
                         </span>
                         <Chevron />
@@ -1215,7 +1212,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
           ) : null}
 
           <section>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
               Notes
             </h3>
             {activeField === "notes" ? (
@@ -1233,7 +1230,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
             ) : (
               <button
                 type="button"
-                className="group w-full text-left text-sm text-slate-700 whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5 min-h-[3rem] hover:border-slate-200"
+                className="group w-full text-left text-sm text-foreground whitespace-pre-wrap rounded-lg border border-border bg-secondary/60 px-3 py-2.5 min-h-[3rem] hover:border-border"
                 onClick={() => activate("notes")}
               >
                 <span className="inline-flex w-full items-start justify-between gap-1.5">
@@ -1244,23 +1241,25 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
             )}
           </section>
 
-          {!isAddMode ? <p className="text-[11px] text-slate-400">Updated {updatedLabel}</p> : null}
+          {!isAddMode ? (
+            <p className="text-[11px] text-muted-foreground">Updated {updatedLabel}</p>
+          ) : null}
           {showError ? <p className="text-xs text-red-500">{errorMessage}</p> : null}
         </div>
 
-        <div className="border-t border-slate-200 px-5 py-3 flex items-center justify-between gap-2 bg-white">
+        <div className="border-t border-border px-5 py-3 flex items-center justify-between gap-2 bg-card">
           {isAddMode || isDirty ? (
             <>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-slate-600 hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:bg-secondary"
                 onClick={cancelChanges}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm bg-brand-600 text-white font-medium hover:bg-brand-700"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90"
                 onClick={() => void save()}
               >
                 {isAddMode ? "Save asset" : "Save changes"}
@@ -1269,7 +1268,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
           ) : (
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
               onClick={() => {
                 if (asset) onDelete(asset);
               }}

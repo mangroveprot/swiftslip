@@ -70,7 +70,7 @@ await downloadDtrWord({
       time_in: "8:00 AM",
       time_out: "5:00 PM",
       schedule: "8:00 AM - 5:00 PM",
-      remarks: d === 3 ? "REST DAY" : "",
+      remarks: d === 3 ? "SUNDAY" : "",
     }) as any,
   fileName: "DTR_test",
 });

@@ -201,7 +201,7 @@ Intentional changes in Phase 5 (do not "fix" back):
 ### Phase 6 — Hardening ✅ code done; lint/typecheck + real-environment checks pending
 Written without network access: files were syntax-checked only. **Not** run: `npm install`,
 `typecheck`, `lint`, `build`, or a browser.
-- [ ] **Owner to run:** `npm run typecheck && npm run lint` (all workspaces) and fix anything they report
+- [x] **Owner to run:** `npm run typecheck && npm run lint` (all workspaces) and fix anything they report
 - [x] `README.md` rewritten for api/web/shared (Phase 5)
 - [x] `AGENTS.md` created (rules from sections 1-2 of this file)
 - [x] Global 401 handler: `setUnauthorizedHandler` in `web/src/lib/api-client.ts`, registered in
@@ -289,5 +289,5 @@ curl -b jar -X POST localhost:9095/api/auth/sign-out
 
 Known behaviour changes in Phase 2 (intentional, listed so nobody "fixes" them back):
 - The old "pending migration" fallbacks (retry without `department`/`signature`/…) are gone;
-  the database must have migrations **through 0026** applied.
+  the database must have migrations **through 0027** applied (`0027` adds `ticketing` to the `app_access_rules` CHECK).
 - Sign-in failure delay and throttle numbers are unchanged (10 per ID / 20 per IP / 15 min, 250 ms).

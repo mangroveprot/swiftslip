@@ -1,4 +1,4 @@
-import { formatShortDate } from "@swiftslip/shared/period";
+import { formatShortDate, isSunday, dateOfDay } from "@swiftslip/shared/period";
 import type { DtrEntry, DtrHeader, DtrTemplate } from "@swiftslip/shared/types";
 
 export function DailyEntriesTable({
@@ -46,10 +46,21 @@ export function DailyEntriesTable({
           <tbody>
             {days.map((day) => {
               const entry = entryFor(day);
+              // A Sunday with a blank REMARKS cell prints as the rest-day note. It
+              // is a placeholder only: nothing is written into the record, so a
+              // typed remark is never overwritten.
+              const date = dateOfDay(day, header.period, header.month, header.year);
+              const sunday = isSunday(date.day, date.month, date.year);
+              const restDay = sunday && !entry.remarks.trim();
               return (
                 <tr key={day} className="border-t">
                   <td className="py-0.5 pr-2 text-xs text-muted-foreground">
                     {formatShortDate(day, header.month, header.year)}
+                    {sunday ? (
+                      <span className="ml-1 text-[10px] uppercase tracking-wide opacity-70">
+                        Sun
+                      </span>
+                    ) : null}
                   </td>
                   {cellFields.map((field, i) => (
                     <td
@@ -60,6 +71,7 @@ export function DailyEntriesTable({
                         className="inp"
                         disabled={!canEdit}
                         value={entry[field]}
+                        placeholder={field === "remarks" && restDay ? "SUNDAY" : undefined}
                         onChange={(ev) => onCellChange(day, { [field]: ev.target.value })}
                       />
                     </td>

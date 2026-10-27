@@ -40,6 +40,7 @@ import {
   writeDraft,
 } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
+import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
@@ -258,7 +259,7 @@ function OtEditorBody({
   const formLoaded = form !== null;
   useEffect(() => {
     if (!formLoaded) return;
-    saveSignatureBackup("ot", rowId ?? id, sig);
+    void saveSignatureBackup("ot", rowId ?? id, sig);
   }, [formLoaded, sig, rowId, id]);
 
   // The single trigger for every change: persist a draft that has become real
@@ -436,7 +437,7 @@ function OtEditorBody({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"
-                onSelect={() => window.setTimeout(() => window.print(), 0)}
+                onSelect={() => printSheet()}
               >
                 <Printer className="size-4" aria-hidden="true" />
                 Print
@@ -455,7 +456,7 @@ function OtEditorBody({
           {canEdit ? (
             <button
               type="button"
-              className="btn bg-[#1f7a3f] text-white hover:bg-[#196634] disabled:opacity-60"
+              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -542,7 +543,14 @@ function OtEditorBody({
               card scrolls itself. Screen-only, like the card always was — its
               printable copies are mounted below. */}
           <div className="no-print max-h-[45%] shrink-0 overflow-y-auto">
-            <OtOtherAttachmentsCard id={rowId ?? id} canEdit={canEdit} others={others} />
+            <OtOtherAttachmentsCard
+              id={rowId ?? id}
+              canEdit={canEdit}
+              others={others}
+              // A stored file is content, so uploading one creates the row when
+              // the form is still a draft (same rule as the approval attachment).
+              onEnsureRow={ensureRow}
+            />
           </div>
           {/* The printable "other attachments", after everything else on paper.
               They have to live HERE, in the column that isn't `.no-print`, and

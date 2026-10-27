@@ -25,6 +25,7 @@ import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { DTR_TEMPLATE } from "@swiftslip/shared/dtr-template";
 import { fileToBase64 } from "@/lib/file";
+import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
@@ -48,6 +49,7 @@ import {
   type SaveStatus as AutoSaveStatus,
 } from "@/lib/auto-save";
 import { recordQueryOptions, recordsQueryOptions } from "../queries";
+import { BiometricImportDialog } from "./BiometricImportDialog";
 import { DailyEntriesTable } from "./DailyEntriesTable";
 import { DtrPreview } from "./DtrPreview";
 import { RecordHeaderFields } from "./RecordHeaderFields";
@@ -105,7 +107,9 @@ function RecordEditorBody({
 }) {
   const session = useSession();
   const canEdit = Boolean(session);
-  const fileRef = useRef<HTMLInputElement>(null);
+  // The biometric import overlay: it closes itself once a read succeeds, and
+  // stays open while the read is in flight.
+  const [importOpen, setImportOpen] = useState(false);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -286,7 +290,7 @@ function RecordEditorBody({
   const headerLoaded = header !== null;
   useEffect(() => {
     if (!headerLoaded) return;
-    saveSignatureBackup("dtr", rowId ?? id, sig);
+    void saveSignatureBackup("dtr", rowId ?? id, sig);
   }, [headerLoaded, sig, rowId, id]);
 
   // The single trigger for every change: persist a draft that has become real
@@ -377,7 +381,6 @@ function RecordEditorBody({
   async function onFile(file: File) {
     if (!header) return;
     setBusy(true);
-    const toastId = toast.loading("Reading the biometric record…");
     try {
       const log = await importBiometricFile({
         data: {
@@ -391,15 +394,16 @@ function RecordEditorBody({
       setRows(merged.rows);
       await persist(merged.header, buildEntries(merged.rows));
       setSaveStatus("saved");
+      setImportOpen(false);
       toast.success(
         `Imported ${merged.count} day${merged.count === 1 ? "" : "s"}` +
           (merged.skipped
             ? `. ${merged.skipped} day${merged.skipped === 1 ? "" : "s"} from another month skipped. Switch the sheet to that month and import again.`
             : ""),
-        { id: toastId },
       );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Import failed.", { id: toastId });
+      // The overlay stays open so a failed read can be retried or the file swapped.
+      toast.error(e instanceof Error ? e.message : "Import failed.");
     } finally {
       setBusy(false);
     }
@@ -452,23 +456,12 @@ function RecordEditorBody({
                 disabled={busy}
                 aria-label="Import from biometric record"
                 title="Upload a scanned or photographed biometric log (PDF or image) to auto-fill the days below"
-                onClick={() => fileRef.current?.click()}
+                onClick={() => setImportOpen(true)}
               >
                 {/* The mascot marks this as the AI read — the label says upload. */}
                 <AiMascot size="xs" />
                 <span className="hidden sm:inline">Import from biometric record</span>
               </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="application/pdf,image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) onFile(f);
-                  e.target.value = "";
-                }}
-              />
               <button
                 className="btn btn-primary"
                 disabled={busy}
@@ -523,7 +516,7 @@ function RecordEditorBody({
             className="btn btn-outline"
             aria-label="Print"
             title="Open the print dialog (this also prints any attached file)"
-            onClick={() => window.print()}
+            onClick={() => printSheet()}
           >
             <Printer className="size-4" aria-hidden="true" />
             <span className="hidden sm:inline">Print</span>
@@ -619,6 +612,15 @@ function RecordEditorBody({
       >
         <DtrPreview template={template} header={header} days={days} entryFor={row} />
       </PreviewLightbox>
+
+      <BiometricImportDialog
+        open={importOpen}
+        busy={busy}
+        onClose={() => {
+          if (!busy) setImportOpen(false);
+        }}
+        onImport={(file) => void onFile(file)}
+      />
     </main>
   );
 }

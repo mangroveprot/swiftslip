@@ -34,8 +34,8 @@ export function ActiveFilterBar({
           <div>
             <p className="filter-lens__title">Refined view</p>
             <p className="filter-lens__count">
-              Showing <span className="font-semibold text-slate-700">{matchCount}</span> of{" "}
-              <span className="font-semibold text-slate-700">{scopeCount}</span>
+              Showing <span className="font-semibold text-foreground">{matchCount}</span> of{" "}
+              <span className="font-semibold text-foreground">{scopeCount}</span>
             </p>
           </div>
         </div>

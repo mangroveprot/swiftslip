@@ -39,6 +39,7 @@ import {
   writeDraft,
 } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
+import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
@@ -249,7 +250,7 @@ function CosEditorBody({
   const formLoaded = form !== null;
   useEffect(() => {
     if (!formLoaded) return;
-    saveSignatureBackup("cos", rowId ?? id, sig);
+    void saveSignatureBackup("cos", rowId ?? id, sig);
   }, [formLoaded, sig, rowId, id]);
 
   // The single trigger for every change: persist a draft that has become real
@@ -432,7 +433,7 @@ function CosEditorBody({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"
-                onSelect={() => window.setTimeout(() => window.print(), 0)}
+                onSelect={() => printSheet()}
               >
                 <Printer className="size-4" aria-hidden="true" />
                 Print
@@ -451,7 +452,7 @@ function CosEditorBody({
           {canEdit ? (
             <button
               type="button"
-              className="btn bg-[#1f7a3f] text-white hover:bg-[#196634] disabled:opacity-60"
+              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"

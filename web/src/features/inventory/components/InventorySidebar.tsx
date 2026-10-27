@@ -8,6 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { LayoutGrid } from "lucide-react";
 
 import { SignOutButton } from "@/components/common/SignOutButton";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import type { InventoryShell, InventoryView } from "../shell-context";
 
 const NAV_ITEMS: { key: InventoryView; label: string }[] = [
@@ -81,7 +82,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
       {/* Mobile overlay (matches IsOpen in the original). */}
       {shell.sidebarOpen ? (
         <div
-          className="fixed inset-0 bg-slate-900/40 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
           onClick={() => shell.closeSidebar()}
         />
       ) : null}
@@ -151,7 +152,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {shell.branches.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-slate-400">No branches loaded</p>
+                    <p className="px-3 py-2 text-xs text-white/70">No branches loaded</p>
                   ) : (
                     shell.branches.map((branch) => {
                       const selected = branch.branch_id === shell.selectedBranchId;
@@ -231,6 +232,10 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                   {shell.branchSubtitle}
                 </p>
               </div>
+              {/* Sits with the account, not between the two action buttons:
+                  wedged in that row it broke the pair apart and read as a
+                  third button in both themes. */}
+              <ThemeToggle className="shrink-0 text-white/80 hover:bg-white/20 hover:text-white" />
             </div>
 
             <div className="mt-3 flex items-center gap-2">

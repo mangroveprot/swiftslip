@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, ImagePlus, Loader2, Paperclip, Send, Trash2, X } from "lucide-react";
+import { Check, ImagePlus, Loader2, Paperclip, Send, Trash2, X } from "lucide-react";
 
 import { AiLauncher } from "./AiLauncher";
 import { AiMascot } from "./AiMascot";
@@ -247,11 +247,11 @@ export function AssistantChat({
               <button
                 type="button"
                 className="flex size-8 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25"
-                aria-label="Hide the assistant"
-                title="Hide the assistant"
+                aria-label="Close the assistant"
+                title="Close the assistant"
                 onClick={() => setOpen(false)}
               >
-                <ChevronDown className="size-4" aria-hidden="true" />
+                <X className="size-4" aria-hidden="true" />
               </button>
             </span>
           </header>

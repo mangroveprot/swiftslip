@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { APP } from "@/config/app";
 import { formatPeriodDateRange, formatShortDate } from "@swiftslip/shared/period";
 import type { DtrEntry, DtrHeader, DtrTemplate } from "@swiftslip/shared/types";
+import { withRestDayRemarks } from "../lib/rest-day";
 
 /** Company form fill colour used for the title bar + column-header row. */
 const TEMPLATE_HEADER_FILL = "#bfbfbf";
@@ -177,7 +178,7 @@ export function DtrPreview({
           </thead>
           <tbody>
             {days.map((d) => {
-              const e = entryFor(d);
+              const e = withRestDayRemarks(entryFor(d), d, header);
               return (
                 <tr key={d}>
                   <td className={`border border-ink px-[4px] pb-[2px] align-top ${LOG_ROW_H}`}>

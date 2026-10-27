@@ -1,23 +1,30 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, ExternalLink, Loader2, Paperclip, Plus, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { removeLoaOtherAttachment, uploadLoaOtherAttachment } from "@/api/loa.functions";
+import { AttachmentUploadDialog } from "@/components/common/AttachmentUploadDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { downloadFromUrl, IMAGE_RE } from "@/lib/attachment-file";
+import {
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENT_MB,
+  prepareAttachment,
+} from "@/lib/attachment-upload";
 import { fileToBase64 } from "@/lib/file";
 import { toast } from "@/lib/toast";
 import type { LoaOtherFile } from "@swiftslip/shared/types";
 import { loaFormQueryOptions, loaFormsQueryOptions, loaOtherUrlsQueryOptions } from "../queries";
 
 const MAX_FILES = 8;
-const MAX_MB = 10;
 
 /**
  * The LOA form's extra supporting documents (medical notes, lab results, …):
  * up to 8 files of 10 MB each, optional for approval. Unlike the single
  * certificate above it, this card never carries approval. Uploads run one
- * request per file so every body stays at the single-file 10 MB limit.
+ * request per file so every body stays at the single-file 10 MB limit, and go
+ * through `AttachmentUploadDialog` so a batch can be queued, checked and
+ * pasted in one go.
  *
  * This is the on-screen manager ONLY — it stores, lists and removes files and
  * never prints. The printable copies are a separate element the editor mounts
@@ -29,84 +36,61 @@ export function LoaOtherAttachmentsCard({
   id,
   canEdit,
   others,
+  onEnsureRow,
   onUploaded,
 }: {
   id: string;
   canEdit: boolean;
   /** The form's current extra files, straight from the form query. */
   others: LoaOtherFile[];
+  /** Resolves a real row id, creating the draft's row when there is none yet. */
+  onEnsureRow?: (() => Promise<string>) | undefined;
   /** Called the moment the first file lands — a stored file is content, so the
    *  form must be kept (never scaffold-discarded) from then on. */
   onUploaded?: (() => void) | undefined;
 }) {
   const qc = useQueryClient();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState<LoaOtherFile | null>(null);
   const { data: urls, isLoading: signing } = useQuery({
     ...loaOtherUrlsQueryOptions(id),
     enabled: others.length > 0,
   });
 
-  async function refresh() {
+  async function refresh(target = id) {
     await Promise.all([
-      qc.invalidateQueries({ queryKey: loaFormQueryOptions(id).queryKey }),
-      qc.invalidateQueries({ queryKey: loaOtherUrlsQueryOptions(id).queryKey }),
+      qc.invalidateQueries({ queryKey: loaFormQueryOptions(target).queryKey }),
+      qc.invalidateQueries({ queryKey: loaOtherUrlsQueryOptions(target).queryKey }),
       // The list shows name + "Updated" time — mark stale without re-fetching now.
       qc.invalidateQueries({ queryKey: loaFormsQueryOptions().queryKey, refetchType: "none" }),
     ]);
   }
 
-  async function uploadPicked(list: FileList | File[]) {
-    const picked = Array.from(list);
-    if (!picked.length) return;
-    const oversized = picked.find((file) => file.size > MAX_MB * 1024 * 1024);
-    if (oversized) {
-      toast.error(
-        `"${oversized.name}" is over ${MAX_MB} MB. Each file must be ${MAX_MB} MB or smaller.`,
-      );
-      return;
+  /**
+   * Send one queued file. Big pictures are scaled down first, so a phone photo
+   * of a medical certificate arrives as a fraction of its original size. The
+   * caller (the upload window) owns the queue, the progress rows and the
+   * summary toast, so this only reports its own failure by throwing.
+   */
+  async function uploadOne(picked: File) {
+    const prepared = await prepareAttachment(picked);
+    if (prepared.size > MAX_ATTACHMENT_BYTES) {
+      throw new Error(`Must be ${MAX_ATTACHMENT_MB} MB or smaller.`);
     }
-    const empty = picked.find((file) => !file.size);
-    if (empty) {
-      toast.error(`"${empty.name}" is empty.`);
-      return;
-    }
-    const room = MAX_FILES - others.length;
-    if (picked.length > room) {
-      toast.error(
-        room <= 0
-          ? `This form already has ${MAX_FILES} files, so remove one before adding another.`
-          : `You can add ${room} more file${room === 1 ? "" : "s"} (up to ${MAX_FILES} total).`,
-      );
-      return;
-    }
-
-    setBusy(true);
-    let stored = 0;
-    try {
-      for (const file of picked) {
-        const base64 = await fileToBase64(file);
-        await uploadLoaOtherAttachment({
-          data: {
-            id,
-            filename: file.name,
-            contentType: file.type || "application/octet-stream",
-            base64,
-          },
-        });
-        if (stored === 0) onUploaded?.();
-        stored += 1;
-      }
-      await refresh();
-      toast.success(stored === 1 ? "Attachment added" : `${stored} attachments added`);
-    } catch (err) {
-      // Whatever did land has to show up before the error toast.
-      if (stored) await refresh().catch(() => {});
-      toast.error(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setBusy(false);
-    }
+    // A draft has no row to attach to yet, so it is stored first. Without this
+    // the upload targets the placeholder id and the server rejects it.
+    const target = onEnsureRow ? await onEnsureRow() : id;
+    const base64 = await fileToBase64(prepared);
+    await uploadLoaOtherAttachment({
+      data: {
+        id: target,
+        filename: prepared.name,
+        contentType: prepared.type || "application/octet-stream",
+        base64,
+      },
+    });
+    await refresh(target);
   }
 
   async function confirmRemove() {
@@ -129,23 +113,6 @@ export function LoaOtherAttachmentsCard({
     // Screen-only, whatever is attached: the printable copies are mounted in the
     // preview column instead (see the note above).
     <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm print:hidden">
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        className="hidden"
-        accept="application/pdf,image/png,image/jpeg,image/gif,image/webp,image/bmp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-        disabled={!canEdit || busy}
-        onChange={(e) => {
-          // `input.files` is a LIVE FileList — clearing `input.value` below
-          // empties that very list, so a reference to it would always read
-          // length 0 and nothing would ever upload. Copy the files out first.
-          const list = Array.from(e.target.files ?? []);
-          e.target.value = ""; // re-picking the same files has to work again
-          if (list.length) void uploadPicked(list);
-        }}
-      />
-
       {/* The on-screen manager: header, rows and the upload button. */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -228,22 +195,27 @@ export function LoaOtherAttachmentsCard({
           <button
             type="button"
             className="btn btn-outline mt-2 w-full justify-start"
-            disabled={busy}
-            onClick={() => inputRef.current?.click()}
+            disabled={busy || others.length >= MAX_FILES}
+            onClick={() => setUploading(true)}
           >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Plus className="size-4" aria-hidden="true" />
-            )}
-            {busy
-              ? "Uploading…"
-              : `Add files: medical, PDF, image… (up to ${MAX_FILES}, ${MAX_MB} MB each)`}
+            <Plus className="size-4" aria-hidden="true" />
+            {others.length >= MAX_FILES
+              ? `All ${MAX_FILES} files added — remove one to add another`
+              : `Add files: medical, PDF, image… (up to ${MAX_FILES}, ${MAX_ATTACHMENT_MB} MB each)`}
           </button>
         ) : others.length ? null : (
           <p className="mt-2 text-sm text-muted-foreground">No supporting files yet.</p>
         )}
       </div>
+
+      <AttachmentUploadDialog
+        open={uploading}
+        title="Other attachments"
+        remaining={MAX_FILES - others.length}
+        onClose={() => setUploading(false)}
+        onUpload={uploadOne}
+        onUploaded={onUploaded}
+      />
 
       <ConfirmDialog
         open={removing !== null}

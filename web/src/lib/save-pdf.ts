@@ -89,6 +89,27 @@ const STAGE_CSS = `
 [${STAGE_ATTR}] .no-print {
   display: none !important;
 }
+/* Mirrors the overlay rule in styles.css: a dropdown or dialog portaled to
+   <body> is outside the copied sheet already, but hiding it by role keeps
+   the stage agreeing with Ctrl+P when a menu was open at capture time. */
+[${STAGE_ATTR}] [data-radix-popper-content-wrapper],
+[${STAGE_ATTR}] [data-radix-portal],
+[${STAGE_ATTR}] [role="menu"],
+[${STAGE_ATTR}] [role="listbox"],
+[${STAGE_ATTR}] [role="tooltip"],
+[${STAGE_ATTR}] [role="dialog"],
+[${STAGE_ATTR}] [role="alertdialog"] {
+  display: none !important;
+}
+/* A saved PDF is the form on paper, so the assistant is cut from the snapshot
+   too: its mascot, nudge bubble and footer chat overlapped the sheet on a
+   phone. The live chat is portaled to <body>, outside the copied sheet, so it
+   is matched by its own attributes rather than by position. */
+[${STAGE_ATTR}] [aria-label^="Chat with"],
+[${STAGE_ATTR}] .ai-bubble-pop,
+[${STAGE_ATTR}] .ai-bubble-vanish {
+  display: none !important;
+}
 [${STAGE_ATTR}] .print-sheet,
 [${STAGE_ATTR}] .print-sheet * {
   -webkit-print-color-adjust: exact !important;

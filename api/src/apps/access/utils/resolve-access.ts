@@ -6,8 +6,9 @@
  *   2. a `user` rule for that app
  *   3. a `department` rule
  *   4. a `position` rule
- *   5. nothing matched     -> the app's starting point (SwiftSlip yes,
- *                             Inventory no, until an admin changes it)
+ *   5. nothing matched     -> the app's starting point (SwiftSlip and the
+ *                             Ticketing System yes, Inventory no, until an
+ *                             admin changes it)
  *
  * WHY ADMINS BYPASS EVERYTHING: a deny rule that applied to admins could strand
  * everyone outside their own admin panel, and whoever holds the Admin Panel
@@ -22,8 +23,14 @@
 import { normalizePosition } from '@swiftslip/shared/org';
 import type { GrantableAppKey, Role, RuleScope } from '@swiftslip/shared/types';
 
-/** What a staff account gets before any rule is considered. */
-const STAFF_DEFAULT: GrantableAppKey[] = ['swiftslip'];
+/**
+ * What a staff account gets before any rule is considered.
+ *
+ * `ticketing` is here because everyone could already raise a ticket before it
+ * became a managed app: turning it into a rule must not take the card away from
+ * staff who had it yesterday. Blocking it is still one rule away.
+ */
+const STAFF_DEFAULT: GrantableAppKey[] = ['swiftslip', 'ticketing'];
 
 /** Reserved `scope_value` that stores one app's starting point. */
 export const APP_DEFAULT_RULE_VALUE = '__app_default__';

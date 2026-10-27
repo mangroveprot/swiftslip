@@ -12,12 +12,16 @@ export function BulkActionBar({ selectedCount, onClear, onBulkDelete }: BulkActi
   if (selectedCount <= 0) return null;
 
   return (
-    <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-2 sm:gap-0 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 mb-3">
-      <p className="text-sm text-blue-800">
+    <div className="flex items-start sm:items-center justify-between flex-col sm:flex-row gap-2 sm:gap-0 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-lg px-4 py-2.5 mb-3">
+      <p className="text-sm text-blue-800 dark:text-blue-200">
         <span className="font-semibold">{selectedCount}</span> selected
       </p>
       <div className="flex items-center gap-2">
-        <button type="button" className="text-sm text-blue-700 hover:underline" onClick={onClear}>
+        <button
+          type="button"
+          className="text-sm text-blue-700 dark:text-blue-300 hover:underline"
+          onClick={onClear}
+        >
           Clear selection
         </button>
         <button
