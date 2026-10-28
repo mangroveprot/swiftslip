@@ -5,7 +5,7 @@
   "description": "SwiftSlip API \u2014 Express + Supabase, structured like api-qasma.",
   "main": "build/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --exit-child src/server.ts",
+    "dev": "node scripts/guard-dev.mjs && ts-node-dev --respawn --transpile-only --exit-child src/server.ts",
     "build": "rimraf build && tsup",
     "start": "node build/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",

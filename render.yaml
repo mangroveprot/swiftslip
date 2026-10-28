@@ -1,0 +1,40 @@
+# Render Blueprint for the SwiftSlip API.
+#
+# Dashboard: New -> Blueprint -> pick this repo. Render reads this file and
+# creates the service; the `sync: false` values are asked for in the UI.
+#
+# The web app on Vercel must be able to reach this service. Two supported
+# wirings are documented in README.md ("Production deployment"):
+#   1. a custom domain such as api.regasco.dpdns.org (same-site cookies), or
+#   2. a Vercel rewrite that proxies /api/* to this service (same-origin).
+services:
+  - type: web
+    name: swiftslip-api
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TIME_ZONE
+        value: Asia/Manila
+      # Browser origin allowed to call the API (comma-separated).
+      - key: CORS_ORIGIN
+        value: https://regasco.dpdns.org
+      # Render sits behind its own proxy, so the throttle must read X-Forwarded-For.
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      - key: RGC_INVENTORY_DATABASE_URL
+        sync: false

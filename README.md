@@ -93,6 +93,37 @@ copy for Cloudflare Pages / Netlify. Any other static host must send the same li
 its own domain its origin is added to `connect-src` automatically for preview; add it by hand in
 `_headers`.
 
+**Production deployment.** Two halves, two hosts.
+
+1. **Web (Vercel).** Root Directory = repo root. `vercel.json` builds only the web workspace
+   (`npm run build -w @swiftslip/web`), publishes `web/dist`, and rewrites unknown paths to
+   `index.html` for the SPA while leaving `/api/*` alone. Never point the Build Command at
+   `npm run dev`: that starts the API's `ts-node-dev --respawn` watcher, which never exits and
+   hangs the deployment (it now fails fast under `CI` instead).
+
+2. **API (Render / Railway / Fly / any Docker host).** `api/Dockerfile` is the production image
+   and `render.yaml` is a one-click Render Blueprint. It needs `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `GEMINI_API_KEY` and
+   `RGC_INVENTORY_DATABASE_URL`, plus `CORS_ORIGIN=https://regasco.dpdns.org` and
+   `TRUST_PROXY=1`. `GET /health` is the health check.
+
+   The browser must reach the API **same-site**, because the session cookie is `SameSite=Lax`.
+   Pick one:
+
+   - **Proxy (simplest):** keep `VITE_API_URL` blank and add a rewrite *before* the SPA one:
+     `{ "source": "/api/(.*)", "destination": "https://swiftslip-api.onrender.com/api/$1" }`.
+     The browser only sees `regasco.dpdns.org`, so cookies and CORS just work.
+   - **Subdomain:** point `api.regasco.dpdns.org` at the API, set
+     `VITE_API_URL=https://api.regasco.dpdns.org/api` in Vercel, and keep
+     `CORS_ORIGIN=https://regasco.dpdns.org`. Same registrable domain, so `Lax` still applies.
+
+   Do **not** point `VITE_API_URL` straight at a different registrable domain (e.g.
+   `*.onrender.com`): `SameSite=Lax` cookies are not sent cross-site, so sign-in looks fine and
+   every later request is 401.
+
+   Vercel ignores `web/public/_headers`; if Vercel is the long-term host, mirror that list under
+   `headers` in `vercel.json`.
+
 ## Routing
 
 File-based (TanStack Router), client-side. `_app.tsx`'s `beforeLoad` asks `GET /api/auth/session`
