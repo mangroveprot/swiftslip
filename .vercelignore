@@ -1,0 +1,30 @@
+# Vercel only hosts the static web SPA (web/dist). The Express API is deployed
+# separately on Render (render.yaml + api/Dockerfile).
+#
+# Without this file, Vercel's zero-config builder treats EVERY .ts file under
+# the root-level api/ directory as a serverless function and compiles all ~227
+# of them, printing "Using TypeScript … (local user-provided)" once per file.
+# That makes the deploy log look like an infinite loop and the build never ends.
+#
+# api/package.json MUST stay uploaded so the npm-workspaces install resolves
+# @swiftslip/api; only its code and assets are excluded.
+api/src/**
+api/build/**
+api/dist/**
+api/scripts/**
+api/drizzle/**
+api/logs/**
+api/node_modules/**
+api/Dockerfile
+api/tsconfig.json
+api/tsup.config.ts
+api/eslint.config.mjs
+api/drizzle.config.ts
+api/.env
+api/.prettierrc
+
+# Build output is generated on Vercel; no need to upload it.
+web/dist/**
+web/node_modules/**
+shared/node_modules/**
+node_modules/**

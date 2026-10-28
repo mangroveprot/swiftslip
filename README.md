@@ -101,6 +101,11 @@ its own domain its origin is added to `connect-src` automatically for preview; a
    `npm run dev`: that starts the API's `ts-node-dev --respawn` watcher, which never exits and
    hangs the deployment (it now fails fast under `CI` instead).
 
+   `.vercelignore` is load-bearing: without it Vercel treats **every `.ts` file under the
+   root-level `api/` directory as a serverless function** (~227 of them), compiling each one
+   and filling the log with `Using TypeScript … (local user-provided)` until the build times
+   out. `api/package.json` is deliberately kept so the npm-workspaces install still resolves.
+
 2. **API (Render / Railway / Fly / any Docker host).** `api/Dockerfile` is the production image
    and `render.yaml` is a one-click Render Blueprint. It needs `SUPABASE_URL`,
    `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `GEMINI_API_KEY` and
