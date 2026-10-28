@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
+  "installCommand": "npm ci --workspace @swiftslip/web --workspace @swiftslip/shared --include-workspace-root --no-audit --no-fund",
   "buildCommand": "npm run build -w @swiftslip/web",
   "outputDirectory": "web/dist",
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]

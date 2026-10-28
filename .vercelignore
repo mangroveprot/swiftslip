@@ -28,3 +28,15 @@ web/dist/**
 web/node_modules/**
 shared/node_modules/**
 node_modules/**
+
+# Not part of the web build — repo-local tooling/attachments that only slow the
+# upload and the build-cache snapshot down.
+.hormachuelos/**
+.workbuddy-ai/**
+.vscode/**
+drizzle/**
+scripts/**
+public/**
+lint-err.log
+lint-out.log
+lint-*.log
