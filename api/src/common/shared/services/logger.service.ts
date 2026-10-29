@@ -1,6 +1,8 @@
 import { createLogger, format, transports, Logger } from 'winston';
 import { Format } from 'logform';
 
+import { config } from '../../../core/config';
+
 class LoggerService {
   private logger: Logger;
 
@@ -12,16 +14,33 @@ class LoggerService {
       ),
     );
 
+    // Production hosts (Render, Railway, Fly...) capture stdout and keep the
+    // logs for you, and their disks are small and temporary. So in production
+    // log to the console ONLY: log files would just grow until the disk fills.
+    // In development, also write rotating files (5 MB each, 3 kept) to logs/.
+    const loggerTransports: Logger['transports'] = [
+      new transports.Console({
+        format: config.runningProd
+          ? logFormat
+          : format.combine(format.colorize(), logFormat),
+      }),
+    ];
+    if (!config.runningProd) {
+      const rotation = { maxsize: 5 * 1024 * 1024, maxFiles: 3 };
+      loggerTransports.push(
+        new transports.File({
+          filename: 'logs/error.log',
+          level: 'error',
+          ...rotation,
+        }),
+        new transports.File({ filename: 'logs/combined.log', ...rotation }),
+      );
+    }
+
     this.logger = createLogger({
       level: 'info',
       format: logFormat,
-      transports: [
-        new transports.Console({
-          format: format.combine(format.colorize(), logFormat),
-        }),
-        new transports.File({ filename: 'logs/error.log', level: 'error' }),
-        new transports.File({ filename: 'logs/combined.log' }),
-      ],
+      transports: loggerTransports,
     });
   }
 
