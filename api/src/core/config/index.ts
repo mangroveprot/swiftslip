@@ -27,6 +27,10 @@ const EnvSchema = z.object({
   // How many reverse proxies sit in front of the API (0 = none). Needed so
   // `req.ip` is the visitor, not the proxy — it feeds the sign-in throttle.
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // Folder holding the built web app (web/dist). When set (and it contains an
+  // index.html) the API also serves the website, so one service does both.
+  // Unset in development, where Vite serves the web app.
+  WEB_DIST: z.string().min(1).optional(),
 
   // Sign-in cookie. Changing it signs everyone out.
   SESSION_SECRET: z
@@ -101,6 +105,8 @@ function buildConfig() {
     timeZone: env.TIME_ZONE,
     bodyLimit: env.BODY_LIMIT,
     trustProxy: env.TRUST_PROXY,
+    /** `undefined` means this process serves only the API. */
+    webDist: env.WEB_DIST,
     cors: {
       origins: env.CORS_ORIGIN.split(',')
         .map((origin) => origin.trim())

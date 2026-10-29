@@ -11,6 +11,7 @@ web/     Vite + React SPA (@swiftslip/web) port 8080   only VITE_* in web/.env (
 shared/  zod schemas + types (@swiftslip/shared) — imported as @swiftslip/shared/<file>
 ```
 
+In production the API container also serves `web/dist` (one Docker image, see README → Production).
 `web` talks to `api` **only** over HTTP (`web/src/lib/api-client.ts`, base `VITE_API_URL` or `/api`).
 `shared/` holds schemas and types only — no server or browser code. That is what keeps the
 three folders splittable into separate repos later with no code change.

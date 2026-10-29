@@ -22,6 +22,8 @@ npm run dev              # API on :9095, web on :8080 (web proxies /api → the 
 | `npm run typecheck`  | `tsc --noEmit` in every workspace                              |
 | `npm run lint`       | ESLint in every workspace                                      |
 | `npm run format`     | Prettier                                                       |
+| `npm run docker:up`  | Build the production image and run it on http://localhost:9095 |
+| `npm run docker:build` | Build the image only (`swiftslip`)                           |
 
 ## Repo layout
 
@@ -87,47 +89,50 @@ For an API on its own domain set it to `https://api.example.com/api` and add the
 may only hold non-secret `VITE_*` values. Keeping them apart means a secret can never be bundled
 into the site by accident. `web/.env` is optional (blank = same-origin `/api`).
 
-**Security headers.** The old server entry added HSTS, CSP, `X-Frame-Options` etc. Now `vite preview`
-(`npm start`) sends them (`securityHeaders()` in `web/vite.config.ts`) and `web/public/_headers` is the
-copy for Cloudflare Pages / Netlify. Any other static host must send the same list. If the API is on
-its own domain its origin is added to `connect-src` automatically for preview; add it by hand in
-`_headers`.
+**Security headers.** In production the API serves the website and sends the headers itself
+(`api/src/core/framework/webserver/express.ts`). Three copies of the list must stay in sync:
+that file, `securityHeaders()` in `web/vite.config.ts` (used by `npm start` / `vite preview`) and
+`web/public/_headers` (only used if the site is ever moved to a static host).
 
-**Production deployment.** Two halves, two hosts.
+## Production (Docker, one service)
 
-1. **Web (Vercel).** Root Directory = repo root. `vercel.json` builds only the web workspace
-   (`npm run build -w @swiftslip/web`), publishes `web/dist`, and rewrites unknown paths to
-   `index.html` for the SPA while leaving `/api/*` alone. Never point the Build Command at
-   `npm run dev`: that starts the API's `ts-node-dev --respawn` watcher, which never exits and
-   hangs the deployment (it now fails fast under `CI` instead).
+Production is **one Docker image, one service**: the Express API also serves the built web app
+(`web/dist`), so the website and `/api` share one origin. That means no CORS to configure, no
+`VITE_API_URL`, and no `SameSite` cookie problems. Leave `VITE_API_URL` unset when building the image.
 
-   `.vercelignore` is load-bearing: without it Vercel treats **every `.ts` file under the
-   root-level `api/` directory as a serverless function** (~227 of them), compiling each one
-   and filling the log with `Using TypeScript … (local user-provided)` until the build times
-   out. `api/package.json` is deliberately kept so the npm-workspaces install still resolves.
+```
+Dockerfile          build stage:   npm ci → npm run build  (api → api/build, web → web/dist)
+                    runtime stage: production deps + api/build + web/dist, runs as the `node` user
+docker-compose.yml  run the same image locally on http://localhost:9095
+render.yaml         Render Blueprint (New → Blueprint → pick this repo)
+```
 
-2. **API (Render / Railway / Fly / any Docker host).** `api/Dockerfile` is the production image
-   and `render.yaml` is a one-click Render Blueprint. It needs `SUPABASE_URL`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `GEMINI_API_KEY` and
-   `RGC_INVENTORY_DATABASE_URL`, plus `CORS_ORIGIN=https://regasco.dpdns.org` and
-   `TRUST_PROXY=1`. `GET /health` is the health check.
+**Run the production image locally** (needs Docker; secrets come from `api/.env`):
 
-   The browser must reach the API **same-site**, because the session cookie is `SameSite=Lax`.
-   Pick one:
+```sh
+npm run setup           # once: creates api/.env — fill it in
+npm run docker:up       # = docker compose up --build  →  http://localhost:9095
+```
 
-   - **Proxy (simplest):** keep `VITE_API_URL` blank and add a rewrite *before* the SPA one:
-     `{ "source": "/api/(.*)", "destination": "https://swiftslip-api.onrender.com/api/$1" }`.
-     The browser only sees `regasco.dpdns.org`, so cookies and CORS just work.
-   - **Subdomain:** point `api.regasco.dpdns.org` at the API, set
-     `VITE_API_URL=https://api.regasco.dpdns.org/api` in Vercel, and keep
-     `CORS_ORIGIN=https://regasco.dpdns.org`. Same registrable domain, so `Lax` still applies.
+For day-to-day coding keep using `npm run dev` (hot reload on :8080); Docker is for checking what
+production will do.
 
-   Do **not** point `VITE_API_URL` straight at a different registrable domain (e.g.
-   `*.onrender.com`): `SameSite=Lax` cookies are not sent cross-site, so sign-in looks fine and
-   every later request is 401.
+**Deploy on Render:** push to GitHub → *New → Blueprint* → pick the repo. Render builds the `Dockerfile`
+and asks for the `sync: false` values: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`,
+`GEMINI_API_KEY`, `RGC_INVENTORY_DATABASE_URL`. `CORS_ORIGIN` is the site's own public URL,
+`TRUST_PROXY=1`, and `GET /health` is the health check. Any other Docker host (Railway, Fly, a VPS)
+works the same way: it only needs the image, `PORT`, and those environment variables.
 
-   Vercel ignores `web/public/_headers`; if Vercel is the long-term host, mirror that list under
-   `headers` in `vercel.json`.
+How the API serves the site (all in `express.ts`, switched on by `WEB_DIST`, which the image sets to
+`/app/web/dist`):
+
+- Static files are served **before** the logger and the rate limiter, so page loads don't spam the log or
+  use up the API quota (`/api` is the only rate-limited prefix). Files under `/assets` are cached for a
+  year (Vite fingerprints them); `index.html` is `no-cache`.
+- Unknown paths without a file extension return `index.html` (client-side routing). `/api/*` and
+  `/health*` keep their JSON 404, and a missing `/assets/x.js` is a real 404.
+- Don't use Render's **free** plan for real use: it sleeps when idle and the first login takes 30 s+.
+- The rate limiter is in memory, so run **one instance** (or move it to a shared store before scaling out).
 
 ## Routing
 

@@ -1,18 +1,15 @@
-# Render Blueprint for the SwiftSlip API.
+# Render Blueprint for SwiftSlip: ONE Docker web service that serves both the
+# website and the API (see ./Dockerfile).
 #
 # Dashboard: New -> Blueprint -> pick this repo. Render reads this file and
 # creates the service; the `sync: false` values are asked for in the UI.
-#
-# The web app on Vercel must be able to reach this service. Two supported
-# wirings are documented in README.md ("Production deployment"):
-#   1. a custom domain such as api.regasco.dpdns.org (same-site cookies), or
-#   2. a Vercel rewrite that proxies /api/* to this service (same-origin).
 services:
   - type: web
-    name: swiftslip-api
+    name: swiftslip
     runtime: docker
-    dockerfilePath: ./api/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: .
+    # `free` sleeps when idle (first login takes 30s+). Use a paid plan for real use.
     plan: free
     healthCheckPath: /health
     envVars:
@@ -20,10 +17,10 @@ services:
         value: production
       - key: TIME_ZONE
         value: Asia/Manila
-      # Browser origin allowed to call the API (comma-separated).
+      # The site's own public URL (web and API share one origin now).
       - key: CORS_ORIGIN
         value: https://regasco.dpdns.org
-      # Render sits behind its own proxy, so the throttle must read X-Forwarded-For.
+      # One proxy (Render's) sits in front, so the throttle reads X-Forwarded-For.
       - key: TRUST_PROXY
         value: "1"
       - key: SUPABASE_URL

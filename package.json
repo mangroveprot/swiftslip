@@ -18,7 +18,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "format": "prettier --write .",
-    "start": "npm run build && concurrently -k -n api,web -c cyan,magenta \"npm run start -w @swiftslip/api\" \"npm run preview -w @swiftslip/web\""
+    "start": "npm run build && concurrently -k -n api,web -c cyan,magenta \"npm run start -w @swiftslip/api\" \"npm run preview -w @swiftslip/web\"",
+    "docker:build": "docker build -t swiftslip .",
+    "docker:up": "docker compose up --build"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

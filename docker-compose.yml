@@ -1,0 +1,18 @@
+# Run the production image locally:   docker compose up --build
+# Then open http://localhost:9095  (website and API on the same port).
+#
+# For day-to-day coding use `npm run dev` instead (hot reload on :8080).
+# Secrets come from api/.env  (npm run setup, then fill it in).
+services:
+  swiftslip:
+    build: .
+    ports:
+      - "9095:9095"
+    env_file: ./api/.env
+    environment:
+      # Overrides for running on http://localhost (no HTTPS, no proxy):
+      NODE_ENV: development   # production would mark the session cookie `Secure`
+      PORT: "9095"
+      CORS_ORIGIN: http://localhost:9095
+      TRUST_PROXY: "0"
+    restart: unless-stopped

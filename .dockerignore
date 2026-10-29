@@ -1,22 +1,23 @@
-# Build context for the API image (repo root). Keep it small and secret-free.
+# Build context for the image (repo root). Keep it small and secret-free.
 node_modules
 **/node_modules
 
-# Build output — regenerated inside the image.
+# Regenerated inside the image.
 api/build
 web/dist
 web/build
 
-# Local state and secrets — env vars are injected by the host.
+# Local state and secrets — env vars are injected by the host / compose.
 .env
 **/.env
 api/logs
 **/*.log
 
-# Editor / agent / VCS noise.
+# Docs, tooling and VCS noise.
 .git
 .github
-.workbuddy-ai
-.hormachuelos
-.vscode
 .idea
+.hormachuelos
+.workbuddy-ai
+*.md
+!README.md
