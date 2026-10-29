@@ -37,6 +37,7 @@ const FORM_ACTIONS = [
   'asset.created',
   'asset.updated',
   'report.downloaded',
+  'cleanup.forms',
 ];
 
 const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {

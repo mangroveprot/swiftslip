@@ -639,3 +639,91 @@ export const listActivityLogsQuery = z.object({
   to: activityTimestamp.optional(),
   page: z.coerce.number().int().min(1).default(1),
 });
+
+// ── Data retention (admin settings → auto-delete old forms) ──────────────────
+
+/**
+ * The form types the cleanup can be pointed at, one checkbox each in the
+ * admin UI. `dtr` is the Daily Time Record; the rest are the form tables.
+ */
+export const RETENTION_FORM_TYPES = ["dtr", "ob", "loa", "cos", "ot"] as const;
+
+export type RetentionFormType = (typeof RETENTION_FORM_TYPES)[number];
+
+export const retentionFormTypeSchema = z.enum(RETENTION_FORM_TYPES);
+
+/**
+ * The floor is 1 day, not a policy number: the office decides its own period
+ * (7 days, 90, a year — their call). Zero or less is refused because it would
+ * mean "everything older than right now", which is never what anyone means.
+ */
+export const RETENTION_MIN_DAYS = 1;
+
+/**
+ * The one global setting, saved as a single row. `formTypes` may be empty
+ * (nothing selected); running a cleanup with none selected is refused by the
+ * service, not by the schema, so the setting itself can always be saved.
+ */
+export const retentionSettingsInput = z.object({
+  enabled: z.boolean(),
+  days: z
+    .number()
+    .int("Enter a whole number of days.")
+    .min(
+      RETENTION_MIN_DAYS,
+      `Keep forms for at least ${RETENTION_MIN_DAYS} day — the period is yours to choose.`,
+    )
+    .max(3650, "That is more than 10 years — pick a smaller number."),
+  formTypes: z.array(retentionFormTypeSchema).max(RETENTION_FORM_TYPES.length),
+});
+
+/**
+ * `POST /admin/retention/preview` counts what the *draft* on screen would
+ * delete. The settings are optional so a plain `{}` previews the saved ones.
+ */
+export const retentionPreviewInput = z.object({
+  settings: retentionSettingsInput.optional(),
+});
+
+export type RetentionSettings = z.infer<typeof retentionSettingsInput>;
+
+/** The saved setting as the API returns it. */
+export type RetentionSettingsDoc = RetentionSettings & {
+  updatedAt: string;
+};
+
+/** What one form type would lose, and what the whole preview adds up to. */
+export type RetentionPreview = {
+  days: number;
+  /** ISO timestamp — everything created before this is in scope. */
+  cutoff: string;
+  /** The ticked types. Only these are counted into the two totals below. */
+  chosen: RetentionFormType[];
+  /**
+   * Every type, ticked or not — the page shows each one's count so an admin
+   * can see what a type holds before ticking it. Untick a type and its forms
+   * simply drop out of the totals.
+   */
+  types: { type: RetentionFormType; forms: number; files: number }[];
+  totalForms: number;
+  totalFiles: number;
+};
+
+/**
+ * One row of `cleanup_runs` — the permanent history of what a run deleted
+ * (the activity log only keeps 30 days). Per-type counts are sparse: a type
+ * with no deletions has no key.
+ */
+export type CleanupRunSummary = {
+  id: string;
+  ranAt: string;
+  ranById: string | null;
+  ranByName: string | null;
+  ranByNumber: string | null;
+  days: number;
+  formTypes: RetentionFormType[];
+  formsDeleted: Partial<Record<RetentionFormType, number>>;
+  filesDeleted: Partial<Record<RetentionFormType, number>>;
+  /** `completed`, or `completed_with_file_errors` when storage lagged behind. */
+  status: string;
+};

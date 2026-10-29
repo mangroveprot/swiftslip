@@ -6,7 +6,7 @@ import { pageTitle, seo } from "@/lib/seo";
 export const Route = createFileRoute("/_app/records/")({
   head: () =>
     seo({
-      title: pageTitle("Time records"),
+      title: pageTitle("Time Records"),
       description: "Browse, open and print saved Daily Time Records.",
     }),
   component: RecordsList,

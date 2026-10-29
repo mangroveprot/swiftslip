@@ -44,6 +44,17 @@ const ErrorCodes = {
     message: 'A field that is supposed to be unique already exists.',
     statusCode: 409,
   },
+  RETENTION_DISABLED: {
+    code: 'RETENTION_DISABLED',
+    message:
+      'Data retention is turned off. Turn it on and save before running a cleanup.',
+    statusCode: 400,
+  },
+  CLEANUP_IN_PROGRESS: {
+    code: 'CLEANUP_IN_PROGRESS',
+    message: 'A cleanup run is already in progress. Wait for it to finish.',
+    statusCode: 409,
+  },
   IN_USE_ERROR: {
     code: 'IN_USE_ERROR',
     message: 'This item is still in use.',

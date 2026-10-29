@@ -8,6 +8,7 @@ import type { DtrEntry, DtrHeader, SessionUser } from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
 import { AttachmentService } from '../../attachments';
 import { ProfileService } from '../../profile';
+import { withDeletionReminder } from '../../retention/services/retention-notice';
 import { RecordEntryRepository, RecordRepository } from '../repositories';
 
 const toFailure = (error: unknown) => ({
@@ -27,16 +28,18 @@ class RecordService extends BaseService<'dtr_records', RecordRepository> {
 
   async list(ownerId: string) {
     try {
-      const documents = await this.repository.findAll(
+      const rows = await this.repository.findAll(
         { owner_id: ownerId },
         {
           // `attachment_path` rides along so the list can badge records: on
           // DTRs the attached file IS the approval (no approval flag exists).
+          // `created_at` is what the retention reminder measures age from.
           select:
-            'id,name,emp_no,designation,area,month,year,period,attachment_path,updated_at',
+            'id,name,emp_no,designation,area,month,year,period,attachment_path,created_at,updated_at',
           sort: { updated_at: 'desc' },
         },
       );
+      const documents = await withDeletionReminder('dtr', rows);
       return { success: true as const, documents };
     } catch (error) {
       return toFailure(error);

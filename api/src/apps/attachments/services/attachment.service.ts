@@ -312,11 +312,20 @@ class AttachmentService {
     }
   }
 
-  /** For form services deleting a row: drop its stored files, best effort. */
-  removeFiles(paths: (string | null | undefined)[]): Promise<void> {
+  /**
+   * For form services deleting a row: drop its stored files, best effort.
+   * Never throws; the counts are there for callers that report the outcome.
+   */
+  removeFiles(
+    paths: (string | null | undefined)[],
+  ): Promise<{ removed: number; failed: number }> {
     return this.storage.removeQuietly(
       paths.filter((path): path is string => Boolean(path)),
     );
+  }
+
+  removeUserFiles(userId: string): Promise<void> {
+    return this.storage.removeFolder(`${STORAGE_ROOT}/${userId}`);
   }
 }
 

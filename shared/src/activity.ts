@@ -24,4 +24,5 @@ export const ACTION_LABELS: Record<string, string> = {
   "asset.updated": "Asset edited",
   "report.downloaded": "Report downloaded",
   "ai.request": "AI request",
+  "cleanup.forms": "Data cleanup run",
 };

@@ -11,6 +11,7 @@ const DANGER_ACTIONS = new Set([
   "ot.deleted",
   "record.deleted",
   "attachment.removed",
+  "cleanup.forms",
 ]);
 
 /** Actions that changed something that already existed (edits) — amber, as a warning. */

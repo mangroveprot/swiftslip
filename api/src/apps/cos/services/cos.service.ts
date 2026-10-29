@@ -8,6 +8,7 @@ import type {
 import { ActivityLogService } from '../../activity-log';
 import { AttachmentService } from '../../attachments';
 import { ProfileService } from '../../profile';
+import { withDeletionReminder } from '../../retention/services/retention-notice';
 import { CosFormRepository, CosScheduleRepository } from '../repositories';
 
 const toFailure = (error: unknown) => ({
@@ -27,15 +28,19 @@ class CosService extends BaseService<'cos_forms', CosFormRepository> {
 
   async list(ownerId: string) {
     try {
-      const documents = await this.repository.findAll(
+      const rows = await this.repository.findAll(
         { owner_id: ownerId },
         {
-          // `attachment_approved` rides along so the list can badge approved forms.
+          // `attachment_approved` rides along so the list can badge approved
+          // forms; `created_at` + `attachment_path` + `date_filed` are what the
+          // retention reminder needs to tell a form that is about to be
+          // deleted from one that will be kept.
           select:
-            'id,employee_name,id_number,plant_location,position,change_type,attachment_approved,updated_at',
+            'id,employee_name,id_number,plant_location,position,change_type,attachment_approved,attachment_path,date_filed,created_at,updated_at',
           sort: { updated_at: 'desc' },
         },
       );
+      const documents = await withDeletionReminder('cos', rows);
       return { success: true as const, documents };
     } catch (error) {
       return toFailure(error);

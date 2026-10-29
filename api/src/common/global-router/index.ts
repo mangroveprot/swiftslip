@@ -15,6 +15,7 @@ import { OtRoutes } from '../../apps/ot';
 import { RecordRoutes } from '../../apps/records';
 import { OrgOptionRoutes } from '../../apps/org-options';
 import { ProfileRoutes } from '../../apps/profile';
+import { RetentionRoutes } from '../../apps/retention';
 import { UserRoutes } from '../../apps/users';
 
 const router = Router();
@@ -26,6 +27,9 @@ router.use('/profile', ProfileRoutes);
 router.use('/access', AccessRoutes);
 router.use('/org-options', OrgOptionRoutes);
 router.use('/activity-logs', ActivityLogRoutes);
+// Most specific prefix first, like the inventory block below: /admin/retention
+// must not be swallowed by the /admin catch-all.
+router.use('/admin/retention', RetentionRoutes);
 router.use('/admin', AdminRoutes);
 router.use('/records', RecordRoutes);
 router.use('/official-business', OfficialBusinessRoutes);

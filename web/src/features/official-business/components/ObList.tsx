@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { deleteObForm } from "@/api/official-business.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
+import { DeletionNotice } from "@/components/common/DeletionNotice";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +36,8 @@ type ObRow = {
   /** Approval slip ticked — badges the card as Approved. */
   attachment_approved: boolean;
   updated_at: string;
+  /** Set when a retention cleanup would take this form within a week. */
+  deletes_in_days?: number;
 };
 
 type DateRange = "any" | "7d" | "month";
@@ -508,6 +511,7 @@ function ObCard({
         <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="line-clamp-2">{destination ? `To ${destination}` : "No destination"}</span>
       </p>
+      <DeletionNotice days={f.deletes_in_days} />
       {f.updated_at ? (
         <p
           className="mt-auto flex items-center gap-1.5 pr-12 text-[11px] text-muted-foreground"

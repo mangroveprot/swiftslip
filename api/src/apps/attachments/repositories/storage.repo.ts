@@ -62,10 +62,51 @@ export class StorageRepository {
     return data.signedUrl;
   }
 
-  /** Best-effort cleanup: an orphaned file is harmless, a failed delete is not. */
-  async removeQuietly(paths: string[]): Promise<void> {
-    if (paths.length === 0) return;
-    const { error } = await this.bucket().remove(paths);
-    if (error) logger.error(`Could not remove stored file: ${error.message}`);
+  /**
+   * Best-effort cleanup: an orphaned file is harmless, a failed delete is not.
+   * Never throws — the counts say what happened, so a caller that must report
+   * the outcome (the retention cleanup) can, and the rest can ignore them.
+   */
+  async removeQuietly(
+    paths: string[],
+  ): Promise<{ removed: number; failed: number }> {
+    if (paths.length === 0) return { removed: 0, failed: 0 };
+    const { data, error } = await this.bucket().remove(paths);
+    if (error) {
+      logger.error(`Could not remove stored file: ${error.message}`);
+      return { removed: 0, failed: paths.length };
+    }
+    return { removed: data?.length ?? 0, failed: 0 };
+  }
+
+  /**
+   * Remove every file inside one folder (a deleted user's `ApprovalSlip/<id>`).
+   * Best effort like `removeQuietly`: failures are logged, never thrown.
+   */
+  async removeFolder(folder: string): Promise<void> {
+    const PAGE = 1000;
+    // Hard cap (20 000 files) so a bad response can never loop forever.
+    for (let round = 0; round < 20; round++) {
+      const { data, error } = await this.bucket().list(folder, {
+        limit: PAGE,
+      });
+      if (error) {
+        logger.error(`Could not list files in ${folder}: ${error.message}`);
+        return;
+      }
+      const paths = (data ?? [])
+        .filter((entry) => entry.id !== null)
+        .map((entry) => `${folder}/${entry.name}`);
+      if (paths.length === 0) return;
+
+      const { error: removeError } = await this.bucket().remove(paths);
+      if (removeError) {
+        logger.error(
+          `Could not remove files in ${folder}: ${removeError.message}`,
+        );
+        return;
+      }
+      if ((data ?? []).length < PAGE) return;
+    }
   }
 }

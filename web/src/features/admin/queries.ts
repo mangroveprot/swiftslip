@@ -8,7 +8,17 @@ import {
 } from "@/api/admin.functions";
 import { listCodes } from "@/api/access-codes.functions";
 import { listOrgOptions } from "@/api/org-options.functions";
-import type { ActivityLogActionFilter, ActivityLogFeed } from "@swiftslip/shared/schemas";
+import {
+  getRetentionSettings,
+  getLastCleanupRun,
+  previewRetentionCleanup,
+} from "@/api/retention.functions";
+import {
+  RETENTION_FORM_TYPES,
+  RETENTION_MIN_DAYS,
+  type ActivityLogActionFilter,
+  type ActivityLogFeed,
+} from "@swiftslip/shared/schemas";
 
 export const accessCodesQueryOptions = () =>
   queryOptions({
@@ -65,4 +75,43 @@ export const activityFeedQueryOptions = (feed: ActivityLogFeed) =>
     // admin change or after returning from another admin section.
     staleTime: 0,
     refetchOnReconnect: true,
+  });
+
+export const retentionSettingsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["retention-settings"],
+    queryFn: () => getRetentionSettings(),
+    // The setting changes only from this screen; a short staleTime keeps a
+    // return trip instant without going stale for long.
+    staleTime: 60 * 1000,
+  });
+
+export const lastCleanupRunQueryOptions = () =>
+  queryOptions({
+    queryKey: ["cleanup-run", "latest"],
+    queryFn: () => getLastCleanupRun(),
+    // A run is rare and momentous: always ask for the newest one.
+    staleTime: 0,
+  });
+
+/**
+ * What each form type holds past the keep period, for the by-type bars.
+ *
+ * It is the same read-only `POST /preview` the Preview button calls — posting
+ * a draft so the counts follow the days on screen without saving them — and
+ * it changes nothing. Kept separate from the button so opening the page shows
+ * the piles immediately, while "Preview" still has to be pressed deliberately
+ * before the cleanup unlocks.
+ */
+export const retentionCountsQueryOptions = (days: number) =>
+  queryOptions({
+    queryKey: ["retention-counts", days],
+    queryFn: () =>
+      previewRetentionCleanup({
+        data: { settings: { enabled: true, days, formTypes: [...RETENTION_FORM_TYPES] } },
+      }),
+    enabled: Number.isInteger(days) && days >= RETENTION_MIN_DAYS,
+    // Counting walks every expired row; a page revisit within five minutes
+    // should not repeat that scan.
+    staleTime: 5 * 60 * 1000,
   });

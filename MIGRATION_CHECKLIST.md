@@ -219,6 +219,25 @@ Written without network access: files were syntax-checked only. **Not** run: `np
       runner added — not done)
 - [ ] Compare `GET /api/inventory/reports/<branchId>` with the old `getReportDocument` (Phase 4 leftover)
 
+### Phase 7 — Data retention (Settings → auto-delete old forms) ✅ code done; migration not applied yet
+Manual, admin-only cleanup of forms older than N days, plus their storage files. No schedule.
+- [x] `api/drizzle/migrations/0028_retention.sql` — `retention_settings` (single row) + `cleanup_runs`
+      (permanent history), RLS on with no policies like `activity_logs`
+- [x] `apps/retention` (controller → service → repositories), mounted at `/api/admin/retention`,
+      `authenticate` + `authorizeAdmin`: `GET /`, `PUT /`, `POST /preview`, `POST /run`, `GET /runs/last`
+- [x] Selection rules in `services/retention.rules.ts` (pure): expired **and** finished only — pending
+      approval slips and empty scaffolds are never selected; 19 sample-row checks pass
+- [x] Rows first, files second; storage failures are logged and set `completed_with_file_errors`
+- [x] `cleanup.forms` in the activity log (`ActivityAction`, `FORM_ACTIONS`, labels)
+- [x] Web: `api/retention.functions.ts`, `features/admin/queries.ts`, `components/settings/**`,
+      collapsible **Settings** group in `AdminPanel.tsx`
+- [x] `npm run typecheck`, `npm run lint`, `npm run build` pass (6 pre-existing `react-refresh` warnings only)
+- [ ] **Owner to run:** paste `0028_retention.sql` in the Supabase SQL Editor, then open
+      Admin Panel → Settings → Data retention, **Preview** first and only then **Run**. Not tested
+      against the real database. **If `0028` was applied before 2026-10-29** (it capped the period at
+      30 days), also paste `0029_retention_days_floor.sql` — otherwise saving 7 days fails with
+      `violates check constraint "retention_settings_days_check"`.
+
 ## 4. Cookie / auth contract (Phase 2, needed by Phase 5)
 
 - Cookie name `swiftslip-session`, `httpOnly`, `sameSite=lax`, `secure` in production, 12 h.
@@ -289,5 +308,7 @@ curl -b jar -X POST localhost:9095/api/auth/sign-out
 
 Known behaviour changes in Phase 2 (intentional, listed so nobody "fixes" them back):
 - The old "pending migration" fallbacks (retry without `department`/`signature`/…) are gone;
-  the database must have migrations **through 0027** applied (`0027` adds `ticketing` to the `app_access_rules` CHECK).
+  the database must have migrations **through 0029** applied (`0027` adds `ticketing` to the `app_access_rules` CHECK;
+  `0028` adds `retention_settings` + `cleanup_runs`, needed by Admin Panel → Settings → Data retention;
+  `0029` lifts the 30-day floor on the keep period — only needed if `0028` was applied before 2026-10-29).
 - Sign-in failure delay and throttle numbers are unchanged (10 per ID / 20 per IP / 15 min, 250 ms).

@@ -6,6 +6,7 @@ import type { Role, SessionUser } from '@swiftslip/shared/types';
 import { ProfileRepository } from '../../profile/repositories';
 import { ActivityLogService } from '../../activity-log/services';
 import { UserRepository } from '../repositories';
+import { AttachmentService } from '../../attachments/services';
 
 /** One row in user management: the account joined with its profile. */
 export type AccountListItem = {
@@ -218,6 +219,7 @@ class UserService extends BaseService<'users', UserRepository> {
         );
       }
       await this.repository.delete({ id });
+      await AttachmentService.removeUserFiles(id);
       await ActivityLogService.logBy(actor, {
         action: 'user.deleted',
         target: row.id_number,

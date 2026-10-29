@@ -129,6 +129,12 @@ export type ActivityLogCounts = {
 };
 
 // ── Form lists (own rows, newest first) ──────────────────────────────────────
+//
+// `deletes_in_days` is set only when a retention cleanup would take this form
+// within the next week — or already would, on the next run (0 or less). It is
+// absent when cleanup is off, this type is not ticked, or the form is kept:
+// still a draft, or waiting for its approval slip. It is a warning, never a
+// promise — nothing is deleted until an admin previews and runs a cleanup.
 
 export type RecordSummary = {
   id: string;
@@ -141,6 +147,7 @@ export type RecordSummary = {
   period: string;
   attachment_path: string | null;
   updated_at: string;
+  deletes_in_days?: number;
 };
 
 export type ObSummary = {
@@ -153,6 +160,7 @@ export type ObSummary = {
   date_of_ob: string;
   attachment_approved: boolean;
   updated_at: string;
+  deletes_in_days?: number;
 };
 
 export type LoaSummary = {
@@ -165,6 +173,7 @@ export type LoaSummary = {
   date_to: string;
   attachment_approved: boolean;
   updated_at: string;
+  deletes_in_days?: number;
 };
 
 export type CosSummary = {
@@ -176,6 +185,7 @@ export type CosSummary = {
   change_type: string;
   attachment_approved: boolean;
   updated_at: string;
+  deletes_in_days?: number;
 };
 
 export type OtSummary = {
@@ -187,6 +197,7 @@ export type OtSummary = {
   date_filed: string;
   attachment_approved: boolean;
   updated_at: string;
+  deletes_in_days?: number;
 };
 
 // ── Form details ─────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { deleteRecord } from "@/api/records.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
+import { DeletionNotice } from "@/components/common/DeletionNotice";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
@@ -27,6 +28,8 @@ type RecordRow = {
   /** A DTR counts as approved once a file is attached (no approval flag). */
   attachment_path: string | null;
   updated_at: string;
+  /** Set when a retention cleanup would take this form within a week. */
+  deletes_in_days?: number;
 };
 
 type Status = "upcoming" | "active" | "closing" | "closed";
@@ -70,7 +73,7 @@ export function RecordsList() {
     <main className="mx-auto flex min-h-full max-w-6xl flex-col px-6 py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <PageTitle size="xl">Time records</PageTitle>
+          <PageTitle size="xl">Time Records</PageTitle>
         </div>
         <button className="btn btn-primary" onClick={newRecord}>
           New record
@@ -193,6 +196,7 @@ function RecordCard({
         <p className="mt-3 text-xs text-foreground">
           {MONTHS[r.month - 1]} {r.year} · {periodLabel(r.period as Period, r.month, r.year)}
         </p>
+        <DeletionNotice days={r.deletes_in_days} className="mt-2" />
         {r.updated_at ? (
           <p
             className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"

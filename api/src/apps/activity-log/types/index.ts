@@ -21,7 +21,8 @@ export type ActivityAction =
   | 'asset.created'
   | 'asset.updated'
   | 'report.downloaded'
-  | 'ai.request';
+  | 'ai.request'
+  | 'cleanup.forms';
 
 export type ActivityEntry = {
   action: ActivityAction;

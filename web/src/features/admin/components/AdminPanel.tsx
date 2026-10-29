@@ -1,10 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ChevronDown,
+  Database,
+  HardDrive,
   History,
   LayoutDashboard,
   LayoutGrid,
   Menu,
+  Settings,
   ShieldCheck,
   Users,
   type LucideIcon,
@@ -19,18 +23,32 @@ import {
   SidebarFooter,
   SidebarSection,
   SidebarShell,
+  SidebarSoonBadge,
 } from "@/components/layout/sidebar-ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { APP } from "@/config/app";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { cn } from "@/lib/utils";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
 import { AppAccess } from "./AppAccess";
+import { DataRetention } from "./settings/DataRetention";
 import { UserManagement } from "./UserManagement";
 
-type Section = "dashboard" | "users" | "access" | "logs";
+type Section = "dashboard" | "users" | "access" | "logs" | "retention";
 
-type AdminItem = { id: Section; label: string; icon: LucideIcon };
+/**
+ * A nav row. `id` is the section it opens; a parent row (one with `children`)
+ * or a "Soon" row has none — neither is selectable, only real children are.
+ */
+type AdminItem = {
+  id: Section | null;
+  label: string;
+  icon: LucideIcon;
+  soon?: boolean;
+  children?: AdminItem[];
+};
 
 /** Grouped the same way the SwiftSlip sidebar groups its nav. */
 const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
@@ -41,6 +59,15 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
       { id: "users", label: "User management", icon: Users },
       { id: "access", label: "App access", icon: ShieldCheck },
       { id: "logs", label: "Activity logs", icon: History },
+      {
+        id: null,
+        label: "Settings",
+        icon: Settings,
+        children: [
+          { id: "retention", label: "Data retention", icon: Database },
+          { id: null, label: "Storage", icon: HardDrive, soon: true },
+        ],
+      },
     ],
   },
 ];
@@ -117,6 +144,8 @@ export function AdminPanel() {
             <UserManagement />
           ) : section === "access" ? (
             <AppAccess />
+          ) : section === "retention" ? (
+            <DataRetention />
           ) : (
             <ActivityLogs initialFilter={logFilter} />
           )}
@@ -147,21 +176,19 @@ function AdminSidebar({
       <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-4">
         {SECTION_GROUPS.map((group) => (
           <SidebarSection key={group.label} label={group.label}>
-            {group.items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                aria-current={section === item.id ? "page" : undefined}
-                className={sidebarRowClass({ active: section === item.id })}
-                onClick={() => {
-                  onSelect(item.id);
-                  onNavigate?.();
-                }}
-              >
-                <item.icon className="size-4 shrink-0" aria-hidden="true" />
-                <span className="min-w-0 truncate">{item.label}</span>
-              </button>
-            ))}
+            {group.items.map((item) =>
+              item.children ? (
+                <SettingsGroup
+                  key={item.label}
+                  item={item}
+                  section={section}
+                  onSelect={onSelect}
+                  onNavigate={onNavigate}
+                />
+              ) : (
+                renderAdminRow(item, section, onSelect, onNavigate)
+              ),
+            )}
           </SidebarSection>
         ))}
       </nav>
@@ -179,5 +206,95 @@ function AdminSidebar({
         <SignOutButton className={SIDEBAR_ACTION_CLASS} />
       </SidebarFooter>
     </SidebarShell>
+  );
+}
+
+/** One nav row: a selectable section, or a dimmed "Soon" row that isn't. */
+function renderAdminRow(
+  item: AdminItem,
+  section: Section,
+  onSelect: (section: Section) => void,
+  onNavigate?: (() => void) | undefined,
+) {
+  if (item.soon || !item.id) {
+    return (
+      <span key={item.label} className={sidebarRowClass({ disabled: true })} title="Coming soon">
+        <item.icon className="size-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 truncate">{item.label}</span>
+        <SidebarSoonBadge />
+      </span>
+    );
+  }
+  const id = item.id;
+  return (
+    <button
+      key={id}
+      type="button"
+      aria-current={section === id ? "page" : undefined}
+      className={sidebarRowClass({ active: section === id })}
+      onClick={() => {
+        onSelect(id);
+        onNavigate?.();
+      }}
+    >
+      <item.icon className="size-4 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 truncate">{item.label}</span>
+    </button>
+  );
+}
+
+/** True when this item, or anything under it, is the current section. */
+function isActiveSection(item: AdminItem, section: Section): boolean {
+  if (item.id === section) return true;
+  return (item.children ?? []).some((child) => isActiveSection(child, section));
+}
+
+/**
+ * A parent row ("Settings ▾") — not selectable itself. It opens on click and
+ * opens by itself when one of its children is the current section, so a deep
+ * link into Data retention never hides it.
+ */
+function SettingsGroup({
+  item,
+  section,
+  onSelect,
+  onNavigate,
+}: {
+  item: AdminItem;
+  section: Section;
+  onSelect: (section: Section) => void;
+  onNavigate?: (() => void) | undefined;
+}) {
+  const [open, setOpen] = useState<boolean | undefined>(undefined);
+  const expanded = open ?? isActiveSection(item, section);
+
+  return (
+    <Collapsible open={expanded} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          className={sidebarRowClass({ active: false })}
+        >
+          <item.icon className="size-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 truncate">{item.label}</span>
+          <ChevronDown
+            className={cn(
+              "ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform",
+              expanded ? "" : "-rotate-90",
+            )}
+            aria-hidden="true"
+          />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        {/* Indented under a hairline so the children read as one group. */}
+        <div className="ml-[0.9rem] space-y-0.5 border-l border-border/70 pl-3 pt-0.5">
+          {(item.children ?? []).map((child) =>
+            renderAdminRow(child, section, onSelect, onNavigate),
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

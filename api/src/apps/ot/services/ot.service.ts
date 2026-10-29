@@ -8,6 +8,7 @@ import type { OtEntry, OtForm, SessionUser } from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
 import { AttachmentService, readOtherFiles } from '../../attachments';
 import { ProfileService } from '../../profile';
+import { withDeletionReminder } from '../../retention/services/retention-notice';
 import { OtEntryRepository, OtFormRepository } from '../repositories';
 
 const toFailure = (error: unknown) => ({
@@ -27,15 +28,19 @@ class OtService extends BaseService<'ot_forms', OtFormRepository> {
 
   async list(ownerId: string) {
     try {
-      const documents = await this.repository.findAll(
+      const rows = await this.repository.findAll(
         { owner_id: ownerId },
         {
-          // `attachment_approved` rides along so the list can badge approved forms.
+          // `attachment_approved` rides along so the list can badge approved
+          // forms; `created_at` + `attachment_path` + `date_filed` are what the
+          // retention reminder needs to tell a form that is about to be
+          // deleted from one that will be kept.
           select:
-            'id,employee_name,id_number,department,position,date_filed,attachment_approved,updated_at',
+            'id,employee_name,id_number,department,position,date_filed,attachment_approved,attachment_path,created_at,updated_at',
           sort: { updated_at: 'desc' },
         },
       );
+      const documents = await withDeletionReminder('ot', rows);
       return { success: true as const, documents };
     } catch (error) {
       return toFailure(error);

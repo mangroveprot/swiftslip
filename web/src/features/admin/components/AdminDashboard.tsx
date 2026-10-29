@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from "recharts";
 
 import {
@@ -13,7 +13,7 @@ import { PageTitle } from "@/components/common/PageTitle";
 import { FORM_TYPES, type FormEvent, type FormKind } from "@swiftslip/shared/forms";
 import { ACTION_LABELS } from "@swiftslip/shared/activity";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
-import { formatDate, formatTime, relativeTime } from "@swiftslip/shared/time";
+import { relativeTime } from "@swiftslip/shared/time";
 import {
   chartSeries,
   deltaLabel,
@@ -24,6 +24,7 @@ import {
   type ChartGranularity,
 } from "../dashboard-data";
 import { activityFeedQueryOptions, adminStatsQueryOptions } from "../queries";
+import { AdminClock } from "./AdminClock";
 
 const chartConfig = {
   count: { label: "Forms", color: "var(--color-dashboard-accent)" },
@@ -67,7 +68,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             Portal-wide totals and what needs your attention, across every account and form.
           </p>
         </div>
-        <DashboardClock />
+        <AdminClock />
       </header>
 
       <div className="mt-5 border-t-2 border-dashboard-rule" />
@@ -163,31 +164,6 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         <SecurityPanel security={data?.security} onNavigate={onNavigate} />
       </div>
     </section>
-  );
-}
-
-/** Ticking date + time for the dashboard header. It lives in its own component so
- *  the once-a-second state update never re-renders the stat columns or chart. */
-function DashboardClock() {
-  // `null` on the server and first client render: the clock is a local-time
-  // value, so rendering it during SSR guarantees a hydration mismatch.
-  const [now, setNow] = useState<Date | null>(null);
-
-  useEffect(() => {
-    setNow(new Date());
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <div className="shrink-0 text-right">
-      <p className="font-mono text-2xl font-semibold tabular-nums" title={now?.toLocaleString()}>
-        {now ? formatTime(now) : "--:-- --"}
-      </p>
-      <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
-        {now ? formatDate(now) : "Today"}
-      </p>
-    </div>
   );
 }
 

@@ -739,6 +739,69 @@ export type Database = {
           },
         ];
       };
+      cleanup_runs: {
+        Row: {
+          days: number;
+          files_deleted: Json;
+          form_types: Json;
+          forms_deleted: Json;
+          id: string;
+          ran_at: string;
+          ran_by_id: string | null;
+          ran_by_name: string | null;
+          ran_by_number: string | null;
+          status: string;
+        };
+        Insert: {
+          days: number;
+          files_deleted?: Json;
+          form_types?: Json;
+          forms_deleted?: Json;
+          id?: string;
+          ran_at?: string;
+          ran_by_id?: string | null;
+          ran_by_name?: string | null;
+          ran_by_number?: string | null;
+          status?: string;
+        };
+        Update: {
+          days?: number;
+          files_deleted?: Json;
+          form_types?: Json;
+          forms_deleted?: Json;
+          id?: string;
+          ran_at?: string;
+          ran_by_id?: string | null;
+          ran_by_name?: string | null;
+          ran_by_number?: string | null;
+          status?: string;
+        };
+        Relationships: [];
+      };
+      retention_settings: {
+        Row: {
+          days: number;
+          enabled: boolean;
+          form_types: Json;
+          id: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          days?: number;
+          enabled?: boolean;
+          form_types?: Json;
+          id?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          days?: number;
+          enabled?: boolean;
+          form_types?: Json;
+          id?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
