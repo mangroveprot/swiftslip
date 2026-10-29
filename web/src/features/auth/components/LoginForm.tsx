@@ -4,6 +4,7 @@ import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { signIn } from "@/api/auth.functions";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { APP, SESSION } from "@/config/app";
 import { sessionQueryOptions } from "../queries";
 
@@ -99,7 +100,15 @@ export function LoginForm() {
       .join(" ") || undefined;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-10 sm:px-6">
+    <main className="relative flex min-h-dvh items-center justify-center px-4 py-10 sm:px-6">
+      {/* The login page sits outside the app shell, so it needs its own copy of
+          the same theme switch the sidebar and the chooser header carry. Adding
+          it is also what makes the page *follow* the choice: mounting it mounts
+          `useTheme`, which repaints from the saved preference and stays
+          subscribed to the OS while on "system" — before, only the one-shot
+          pre-paint script in index.html ever ran here. */}
+      <ThemeToggle className="absolute top-4 right-4 sm:top-6 sm:right-6" />
+
       <div className="w-full max-w-[25rem] rounded-xl border border-border/80 bg-card p-7 sm:p-9">
         <img src={APP.mindbridgeLogoPath} alt="Mindbridge" className="h-9 w-auto object-contain" />
 
