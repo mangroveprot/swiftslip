@@ -13,11 +13,13 @@ import {
   getLastCleanupRun,
   previewRetentionCleanup,
 } from "@/api/retention.functions";
+import { getStorageOverview, previewStorageOrphans } from "@/api/storage.functions";
 import {
   RETENTION_FORM_TYPES,
   RETENTION_MIN_DAYS,
   type ActivityLogActionFilter,
   type ActivityLogFeed,
+  type StorageBackend,
 } from "@swiftslip/shared/schemas";
 
 export const accessCodesQueryOptions = () =>
@@ -114,4 +116,35 @@ export const retentionCountsQueryOptions = (days: number) =>
     // Counting walks every expired row; a page revisit within five minutes
     // should not repeat that scan.
     staleTime: 5 * 60 * 1000,
+  });
+
+/**
+ * The Storage page's overview. One key: the "Refresh usage" link re-fetches
+ * with the server cache bypassed and writes the answer straight into this
+ * entry, so the whole page updates without a second query.
+ */
+export const storageOverviewQueryOptions = () =>
+  queryOptions({
+    queryKey: ["storage-overview"],
+    queryFn: () => getStorageOverview(),
+    // The API caches usage for a minute anyway; a short staleTime keeps a
+    // section switch instant without pretending the numbers never move.
+    staleTime: 30 * 1000,
+  });
+
+/**
+ * The orphan list the cleanup modal reviews. Fetched only while the modal is
+ * open, and always fresh: the whole point is to show what would be deleted
+ * right now, so a cached answer from an earlier open would defeat it.
+ */
+export const storageOrphansPreviewQueryOptions = (
+  backend: StorageBackend | "everywhere",
+  enabled: boolean,
+) =>
+  queryOptions({
+    queryKey: ["storage-orphans-preview", backend],
+    queryFn: () => previewStorageOrphans({ data: { backend } }),
+    enabled,
+    staleTime: 0,
+    refetchOnMount: "always",
   });

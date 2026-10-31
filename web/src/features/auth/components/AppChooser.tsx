@@ -4,8 +4,10 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
 import { PageTitle } from "@/components/common/PageTitle";
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { APP } from "@/config/app";
 import type { AppKey } from "@swiftslip/shared/types";
 import { EXTERNAL_APPS } from "@swiftslip/shared/types";
@@ -68,6 +70,9 @@ function ExternalAppLogo({ src }: { src: string }) {
  *  SwiftSlip so the page is never empty. */
 export function AppChooser() {
   const { data: session } = useQuery(sessionQueryOptions());
+  // The chooser is the first screen after sign-in, so the face here is what
+  // makes "Signed in as …" read as a person rather than a string.
+  const photo = useProfilePhoto();
 
   const apps = session?.apps?.length ? session.apps : ["swiftslip"];
   const can = (key: AppKey) => apps.includes(key);
@@ -82,13 +87,24 @@ export function AppChooser() {
             className="h-10 w-auto object-contain"
           />
         </span>
-        <span className="flex items-center gap-3 text-sm">
+
+        <span className="flex items-center gap-2 text-sm sm:gap-3">
+          {/* App-level preference */}
+          <ThemeToggle />
+
+          <span aria-hidden="true" className="h-5 w-px bg-border" />
+
+          {/* Account cluster: identity, then the session-ending action */}
           {session?.label ? (
-            <span className="hidden text-muted-foreground sm:inline">
-              Signed in as {session.label}
+            <span
+              className="inline-flex items-center gap-2 text-muted-foreground"
+              title={session.label}
+            >
+              <ProfileAvatar photo={photo} name={session.label} size={24} />
+              <span className="hidden max-w-[10rem] truncate sm:inline">{session.label}</span>
             </span>
           ) : null}
-          <ThemeToggle />
+
           <SignOutButton />
         </span>
       </header>

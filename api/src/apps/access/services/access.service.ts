@@ -235,7 +235,11 @@ class AccessService extends BaseService<
     try {
       const [accounts, profileRows, rules] = await Promise.all([
         this.users.findAll(),
-        this.profiles.findAll(),
+        // Names and org fields only — `*` would pull every base64 photo and
+        // signature on each load of App access, and nothing here reads them.
+        this.profiles.findAll({}, {
+          select: 'access_code_id,full_name,department,designation',
+        }),
         this.repository.findAll(),
       ]);
 

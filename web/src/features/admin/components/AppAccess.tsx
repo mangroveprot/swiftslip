@@ -19,6 +19,7 @@ import {
   setAppDefault,
 } from "@/api/access-rules.functions";
 import { PageTitle } from "@/components/common/PageTitle";
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { toast } from "@/lib/toast";
 import {
   Dialog,
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { GRANTABLE_APP_KEYS, type GrantableAppKey, type RuleScope } from "@swiftslip/shared/types";
+import { useUserPhotos } from "../use-user-photos";
 
 const APP_LABELS: Record<GrantableAppKey, string> = {
   swiftslip: "SwiftSlip",
@@ -143,6 +145,10 @@ export function AppAccess() {
   const data = overview.data;
   const people = data?.people ?? [];
   const selectedPerson = people.find((p) => p.id === personId) ?? people[0] ?? null;
+  // One batch for the whole roster — the faces in the list and the big one in
+  // the detail pane all come from this map, so picking a person never triggers
+  // another request.
+  const photos = useUserPhotos(people.map((person) => person.id));
 
   const appTerm = appSearch.trim().toLowerCase();
   const visibleApps = GRANTABLE_APP_KEYS.filter(
@@ -337,17 +343,24 @@ export function AppAccess() {
                         active ? "bg-primary/[0.06]" : "hover:bg-muted/40"
                       }`}
                     >
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span
-                          className={`truncate text-sm ${
-                            person.name
-                              ? active
-                                ? "font-semibold"
-                                : "font-medium"
-                              : "font-normal italic text-muted-foreground"
-                          }`}
-                        >
-                          {person.name || "No name set"}
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <ProfileAvatar
+                            photo={photos[person.id]}
+                            name={person.name || person.idNumber}
+                            size={24}
+                          />
+                          <span
+                            className={`truncate text-sm ${
+                              person.name
+                                ? active
+                                  ? "font-semibold"
+                                  : "font-medium"
+                                : "font-normal italic text-muted-foreground"
+                            }`}
+                          >
+                            {person.name || "No name set"}
+                          </span>
                         </span>
                         <span className="shrink-0 text-[11px] text-muted-foreground">
                           {roleText(person)}
@@ -393,6 +406,7 @@ export function AppAccess() {
             ) : selectedPerson ? (
               <PersonDetail
                 person={selectedPerson}
+                photo={photos[selectedPerson.id]}
                 busy={busy}
                 onSet={(app, next) => void setPersonAccess(selectedPerson, app, next)}
               />
@@ -727,10 +741,12 @@ function RuleRow({
 
 function PersonDetail({
   person,
+  photo,
   busy,
   onSet,
 }: {
   person: Person;
+  photo?: string | undefined;
   busy: boolean;
   onSet: (app: GrantableAppKey, next: PersonState) => void;
 }) {
@@ -740,10 +756,15 @@ function PersonDetail({
 
   return (
     <div>
-      <h3 className="text-2xl font-semibold tracking-tight">
-        {person.name || <span className="italic text-muted-foreground">No name set</span>}
-      </h3>
-      <p className="mt-1 text-sm text-muted-foreground">{meta}</p>
+      <div className="flex items-center gap-3">
+        <ProfileAvatar photo={photo} name={person.name || person.idNumber} size={44} />
+        <div className="min-w-0">
+          <h3 className="truncate text-2xl font-semibold tracking-tight">
+            {person.name || <span className="italic text-muted-foreground">No name set</span>}
+          </h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">{meta}</p>
+        </div>
+      </div>
       {person.isAdmin ? (
         <div className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground/70" aria-hidden="true" />

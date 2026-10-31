@@ -28,15 +28,17 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { APP } from "@/config/app";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { cn } from "@/lib/utils";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
 import { AppAccess } from "./AppAccess";
 import { DataRetention } from "./settings/DataRetention";
+import { Storage } from "./settings/Storage";
 import { UserManagement } from "./UserManagement";
 
-type Section = "dashboard" | "users" | "access" | "logs" | "retention";
+type Section = "dashboard" | "users" | "access" | "logs" | "retention" | "storage";
 
 /**
  * A nav row. `id` is the section it opens; a parent row (one with `children`)
@@ -65,7 +67,7 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
         icon: Settings,
         children: [
           { id: "retention", label: "Data retention", icon: Database },
-          { id: null, label: "Storage", icon: HardDrive, soon: true },
+          { id: "storage", label: "Storage", icon: HardDrive },
         ],
       },
     ],
@@ -80,6 +82,9 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
  */
 export function AdminPanel() {
   const { data: session } = useQuery(sessionQueryOptions());
+  // The same photo the portal's sidebar shows — one cache entry, so moving
+  // between the panel and the app never re-fetches it.
+  const photo = useProfilePhoto();
   const [section, setSection] = useState<Section>("dashboard");
   const [logFilter, setLogFilter] = useState<ActivityLogActionFilter | "all">("all");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -102,6 +107,7 @@ export function AdminPanel() {
       onSelect={(next) => navigate(next)}
       label={mounted ? session?.label : undefined}
       idNumber={mounted ? session?.idNumber : undefined}
+      photo={mounted ? photo : undefined}
       onNavigate={() => setMenuOpen(false)}
     />
   );
@@ -146,6 +152,8 @@ export function AdminPanel() {
             <AppAccess />
           ) : section === "retention" ? (
             <DataRetention />
+          ) : section === "storage" ? (
+            <Storage />
           ) : (
             <ActivityLogs initialFilter={logFilter} />
           )}
@@ -161,12 +169,14 @@ function AdminSidebar({
   onSelect,
   label,
   idNumber,
+  photo,
   onNavigate,
 }: {
   section: Section;
   onSelect: (section: Section) => void;
   label?: string | undefined;
   idNumber?: string | undefined;
+  photo?: string | undefined;
   onNavigate?: () => void;
 }) {
   return (
@@ -195,6 +205,7 @@ function AdminSidebar({
 
       <SidebarFooter
         name={label || "Administrator"}
+        photo={photo}
         // The ID number under the full name. Hide it when the account has no
         // display name yet (label is the ID) so the footer doesn't repeat it.
         sublabel={idNumber && idNumber !== label ? idNumber : undefined}

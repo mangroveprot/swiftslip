@@ -22,7 +22,9 @@ export type ActivityAction =
   | 'asset.updated'
   | 'report.downloaded'
   | 'ai.request'
-  | 'cleanup.forms';
+  | 'cleanup.forms'
+  | 'storage.rule_changed'
+  | 'storage.orphans_cleaned';
 
 export type ActivityEntry = {
   action: ActivityAction;

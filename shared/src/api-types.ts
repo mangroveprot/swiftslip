@@ -218,3 +218,11 @@ export type OtDetail = Attached & {
 };
 
 export type AttachmentLink = { url: string; name: string };
+
+// ── Optional B2 file store (`/files`) ────────────────────────────────────────
+
+/** `POST /files` — the key to keep, plus the readable original name. */
+export type StoredFile = { key: string; name: string };
+
+/** `GET /files/url?key=` — a short-lived presigned download link. */
+export type FileLink = { url: string; name: string; mimeType: string };

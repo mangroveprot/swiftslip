@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { TextField } from "@/components/common/FormField";
 import { OrgSelect } from "@/components/common/OrgSelect";
 import { PageTitle } from "@/components/common/PageTitle";
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { OrgOptionDialogs, type OrgActionRequest } from "./OrgOptionDialogs";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,7 @@ import {
 
 import type { Role } from "@swiftslip/shared/types";
 import { accessCodesQueryOptions, orgOptionsQueryOptions } from "../queries";
+import { useUserPhotos } from "../use-user-photos";
 import { PASSWORD_MIN_LENGTH } from "@swiftslip/shared/schemas";
 
 type Account = {
@@ -76,13 +78,6 @@ function isIncomplete(a: Account) {
   );
 }
 
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  return (first + last).toUpperCase();
-}
-
 const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "all", label: "All" },
   { key: "admin", label: "Administrators" },
@@ -107,6 +102,9 @@ export function UserManagement() {
   const { data: session } = useQuery(sessionQueryOptions());
   const qc = useQueryClient();
   const { data: accounts, isLoading } = useQuery(accessCodesQueryOptions());
+  // Faces for the roster — same shared batch cache the other admin lists use,
+  // so opening User management after App access costs no extra request.
+  const photos = useUserPhotos((accounts ?? []).map((account) => account.id));
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [editing, setEditing] = useState<Account | "new" | null>(null);
@@ -287,12 +285,12 @@ export function UserManagement() {
                       <td className="py-5 pr-4 align-middle">
                         <div className="flex items-center gap-3">
                           {a.full_name ? (
-                            <span
-                              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
-                              aria-hidden="true"
-                            >
-                              {initialsOf(a.full_name)}
-                            </span>
+                            <ProfileAvatar
+                              photo={photos[a.id]}
+                              name={a.full_name}
+                              size={40}
+                              className="shrink-0"
+                            />
                           ) : (
                             <span
                               className="flex size-10 shrink-0 items-center justify-center rounded-full border border-dashed bg-muted text-xs font-medium text-muted-foreground"
@@ -415,12 +413,12 @@ export function UserManagement() {
                 <div key={a.id} className="border-b py-4">
                   <div className="flex min-w-0 items-start gap-3">
                     {a.full_name ? (
-                      <span
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground"
-                        aria-hidden="true"
-                      >
-                        {initialsOf(a.full_name)}
-                      </span>
+                      <ProfileAvatar
+                        photo={photos[a.id]}
+                        name={a.full_name}
+                        size={36}
+                        className="shrink-0"
+                      />
                     ) : (
                       <span
                         className="flex size-9 shrink-0 items-center justify-center rounded-full border border-dashed bg-muted text-xs font-medium text-muted-foreground"

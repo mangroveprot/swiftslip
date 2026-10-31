@@ -24,6 +24,26 @@ export const ATTACHMENT_ACCEPT =
   "application/pdf,image/png,image/jpeg,image/gif,image/webp,image/bmp," +
   ".doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt";
 
+/**
+ * The type gate used before a file is queued for upload: PDF, pictures, plain
+ * text and Office documents, matching the accepted list above. A file whose
+ * type the browser knows is judged by it; Windows often leaves the type empty,
+ * so the extension is the fallback. The server still checks the real bytes —
+ * this is the first pass, not the last word.
+ */
+export function isAcceptedAttachment(file: File): boolean {
+  if (file.type) {
+    return (
+      file.type === "application/pdf" ||
+      file.type.startsWith("image/") ||
+      file.type === "text/plain" ||
+      /officedocument|msword|ms-excel|ms-powerpoint/.test(file.type)
+    );
+  }
+  // Empty MIME type (common on Windows): fall back to the extension.
+  return /\.(pdf|png|jpe?g|gif|webp|bmp|txt|docx?|xlsx?|pptx?)$/i.test(file.name);
+}
+
 /** Pictures smaller than this are already cheap to upload — leave them alone. */
 const SHRINK_UNDER_BYTES = 400 * 1024;
 

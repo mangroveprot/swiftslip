@@ -77,6 +77,44 @@ export type Database = {
         };
         Relationships: [];
       };
+      files: {
+        Row: {
+          created_at: string;
+          entity_id: string | null;
+          entity_type: string | null;
+          id: string;
+          backend: string;
+          key: string;
+          mime_type: string;
+          original_name: string;
+          owner_id: string;
+          size_bytes: number;
+        };
+        Insert: {
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: string;
+          backend?: string;
+          key: string;
+          mime_type: string;
+          original_name: string;
+          owner_id: string;
+          size_bytes: number;
+        };
+        Update: {
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          id?: string;
+          key?: string;
+          mime_type?: string;
+          original_name?: string;
+          owner_id?: string;
+          size_bytes?: number;
+        };
+        Relationships: [];
+      };
       users: {
         Row: {
           created_at: string;
@@ -209,6 +247,7 @@ export type Database = {
           designation: string;
           emp_no: string;
           full_name: string;
+          photo: string;
           signature: string;
           supervisor: string;
           updated_at: string;
@@ -220,6 +259,7 @@ export type Database = {
           designation?: string;
           emp_no?: string;
           full_name?: string;
+          photo?: string;
           signature?: string;
           supervisor?: string;
           updated_at?: string;
@@ -231,6 +271,7 @@ export type Database = {
           designation?: string;
           emp_no?: string;
           full_name?: string;
+          photo?: string;
           signature?: string;
           supervisor?: string;
           updated_at?: string;
@@ -799,6 +840,33 @@ export type Database = {
           form_types?: Json;
           id?: boolean;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      storage_settings: {
+        Row: {
+          id: boolean;
+          min_free_percent: number;
+          rule: string;
+          updated_at: string;
+          updated_by_id: string | null;
+          updated_by_name: string | null;
+        };
+        Insert: {
+          id?: boolean;
+          min_free_percent?: number;
+          rule?: string;
+          updated_at?: string;
+          updated_by_id?: string | null;
+          updated_by_name?: string | null;
+        };
+        Update: {
+          id?: boolean;
+          min_free_percent?: number;
+          rule?: string;
+          updated_at?: string;
+          updated_by_id?: string | null;
+          updated_by_name?: string | null;
         };
         Relationships: [];
       };

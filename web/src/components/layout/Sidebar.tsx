@@ -4,6 +4,7 @@ import { LayoutGrid } from "lucide-react";
 
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "./sidebar-classes";
 import { roleLabel, NAV_SECTIONS } from "./nav-items";
 import { InstallButton } from "./InstallButton";
@@ -33,6 +34,10 @@ export function Sidebar({
   // request. Only the granted apps are needed, never the session itself.
   const { data: session } = useQuery(sessionQueryOptions());
   const apps = session?.apps;
+  // The profile photo, if one has been set — one cached entry shared by every
+  // screen that shows a face. The footer falls back to initials while it
+  // loads, so this never blocks paint.
+  const photo = useProfilePhoto();
 
   return (
     <SidebarShell>
@@ -73,7 +78,7 @@ export function Sidebar({
         ))}
       </nav>
 
-      <SidebarFooter name={name} sublabel={caption}>
+      <SidebarFooter name={name} photo={photo} sublabel={caption}>
         {/* Shown when there is more than one app to move between. Keyed on the
             resolved grants rather than the role: a staff account given the
             inventory alongside SwiftSlip needs this just as an admin does, and

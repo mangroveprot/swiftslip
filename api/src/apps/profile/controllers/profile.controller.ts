@@ -34,6 +34,23 @@ class ProfileController {
       ApiResponse.error(res, error as ErrorResponseType);
     }
   }
+
+  /** `{ photo }` only — what "Use photo" and "Remove photo" send. */
+  static async savePhoto(req: Request, res: Response): Promise<void> {
+    try {
+      const response = await ProfileService.savePhoto(
+        (req.user as SessionUser).id,
+        req.body.photo,
+      );
+      if (response.success) {
+        ApiResponse.success(res, response);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      ApiResponse.error(res, error as ErrorResponseType);
+    }
+  }
 }
 
 export default ProfileController;

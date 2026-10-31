@@ -10,6 +10,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { PageTitle } from "@/components/common/PageTitle";
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { FORM_TYPES, type FormEvent, type FormKind } from "@swiftslip/shared/forms";
 import { ACTION_LABELS } from "@swiftslip/shared/activity";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
@@ -24,6 +25,7 @@ import {
   type ChartGranularity,
 } from "../dashboard-data";
 import { activityFeedQueryOptions, adminStatsQueryOptions } from "../queries";
+import { useUserPhotos } from "../use-user-photos";
 import { AdminClock } from "./AdminClock";
 
 const chartConfig = {
@@ -547,6 +549,8 @@ function activitySecondary(
 type FeedRow = {
   id: string;
   action: string;
+  /** The account behind the action — what the avatar beside the name resolves. */
+  actor_id: string | null;
   actor_name: string | null;
   actor_number: string | null;
   target: string | null;
@@ -739,6 +743,9 @@ function LatestActivityPanel({
 }) {
   const { data, isLoading, isError, error } = useQuery(activityFeedQueryOptions("activity"));
   const rows = (data ?? []).slice(0, 6);
+  // Faces for the six names below — one batch, shared with the logs page's
+  // cache entry whenever the same people appear.
+  const photos = useUserPhotos(rows.map((row) => row.actor_id));
 
   return (
     <section aria-labelledby="latest-activity-title">
@@ -771,16 +778,27 @@ function LatestActivityPanel({
             const secondary = activitySecondary(row, actorName(row));
             return (
               <li key={row.id} className="flex items-start justify-between gap-4 py-3.5">
-                <div className="min-w-0">
-                  <p className="text-sm leading-5">
-                    <span className="font-medium text-foreground">{actorName(row)}</span>{" "}
-                    {activityVerb(row.action)}
-                  </p>
-                  {secondary ? (
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground" title={secondary}>
-                      {secondary}
+                <div className="flex min-w-0 items-start gap-2">
+                  <ProfileAvatar
+                    photo={photos[row.actor_id ?? ""]}
+                    name={actorName(row)}
+                    size={20}
+                    className="mt-px"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm leading-5">
+                      <span className="font-medium text-foreground">{actorName(row)}</span>{" "}
+                      {activityVerb(row.action)}
                     </p>
-                  ) : null}
+                    {secondary ? (
+                      <p
+                        className="mt-0.5 truncate text-xs text-muted-foreground"
+                        title={secondary}
+                      >
+                        {secondary}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <time
                   dateTime={row.created_at}
@@ -823,6 +841,9 @@ function SecurityPanel({
     () => securityItems(data ?? [], security?.newIpKeys ?? []),
     [data, security?.newIpKeys],
   );
+  // Failed attempts carry an ID number, not a person, so only the successful
+  // rows resolve to a face — the avatar is drawn inside that branch.
+  const photos = useUserPhotos(items.map((item) => item.latest.actor_id));
   const latest = security?.latest ?? null;
   const signinsToday = security?.signinsToday ?? 0;
   const people = security?.actors.length ?? 0;
@@ -917,32 +938,40 @@ function SecurityPanel({
                 key={`${item.kind}:${item.key}`}
                 className="flex items-start justify-between gap-4 py-3.5"
               >
-                <div className="min-w-0">
-                  {item.kind === "signin" ? (
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-5">
-                      <span className="font-semibold text-foreground">
-                        {securityActorLabel(item.latest)}
-                      </span>
-                      <span>{signinVerb(item)}</span>
-                      {item.newIp ? (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                          New IP address
+                <div className="flex min-w-0 items-start gap-2">
+                  <ProfileAvatar
+                    photo={photos[item.latest.actor_id ?? ""]}
+                    name={securityActorLabel(item.latest)}
+                    size={20}
+                    className="mt-px"
+                  />
+                  <div className="min-w-0">
+                    {item.kind === "signin" ? (
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-5">
+                        <span className="font-semibold text-foreground">
+                          {securityActorLabel(item.latest)}
                         </span>
-                      ) : null}
+                        <span>{signinVerb(item)}</span>
+                        {item.newIp ? (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            New IP address
+                          </span>
+                        ) : null}
+                      </p>
+                    ) : (
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-5">
+                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                          {pluralize(item.count, "failed sign-in")}
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          ID {item.latest.actor_number?.trim() || "unknown"}
+                        </span>
+                      </p>
+                    )}
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground" title={secondary}>
+                      {secondary}
                     </p>
-                  ) : (
-                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-5">
-                      <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
-                        {pluralize(item.count, "failed sign-in")}
-                      </span>
-                      <span className="font-semibold text-foreground">
-                        ID {item.latest.actor_number?.trim() || "unknown"}
-                      </span>
-                    </p>
-                  )}
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground" title={secondary}>
-                    {secondary}
-                  </p>
+                  </div>
                 </div>
                 <time
                   dateTime={item.latest.created_at}

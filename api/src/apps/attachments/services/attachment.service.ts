@@ -68,7 +68,7 @@ class AttachmentService {
   }
 
   /**
-   * Store the document at `ApprovalSlip/<owner-id>/<row-id>-<filename>` and
+   * Store the document at `FormAttachement/<owner-id>/<row-id>-<filename>` and
    * point the row at it. A failed row update rolls the fresh upload back so
    * no orphan file is left.
    */

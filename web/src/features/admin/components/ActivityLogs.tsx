@@ -20,10 +20,12 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { PageTitle } from "@/components/common/PageTitle";
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { Input } from "@/components/ui/input";
 import { ACTION_LABELS } from "@swiftslip/shared/activity";
 import { ACTIVITY_LOG_PAGE_SIZE, type ActivityLogActionFilter } from "@swiftslip/shared/schemas";
 import { activityLogCountsQueryOptions, activityLogsQueryOptions } from "../queries";
+import { useUserPhotos } from "../use-user-photos";
 
 type Filter = "all" | ActivityLogActionFilter;
 type Range = "today" | "7d" | "30d";
@@ -520,7 +522,7 @@ function RowShell({
   );
 }
 
-function EntryRow({ row }: { row: LogRow }) {
+function EntryRow({ row, photo }: { row: LogRow; photo?: string | undefined }) {
   const Icon = iconFor(row.action);
   const secondary = secondaryFor(row);
   const showIp = row.action === "signin.success" || row.action === "signin.failed";
@@ -538,25 +540,38 @@ function EntryRow({ row }: { row: LogRow }) {
         ) : null
       }
     >
-      <p className="text-sm leading-5">{entryMain(row)}</p>
-      {secondary ? (
-        <p
-          className="mt-0.5 text-xs leading-5 break-words text-muted-foreground"
-          title={row.detail && shorten(row.detail) !== row.detail ? row.detail : undefined}
-        >
-          {secondary}
-        </p>
-      ) : null}
+      {/*
+        The face hangs to the LEFT of the text block rather than sitting inline
+        in the first line. Inline, only the sentence starting with the name got
+        indented and the secondary line under it did not, so the two never
+        shared a left edge — the misalignment this replaces.
+      */}
+      <div className="flex items-start gap-2">
+        <ProfileAvatar photo={photo} name={actorName(row)} size={20} className="mt-px" />
+        <div className="min-w-0">
+          <p className="text-sm leading-5">{entryMain(row)}</p>
+          {secondary ? (
+            <p
+              className="mt-0.5 text-xs leading-5 break-words text-muted-foreground"
+              title={row.detail && shorten(row.detail) !== row.detail ? row.detail : undefined}
+            >
+              {secondary}
+            </p>
+          ) : null}
+        </div>
+      </div>
     </RowShell>
   );
 }
 
 function AccessGroupRow({
   group,
+  photo,
   expanded,
   onToggle,
 }: {
   group: AccessGroup;
+  photo?: string | undefined;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -589,11 +604,16 @@ function AccessGroupRow({
         </button>
       }
     >
-      <p className="text-sm leading-5">
-        <span className="font-medium text-foreground">{actorName(newest)}</span> changed app access{" "}
-        <span className="font-medium text-foreground">{group.rows.length} times</span>
-      </p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{rangeText}</p>
+      <div className="flex items-start gap-2">
+        <ProfileAvatar photo={photo} name={actorName(newest)} size={20} className="mt-px" />
+        <div className="min-w-0">
+          <p className="text-sm leading-5">
+            <span className="font-medium text-foreground">{actorName(newest)}</span> changed app
+            access <span className="font-medium text-foreground">{group.rows.length} times</span>
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{rangeText}</p>
+        </div>
+      </div>
       {expanded ? (
         <div
           id={detailsId}
@@ -684,6 +704,10 @@ export function ActivityLogs({
   const last = Math.min(page * ACTIVITY_LOG_PAGE_SIZE, total);
   const counts = countsQuery.data;
   const days = useMemo(() => (rows ? buildDays(rows) : []), [rows]);
+  // One batch for the page's actors: the faces beside the names, from the
+  // shared `["user-photos", …]` cache. People without a photo just don't come
+  // back, and `ProfileAvatar` draws their initials instead.
+  const photos = useUserPhotos(rows?.map((row) => row.actor_id) ?? []);
   const hasFilters = Boolean(term || filter !== "all" || range !== "30d");
 
   // If retention removes enough rows while an admin is deep in the pager, fall
@@ -835,13 +859,22 @@ export function ActivityLogs({
               <div className="mt-1">
                 {day.items.map((item) =>
                   item.kind === "row" ? (
-                    <EntryRow key={item.row.id} row={item.row} />
+                    <EntryRow
+                      key={item.row.id}
+                      row={item.row}
+                      photo={photos[item.row.actor_id ?? ""]}
+                    />
                   ) : item.rows.length === 1 ? (
-                    <EntryRow key={item.rows[0]!.id} row={item.rows[0]!} />
+                    <EntryRow
+                      key={item.rows[0]!.id}
+                      row={item.rows[0]!}
+                      photo={photos[item.rows[0]!.actor_id ?? ""]}
+                    />
                   ) : (
                     <AccessGroupRow
                       key={item.key}
                       group={item}
+                      photo={photos[item.rows[0]?.actor_id ?? ""]}
                       expanded={expanded.has(item.key)}
                       onToggle={() => toggleGroup(item.key)}
                     />

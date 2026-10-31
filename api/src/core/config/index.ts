@@ -65,6 +65,70 @@ const EnvSchema = z.object({
       },
     )
     .optional(),
+
+  // Backblaze B2 (S3 API) — an OPTIONAL second storage backend for new
+  // features, beside the Supabase Storage attachments (which keep working
+  // exactly as before). Unset = the /files endpoints answer "not configured"
+  // (503). See STORAGE_GUIDE.md.
+  B2_ENDPOINT: z
+    .string()
+    .url('must be a valid URL, e.g. https://s3.us-west-004.backblazeb2.com')
+    .optional(),
+  B2_REGION: z.string().min(1).default('us-west-004'),
+  B2_BUCKET: z.string().min(1).default('swiftslip'),
+  B2_UPLOAD_KEY_ID: z.string().min(1).optional(),
+  B2_UPLOAD_APP_KEY: z.string().min(1).optional(),
+  // Optional public read front door (Cloudflare Worker) for files that are
+  // genuinely public. Private files use presigned GET URLs instead.
+  FILE_BASE_URL: z
+    .string()
+    .url('must be a valid URL, e.g. https://files.example.com')
+    .optional(),
+  // Upload limits for the B2 store. 10 MB is the wire ceiling too (the body
+  // arrives as base64 JSON and BODY_LIMIT must hold it).
+  MAX_UPLOAD_MB: z.coerce.number().int().positive().max(10).default(10),
+
+  // Allowed MIME types for uploads.
+  ALLOWED_MIME: z
+    .string()
+    .min(1)
+    .default('image/jpeg,image/png,image/webp,application/pdf'),
+
+  // Storage settings: plan limits, the "first-full-then-second" rule, and orphan
+  // cleanup grace periods. These are read at runtime and used by the storage
+  // service to decide which backend to use for new uploads and to render stats.
+  SUPABASE_STORAGE_LIMIT_MB: z.coerce.number().int().positive().default(1024),
+  B2_STORAGE_LIMIT_MB: z.coerce.number().int().positive().default(10240),
+  // When free space falls below this percentage, new files stop going to
+  // Supabase (under the "supabase-first" rule). 1 means 1% free → switch at
+  // 99% used; the mockup's default reads "When Supabase is < 1 % full".
+  STORAGE_MIN_FREE_PERCENT: z.coerce.number().int().min(1).max(50).default(1),
+  // How often usage objects are cached (seconds). Shorter = more accurate but
+  // more listing overhead.
+  STORAGE_USAGE_CACHE_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(10)
+    .max(3600)
+    .default(60),
+  // When cleaning up orphans, skip objects newer than this (seconds). A just-
+  // finished upload may still be saving its row.
+  STORAGE_ORPHAN_GRACE_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(86400)
+    .default(600),
+  // The private Supabase Storage bucket the form attachments live in. The
+  // default matches the bucket the app has always used.
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).default('swiftslip'),
+  // Optional public dashboard URL; falls back to a derived URL from
+  // SUPABASE_URL if unset.
+  SUPABASE_STORAGE_DASHBOARD_URL: z.string().url().optional(),
+  B2_DASHBOARD_URL: z
+    .string()
+    .url()
+    .default('https://secure.backblaze.com/b2_buckets.htm'),
 });
 
 /** Treat `FOO=` (empty string) the same as "not set". */
@@ -135,6 +199,47 @@ function buildConfig() {
       supabase: {
         url: env.SUPABASE_URL,
         serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+      },
+    },
+    // Optional Backblaze B2 backend (future features). The existing
+    // Supabase Storage attachments are configured through `db.supabase`.
+    storage: {
+      /** Public read front door, when one is set (no trailing slash). */
+      baseUrl: env.FILE_BASE_URL?.replace(/\/+$/, ''),
+      maxUploadBytes: env.MAX_UPLOAD_MB * 1024 * 1024,
+      allowedMime: env.ALLOWED_MIME.split(',')
+        .map((type) => type.trim().toLowerCase())
+        .filter(Boolean),
+      b2: {
+        endpoint: env.B2_ENDPOINT?.replace(/\/+$/, ''),
+        region: env.B2_REGION,
+        bucket: env.B2_BUCKET,
+        uploadKeyId: env.B2_UPLOAD_KEY_ID,
+        uploadAppKey: env.B2_UPLOAD_APP_KEY,
+        /** Endpoint + upload credentials all present = the /files app is on. */
+        configured: Boolean(
+          env.B2_ENDPOINT && env.B2_UPLOAD_KEY_ID && env.B2_UPLOAD_APP_KEY,
+        ),
+        /** Public read front door for B2 (Cloudflare Worker). */
+        dashboardUrl: env.B2_DASHBOARD_URL,
+      },
+      // Plan limits and the "Supabase first → B2 overflow" rule.
+      limits: {
+        supabaseBytes: env.SUPABASE_STORAGE_LIMIT_MB * 1024 * 1024,
+        b2Bytes: env.B2_STORAGE_LIMIT_MB * 1024 * 1024,
+      },
+      // "Supabase is full" threshold: switch to B2 when free space < this %.
+      defaults: {
+        minFreePercent: env.STORAGE_MIN_FREE_PERCENT,
+      },
+      // List/cache timeouts.
+      usageCacheSeconds: env.STORAGE_USAGE_CACHE_SECONDS,
+      orphanGraceSeconds: env.STORAGE_ORPHAN_GRACE_SECONDS,
+      // Public dashboard URLs.
+      supabase: {
+        bucket: env.SUPABASE_STORAGE_BUCKET,
+        limitBytes: env.SUPABASE_STORAGE_LIMIT_MB * 1024 * 1024,
+        dashboardUrl: env.SUPABASE_STORAGE_DASHBOARD_URL,
       },
     },
   };

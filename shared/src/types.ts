@@ -5,6 +5,13 @@ export type Role = "admin" | "user";
 export type SessionUser = { id: string; role: Role; label: string; idNumber: string };
 
 /**
+ * A person's profile photo by account id — what `GET /api/users/photos`
+ * answers with. Only people who actually set one are returned, so a missing id
+ * means "no photo, draw initials" rather than an error.
+ */
+export type AccountPhoto = { id: string; photo: string };
+
+/**
  * The applications behind the "Where would you like to go?" chooser.
  *
  * Only `swiftslip`, `inventory` and `ticketing` are GRANTABLE. `admin` is
@@ -72,6 +79,17 @@ export type EmployeeProfile = {
   department: string;
   /** Data URL (PNG) of the saved signature — auto-filled into new forms. */
   signature: string;
+  /**
+   * The profile photo, as a URL the browser can load — a short-lived signed
+   * link into object storage (`ProfilePhoto/<id>.<ext>` in the private
+   * `swiftslip` bucket), minted on every read because links expire. The column
+   * itself stores the object path, never this string.
+   *
+   * Empty means "no photo": the UI falls back to initials. Rows written before
+   * the move to storage still hold an inline data URL, which is passed through
+   * unchanged so no one's face disappears.
+   */
+  photo: string;
   /**
    * Supervisor / Department Head — auto-filled into a new form's approver field
    * (`certified_by` on a DTR record, `approved_by` on the OB / LOA / COS / OT

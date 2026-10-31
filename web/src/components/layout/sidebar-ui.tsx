@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { APP } from "@/config/app";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -83,39 +84,32 @@ export function SidebarSoonBadge() {
   );
 }
 
-/** "Gerald Vilaver" → "GV" — the initials shown in the footer avatar. */
-function initialsOf(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? (parts.at(-1)?.[0] ?? "") : "";
-  return (first + last).toUpperCase() || "?";
-}
-
 /**
  * Footer pinned under the nav: avatar + the signed-in user's name over a
  * caption (role or employee number), then the plain icon rows passed as
  * children (Switch app / Install / Sign out).
  * The theme toggle sits beside the name, at the top-right of the footer — the
  * one spot that is always visible in both the portal and the Admin Panel.
+ *
+ * `photo` is the profile picture when the person has set one; without it the
+ * avatar falls back to their initials, so the footer never renders an empty
+ * circle while the profile query is still in flight.
  */
 export function SidebarFooter({
   name,
+  photo,
   sublabel,
   children,
 }: {
   name: string;
+  photo?: string | undefined;
   sublabel?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <footer className="shrink-0 border-t border-border px-2 py-4">
       <div className="flex items-center gap-3 px-2 pb-3">
-        <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
-          aria-hidden="true"
-        >
-          {initialsOf(name)}
-        </span>
+        <ProfileAvatar photo={photo} name={name} size={36} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">{name}</span>
           {sublabel ? (

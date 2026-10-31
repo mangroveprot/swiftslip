@@ -2,11 +2,28 @@ import { BaseService } from '../../../core/engine';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { PasswordService } from '../../../common/shared/services/password.service';
 import { PASSWORD_MIN_LENGTH } from '@swiftslip/shared/schemas';
-import type { Role, SessionUser } from '@swiftslip/shared/types';
+import type { AccountPhoto, Role, SessionUser } from '@swiftslip/shared/types';
 import { ProfileRepository } from '../../profile/repositories';
+import { photoUrl } from '../../profile/services/photo-storage';
 import { ActivityLogService } from '../../activity-log/services';
 import { UserRepository } from '../repositories';
 import { AttachmentService } from '../../attachments/services';
+import { FileService } from '../../files/services';
+
+/**
+ * How many ids one photo batch will answer for. The admin lists ask for the
+ * ids they are rendering (a page of logs, a page of people), which is well
+ * under this; the cap only stops a hand-written URL from pulling every photo
+ * in the company in one response.
+ */
+const USER_PHOTO_LIMIT = 100;
+
+/**
+ * The profile columns a roster needs — everything except `photo` and
+ * `signature`. Both are large data URLs, and a full-table scan that pulls them
+ * only to read a name wastes bandwidth and memory on every admin page load.
+ */
+const PROFILE_NAME_COLUMNS = 'access_code_id,full_name,area,department,designation';
 
 /** One row in user management: the account joined with its profile. */
 export type AccountListItem = {
@@ -42,12 +59,62 @@ class UserService extends BaseService<'users', UserRepository> {
     this.searchFields = ['id_number'];
   }
 
+  /**
+   * Profile photos for a batch of account ids — what the admin lists call to
+   * put a face beside a name.
+   *
+   * Only ids that actually have a photo come back: the caller draws initials
+   * for the rest, so "not in the answer" is the normal case, not an error.
+   * Deleted accounts simply never match, which is what keeps an old activity
+   * log readable.
+   */
+  async photos(ids: string[]): Promise<ServiceResponse<AccountPhoto>> {
+    try {
+      const wanted = [...new Set(ids)]
+        .filter(Boolean)
+        .slice(0, USER_PHOTO_LIMIT);
+      if (wanted.length === 0) {
+        return { success: true, documents: [], total: 0 };
+      }
+
+      const rows = await this.profiles.findAll({ access_code_id: wanted });
+      // The column holds an object path; the browser needs a signed URL.
+      const resolved = await Promise.all(
+        rows
+          .filter((row) => row.photo)
+          .map(async (row) => ({
+            id: row.access_code_id,
+            photo: await photoUrl(row.photo),
+          })),
+      );
+      // A link that could not be minted is the same as no photo: the caller
+      // draws initials instead of a broken image.
+      const documents = resolved.filter((row) => row.photo);
+
+      return { success: true, documents, total: documents.length };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
   /** Every account with the real name / org fields from its profile. */
   async listWithProfiles(): Promise<ServiceResponse<AccountListItem>> {
     try {
       const [accounts, profiles] = await Promise.all([
         this.repository.findAll({}, { sort: { created_at: 'asc' } }),
-        this.profiles.findAll(),
+        // Never `*` here. This scan is for names and org fields only, and since
+        // 0032 `*` would drag every user's base64 photo out of the database and
+        // into memory on every visit to User management — for nothing.
+        this.profiles.findAll({}, { select: PROFILE_NAME_COLUMNS }),
       ]);
       // The real name lives on the profile ("My Account"), not the account row.
       const details = new Map(profiles.map((p) => [p.access_code_id, p]));
@@ -220,6 +287,9 @@ class UserService extends BaseService<'users', UserRepository> {
       }
       await this.repository.delete({ id });
       await AttachmentService.removeUserFiles(id);
+      // Same best-effort cleanup for the optional B2 store (no-op when it has
+      // no files for this account or is not configured).
+      await FileService.removeUserFiles(id);
       await ActivityLogService.logBy(actor, {
         action: 'user.deleted',
         target: row.id_number,

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, ExternalLink, Loader2, Paperclip, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { removeObAttachment, uploadObAttachment } from "@/api/official-business.functions";
 import { getCosAttachmentUrl, removeCosAttachment, uploadCosAttachment } from "@/api/cos.functions";
@@ -11,6 +11,7 @@ import {
   removeRecordAttachment,
   uploadRecordAttachment,
 } from "@/api/records.functions";
+import { AttachmentFileDialog } from "@/components/common/AttachmentFileDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import {
   cosAttachmentUrlQueryOptions,
@@ -98,7 +99,7 @@ const URL_QUERY = {
 /**
  * Upload / view / remove card for the document attached to a form or a DTR
  * record: ≤ 10 MB, any document type (stored-XSS MIME types refused), kept in
- * the private `swiftslip` bucket under `ApprovalSlip/<owner-id>/<row-id>-<file>`
+ * the private `swiftslip` bucket under `FormAttachement/<owner-id>/<row-id>-<file>`
  * and shown through 1-hour signed links. The approval seal is passed in by the
  * editor via `stamp`, and any extra controls (the "Approved" tick) via
  * `children`.
@@ -139,9 +140,13 @@ export function AttachmentCard({
   cardClassName?: string;
 }) {
   const qc = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  /** The upload window — the ONLY place files are picked, dropped or pasted.
+   *  Ctrl+V used to sit on the whole document and fired behind whatever modal
+   *  was open (the DTR biometric import, the other-attachments window…); it
+   *  now lives inside this window, exactly like the biometric one. */
+  const [uploading, setUploading] = useState(false);
   const copy = COPY[kind];
   const { data: signed, isLoading: signing } = useQuery({
     ...URL_QUERY[kind](id),
@@ -187,38 +192,46 @@ export function AttachmentCard({
     ]);
   }
 
-  /** Shared by the file button and Ctrl+V: same checks, same upload path. */
-  async function uploadFile(picked: File) {
-    if (!picked.size) {
-      toast.error("That file is empty.");
-      return;
-    }
+  /**
+   * One file, sent by the attachment window. It THROWS on failure so the
+   * caller can toast the reason and leave the window open on the picked
+   * file — pressing Attach again is the retry. The empty and oversize
+   * guards are belt and braces: the window already refuses both.
+   */
+  async function sendFile(picked: File) {
+    if (!picked.size) throw new Error("That file is empty.");
     if (picked.size > MAX_MB * 1024 * 1024) {
-      toast.error(`Attachments must be ${MAX_MB} MB or smaller.`);
-      return;
+      throw new Error(`Attachments must be ${MAX_MB} MB or smaller.`);
     }
+    // A draft has no id yet, and a file is real content — so this upload is
+    // what forces the row to be created. Resolve the id before reading the file
+    // so the created row and the stored file agree.
+    const rowId = onEnsureRow ? await onEnsureRow() : id;
+    const base64 = await fileToBase64(picked);
+    const payload = {
+      data: {
+        id: rowId,
+        filename: picked.name,
+        contentType: picked.type || "application/octet-stream",
+        base64,
+      },
+    };
+    if (kind === "ob") await uploadObAttachment(payload);
+    else if (kind === "loa") await uploadLoaAttachment(payload);
+    else if (kind === "cos") await uploadCosAttachment(payload);
+    else if (kind === "ot") await uploadOtAttachment(payload);
+    else await uploadRecordAttachment(payload);
+    onUploaded?.();
+    await refresh(rowId);
+  }
+
+  /** The window's Attach button: send, then close on success. A failure toasts
+   *  and keeps the window — and the file — in place, so the retry is one click. */
+  async function attachFile(picked: File) {
     setBusy(true);
     try {
-      // A draft has no id yet, and a file is real content — so this upload is
-      // what forces the row to be created. Resolve the id before reading the file
-      // so the created row and the stored file agree.
-      const rowId = onEnsureRow ? await onEnsureRow() : id;
-      const base64 = await fileToBase64(picked);
-      const payload = {
-        data: {
-          id: rowId,
-          filename: picked.name,
-          contentType: picked.type || "application/octet-stream",
-          base64,
-        },
-      };
-      if (kind === "ob") await uploadObAttachment(payload);
-      else if (kind === "loa") await uploadLoaAttachment(payload);
-      else if (kind === "cos") await uploadCosAttachment(payload);
-      else if (kind === "ot") await uploadOtAttachment(payload);
-      else await uploadRecordAttachment(payload);
-      onUploaded?.();
-      await refresh(rowId);
+      await sendFile(picked);
+      setUploading(false);
       toast.success("Attachment uploaded");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed.");
@@ -226,35 +239,6 @@ export function AttachmentCard({
       setBusy(false);
     }
   }
-
-  async function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0];
-    e.target.value = ""; // re-picking the same file has to work again
-    if (picked) await uploadFile(picked);
-  }
-
-  // Ctrl+V pastes a screenshot straight in as the attachment — approval slips
-  // often arrive as a clipboard image. Only a real image file on the clipboard
-  // is taken (then the browser's own insert is suppressed); ordinary text and
-  // HTML pastes, and pastes while a dialog is open, go through untouched.
-  // Latest state, read by the handler without re-subscribing it.
-  const pasteRef = useRef({ canEdit, busy, confirming, uploadFile });
-  pasteRef.current = { canEdit, busy, confirming, uploadFile };
-  useEffect(() => {
-    function onPaste(event: ClipboardEvent) {
-      const { canEdit, busy, confirming, uploadFile } = pasteRef.current;
-      if (!canEdit || busy || confirming) return;
-      const image = Array.from(event.clipboardData?.items ?? [])
-        .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
-        .map((item) => item.getAsFile())
-        .find((f): f is File => f !== null);
-      if (!image) return;
-      event.preventDefault();
-      void uploadFile(image);
-    }
-    document.addEventListener("paste", onPaste);
-    return () => document.removeEventListener("paste", onPaste);
-  }, []);
 
   async function confirmRemove() {
     setBusy(true);
@@ -279,12 +263,13 @@ export function AttachmentCard({
   // The uploader is built once and placed two ways: full width when the card
   // carries no mark, and sharing the row with the mark when it does. A stamp
   // laid over the only control in an empty card reads as damage, not approval.
+  // It opens the upload window — pick, drop or Ctrl+V there, never on the page.
   const uploadButton = (
     <button
       type="button"
       className="btn btn-outline w-full justify-start"
       disabled={!canEdit || busy}
-      onClick={() => fileInputRef.current?.click()}
+      onClick={() => setUploading(true)}
     >
       {busy ? (
         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -307,15 +292,6 @@ export function AttachmentCard({
           : " print:hidden"
       }`}
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept="application/pdf,image/png,image/jpeg,image/gif,image/webp,image/bmp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-        disabled={!canEdit || busy}
-        onChange={pickFile}
-      />
-
       <div className="print:hidden">
         <p className="lbl flex items-center gap-1.5">
           <Paperclip className="size-3.5" aria-hidden="true" />
@@ -382,7 +358,7 @@ export function AttachmentCard({
                   aria-label="Replace attachment"
                   title="Replace attachment"
                   disabled={busy}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setUploading(true)}
                 >
                   <Upload className="size-3.5" aria-hidden="true" />
                 </button>
@@ -424,6 +400,19 @@ export function AttachmentCard({
       ) : (
         <div className="mt-2">{uploadButton}</div>
       )}
+
+      {/* The one-file attachment window — pick, drop or Ctrl+V HERE, never on
+          the page. It mirrors the biometric import window: its paste listener
+          exists only while it is open, so it can never collide with another
+          modal, and the full preview shows the file whole in either
+          orientation (portrait keeps the narrow column, landscape opens wide). */}
+      <AttachmentFileDialog
+        open={uploading}
+        title={copy.title}
+        busy={busy}
+        onClose={() => setUploading(false)}
+        onAttach={attachFile}
+      />
 
       <ConfirmDialog
         open={confirming}

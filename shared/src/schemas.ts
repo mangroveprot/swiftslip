@@ -415,6 +415,25 @@ export const attachmentPathInput = z.object({
   path: z.string().min(1).max(400),
 });
 
+/**
+ * Upload into the optional B2 file store (`POST /files`). Same base64 wire
+ * shape as an attachment; the server still checks the real bytes, the MIME
+ * allow-list and the size cap before storing anything. `entityType` /
+ * `entityId` are optional labels for the feature that keeps the returned key.
+ */
+export const fileUploadInput = z.object({
+  filename: z.string().min(1).max(200),
+  contentType: z.string().min(1).max(150),
+  base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
+  entityType: z.string().min(1).max(50).optional(),
+  entityId: z.string().min(1).max(100).optional(),
+});
+
+/** `GET /files/url?key=` / `DELETE /files?key=` — which stored object. */
+export const fileKeyQuery = z.object({
+  key: z.string().min(1).max(400),
+});
+
 export const upsertCodeInput = z.object({
   id: id.optional(),
   /** The account's unique sign-in ID — required, and unique across accounts. */
@@ -579,7 +598,24 @@ export const employeeProfileSchema = z.object({
   area: z.string(),
   department: z.string().default(""),
   signature: z.string().default(""),
+  /**
+   * 256 × 256 data URL. The cap is a guard, not a target: the cropper exports
+   * WebP at roughly 15 KB (≈ 20 000 base64 chars), so anything near this
+   * ceiling came from something other than this form.
+   */
+  photo: z.string().max(600_000, "That photo is too large — try a smaller one.").default(""),
   supervisor: z.string().default(""),
+});
+
+/**
+ * The photo on its own — `PUT /api/profile/me/photo`.
+ *
+ * The profile page saves this the moment the user picks "Use photo", so it
+ * must not travel with the rest of the form: saving the whole profile there
+ * would silently commit whatever else they were half-way through typing.
+ */
+export const profilePhotoInput = z.object({
+  photo: z.string().max(600_000, "That photo is too large — try a smaller one.").default(""),
 });
 
 // ── Accounts (admin) ─────────────────────────────────────────────────────────
@@ -588,6 +624,20 @@ export const employeeProfileSchema = z.object({
 export const createUserInput = upsertCodeInput.omit({ id: true });
 /** Edit an account (id comes from the URL). Blank password keeps the current one. */
 export const updateUserInput = createUserInput;
+
+/**
+ * `GET /api/users/photos?ids=a,b,c` — the batch every admin list uses to draw a
+ * face beside a name (activity logs, app access, dashboard feeds).
+ *
+ * One comma-separated string rather than repeated params: the lists build it
+ * from the ids they are already rendering, and the service caps how many ids it
+ * will answer for so a hand-crafted URL can't ask for the whole company's
+ * photos in one go. Empty is legal and returns nothing — a feed made only of
+ * deleted accounts still asks.
+ */
+export const userPhotosInput = z.object({
+  ids: z.string().max(4000).default(""),
+});
 
 // ── App access rules (admin) ─────────────────────────────────────────────────
 
@@ -726,4 +776,165 @@ export type CleanupRunSummary = {
   filesDeleted: Partial<Record<RetentionFormType, number>>;
   /** `completed`, or `completed_with_file_errors` when storage lagged behind. */
   status: string;
+};
+
+/** The three possible storage rules. */
+export const STORAGE_RULES = ["supabase-first", "b2-only", "supabase-only"] as const;
+export const storageRuleSchema = z.enum(STORAGE_RULES);
+
+/** The two possible backends. */
+export const STORAGE_BACKENDS = ["supabase", "b2"] as const;
+export const storageBackendSchema = z.enum(STORAGE_BACKENDS);
+
+/** Input for saving storage settings (rule + free‑space threshold). */
+export const storageSettingsInput = z.object({
+  rule: storageRuleSchema,
+  minFreePercent: z.number().int().min(1).max(50),
+});
+
+/** Input for the orphan‑cleanup mutation. */
+export const storageOrphansInput = z.object({ backend: storageBackendSchema });
+
+/** The saved storage setting as the API returns it. */
+export type StorageSettings = z.infer<typeof storageSettingsInput>;
+/** The saved setting as the API returns it, with timestamps and actor. */
+export type StorageSettingsDoc = StorageSettings & {
+  updatedAt: string;
+  updatedByName: string | null;
+};
+
+/** Which backend a stored file lives on. */
+export type StorageBackend = z.infer<typeof storageBackendSchema>;
+
+/** References from the database, split by backend and kind. */
+export type StorageReference = {
+  /** 'supabase' or 'b2'. */
+  backend: StorageBackend;
+  /** The key/path — without a `b2:` prefix for B2 files. */
+  key: string;
+};
+
+export type StorageReferences = {
+  /** Main attachment_path refs. */
+  main: StorageReference[];
+  /** Other‑attachments paths + files keys. */
+  other: StorageReference[];
+};
+
+/** Overview of storage across both backends. */
+export type StorageOverview = {
+  /** The current rule + threshold. */
+  settings: StorageSettingsDoc;
+  /** Which backend new uploads will use right now. */
+  nextBackend: StorageBackend;
+  /** Totals across both storages. */
+  totals: {
+    usedBytes: number;
+    files: number;
+    orphanBytes: number;
+    orphanFiles: number;
+  };
+  /** Per‑backend usage + categorisation. */
+  supabase: StorageBackendUsage;
+  b2: StorageBackendUsage;
+};
+
+/** What one backend's usage looks like. */
+export type StorageBackendUsage = {
+  /** The backend name. */
+  backend: StorageBackend;
+  /** The bucket name shown on the card. */
+  bucket: string;
+  /** Whether the backend answers (B2 can be switched off by unset credentials). */
+  connected: boolean;
+  /** The bucket / plan limit (bytes). */
+  limitBytes: number;
+  /** How many bytes are used right now. */
+  usedBytes: number;
+  /** How many free bytes remain. */
+  freeBytes: number;
+  /** How many objects / files are stored. */
+  files: number;
+  /** Bytes attributed to "approval slips" (main attachments). */
+  approvalBytes: number;
+  /** How many objects are approval slips. */
+  approvalFiles: number;
+  /** Bytes attributed to other/extra files. */
+  otherBytes: number;
+  /** How many objects are other/extra files. */
+  otherFiles: number;
+  /** Bytes that are orphaned (unreferenced). */
+  orphanBytes: number;
+  /** Count of orphaned files. */
+  orphanFiles: number;
+  /** Public dashboard URL (may be null when not configured). */
+  dashboardUrl: string | null;
+  /** Optional error string (e.g. listing failed). */
+  error?: string;
+};
+
+/** Result of cleaning up orphans for one backend. */
+export type StorageCleanupResult = {
+  /** Which backend was cleaned. */
+  backend: StorageBackend;
+  /** How many files were removed. */
+  files: number;
+  /** How many bytes were removed. */
+  bytes: number;
+  /** How many deletions failed (still present). */
+  failed: number;
+};
+
+/** Input for the orphan‑cleanup mutation (which backend). */
+export const storageOverviewQuery = z.object({
+  refresh: z.enum(["true", "false"]).optional(),
+});
+
+/** Input for previewing orphaned files (optional backend filter). */
+export const storageOrphansPreviewQuery = z.object({
+  backend: z.enum(["supabase", "b2", "everywhere"]).optional().default("everywhere"),
+});
+
+/** Input for deleting specific orphaned files. */
+export const storageOrphansDeleteInput = z.object({
+  files: z.array(
+    z.object({
+      key: z.string().min(1),
+      backend: storageBackendSchema,
+    }),
+  ),
+});
+
+/** The delete input as typed code sees it. */
+export type StorageOrphansDeleteInput = z.infer<typeof storageOrphansDeleteInput>;
+
+/** One orphaned file in the preview list. */
+export type OrphanedFile = {
+  /** Object key in the bucket (without any `b2:` prefix). */
+  key: string;
+  /** Which backend it lives on. */
+  backend: StorageBackend;
+  /** Size in bytes. */
+  sizeBytes: number;
+  /** Last modified timestamp, if known. */
+  lastModified: string | null;
+  /** Plain‑English reason it is considered orphaned. */
+  reason: string;
+};
+
+/** Preview of orphaned files for one or both backends. */
+export type StorageOrphanPreview = {
+  supabase: OrphanedFile[];
+  b2: OrphanedFile[];
+  totals: { files: number; bytes: number };
+  /** How long a fresh upload is protected before it can count as an orphan. */
+  graceSeconds: number;
+};
+
+/** Result of deleting specific orphaned files. */
+export type StorageOrphanDeleteResult = {
+  backend: StorageBackend;
+  removed: number;
+  failed: number;
+  bytes: number;
 };

@@ -20,6 +20,7 @@ export const EMPTY_PROFILE: EmployeeProfile = {
   area: "",
   department: "",
   signature: "",
+  photo: "",
   supervisor: "",
 };
 

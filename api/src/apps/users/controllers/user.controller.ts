@@ -17,6 +17,24 @@ class UserController {
     }
   }
 
+  /** `?ids=a,b,c` — the batch of profile photos the admin lists render. */
+  static async photos(req: Request, res: Response): Promise<void> {
+    try {
+      const ids = String(req.query.ids ?? '')
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+      const response = await UserService.photos(ids);
+      if (response.success) {
+        ApiResponse.success(res, response);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      ApiResponse.error(res, error as ErrorResponseType);
+    }
+  }
+
   static async create(req: Request, res: Response): Promise<void> {
     try {
       const response = await UserService.createAccount(

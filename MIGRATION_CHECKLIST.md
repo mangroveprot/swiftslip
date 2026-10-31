@@ -238,6 +238,38 @@ Manual, admin-only cleanup of forms older than N days, plus their storage files.
       30 days), also paste `0029_retention_days_floor.sql` — otherwise saving 7 days fails with
       `violates check constraint "retention_settings_days_check"`.
 
+### Phase 8 — Optional B2 file storage (`/api/files`) + Storage settings page ✅ code done; migration + real-bucket test pending
+
+Added per `STORAGE_GUIDE.md` as a **second, optional** storage backend for future features. The
+existing Supabase Storage attachments are untouched.
+- [x] `api/src/apps/files` (controller → service → `B2Repository` / `FileRepository`), mounted at
+      `/api/files` behind `authenticate`
+- [x] Server-relay upload: base64 JSON → API → B2 `PutObject`, with the attachment magic-byte gate
+      plus `ALLOWED_MIME` / `MAX_UPLOAD_MB`
+- [x] Downloads are 5-minute presigned GET URLs, issued only after the `(key, owner_id)` row check;
+      the public Cloudflare Worker is not used for private files
+- [x] Bucket-root `{uuid}.{ext}` keys; `public.files` metadata table (`0030_files.sql`), RLS on,
+      no FK on `owner_id` (so account-delete cleanup runs after the user row is gone)
+- [x] Account deletion also cleans the B2 store (best effort; no-op when B2 is off)
+- [x] Env in `core/config/index.ts` + `.env.example` only; unset `B2_*` = the `/files` app answers 503
+- [x] `npm run typecheck`, `npm run lint` pass (6 pre-existing web warnings only)
+- [x] **Storage settings page** — backend `api/src/apps/storage` (controller → service → repositories),
+      mounted at `/api/admin/storage` behind `authenticate` + `authorizeAdmin`:
+      `GET /` (usage split per backend into approved/other/orphan/free, current rule, next backend),
+      `PUT /` (save rule + threshold, logged), `POST /orphans`, `POST /orphans/everywhere`
+- [x] Cleanup modal: `GET /orphans/preview` + `POST /orphans/delete` implemented (re-checks each key
+      at delete time) and wired to `StorageOrphanCleanupDialog.tsx`, which replaces the blind confirm
+- [x] Web: `api/storage.functions.ts`, `features/admin/components/settings/Storage.tsx`, `Storage`
+      nav item in `AdminPanel.tsx` (replaced the "soon" row)
+- [x] Config: `SUPABASE_STORAGE_BUCKET`, `SUPABASE_STORAGE_LIMIT_MB`, `B2_STORAGE_LIMIT_MB`,
+      `STORAGE_MIN_FREE_PERCENT`, `STORAGE_USAGE_CACHE_SECONDS`, `STORAGE_ORPHAN_GRACE_SECONDS`,
+      `SUPABASE_STORAGE_DASHBOARD_URL`, `B2_DASHBOARD_URL` in config + `.env.example`;
+      `storage_settings` table types; migration `0031_storage_settings.sql`
+- [ ] **Owner to run:** paste `0030_files.sql` AND `0031_storage_settings.sql` in the Supabase SQL
+      Editor, add `B2_ENDPOINT`, `B2_UPLOAD_KEY_ID`, `B2_UPLOAD_APP_KEY` to `api/.env`, then test
+      `/api/files` upload → `GET /files/url?key=` → `DELETE /files?key=`, and open
+      Admin Panel → Settings → Storage. Not tested against a real B2 bucket.
+
 ## 4. Cookie / auth contract (Phase 2, needed by Phase 5)
 
 - Cookie name `swiftslip-session`, `httpOnly`, `sameSite=lax`, `secure` in production, 12 h.
@@ -281,6 +313,9 @@ Manual, admin-only cleanup of forms older than N days, plus their storage files.
 | POST / GET / DELETE | `/loa\|ot/:id/other-attachments[?path=]` | user | `attachmentUploadInput` | `{name}` / `{path: url}` / `{name}` |
 | POST | `/ai/ob/purpose` · `/ai/ob/chat` · `/ai/loa/reason` · `/ai/loa/chat` · `/ai/cos/reason` · `/ai/cos/chat` · `/ai/ot/reason` · `/ai/ot/chat` | user | matching `…Input` | `{purpose\|reason}` / chat reply |
 | POST | `/biometric-import` | user | `importBiometricInput` | `ImportedLog` |
+| POST | `/files` | user | `fileUploadInput` | `{key,name}` (optional B2 store; 503 when off) |
+| GET | `/files/url?key=` | user | `fileKeyQuery` (query) | `{url,name,mimeType}` (5-min presigned GET) |
+| DELETE | `/files?key=` | user | `fileKeyQuery` (query) | `{key,name}` |
 | GET | `/inventory/data` | inventory | – | `InventoryData` (branches, lookups, assets) |
 | POST | `/inventory/assets` | inventory | `assetSaveInput` minus `assetId` | `{assetId}` |
 | PUT | `/inventory/assets/:id` | inventory | `assetSaveInput` minus `assetId` | `{assetId}` |
