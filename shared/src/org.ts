@@ -1,5 +1,5 @@
 /**
- * The fixed Designation and Position choices.
+ * Shared behaviour for the Designation / Department / Position pickers.
  *
  * SCOPE — SwiftSlip's own profiles ONLY. The RGC Asset Inventory is a separate
  * database (`RGC_INVENTORY_DATABASE_URL`) with its own idea of branches and
@@ -8,38 +8,26 @@
  * need one can still be typed under "Others", and the App Access screen can
  * still create a rule for any value.
  *
- * These are free text on `profiles.area` / `profiles.designation` — there is no
- * org directory. The list exists so people stop inventing spellings, and
- * "Others" exists so a real new designation is never blocked by this file.
- * Adding one here is a one-line edit; it does not need a migration.
+ * The CHOICES live in the database — `org_designations`, `org_departments` and
+ * `org_positions` (migrations 0024 / 0025) — and reach the pickers as an
+ * `OrgLists`. Nothing here hard-codes an option any more: a value an
+ * administrator deleted stays deleted instead of coming back from a constant,
+ * which is how "IT Support" and "IT Programmer" kept appearing under a Field
+ * Monitoring department that had never held them. Adding a value is a row, not
+ * a code change.
+ *
+ * The columns are still free text on `profiles.area` / `profiles.designation`;
+ * the lists exist so people stop inventing spellings, and "Others" exists so a
+ * real new value is never blocked.
  */
 
 /** Sentinel option meaning "the value isn't on the list". */
 export const OTHERS = "__others__";
 
-/** Designations (office / branch assignments) — shown to the user as
- *  "Designation", stored on `profiles.area`. The two Dipolog spellings are
- *  deliberately listed SEPARATELY (an account works at one of them), so
- *  neither is aliased into the other below. */
-export const DESIGNATIONS = ["RGC Dipolog Sat Office", "RGC Dipolog Satellite"] as const;
-
-/**
- * The fixed org structure: each Department owns a list of Positions, and a
- * Position lives under exactly one Department ("HR Officer" under "Human
- * Resources Department"). Everything else derives from this one map —
- * `DEPARTMENTS`, `POSITIONS`, `POSITION_DEPARTMENTS` below — so adding a
- * position here is the only edit needed.
- */
-export const DEPARTMENT_POSITIONS: Record<string, readonly string[]> = {
-  "Information Technology": ["IT Support", "IT Programmer"],
-  Operations: ["Field Monitoring"],
-};
-
-export type DepartmentPositions = Record<string, readonly string[]>;
-
 /** The admin-editable lists behind the pickers (migrations 0024 / 0025):
  *  designations, departments, and every position with the department it sits
- *  under, sorted by value. */
+ *  under — read from `org_designations` / `org_departments` / `org_positions`,
+ *  the only place the choices themselves live. */
 export type OrgLists = {
   designations: string[];
   departments: string[];
@@ -48,17 +36,6 @@ export type OrgLists = {
 
 /** The three lists an admin can maintain from a picker's own row buttons. */
 export type OrgOptionKind = "designation" | "department" | "position";
-
-export const DEPARTMENTS = Object.keys(DEPARTMENT_POSITIONS);
-
-export const POSITIONS = Object.values(DEPARTMENT_POSITIONS).flat();
-
-/** Position → its department, derived from DEPARTMENT_POSITIONS above. */
-export const POSITION_DEPARTMENTS: Record<string, string> = Object.fromEntries(
-  DEPARTMENTS.flatMap((dept) =>
-    (DEPARTMENT_POSITIONS[dept] ?? []).map((pos) => [pos, dept] as const),
-  ),
-);
 
 /**
  * Spellings that were already on profiles before the dropdowns existed, mapped
@@ -91,24 +68,21 @@ export function normalizePosition(value: string): string {
 }
 
 /**
- * The department a position belongs to ("" for a blank or off-list position).
+ * The department a position belongs to ("" when the lists aren't loaded, the
+ * position is blank, or nothing in `org_positions` holds it).
  *
  * The profile stores its own department (migration 0023); this is the
  * fallback for rows that haven't been backfilled yet and the source for
  * auto-filling a fresh pick. Looked up in canonical form, so a legacy spelling
- * on an old profile still resolves.
+ * on an old profile still resolves — and only against the live table, so a
+ * department an admin added, renamed, or moved a position into is what the
+ * pickers show and what the position implies. There is no constant left to
+ * fall back on: a value deleted from the table must not reappear here either.
  */
 export function departmentForPosition(position: string, lists?: OrgLists): string {
   const normalized = normalizePosition(position);
-  if (!normalized) return "";
-  // The live table wins. A department an admin added, renamed, or moved a
-  // position into is what the pickers show, so it must also be what the
-  // position implies. Reading only the fixed constants here made a picker
-  // snap a freshly chosen department straight back to the old constant name
-  // (pick "IT DEP", the form reverts it to "Information Technology").
-  const live = lists?.positions.find((p) => p.value === normalized);
-  if (live) return live.department;
-  return POSITION_DEPARTMENTS[normalized] ?? "";
+  if (!normalized || !lists) return "";
+  return lists.positions.find((p) => p.value === normalized)?.department ?? "";
 }
 
 /**
@@ -128,35 +102,25 @@ export function departmentWithLocation(department: string, office: string): stri
 }
 
 /**
- * The positions offered under a department — "" (nothing picked yet) offers
- * every position, and an unknown department offers all of them too so the
- * picker is never a dead end.
- */
-export function positionsForDepartment(department: string): readonly string[] {
-  const trimmed = department.trim();
-  if (!trimmed) return POSITIONS;
-  return DEPARTMENT_POSITIONS[trimmed] ?? POSITIONS;
-}
-
-/**
- * Positions offered under a department, resolved against the live
- * `org_options` table when it is loaded and the value matches a department
- * the table actually owns, otherwise the fixed constants above. Without this
- * fallback a position whose department was edited out of the table would
- * silently disappear from the picker, and a profile still holding the old
- * value would suddenly read as inconsistent.
+ * The positions offered under a department — straight from `org_positions`,
+ * so the picker offers exactly what an administrator filed there and nothing
+ * else.
+ *
+ * - Nothing chosen yet: every position on the list, so a fresh account can
+ *   pick one and let the department follow (the "e.g. IT Support" placeholder
+ *   is for exactly that state).
+ * - A department chosen: only the positions filed under it. A department with
+ *   none — one just added, or one whose positions were deleted — offers an
+ *   empty list rather than every other department's, which is how "IT
+ *   Support" and "IT Programmer" kept turning up under Field Monitoring.
+ * - Lists not loaded yet: empty too, never a set of hard-coded values the
+ *   table may not hold.
  */
 export function positionsUnder(department: string, lists: OrgLists | undefined): readonly string[] {
+  if (!lists) return [];
   const trimmed = department.trim();
-  if (trimmed && lists) {
-    const live = lists.positions.filter((p) => p.department === trimmed).map((p) => p.value);
-    // A department the table lists no positions under yet (one the admin just
-    // added) must not be a dead end — fall through to the constant pairs and,
-    // for a name nothing knows, to every position. An empty dropdown is what
-    // makes a stored position look lost the moment its department moves.
-    if (live.length) return live;
-  }
-  return positionsForDepartment(trimmed);
+  if (!trimmed) return lists.positions.map((p) => p.value);
+  return lists.positions.filter((p) => p.department === trimmed).map((p) => p.value);
 }
 
 /**

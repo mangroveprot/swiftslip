@@ -23,7 +23,11 @@ export function DailyEntriesTable({
   const cellFields = ["time_in", "time_out", "schedule", "remarks"] as const;
 
   return (
-    <section className="form-fill flex min-h-0 flex-col rounded-xl border bg-card p-3 shadow-sm lg:flex-1 lg:overflow-hidden">
+    <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
+      {/* Natural height, like LOA's field cards: the column scrolls (see
+          RecordEditor) rather than this card being squeezed. `flex-1` used to
+          live here — with the attachments card added it was the only flexible
+          child, so it shrank to make room instead of keeping its proportion. */}
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">Daily entries</h2>
         {canEdit ? (
@@ -32,7 +36,10 @@ export function DailyEntriesTable({
           </button>
         ) : null}
       </div>
-      <div className="min-h-0 lg:flex-1 lg:overflow-auto">
+      {/* No `overflow` of its own: it must NOT become a scroll container, or
+          the sticky header below would stick to this div (which never scrolls)
+          instead of the column scrolling past it. */}
+      <div>
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">

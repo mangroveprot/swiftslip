@@ -1,12 +1,11 @@
-import { randomUUID } from 'crypto';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
-import type { SessionUser } from '@swiftslip/shared/types';
+import type { SessionUser, StorageBackend } from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
-import {
-  AttachmentRepository,
-  STORAGE_ROOT,
-  StorageRepository,
-} from '../repositories';
+import FileStorageService from '../../storage/services/file-storage.service';
+import StorageService from '../../storage/services/storage.service';
+import { backendOf } from '../../storage/utils/backend';
+import { prefixedStorageKey } from '../../storage/utils/key';
+import { AttachmentRepository, STORAGE_ROOT } from '../repositories';
 import type {
   AttachmentTable,
   AttachmentTarget,
@@ -37,10 +36,15 @@ const toFailure = (error: unknown) => ({
  * one is not bound to a single table — every method takes the `target` the
  * route was mounted on — so it holds one repository per table instead of
  * extending `BaseService`.
+ *
+ * All storage calls go through the unified `FileStorageService` so the admin's
+ * storage rule (supabase-first / b2-only / supabase-only) actually governs
+ * where uploads land.
  */
 class AttachmentService {
   private readonly repos = new Map<AttachmentTable, AttachmentRepository>();
-  private readonly storage = new StorageRepository();
+  private readonly storage = FileStorageService;
+  private readonly storageService = StorageService;
 
   private repo(table: AttachmentTable): AttachmentRepository {
     let repo = this.repos.get(table);
@@ -64,13 +68,16 @@ class AttachmentService {
     });
     if (!row)
       throw new ErrorResponse('NOT_FOUND_ERROR', `${entity} not found.`);
-    return row as typeof row & { other_attachments?: unknown };
+    return row as typeof row & {
+      other_attachments?: unknown;
+      attachment_backend?: string;
+    };
   }
 
   /**
-   * Store the document at `FormAttachement/<owner-id>/<row-id>-<filename>` and
-   * point the row at it. A failed row update rolls the fresh upload back so
-   * no orphan file is left.
+   * Store the document at `FormAttachement/<owner-id>/<uuid>.<ext>` and point
+   * the row at it. A failed row update rolls the fresh upload back so no
+   * orphan file is left. The backend is chosen by the admin's storage rule.
    */
   async upload(
     user: SessionUser,
@@ -85,10 +92,14 @@ class AttachmentService {
         user.id,
       );
       const { buffer, contentType, name } = readUpload(input);
-      const path = `${STORAGE_ROOT}/${user.id}/${row.id}-${name}`;
+      const backend = await this.storageService.pickBackend();
+      const path = prefixedStorageKey(
+        `${STORAGE_ROOT}/${user.id}`,
+        contentType,
+        name,
+      );
 
-      await this.storage.ensureBucket();
-      await this.storage.upload(path, buffer, contentType);
+      await this.storage.upload(path, buffer, contentType, backend);
 
       try {
         await this.repo(target.table).update(
@@ -96,19 +107,23 @@ class AttachmentService {
           {
             attachment_path: path,
             attachment_name: name,
+            attachment_backend: backend,
             updated_at: new Date().toISOString(),
           },
         );
       } catch (error) {
         // Roll the fresh upload back so a failed save can't leave an orphan.
         if (row.attachment_path !== path)
-          await this.storage.removeQuietly([path]);
+          await this.storage.removeRefQuietly({ key: path, backend });
         throw error;
       }
 
       // Same path = replaced in place; nothing to clean up.
       if (row.attachment_path && row.attachment_path !== path) {
-        await this.storage.removeQuietly([row.attachment_path]);
+        await this.storage.removeRefQuietly({
+          key: row.attachment_path,
+          backend: backendOf(row.attachment_backend),
+        });
       }
 
       await ActivityLogService.logBy(user, {
@@ -131,7 +146,11 @@ class AttachmentService {
     try {
       const row = await this.ownedRow(target.table, target.entity, id, userId);
       if (!row.attachment_path) return { success: true };
-      const url = await this.storage.requireSignedUrl(row.attachment_path);
+      const backend = backendOf(row.attachment_backend);
+      const url = await this.storage.requireSignedUrl(
+        row.attachment_path,
+        backend,
+      );
       return {
         success: true,
         document: { url, name: row.attachment_name ?? 'attachment' },
@@ -164,7 +183,10 @@ class AttachmentService {
         },
       );
       if (row.attachment_path) {
-        await this.storage.removeQuietly([row.attachment_path]);
+        await this.storage.removeRefQuietly({
+          key: row.attachment_path,
+          backend: backendOf(row.attachment_backend),
+        });
       }
       const name = row.attachment_name ?? '';
       await ActivityLogService.logBy(user, {
@@ -179,7 +201,7 @@ class AttachmentService {
   }
 
   /* ------------------------------------------------------------------
-     Additional supporting files (LOA and OT only): up to
+     Additional supporting files (LOA, OT and DTR records): up to
      OTHER_ATTACHMENTS_MAX per form beside the single certificate, stored in
      the row's `other_attachments` jsonb list.
      ------------------------------------------------------------------ */
@@ -187,7 +209,11 @@ class AttachmentService {
   private assertHasOthers(
     table: AttachmentTable,
   ): asserts table is OtherAttachmentTable {
-    if (table !== 'loa_forms' && table !== 'ot_forms') {
+    if (
+      table !== 'loa_forms' &&
+      table !== 'ot_forms' &&
+      table !== 'dtr_records'
+    ) {
       throw new ErrorResponse(
         'BAD_REQUEST',
         'This form has no additional files.',
@@ -217,22 +243,24 @@ class AttachmentService {
       }
 
       const { buffer, contentType, name } = readUpload(input);
-      // The random segment means two files that share a name never collide.
-      const unique = randomUUID().slice(0, 8);
-      const path = `${STORAGE_ROOT}/${user.id}/${row.id}-extra-${unique}-${name}`;
+      const backend = await this.storageService.pickBackend();
+      const path = prefixedStorageKey(
+        `${STORAGE_ROOT}/${user.id}`,
+        contentType,
+        name,
+      );
 
-      await this.storage.ensureBucket();
-      await this.storage.upload(path, buffer, contentType);
+      await this.storage.upload(path, buffer, contentType, backend);
       try {
         await this.repo(target.table).update(
           { id: row.id, owner_id: user.id },
           {
-            other_attachments: [...current, { path, name }],
+            other_attachments: [...current, { path, name, backend }],
             updated_at: new Date().toISOString(),
           } as never,
         );
       } catch (error) {
-        await this.storage.removeQuietly([path]);
+        await this.storage.removeRefQuietly({ key: path, backend });
         throw error;
       }
 
@@ -263,7 +291,10 @@ class AttachmentService {
       );
       const signed = await Promise.all(
         readOtherFiles(row.other_attachments).map(async (file) => {
-          const url = await this.storage.signedUrl(file.path);
+          const url = await this.storage.signedUrl(
+            file.path,
+            file.backend ?? 'supabase',
+          );
           // A file whose object is already gone simply drops out of the list.
           return url ? ([file.path, url] as const) : null;
         }),
@@ -299,7 +330,10 @@ class AttachmentService {
         other_attachments: files.filter((file) => file.path !== path),
         updated_at: new Date().toISOString(),
       } as never);
-      await this.storage.removeQuietly([path]);
+      await this.storage.removeRefQuietly({
+        key: path,
+        backend: found.backend ?? 'supabase',
+      });
 
       await ActivityLogService.logBy(user, {
         action: 'attachment.removed',
@@ -314,14 +348,27 @@ class AttachmentService {
 
   /**
    * For form services deleting a row: drop its stored files, best effort.
+   * Accepts either plain paths (legacy Supabase-only rows) or { key, backend }
+   * objects so the correct backend is cleaned up.
+   *
    * Never throws; the counts are there for callers that report the outcome.
    */
-  removeFiles(
-    paths: (string | null | undefined)[],
+  async removeFiles(
+    refs: (string | { key: string; backend?: StorageBackend })[],
   ): Promise<{ removed: number; failed: number }> {
-    return this.storage.removeQuietly(
-      paths.filter((path): path is string => Boolean(path)),
-    );
+    const items = refs
+      .filter(
+        (ref): ref is string | { key: string; backend?: StorageBackend } =>
+          Boolean(ref),
+      )
+      .map((ref) =>
+        typeof ref === 'string'
+          ? { key: ref, backend: 'supabase' as StorageBackend }
+          : { key: ref.key, backend: ref.backend ?? 'supabase' },
+      );
+    if (items.length === 0) return { removed: 0, failed: 0 };
+    const result = await this.storage.removeRefsQuietly(items);
+    return { removed: result.removed, failed: result.failed };
   }
 
   removeUserFiles(userId: string): Promise<void> {

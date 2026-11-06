@@ -5,7 +5,8 @@ import { BaseService } from '../../../core/engine';
 import type { FileLink, StoredFile } from '@swiftslip/shared/api-types';
 import type { SessionUser } from '@swiftslip/shared/types';
 import { readUpload } from '../../attachments/utils';
-import { B2Repository, FileRepository } from '../repositories';
+import FileStorageService from '../../storage/services/file-storage.service';
+import { FileRepository } from '../repositories';
 import type { FileUploadInput } from '../types';
 import { storageKey } from '../utils';
 
@@ -18,16 +19,16 @@ const toFailure = (error: unknown) => ({
 });
 
 /**
- * The optional B2 file store for future features. The existing form
- * attachments still go through `AttachmentService` / Supabase Storage — this
- * service shares nothing with them except the upload validator.
+ * The optional B2 file store for future features. Routed through the unified
+ * `FileStorageService` so the storage layer is a single gateway. Every file
+ * in this module is hard-coded to the 'b2' backend.
  *
  * Uploads are relayed by the API, so the same magic-byte check as an
  * attachment runs before anything is stored. Downloads are short-lived
  * presigned GET URLs, handed out only after an owner check.
  */
 class FileService extends BaseService<'files', FileRepository> {
-  private readonly storage = new B2Repository();
+  private readonly storage = FileStorageService;
 
   constructor() {
     super(new FileRepository());
@@ -39,7 +40,6 @@ class FileService extends BaseService<'files', FileRepository> {
   ): Promise<ServiceResponse<StoredFile>> {
     let key = '';
     try {
-      this.storage.assertConfigured();
       // Decodes the bytes, confirms the real type from them, and refuses a
       // misleading filename — the exact gate the attachments use.
       const { buffer, contentType, name } = readUpload(input);
@@ -58,7 +58,7 @@ class FileService extends BaseService<'files', FileRepository> {
       }
 
       key = storageKey(contentType, name);
-      await this.storage.upload(key, buffer, contentType);
+      await this.storage.upload(key, buffer, contentType, 'b2');
 
       try {
         await this.repository.create({
@@ -72,7 +72,7 @@ class FileService extends BaseService<'files', FileRepository> {
         });
       } catch (error) {
         // A row that failed to save must not leave an orphan object behind.
-        await this.storage.removeQuietly([key]);
+        await this.storage.removeRefQuietly({ key, backend: 'b2' });
         throw error;
       }
 
@@ -88,10 +88,15 @@ class FileService extends BaseService<'files', FileRepository> {
     key: string,
   ): Promise<ServiceResponse<FileLink>> {
     try {
-      this.storage.assertConfigured();
       const row = await this.repository.findOne({ key, owner_id: userId });
       if (!row) throw new ErrorResponse('NOT_FOUND_ERROR', 'File not found.');
-      const url = await this.storage.signedGetUrl(row.key);
+      const url = await this.storage.signedUrl(row.key, 'b2');
+      if (!url) {
+        throw new ErrorResponse(
+          'GENERAL_ERROR',
+          'Could not create a download link.',
+        );
+      }
       return {
         success: true,
         document: { url, name: row.original_name, mimeType: row.mime_type },
@@ -106,13 +111,12 @@ class FileService extends BaseService<'files', FileRepository> {
     key: string,
   ): Promise<ServiceResponse<StoredFile>> {
     try {
-      this.storage.assertConfigured();
       const row = await this.repository.findOne({ key, owner_id: user.id });
       if (!row) throw new ErrorResponse('NOT_FOUND_ERROR', 'File not found.');
       // Row first, bytes second: a leftover object is a harmless orphan, while
       // a row pointing at a missing object would show a broken file.
       await this.repository.delete({ id: row.id, owner_id: user.id });
-      await this.storage.removeQuietly([row.key]);
+      await this.storage.removeRefQuietly({ key: row.key, backend: 'b2' });
       return {
         success: true,
         document: { key: row.key, name: row.original_name },
@@ -128,12 +132,12 @@ class FileService extends BaseService<'files', FileRepository> {
    * thrown, because the account is already gone when this runs.
    */
   async removeUserFiles(userId: string): Promise<void> {
-    // Nothing to do (and no table round-trip) while the backend is switched off.
-    if (!config.storage.b2.configured) return;
     try {
       const rows = await this.repository.findAll({ owner_id: userId });
       if (rows.length === 0) return;
-      await this.storage.removeQuietly(rows.map((row) => row.key));
+      await this.storage.removeRefsQuietly(
+        rows.map((row) => ({ key: row.key, backend: 'b2' as const })),
+      );
       await this.repository.deleteMany({ owner_id: userId });
     } catch (error) {
       logger.error(

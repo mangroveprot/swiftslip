@@ -24,6 +24,11 @@ const RETENTION_DAYS = 30;
 const FORM_ACTIONS = [
   'ob.created',
   'ob.deleted',
+  'ob.submitted',
+  'ob.hr_approved',
+  'ob.hr_rejected',
+  'ob.departure_signed',
+  'ob.arrival_signed',
   'loa.created',
   'loa.deleted',
   'cos.created',

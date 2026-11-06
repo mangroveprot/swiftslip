@@ -20,7 +20,7 @@ export function sidebarRowClass({
     disabled
       ? "cursor-not-allowed text-muted-foreground/70"
       : active
-        ? "bg-accent-tint font-medium text-accent-tint-foreground"
+        ? "bg-accent-tint font-medium text-accent-tint-foreground dark:bg-white/10 dark:text-foreground"
         : "text-foreground/75 hover:bg-card/60 hover:text-foreground",
   );
 }

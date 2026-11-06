@@ -23,7 +23,8 @@ const USER_PHOTO_LIMIT = 100;
  * `signature`. Both are large data URLs, and a full-table scan that pulls them
  * only to read a name wastes bandwidth and memory on every admin page load.
  */
-const PROFILE_NAME_COLUMNS = 'access_code_id,full_name,area,department,designation';
+const PROFILE_NAME_COLUMNS =
+  'access_code_id,full_name,area,department,designation';
 
 /** One row in user management: the account joined with its profile. */
 export type AccountListItem = {

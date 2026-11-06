@@ -60,6 +60,12 @@ const ErrorCodes = {
     message: 'This item is still in use.',
     statusCode: 409,
   },
+  FORM_LOCKED: {
+    code: 'FORM_LOCKED',
+    message:
+      'This form has been sent to HR and can no longer be edited. Ask HR to reject it if it needs changes.',
+    statusCode: 409,
+  },
   REFERENCED_ERROR: {
     code: 'REFERENCED_ERROR',
     message:

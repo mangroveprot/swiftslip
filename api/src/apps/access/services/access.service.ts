@@ -1,5 +1,6 @@
 import { BaseService } from '../../../core/engine';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
+import { HR_DEPARTMENT } from '@swiftslip/shared/hr';
 import { normalizePosition } from '@swiftslip/shared/org';
 import {
   GRANTABLE_APP_KEYS,
@@ -10,6 +11,7 @@ import {
   type RuleScope,
   type SessionUser,
 } from '@swiftslip/shared/types';
+import { OrgPositionRepository } from '../../org-options/repositories';
 import { UserRepository } from '../../users/repositories';
 import { ProfileRepository } from '../../profile/repositories';
 import { ActivityLogService } from '../../activity-log/services';
@@ -24,7 +26,13 @@ import {
   type Rule,
 } from '../utils';
 
-const EVERY_APP: AppKey[] = ['admin', 'swiftslip', 'inventory', 'ticketing'];
+const EVERY_APP: AppKey[] = [
+  'admin',
+  'swiftslip',
+  'inventory',
+  'ticketing',
+  'hr',
+];
 
 export type OverviewPerson = {
   id: string;
@@ -58,6 +66,7 @@ class AccessService extends BaseService<
 > {
   private users = new UserRepository();
   private profiles = new ProfileRepository();
+  private positions = new OrgPositionRepository();
 
   constructor() {
     super(new AccessRuleRepository());
@@ -73,9 +82,13 @@ class AccessService extends BaseService<
   async resolveApps(user: SessionUser): Promise<AppKey[]> {
     if (user.role === 'admin') return EVERY_APP;
 
-    const [rules, profile] = await Promise.all([
+    const [rules, profile, positions] = await Promise.all([
       this.repository.findAll(),
       this.profiles.findOne({ access_code_id: user.id }),
+      this.positions.findAll(
+        { department: HR_DEPARTMENT },
+        { select: 'value' },
+      ),
     ]);
     const subject: AccessSubject = {
       role: user.role,
@@ -83,9 +96,30 @@ class AccessService extends BaseService<
       department: profile?.department ?? '',
       position: profile?.designation ?? '',
     };
-    return GRANTABLE_APP_KEYS.filter(
-      (app) => resolveAccess(app, subject, rules).allowed,
+    const autoApps = this.autoApps(
+      subject,
+      positions.map((p) => p.value),
     );
+    return GRANTABLE_APP_KEYS.filter(
+      (app) => resolveAccess(app, subject, rules, autoApps).allowed,
+    );
+  }
+
+  /**
+   * Grants derived from the profile rather than a rule. HR is the only one
+   * today: the department's own accounts, and anyone holding a position filed
+   * under it, get the HR app without an administrator adding a rule per person.
+   * An explicit rule still wins in both directions (see `resolveAccess`).
+   */
+  private autoApps(
+    subject: AccessSubject,
+    hrPositions: string[],
+  ): GrantableAppKey[] {
+    const inDepartment = subject.department.trim() === HR_DEPARTMENT;
+    const byPosition = hrPositions.includes(
+      normalizePosition(subject.position),
+    );
+    return inDepartment || byPosition ? ['hr'] : [];
   }
 
   /**
@@ -233,15 +267,23 @@ class AccessService extends BaseService<
    */
   async overview(): Promise<ServiceResponse<AccessOverview>> {
     try {
-      const [accounts, profileRows, rules] = await Promise.all([
+      const [accounts, profileRows, rules, positions] = await Promise.all([
         this.users.findAll(),
         // Names and org fields only — `*` would pull every base64 photo and
         // signature on each load of App access, and nothing here reads them.
-        this.profiles.findAll({}, {
-          select: 'access_code_id,full_name,department,designation',
-        }),
+        this.profiles.findAll(
+          {},
+          {
+            select: 'access_code_id,full_name,department,designation',
+          },
+        ),
         this.repository.findAll(),
+        this.positions.findAll(
+          { department: HR_DEPARTMENT },
+          { select: 'value' },
+        ),
       ]);
+      const hrPositions = positions.map((position) => position.value);
 
       const visibleRules: OverviewRule[] = rules
         .filter((rule) => !isAppDefaultRule(rule))
@@ -273,7 +315,12 @@ class AccessService extends BaseService<
           position: subject.position,
           isAdmin: u.role === 'admin',
           apps: GRANTABLE_APP_KEYS.map((app) =>
-            resolveAccess(app, subject, rules),
+            resolveAccess(
+              app,
+              subject,
+              rules,
+              this.autoApps(subject, hrPositions),
+            ),
           ),
         };
       });

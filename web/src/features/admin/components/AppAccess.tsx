@@ -37,6 +37,7 @@ const APP_LABELS: Record<GrantableAppKey, string> = {
   swiftslip: "SwiftSlip",
   inventory: "Inventory",
   ticketing: "Ticketing",
+  hr: "HR Approvals",
 };
 
 const SCOPE_LABELS: Record<RuleScope, string> = {

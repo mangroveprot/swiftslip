@@ -6,11 +6,11 @@ export type AttachmentTable =
 
 /**
  * Rows that carry the extra `other_attachments` list (the "supporting
- * documents" card). Only LOA and OT have it — NOT COS, OB or DTR records.
+ * documents" card). LOA, OT and DTR records have it — NOT COS or OB.
  */
 export type OtherAttachmentTable = Extract<
   AttachmentTable,
-  'loa_forms' | 'ot_forms'
+  'loa_forms' | 'ot_forms' | 'dtr_records'
 >;
 
 /** What an attachment route is attached to; set by `attachmentTarget`. */

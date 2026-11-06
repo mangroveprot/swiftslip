@@ -23,11 +23,17 @@
  * Everything is loaded lazily: jspdf + html2canvas-pro are ~400 kB and only
  * matter the moment someone actually exports, so neither is in the main bundle.
  *
- * Attachments are deliberately NOT included. The browser prints an embedded
- * PDF's own pages, which a canvas capture cannot reproduce (Chrome shows the
- * viewer, not the document). "Print" keeps that behaviour — it still prints the
- * sheet plus the attached file exactly as before — while "Save as PDF" always
- * saves the form itself, which is what the button promises.
+ * Attachments ARE included — after the form, one page per stored file:
+ *
+ *   – An image (the usual viber screenshot or photo of a slip) is drawn on its
+ *     own A4 page, scaled to fit and never upscaled past its own resolution.
+ *   – A PDF attachment is merged page-for-page with pdf-lib, so the document
+ *     keeps its real text and stays selectable. jsPDF cannot import a PDF, and
+ *     a canvas capture of the on-screen `<iframe>` only ever sees Chrome's
+ *     viewer chrome — which is why this is a merge rather than a screenshot.
+ *
+ * A file that will not load (expired link, offline) never fails the export: the
+ * form is still saved, and the toast names what was left out.
  */
 import { toast } from "@/lib/toast";
 
@@ -138,6 +144,19 @@ export interface SavePdfOptions {
   loadingMessage?: string;
   /** Shown when the file is on disk. */
   successMessage?: string;
+  /** The form's stored files, appended after the form's own pages. */
+  attachments?: readonly PdfAttachment[];
+}
+
+/**
+ * One stored file to append. The editor supplies the signed URL it already
+ * resolved for the on-screen card, so an export never mints a second link.
+ */
+export interface PdfAttachment {
+  /** Used in the warning when this file cannot be included. */
+  name: string;
+  /** Signed download URL. */
+  url: string;
 }
 
 /* ------------------------------------------------------------------ paper - */
@@ -361,12 +380,81 @@ function pickBreak(candidates: BreakCandidate[], top: number, limit: number): nu
 
 /* -------------------------------------------------------------------- pdf - */
 
-/** Lay every page image on its own A4 sheet, inside the print margins. */
-async function imagesToPdf(
+/** Longest edge an image attachment keeps once flattened into the PDF. */
+const ATTACHMENT_MAX_EDGE = 2400;
+
+const IMAGE_ATTACHMENT_RE = /\.(png|jpe?g|webp|gif|bmp|avif)$/i;
+const PDF_ATTACHMENT_RE = /\.pdf$/i;
+
+interface AttachmentImage {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+/** Download an image attachment and flatten it to a JPEG the PDF can hold. */
+async function loadAttachmentImage(url: string): Promise<AttachmentImage> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  const blob = await response.blob();
+  const bitmap = await decodeBlob(blob);
+  const scale = Math.min(1, ATTACHMENT_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("This browser can't prepare images.");
+  // JPEG has no alpha: a transparent PNG would otherwise come out black.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap as CanvasImageSource, 0, 0, canvas.width, canvas.height);
+
+  return {
+    dataUrl: canvas.toDataURL("image/jpeg", 0.92),
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+/** Decode a downloaded blob, with the `<img>` fallback older Safari needs. */
+async function decodeBlob(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      return await createImageBitmap(blob);
+    } catch {
+      // Fall through to the element path.
+    }
+  }
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("The image could not be read."));
+      image.src = objectUrl;
+    });
+    return image;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+/**
+ * Lay every form page on its own A4 sheet, then one page per attachment.
+ *
+ * Attachments that cannot be drawn (a docx, a link that expired, a password-
+ * protected PDF) are named in `skipped` rather than failing the export — losing
+ * the whole file because one screenshot 404'd would be the worse outcome.
+ */
+async function buildPdf(
   pages: readonly HTMLCanvasElement[],
   title: string,
   paper: Paper,
-): Promise<Blob> {
+  attachments: readonly PdfAttachment[],
+): Promise<{ blob: Blob; skipped: string[] }> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({
     orientation: "portrait",
@@ -398,7 +486,80 @@ async function imagesToPdf(
     );
   });
 
-  return pdf.output("blob");
+  const skipped: string[] = [];
+  const pdfs: { name: string; bytes: ArrayBuffer }[] = [];
+
+  for (const attachment of attachments) {
+    try {
+      if (PDF_ATTACHMENT_RE.test(attachment.name)) {
+        // Merged after the images so the final document keeps page order.
+        const response = await fetch(attachment.url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        pdfs.push({ name: attachment.name, bytes: await response.arrayBuffer() });
+        continue;
+      }
+      if (!IMAGE_ATTACHMENT_RE.test(attachment.name)) {
+        // docx / xlsx / zip — there is nothing to draw on a page.
+        skipped.push(attachment.name);
+        continue;
+      }
+
+      const image = await loadAttachmentImage(attachment.url);
+      pdf.addPage("a4", "portrait");
+      const ratio = Math.min(box.widthPt / image.width, box.heightPt / image.height);
+      const width = image.width * ratio;
+      const height = image.height * ratio;
+      pdf.addImage(
+        image.dataUrl,
+        "JPEG",
+        box.xPt + (box.widthPt - width) / 2,
+        box.yPt + (box.heightPt - height) / 2,
+        width,
+        height,
+        undefined,
+        "FAST",
+      );
+    } catch {
+      skipped.push(attachment.name);
+    }
+  }
+
+  // pdf-lib hands back a differently-parameterised view than jsPDF does, so the
+  // buffer is typed loosely and narrowed once, at the Blob boundary.
+  let bytes: Uint8Array<ArrayBufferLike> = new Uint8Array(pdf.output("arraybuffer"));
+  if (pdfs.length > 0) bytes = await mergePdfs(bytes, pdfs, skipped);
+
+  return {
+    blob: new Blob([bytes as unknown as BlobPart], { type: "application/pdf" }),
+    skipped,
+  };
+}
+
+/**
+ * Append stored PDFs page-for-page. jsPDF cannot import a PDF, so the finished
+ * document is handed to pdf-lib, which copies real pages rather than pictures
+ * of them — text stays selectable and the attachment keeps its own pagination.
+ */
+async function mergePdfs(
+  base: Uint8Array,
+  files: readonly { name: string; bytes: ArrayBuffer }[],
+  skipped: string[],
+): Promise<Uint8Array> {
+  const { PDFDocument } = await import("pdf-lib");
+  const merged = await PDFDocument.load(base);
+
+  for (const file of files) {
+    try {
+      const source = await PDFDocument.load(file.bytes);
+      const copied = await merged.copyPages(source, source.getPageIndices());
+      for (const page of copied) merged.addPage(page);
+    } catch {
+      // Encrypted or malformed — keep the rest of the export.
+      skipped.push(file.name);
+    }
+  }
+
+  return merged.save();
 }
 
 /* ------------------------------------------------------------------- api - */
@@ -423,8 +584,13 @@ export async function saveElementAsPdf({
   fileName,
   loadingMessage = "Preparing PDF…",
   successMessage = "PDF downloaded",
+  attachments = [],
 }: SavePdfOptions): Promise<void> {
-  const toastId = toast.loading(loadingMessage);
+  const toastId = toast.loading(
+    attachments.length > 0
+      ? `${loadingMessage.replace(/…$/, "")} and ${attachments.length === 1 ? "the attachment" : `${attachments.length} attachments`}…`
+      : loadingMessage,
+  );
   try {
     const paper = paperFor(element);
     const { canvas, root, dispose } = await renderToCanvas(element, paper);
@@ -436,11 +602,20 @@ export async function saveElementAsPdf({
     }
     if (!pages.length) throw new Error("Nothing to export yet.");
 
-    const blob = await imagesToPdf(pages, fileName, paper);
+    const { blob, skipped } = await buildPdf(pages, fileName, paper, attachments);
     downloadBlob(blob, `${stripExtension(fileName)}.pdf`);
+
     toast.success(pages.length > 1 ? `${successMessage} · ${pages.length} pages` : successMessage, {
       id: toastId,
     });
+    if (skipped.length > 0) {
+      // The form itself is safe on disk; say plainly what did not make it in.
+      toast.warning(
+        skipped.length === 1
+          ? `${skipped[0]} could not be added to the PDF.`
+          : `${skipped.length} attachments could not be added to the PDF.`,
+      );
+    }
   } catch (error) {
     toast.error(error instanceof Error ? error.message : "Could not save the PDF.", {
       id: toastId,
@@ -450,10 +625,15 @@ export async function saveElementAsPdf({
 }
 
 /**
- * The one-liner every editor uses: find the sheet by DOM id and save it.
+ * The one-liner every editor uses: find the sheet by DOM id and save it, with
+ * the form's stored files appended.
  * Reports its own errors as a toast, so a click handler needs no try/catch.
  */
-export async function savePdfFrom(sheetId: string, fileName: string): Promise<void> {
+export async function savePdfFrom(
+  sheetId: string,
+  fileName: string,
+  attachments: readonly PdfAttachment[] = [],
+): Promise<void> {
   const element = document.getElementById(sheetId);
   if (!element) {
     toast.error("The preview is not ready yet. Try again in a moment.");
@@ -462,6 +642,7 @@ export async function savePdfFrom(sheetId: string, fileName: string): Promise<vo
   await saveElementAsPdf({
     element,
     fileName,
+    attachments,
     loadingMessage: "Preparing PDF…",
     successMessage: "PDF downloaded",
   }).catch(() => undefined);

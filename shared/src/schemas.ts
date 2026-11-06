@@ -5,7 +5,7 @@
 import { z } from "zod";
 
 import { isPeriod } from "./period";
-import { GRANTABLE_APP_KEYS, RULE_SCOPES } from "./types";
+import { GRANTABLE_APP_KEYS, RULE_SCOPES, STORAGE_BACKENDS } from "./types";
 import type {
   CosForm,
   CosSchedule,
@@ -15,6 +15,7 @@ import type {
   OtEntry,
   OtForm,
   Period,
+  StorageBackend,
 } from "./types";
 
 /**
@@ -179,6 +180,35 @@ export const saveObFormInput = z.object({
   id,
   form: obFormSchema,
   entries: z.array(obEntrySchema).max(50),
+});
+
+/**
+ * `POST /ob/:id/submit` — the employee hands the form to HR. No body: the id
+ * comes from the URL and the state transition is the whole request.
+ */
+export const submitObInput = idInput;
+
+/** `POST /hr/ob/:id/reject` — HR bounces it back. The reason is required. */
+export const rejectObInput = z.object({
+  reason: z.string().trim().min(1, "Tell the employee why this was rejected.").max(1000),
+});
+
+/**
+ * `POST /hr/ob/:id/sign-departure` — HR signs the employee out. `residence`
+ * and `destination` come from the mockup's departure card; the itinerary's
+ * first line is only a default the HR reviewer can overwrite.
+ */
+export const signDepartureInput = z.object({
+  date: z.string().trim().min(1, "Date is required.").max(60),
+  time: z.string().trim().min(1, "Time is required.").max(60),
+  residence: z.string().trim().max(200).default(""),
+  destination: z.string().trim().max(300).default(""),
+});
+
+/** `POST /hr/ob/:id/sign-arrival` — HR signs the employee back in. */
+export const signArrivalInput = z.object({
+  date: z.string().trim().min(1, "Date is required.").max(60),
+  time: z.string().trim().min(1, "Time is required.").max(60),
 });
 
 export const createLoaFormInput = z.object({
@@ -641,6 +671,12 @@ export const userPhotosInput = z.object({
 
 // ── App access rules (admin) ─────────────────────────────────────────────────
 
+/**
+ * `POST /notifications/read` — clears the caller's unread badge. No body: the
+ * recipient is always the signed-in account, never a passed-in id.
+ */
+export const markNotificationsReadInput = z.object({});
+
 export const accessRuleInput = z.object({
   app_key: z.enum(GRANTABLE_APP_KEYS),
   scope: z.enum(RULE_SCOPES),
@@ -782,8 +818,8 @@ export type CleanupRunSummary = {
 export const STORAGE_RULES = ["supabase-first", "b2-only", "supabase-only"] as const;
 export const storageRuleSchema = z.enum(STORAGE_RULES);
 
-/** The two possible backends. */
-export const STORAGE_BACKENDS = ["supabase", "b2"] as const;
+/** The two possible backends. Re-exported from `types.ts` — see the note there. */
+export { STORAGE_BACKENDS };
 export const storageBackendSchema = z.enum(STORAGE_BACKENDS);
 
 /** Input for saving storage settings (rule + free‑space threshold). */
@@ -803,8 +839,8 @@ export type StorageSettingsDoc = StorageSettings & {
   updatedByName: string | null;
 };
 
-/** Which backend a stored file lives on. */
-export type StorageBackend = z.infer<typeof storageBackendSchema>;
+/** Which backend a stored file lives on. Re-exported from `types.ts`. */
+export type { StorageBackend };
 
 /** References from the database, split by backend and kind. */
 export type StorageReference = {

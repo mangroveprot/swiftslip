@@ -3,8 +3,9 @@ import type { RetentionFormType } from '@swiftslip/shared/schemas';
 /**
  * The five form tables the cleanup can walk, keyed by the checkbox the admin
  * ticks in Settings → Data retention. Not every table has the same columns
- * (`dtr_records` has no approval flag, LOA and OT carry `other_attachments`),
- * so the service treats the rows as the loose `ExpiredRow` shape below.
+ * (`dtr_records` has no approval flag; LOA, OT and DTR records carry
+ * `other_attachments`), so the service treats the rows as the loose
+ * `ExpiredRow` shape below.
  */
 export const RETENTION_TABLES = {
   dtr: 'dtr_records',
@@ -16,17 +17,20 @@ export const RETENTION_TABLES = {
 
 export type RetentionTable = (typeof RETENTION_TABLES)[RetentionFormType];
 
-/** Tables with the extra supporting-files jsonb list (LOA and OT). */
-export const OTHER_FILES_TABLES: readonly RetentionFormType[] = ['loa', 'ot'];
+/** Tables with the extra supporting-files jsonb list (LOA, OT and DTR). */
+export const OTHER_FILES_TABLES: readonly RetentionFormType[] = [
+  'dtr',
+  'loa',
+  'ot',
+];
 
 /** What the cleanup selects of an expired row — only what the rules need. */
 export const SELECTS: Record<RetentionFormType, string> = {
-  // DTRs are certified, not approved: no approval columns exist here.
-  dtr: 'id,attachment_path,name,emp_no',
-  ob: 'id,attachment_path,attachment_approved,employee_name,date_filed',
-  loa: 'id,attachment_path,attachment_approved,other_attachments,employee_name,date_filed',
-  cos: 'id,attachment_path,attachment_approved,employee_name,date_filed',
-  ot: 'id,attachment_path,attachment_approved,other_attachments,employee_name,date_filed',
+  dtr: 'id,attachment_path,attachment_backend,other_attachments,name,emp_no',
+  ob: 'id,attachment_path,attachment_backend,attachment_approved,employee_name,date_filed',
+  loa: 'id,attachment_path,attachment_backend,attachment_approved,other_attachments,employee_name,date_filed',
+  cos: 'id,attachment_path,attachment_backend,attachment_approved,employee_name,date_filed',
+  ot: 'id,attachment_path,attachment_backend,attachment_approved,other_attachments,employee_name,date_filed',
 };
 
 /**
@@ -36,6 +40,7 @@ export const SELECTS: Record<RetentionFormType, string> = {
 export type ExpiredRow = {
   id: string;
   attachment_path?: string | null;
+  attachment_backend?: string | null;
   attachment_approved?: boolean;
   other_attachments?: unknown;
   /** Non-DTR forms. */

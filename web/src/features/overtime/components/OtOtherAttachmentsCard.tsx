@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { removeOtOtherAttachment, uploadOtOtherAttachment } from "@/api/ot.functions";
 import { AttachmentUploadDialog } from "@/components/common/AttachmentUploadDialog";
+import { AttachmentViewerDialog } from "@/components/common/AttachmentViewerDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { downloadFromUrl, IMAGE_RE } from "@/lib/attachment-file";
 import {
@@ -54,6 +55,8 @@ export function OtOtherAttachmentsCard({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState<OtherFile | null>(null);
+  /** The file open in the modal viewer — this card never opens a new tab. */
+  const [viewing, setViewing] = useState<{ file: OtherFile; url: string } | null>(null);
   const { data: urls, isLoading: signing } = useQuery({
     ...otOtherUrlsQueryOptions(id),
     enabled: others.length > 0,
@@ -131,7 +134,8 @@ export function OtOtherAttachmentsCard({
             {others.map((file) => {
               const url = urls?.[file.path];
               // Previewed exactly like the approval attachment: an image shows
-              // inline under its name, anything else is opened from the row.
+              // inline under its name and opens the modal viewer on click, and
+              // so does the open button. Nothing opens in a new browser tab.
               // No print variants — this card is screen-only.
               const isImage = IMAGE_RE.test(file.name);
               return (
@@ -141,12 +145,20 @@ export function OtOtherAttachmentsCard({
                       {file.name}
                     </p>
                     {isImage && url ? (
-                      <img
-                        src={url}
-                        alt={file.name}
-                        loading="lazy"
-                        className="mt-1.5 max-h-28 w-auto rounded border"
-                      />
+                      <button
+                        type="button"
+                        className="mt-1.5 block cursor-zoom-in text-left"
+                        aria-label={`Open ${file.name}`}
+                        title="Open the full attachment"
+                        onClick={() => setViewing({ file, url })}
+                      >
+                        <img
+                          src={url}
+                          alt={file.name}
+                          loading="lazy"
+                          className="max-h-28 w-auto rounded border"
+                        />
+                      </button>
                     ) : signing ? (
                       <p className="text-xs text-muted-foreground">Preparing link…</p>
                     ) : null}
@@ -163,16 +175,15 @@ export function OtOtherAttachmentsCard({
                     </button>
                   ) : null}
                   {url ? (
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
                       className="btn btn-outline size-7 shrink-0 p-0"
                       aria-label={`Open ${file.name}`}
                       title="Open attachment"
+                      onClick={() => setViewing({ file, url })}
                     >
                       <ExternalLink className="size-3.5" aria-hidden="true" />
-                    </a>
+                    </button>
                   ) : null}
                   {canEdit ? (
                     <button
@@ -216,6 +227,15 @@ export function OtOtherAttachmentsCard({
         onClose={() => setUploading(false)}
         onUpload={uploadOne}
         onUploaded={onUploaded}
+      />
+
+      {/* The viewer: one file at a time, read on screen — never a new tab. */}
+      <AttachmentViewerDialog
+        open={Boolean(viewing)}
+        title="Other attachments"
+        fileName={viewing?.file.name ?? ""}
+        url={viewing?.url ?? null}
+        onClose={() => setViewing(null)}
       />
 
       <ConfirmDialog

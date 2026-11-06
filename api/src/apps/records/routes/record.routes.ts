@@ -30,7 +30,7 @@ router.delete(
   RecordController.remove,
 );
 
-// POST/GET/DELETE /:id/attachment
+// POST/GET/DELETE /:id/attachment and /:id/other-attachments
 router.use(
   buildAttachmentRoutes(
     {
@@ -39,7 +39,7 @@ router.use(
       otherEntity: 'Record',
       logLabel: 'Record',
     },
-    { withOthers: false },
+    { withOthers: true },
   ),
 );
 

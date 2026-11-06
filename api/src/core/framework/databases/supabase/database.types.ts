@@ -180,6 +180,7 @@ export type Database = {
       dtr_records: {
         Row: {
           area: string;
+          attachment_backend: string;
           attachment_name: string | null;
           attachment_path: string | null;
           certified_by: string;
@@ -190,6 +191,7 @@ export type Database = {
           id: string;
           month: number;
           name: string;
+          other_attachments: Json;
           owner_id: string | null;
           period: string;
           updated_at: string;
@@ -197,6 +199,7 @@ export type Database = {
         };
         Insert: {
           area?: string;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           certified_by?: string;
@@ -207,6 +210,7 @@ export type Database = {
           id?: string;
           month?: number;
           name?: string;
+          other_attachments?: Json;
           owner_id?: string | null;
           period?: string;
           updated_at?: string;
@@ -214,6 +218,7 @@ export type Database = {
         };
         Update: {
           area?: string;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           certified_by?: string;
@@ -224,6 +229,7 @@ export type Database = {
           id?: string;
           month?: number;
           name?: string;
+          other_attachments?: Json;
           owner_id?: string | null;
           period?: string;
           updated_at?: string;
@@ -291,54 +297,111 @@ export type Database = {
           approved_by: string;
           approved_via_viber: boolean;
           attachment_approved: boolean;
+          attachment_backend: string;
           attachment_name: string | null;
           attachment_path: string | null;
+          arrival_date: string;
+          arrival_time: string;
+          arrival_signed_at: string | null;
+          arrival_signed_by: string | null;
           created_at: string;
           date_filed: string;
           date_of_ob: string;
+          departure_date: string;
+          departure_signed_at: string | null;
+          departure_signed_by: string | null;
+          departure_time: string;
           department: string;
+          destination: string;
           employee_name: string;
           employee_signature: string;
+          hr_approved_at: string | null;
+          hr_approved_by: string | null;
+          hr_reject_reason: string;
+          hr_rejected_at: string | null;
+          hr_rejected_by: string | null;
+          hr_status: string;
           id: string;
           id_number: string;
           owner_id: string | null;
           position: string;
+          residence: string;
+          submitted_at: string | null;
+          supervisor_approved_at: string | null;
           updated_at: string;
         };
         Insert: {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
+          arrival_date?: string;
+          arrival_time?: string;
+          arrival_signed_at?: string | null;
+          arrival_signed_by?: string | null;
           created_at?: string;
           date_filed?: string;
           date_of_ob?: string;
+          departure_date?: string;
+          departure_signed_at?: string | null;
+          departure_signed_by?: string | null;
+          departure_time?: string;
           department?: string;
+          destination?: string;
           employee_name?: string;
           employee_signature?: string;
+          hr_approved_at?: string | null;
+          hr_approved_by?: string | null;
+          hr_reject_reason?: string;
+          hr_rejected_at?: string | null;
+          hr_rejected_by?: string | null;
+          hr_status?: string;
           id?: string;
           id_number?: string;
           owner_id?: string | null;
           position?: string;
+          residence?: string;
+          submitted_at?: string | null;
+          supervisor_approved_at?: string | null;
           updated_at?: string;
         };
         Update: {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
+          arrival_date?: string;
+          arrival_time?: string;
+          arrival_signed_at?: string | null;
+          arrival_signed_by?: string | null;
           created_at?: string;
           date_filed?: string;
           date_of_ob?: string;
+          departure_date?: string;
+          departure_signed_at?: string | null;
+          departure_signed_by?: string | null;
+          departure_time?: string;
           department?: string;
+          destination?: string;
           employee_name?: string;
           employee_signature?: string;
+          hr_approved_at?: string | null;
+          hr_approved_by?: string | null;
+          hr_reject_reason?: string;
+          hr_rejected_at?: string | null;
+          hr_rejected_by?: string | null;
+          hr_status?: string;
           id?: string;
           id_number?: string;
           owner_id?: string | null;
           position?: string;
+          residence?: string;
+          submitted_at?: string | null;
+          supervisor_approved_at?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -350,6 +413,42 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          recipient_id: string;
+          actor_id: string | null;
+          kind: string;
+          title: string;
+          body: string;
+          link: string;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          recipient_id: string;
+          actor_id?: string | null;
+          kind: string;
+          title: string;
+          body: string;
+          link: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          recipient_id?: string;
+          actor_id?: string | null;
+          kind?: string;
+          title?: string;
+          body?: string;
+          link?: string;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
       };
       ob_entries: {
         Row: {
@@ -397,6 +496,7 @@ export type Database = {
           approved_by: string;
           approved_via_viber: boolean;
           attachment_approved: boolean;
+          attachment_backend: string;
           attachment_name: string | null;
           attachment_path: string | null;
           created_at: string;
@@ -423,6 +523,7 @@ export type Database = {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           created_at?: string;
@@ -449,6 +550,7 @@ export type Database = {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           created_at?: string;
@@ -486,6 +588,7 @@ export type Database = {
           approved_by: string;
           approved_via_viber: boolean;
           attachment_approved: boolean;
+          attachment_backend: string;
           attachment_name: string | null;
           attachment_path: string | null;
           change_type: string;
@@ -507,6 +610,7 @@ export type Database = {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           change_type?: string;
@@ -528,6 +632,7 @@ export type Database = {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           change_type?: string;
@@ -607,6 +712,7 @@ export type Database = {
           approved_by: string;
           approved_via_viber: boolean;
           attachment_approved: boolean;
+          attachment_backend: string;
           attachment_name: string | null;
           attachment_path: string | null;
           created_at: string;
@@ -628,6 +734,7 @@ export type Database = {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           created_at?: string;
@@ -649,6 +756,7 @@ export type Database = {
           approved_by?: string;
           approved_via_viber?: boolean;
           attachment_approved?: boolean;
+          attachment_backend?: string;
           attachment_name?: string | null;
           attachment_path?: string | null;
           created_at?: string;

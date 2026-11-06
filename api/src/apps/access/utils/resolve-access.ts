@@ -92,11 +92,17 @@ export type AccessSubject = {
 /**
  * The single source of truth for "does this subject get this app". The
  * session resolver, the route guards and the admin overview all go through it.
+ *
+ * `autoApps` are extra grants the caller derives from the profile (e.g. HR
+ * department membership). They sit after every explicit rule and before the
+ * app's starting point: an admin who denies `hr` to a department still wins,
+ * but nobody has to remember to grant the HR team its own app.
  */
 export function resolveAccess(
   app: GrantableAppKey,
   subject: AccessSubject,
   rules: Rule[],
+  autoApps: readonly GrantableAppKey[] = [],
 ): AccessOutcome {
   if (subject.role === 'admin') {
     return {
@@ -135,6 +141,15 @@ export function resolveAccess(
         ruleId: match.id ?? null,
       };
     }
+  }
+  if (autoApps.includes(app)) {
+    return {
+      admin: false,
+      allowed: true,
+      byRule: false,
+      byScope: null,
+      ruleId: null,
+    };
   }
   return {
     admin: false,

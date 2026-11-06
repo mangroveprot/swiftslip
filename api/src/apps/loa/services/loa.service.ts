@@ -4,7 +4,11 @@ import {
   departmentForPosition,
   departmentWithLocation,
 } from '@swiftslip/shared/org';
-import type { LoaForm, SessionUser } from '@swiftslip/shared/types';
+import type {
+  LoaForm,
+  SessionUser,
+  StorageBackend,
+} from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
 import { AttachmentService, readOtherFiles } from '../../attachments';
 import { ProfileService } from '../../profile';
@@ -149,10 +153,21 @@ class LoaService extends BaseService<'loa_forms', LoaFormRepository> {
       if (!removed)
         throw new ErrorResponse('NOT_FOUND_ERROR', 'Form not found.');
       // Deleting the row must take its files with it (best effort).
-      await AttachmentService.removeFiles([
-        removed.attachment_path,
-        ...readOtherFiles(removed.other_attachments).map((file) => file.path),
-      ]);
+      const refs: { key: string; backend?: StorageBackend }[] = [];
+      if (removed.attachment_path) {
+        refs.push({
+          key: removed.attachment_path,
+          backend: (removed as Record<string, unknown>)
+            .attachment_backend as StorageBackend,
+        });
+      }
+      refs.push(
+        ...readOtherFiles(removed.other_attachments).map((file) => ({
+          key: file.path,
+          backend: file.backend,
+        })),
+      );
+      await AttachmentService.removeFiles(refs);
       if (!quiet) {
         await ActivityLogService.logBy(user, {
           action: 'loa.deleted',

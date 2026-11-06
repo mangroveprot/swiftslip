@@ -124,17 +124,16 @@ export function LoginForm() {
             <p
               id="signin-error"
               role="alert"
-              className="flex items-start gap-2.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3.5 py-3 text-[0.8125rem] leading-snug font-medium text-destructive"
+              className="flex items-start gap-2 mb-5 text-sm font-medium text-destructive"
             >
-              <AlertCircle className="mt-px size-4 shrink-0" aria-hidden="true" />
+              <AlertCircle className="mt-[2px] size-4 shrink-0" aria-hidden="true" />
               <span>{formError}</span>
             </p>
           ) : null}
-
           <div>
             <label
               htmlFor="id-number"
-              className="block text-[0.8125rem] font-medium text-foreground/80"
+              className={`block text-[0.8125rem] font-medium ${idInvalid ? "text-destructive" : "text-foreground/80"}`}
             >
               ID number
             </label>
@@ -160,16 +159,14 @@ export function LoginForm() {
               placeholder="2026-XXX"
               className={`mt-2 font-mono tabular-nums ${INPUT} ${idInvalid ? INPUT_BAD : INPUT_OK}`}
             />
-            {fieldErrors.idNumber ? (
-              <p id="id-number-error" className="mt-1.5 text-xs font-medium text-destructive">
-                {fieldErrors.idNumber}
-              </p>
-            ) : null}
           </div>
 
           <div>
             <div className="flex items-baseline justify-between gap-3">
-              <label htmlFor="password" className="text-[0.8125rem] font-medium text-foreground/80">
+              <label
+                htmlFor="password"
+                className={`text-[0.8125rem] font-medium ${passwordInvalid ? "text-destructive" : "text-foreground/80"}`}
+              >
                 Password
               </label>
               {capsLock ? (
@@ -215,11 +212,6 @@ export function LoginForm() {
                 )}
               </button>
             </div>
-            {fieldErrors.password ? (
-              <p id="password-error" className="mt-1.5 text-xs font-medium text-destructive">
-                {fieldErrors.password}
-              </p>
-            ) : null}
           </div>
 
           <button

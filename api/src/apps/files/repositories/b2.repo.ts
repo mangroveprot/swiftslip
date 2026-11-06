@@ -19,9 +19,9 @@ const toError = (error: unknown, action: string) =>
   );
 
 /**
- * Backblaze B2 through its S3-compatible API. This is the optional SECOND
- * storage backend for new features; the existing attachments stay on Supabase
- * Storage and never reach this repository.
+ * Backblaze B2 through its S3-compatible API. The optional SECOND storage
+ * backend: /api/files writes here, and form attachments land here too whenever
+ * the admin's rule picks B2 (see FileStorageService / StorageService.pickBackend).
  *
  * Only the backend holds the upload key. The browser uploads bytes to the API
  * (never straight to B2), and receives a short-lived presigned GET URL back —

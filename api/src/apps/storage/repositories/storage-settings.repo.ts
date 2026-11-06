@@ -11,8 +11,21 @@ export class StorageSettingsRepository extends BaseRepository<'storage_settings'
     super('storage_settings', { updatedAtColumn: 'updated_at' });
   }
 
-  /** The one row, or null when the table has not been seeded yet. */
+  /**
+   * The one row, or null when the table has not been seeded yet.
+   * Throws on any error *except* a missing table (42P01 / PGRST205), which
+   * returns null so the service can fall back to its defaults.
+   */
   async findSingle() {
-    return this.findOne({ id: true });
+    const { data, error } = await this.from()
+      .select('*')
+      .eq('id', true)
+      .maybeSingle();
+    if (error) {
+      // 42P01 = undefined table, PGRST205 = table not in schema cache
+      if (error.code === '42P01' || error.code === 'PGRST205') return null;
+      this.fail(error);
+    }
+    return data as ReturnType<BaseRepository<'storage_settings'>['findOne']>;
   }
 }

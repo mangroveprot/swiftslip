@@ -3,6 +3,8 @@ import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-quer
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
+  Download,
   FileDown,
   Loader2,
   Maximize2,
@@ -16,10 +18,17 @@ import { createRecord, saveRecord } from "@/api/records.functions";
 import { AiMascot } from "@/components/common/AiMascot";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { AttachmentCard } from "@/components/common/AttachmentCard";
+import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
 import { PageTitle } from "@/components/common/PageTitle";
 import { isMissingRow } from "@/lib/missing-row";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -27,6 +36,7 @@ import { DTR_TEMPLATE } from "@swiftslip/shared/dtr-template";
 import { fileToBase64 } from "@/lib/file";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { usePdfAttachment, usePdfOtherAttachments } from "@/lib/pdf-attachments";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import { MONTHS, daysForPeriod } from "@swiftslip/shared/period";
@@ -48,11 +58,12 @@ import {
   flushOnPageHide,
   type SaveStatus as AutoSaveStatus,
 } from "@/lib/auto-save";
-import { recordQueryOptions, recordsQueryOptions } from "../queries";
+import { recordQueryOptions, recordsQueryOptions, recordOtherUrlsQueryOptions } from "../queries";
 import { BiometricImportDialog } from "./BiometricImportDialog";
 import { DailyEntriesTable } from "./DailyEntriesTable";
 import { DtrPreview } from "./DtrPreview";
 import { RecordHeaderFields } from "./RecordHeaderFields";
+import { RecordOtherAttachmentsCard } from "./RecordOtherAttachmentsCard";
 
 type SaveStatus = "idle" | AutoSaveStatus;
 
@@ -65,15 +76,19 @@ function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
     .sort((a, b) => a.day - b.day);
 }
 
-/** Write a save into the query cache WITHOUT dropping the `attachment` sibling —
- *  a bare `{ record, entries }` write replaces the whole entry, so the file the
- *  card renders would vanish until the next refetch. */
+/** Write a save into the query cache WITHOUT dropping the `attachment` /
+ *  `others` siblings — a bare `{ record, entries }` write replaces the whole
+ *  entry, so the files the cards render would vanish until the next refetch.
+ *  When nothing is cached yet the write still has to be a complete
+ *  `RecordDetail`, hence the empty `others` seed. */
 function writeRecordCache(
   qc: QueryClient,
   id: string,
   next: { record: DtrHeader & { id: string }; entries: DtrEntry[] },
 ) {
-  qc.setQueryData(recordQueryOptions(id).queryKey, (prev) => (prev ? { ...prev, ...next } : next));
+  qc.setQueryData(recordQueryOptions(id).queryKey, (prev) =>
+    prev ? { ...prev, ...next } : { others: [], ...next },
+  );
 }
 
 /**
@@ -133,6 +148,22 @@ function RecordEditorBody({
   const profileQuery = useQuery(profileQueryOptions());
   const profile = profileQuery.data ?? null;
   const profileReady = profileQuery.data !== undefined || profileQuery.isError;
+
+  // The extra attachments, plus their signed links. The card in the form column
+  // lists them and the print pages below render them; both read this one query.
+  const others = data?.others ?? [];
+  const { data: otherUrls } = useQuery({
+    ...recordOtherUrlsQueryOptions(rowId ?? ""),
+    enabled: rowId !== null && others.length > 0,
+  });
+
+  // The exported PDF carries the same files the print path does — the approval
+  // attachment first, then every other attachment — after the form's own pages.
+  // These join the SAME signed-URL queries the cards above already resolved.
+  const pdfAttachments = [
+    ...usePdfAttachment("record", rowId ?? id, data?.attachment),
+    ...usePdfOtherAttachments("record", rowId ?? id, others),
+  ];
 
   const [header, setHeader] = useState<DtrHeader | null>(null);
   const [rows, setRows] = useState<Record<number, DtrEntry>>({});
@@ -431,22 +462,19 @@ function RecordEditorBody({
 
   return (
     <main className="flex min-h-0 flex-col px-4 py-3 md:px-5 md:py-4 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
-      <div className="no-print mb-3 flex shrink-0 flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
+      <header className="no-print mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
           <Link
             to="/records"
-            className="btn btn-outline mt-0.5 size-9 shrink-0 p-0"
-            aria-label="Back to time records"
-            title="Back to time records"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
+            Time Records
           </Link>
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Attendance
-            </p>
-            <PageTitle className="leading-tight">Daily Time Record</PageTitle>
-          </div>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            Attendance
+          </p>
+          <PageTitle className="leading-tight">Daily Time Record</PageTitle>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canEdit ? (
@@ -462,81 +490,96 @@ function RecordEditorBody({
                 <AiMascot size="xs" />
                 <span className="hidden sm:inline">Import from biometric record</span>
               </button>
-              <button
-                className="btn btn-primary"
-                disabled={busy}
-                aria-label={
-                  saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
-                }
-                title="Save your changes to this time record"
-                onClick={() => onSave()}
-              >
-                {saveStatus === "saving" ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                ) : saveStatus === "saved" ? (
-                  <Check className="size-4" aria-hidden="true" />
-                ) : (
-                  <SaveIcon className="size-4" aria-hidden="true" />
-                )}
-                <span className="hidden sm:inline">
-                  {saveStatus === "saving"
-                    ? "Saving…"
-                    : saveStatus === "saved"
-                      ? "Saved"
-                      : saveStatus === "error"
-                        ? "Save failed"
-                        : "Save"}
-                </span>
-              </button>
             </>
           ) : null}
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={busy}
-            aria-label="Save as PDF"
-            title="Download this time record as a PDF file"
-            onClick={() =>
-              void savePdfFrom(
-                "dtr-sheet",
-                pdfFileName(
-                  APP.name,
-                  header?.name || "record",
-                  header ? MONTHS[header.month - 1] : undefined,
-                  header?.year,
-                ),
-              )
-            }
-          >
-            <FileDown className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Save as PDF</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            aria-label="Print"
-            title="Open the print dialog (this also prints any attached file)"
-            onClick={() => printSheet()}
-          >
-            <Printer className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Print</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            disabled={busy}
-            aria-label="Download Word"
-            title="Download this time record as a Word (.doc) file"
-            onClick={() => download()}
-          >
-            <FileDown className="size-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Download Word</span>
-          </button>
+          {/* The three export actions live in one dropdown, the way every other
+              form editor does it. The biometric import stays outside as its own
+              button — it is a data action, not an export. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="btn btn-outline" aria-label="Export this form">
+                <Download className="size-4" aria-hidden="true" />
+                <span>Export</span>
+                <ChevronDown className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-card text-foreground">
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void savePdfFrom(
+                    "dtr-sheet",
+                    pdfFileName(
+                      APP.name,
+                      header?.name || "record",
+                      header ? MONTHS[header.month - 1] : undefined,
+                      header?.year,
+                    ),
+                    pdfAttachments,
+                  )
+                }
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                onSelect={() => printSheet()}
+              >
+                <Printer className="size-4" aria-hidden="true" />
+                Print
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() => void download()}
+              >
+                <FileDown className="size-4" aria-hidden="true" />
+                Download Word
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {canEdit ? (
+            <button
+              type="button"
+              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
+              disabled={busy}
+              aria-label={
+                saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
+              }
+              title="Save your changes to this time record"
+              onClick={() => onSave()}
+            >
+              {saveStatus === "saving" ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : saveStatus === "saved" ? (
+                <Check className="size-4" aria-hidden="true" />
+              ) : (
+                <SaveIcon className="size-4" aria-hidden="true" />
+              )}
+              <span className="hidden sm:inline">
+                {saveStatus === "saving"
+                  ? "Saving…"
+                  : saveStatus === "saved"
+                    ? "Saved"
+                    : saveStatus === "error"
+                      ? "Save failed"
+                      : "Save"}
+              </span>
+            </button>
+          ) : null}
         </div>
-      </div>
+      </header>
 
       <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
-        <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-hidden">
+        {/* THE COLUMN IS THE SCROLL AREA — the LOA treatment. Its children all
+            sit at their natural height (`shrink-0`), so the header cards, the
+            daily entries and the attachments card keep their own proportion and
+            the whole column scrolls top to bottom instead of squeezing the
+            entries into whatever height is left. */}
+        <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-auto">
           <RecordHeaderFields
             header={header}
             setHeader={setHeader}
@@ -556,6 +599,18 @@ function RecordEditorBody({
             }}
             canEdit={canEdit}
             busy={busy}
+          />
+          {/* The other documents sit at the bottom of the form — the approval
+              attachment keeps the top of the preview column, exactly like LOA.
+              This card is screen-only; its printable copies are mounted in the
+              preview column below. */}
+          <RecordOtherAttachmentsCard
+            id={rowId ?? id}
+            canEdit={canEdit}
+            others={others}
+            // A stored file is content, so uploading one creates the row if the
+            // record is still a draft (same rule as the attachment above).
+            onEnsureRow={ensureRow}
           />
         </div>
 
@@ -602,6 +657,13 @@ function RecordEditorBody({
               entryFor={row}
             />
           </div>
+          {/* The printable "other attachments", after everything else on paper.
+              They have to live HERE, in the column that isn't `.no-print`, and
+              not inside the card — the form column is `display: none` on paper,
+              which would take them with it. `print:order-3` follows the sheet
+              (1) and the approval slip (2). Renders nothing when no attached
+              file is printable. */}
+          <OtherAttachmentsPrint files={others} urls={otherUrls} className="print:order-3" />
         </div>
       </div>
 

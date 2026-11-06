@@ -18,7 +18,7 @@ const FORM_TABLES: {
     table: 'dtr_records' as TableName,
     col: 'attachment_path',
     backendCol: 'attachment_backend',
-    others: null,
+    others: 'other_attachments',
   },
   {
     table: 'ob_forms' as TableName,
@@ -51,10 +51,7 @@ function stripB2Prefix(path: string): string {
   return path.startsWith('b2:') ? path.slice(3) : path;
 }
 
-/** Backend from a stored marker value; defaults to supabase when unrecognized. */
-function backendOf(value: unknown): 'supabase' | 'b2' {
-  return value === 'b2' ? 'b2' : 'supabase';
-}
+import { backendOf } from '../utils/backend';
 
 /** Read every row that references a stored file, split by backend and kind. */
 export class StorageReferenceRepository {
@@ -97,8 +94,8 @@ export class StorageReferenceRepository {
           if (!path) continue;
           const backend = backendOf(row[backendCol]);
           const key = stripB2Prefix(path);
-          if (backend === 'supabase') main.push({ backend, key });
-          else other.push({ backend, key });
+          // Main attachment: always counted as "approval" regardless of backend.
+          main.push({ backend, key });
 
           if (others) {
             const extras = row[others];

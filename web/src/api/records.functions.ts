@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { api, documentOf, documentsOf, seg } from "@/lib/api-client";
 import type { AttachmentLink, RecordDetail, RecordSummary } from "@swiftslip/shared/api-types";
 import type {
+  attachmentPathInput,
   attachmentUploadInput,
   createRecordInput,
   deleteRowInput,
@@ -46,3 +47,26 @@ export const removeRecordAttachment = async ({ data }: { data: z.input<typeof id
   );
   return { ok: true as const, ...removed };
 };
+
+/** One more supporting file — up to 8, 10 MB each. */
+export const uploadRecordOtherAttachment = async ({
+  data,
+}: {
+  data: z.input<typeof attachmentUploadInput>;
+}) =>
+  documentOf(await api.post<{ name: string }>(`/records/${seg(data.id)}/other-attachments`, data));
+
+/** Signed links for every additional file, keyed by storage path. */
+export const getRecordOtherAttachmentUrls = async ({ data }: { data: z.input<typeof idInput> }) =>
+  documentOf(await api.get<Record<string, string>>(`/records/${seg(data.id)}/other-attachments`));
+
+export const removeRecordOtherAttachment = async ({
+  data,
+}: {
+  data: z.input<typeof attachmentPathInput>;
+}) =>
+  documentOf(
+    await api.delete<{ name: string }>(`/records/${seg(data.id)}/other-attachments`, {
+      path: data.path,
+    }),
+  );

@@ -8,14 +8,15 @@ import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { DeletionNotice } from "@/components/common/DeletionNotice";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
-import { formatMonthDayYear } from "@swiftslip/shared/period";
 import { relativeTime } from "@swiftslip/shared/time";
+import type { ObHrStatus } from "@swiftslip/shared/hr";
 import {
   buildPlaceFacets,
   destinationKeys,
@@ -35,6 +36,8 @@ type ObRow = {
   destinations: string[];
   /** Approval slip ticked — badges the card as Approved. */
   attachment_approved: boolean;
+  /** HR approval state — the status chip on the card. */
+  hr_status: ObHrStatus;
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
   deletes_in_days?: number;
@@ -56,6 +59,12 @@ const PLACE_LIMIT = 8;
 const FILTER_ACTIVE = "bg-dashboard-soft text-dashboard-accent";
 const FILTER_ACTIVE_ROW = "bg-dashboard-soft";
 const FILTER_ACCENT = "accent-dashboard-accent";
+
+/* One neutral box for every status: the status colour now lives only in the
+   folder tab, so the grid reads as a quiet grey deck instead of four brightly
+   outlined boxes. A touch stronger than `--border` so it stays visible on the
+   cream dashboard surface; dark mode gets the same grey lifted for contrast. */
+const CARD_BORDER = "border-[#c9cec8] dark:border-[#4a514b]";
 
 export function ObList() {
   const navigate = useNavigate();
@@ -230,7 +239,7 @@ export function ObList() {
           ) : visible.length === 0 ? (
             <NoMatches onClear={clearFilters} />
           ) : (
-            <div className="mt-5 grid grid-cols-1 gap-5 @2xl:grid-cols-2">
+            <div className="mt-5 grid grid-cols-1 gap-8 @2xl:grid-cols-2">
               {visible.map((form, index) => (
                 <ObCard
                   key={form.id}
@@ -443,94 +452,104 @@ function ObCard({
   const destination = f.destinations.join(", ");
 
   return (
-    <div
-      role="link"
-      tabIndex={0}
-      onClick={() => navigate({ to: "/official-business/$id", params: { id: f.id } })}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          navigate({ to: "/official-business/$id", params: { id: f.id } });
-        }
-      }}
-      style={{ animationDelay: `${Math.min(index, 12) * 55}ms`, animationFillMode: "both" }}
-      className="relative flex min-h-44 cursor-pointer flex-col gap-3 rounded-xl border bg-card p-5 transition-colors hover:border-primary/40 hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "break-words text-sm font-semibold leading-tight",
-              !f.employee_name && "italic text-muted-foreground",
-            )}
-          >
-            {f.employee_name || "Untitled form"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">{f.id_number || "No ID number"}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Link
-            to="/official-business/$id"
-            params={{ id: f.id }}
-            onClick={(event) => event.stopPropagation()}
-            className="btn btn-outline gap-1 px-2.5 py-1 text-xs"
-          >
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-            Open
-          </Link>
-          <button
-            type="button"
-            className="btn gap-1 px-2.5 py-1 text-xs text-destructive"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash className="size-3.5" aria-hidden="true" />
-            Delete
-          </button>
-        </div>
-      </div>
+    // Folder tab, as the mock draws it: the badge is FLUSH with the card's
+    // left edge and its bottom sits exactly on the card's top border — the
+    // card's top-left corner is therefore square (`rounded-tl-none`), so the
+    // badge's left border continues straight into the card's with no arc to
+    // gap over. The 1px overlap just kills the seam; `relative z-10` keeps
+    // the badge above the card's background (it is the earlier sibling).
+    // The tab carries the status colour; the box below is always neutral grey.
+    <div className="flex h-full w-full flex-col items-start">
+      <StatusBadge status={f.hr_status} variant="tab" size="sm" className="relative z-10 -mb-px" />
 
-      <p className="text-xs text-foreground">
-        {[f.department, f.position].filter(Boolean).join(" · ") || "No department / position"}
-      </p>
-      {f.date_of_ob ? (
-        <p className="flex items-center gap-1.5 text-xs text-foreground">
-          <CalendarDays className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          Date of OB: {formatMonthDayYear(f.date_of_ob)}
-        </p>
-      ) : null}
-      <p
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={() => navigate({ to: "/official-business/$id", params: { id: f.id } })}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            navigate({ to: "/official-business/$id", params: { id: f.id } });
+          }
+        }}
+        style={{ animationDelay: `${Math.min(index, 12) * 55}ms`, animationFillMode: "both" }}
         className={cn(
-          "flex items-start gap-1.5 text-xs",
-          destination ? "text-foreground" : "text-muted-foreground italic",
+          "relative flex min-h-44 w-full flex-1 cursor-pointer flex-col gap-2.5 rounded-xl rounded-tl-none border bg-card p-5 transition-shadow hover:shadow-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-500",
+          CARD_BORDER,
         )}
-        title={destination || undefined}
       >
-        <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <span className="line-clamp-2">{destination ? `To ${destination}` : "No destination"}</span>
-      </p>
-      <DeletionNotice days={f.deletes_in_days} />
-      {f.updated_at ? (
-        <p
-          className="mt-auto flex items-center gap-1.5 pr-12 text-[11px] text-muted-foreground"
-          title={new Date(f.updated_at).toLocaleString()}
-        >
-          <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-          Updated {relativeTime(f.updated_at, now)}
-        </p>
-      ) : null}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p
+              className={cn(
+                "break-words text-sm font-semibold leading-tight",
+                !f.employee_name && "italic text-muted-foreground",
+              )}
+            >
+              {f.employee_name || "Untitled form"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{f.id_number || "No ID number"}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Link
+              to="/official-business/$id"
+              params={{ id: f.id }}
+              onClick={(event) => event.stopPropagation()}
+              className="btn btn-outline gap-1 px-2.5 py-1 text-xs"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+              Open
+            </Link>
+            <button
+              type="button"
+              className="btn gap-1 px-2.5 py-1 text-xs text-destructive"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash className="size-3.5" aria-hidden="true" />
+              Delete
+            </button>
+          </div>
+        </div>
 
-      {/* The same seal as every other form card, one size down so the denser
-          two-column list keeps the card's text lines clear. */}
-      {f.attachment_approved ? (
-        <ApprovedStamp
-          approved
-          size="xs"
-          className="pointer-events-none absolute right-2 bottom-2 z-10"
-        />
-      ) : null}
+        <p className="text-xs text-foreground">
+          {[f.department, f.position].filter(Boolean).join(" · ") || "No department / position"}
+        </p>
+        <p
+          className={cn(
+            "flex items-start gap-1.5 text-xs",
+            destination ? "text-foreground" : "text-muted-foreground italic",
+          )}
+          title={destination || undefined}
+        >
+          <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="line-clamp-2">
+            {destination ? `To ${destination}` : "No destination"}
+          </span>
+        </p>
+        <DeletionNotice days={f.deletes_in_days} />
+        {f.updated_at ? (
+          <p
+            className="mt-auto flex items-center gap-1.5 pr-12 text-[11px] text-muted-foreground"
+            title={new Date(f.updated_at).toLocaleString()}
+          >
+            <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+            Updated {relativeTime(f.updated_at, now)}
+          </p>
+        ) : null}
+
+        {/* The same seal as every other form card, sized so it clears the
+            card's text lines while still reading as a stamp. */}
+        {f.attachment_approved ? (
+          <ApprovedStamp
+            approved
+            size="xs"
+            className="pointer-events-none absolute right-2 bottom-2 z-10"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -568,20 +587,28 @@ function NoMatches({ onClear }: { onClear: () => void }) {
 
 function ObListSkeleton() {
   return (
-    <div className="mt-5 grid grid-cols-1 gap-5 @2xl:grid-cols-2" aria-label="Loading forms">
+    <div className="mt-5 grid grid-cols-1 gap-8 @2xl:grid-cols-2" aria-label="Loading forms">
       {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="rounded-xl border bg-card p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-20" />
+        <div key={index} className="flex flex-col items-start">
+          <Skeleton className="relative z-10 -mb-px h-7 w-28 rounded-t-lg" />
+          <div
+            className={cn(
+              "w-full flex-1 rounded-xl rounded-tl-none border bg-card p-5",
+              CARD_BORDER,
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <Skeleton className="h-7 w-32" />
             </div>
-            <Skeleton className="h-7 w-32" />
+            <Skeleton className="mt-4 h-3 w-3/4" />
+            <Skeleton className="mt-2 h-3 w-1/2" />
+            <Skeleton className="mt-2 h-3 w-2/3" />
+            <Skeleton className="mt-4 h-3 w-1/3" />
           </div>
-          <Skeleton className="mt-4 h-3 w-3/4" />
-          <Skeleton className="mt-2 h-3 w-1/2" />
-          <Skeleton className="mt-2 h-3 w-2/3" />
-          <Skeleton className="mt-4 h-3 w-1/3" />
         </div>
       ))}
     </div>

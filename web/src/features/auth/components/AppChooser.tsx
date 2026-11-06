@@ -184,6 +184,34 @@ export function AppChooser() {
             </div>
           ) : null}
 
+          {can("hr") ? (
+            <div
+              className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:320ms] ${CARD_CELL_CLASS}`}
+            >
+              <Link to="/hr" className={CARD_CLASS}>
+                <span>
+                  {/* HRA mark keeps a white tile in both themes — the logo's navy
+                    ink would vanish on the dark-mode paper colour. */}
+                  <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border bg-white p-1 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                    <img src="/hra-logo.svg" alt="" className="h-full w-full object-contain" />
+                  </span>
+                  <span className="mt-3 block text-base font-semibold">HR Approvals</span>
+                  <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
+                    Review Official Business requests, approve or reject them, and sign departures
+                    and arrivals.
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                  Open HR Approvals
+                  <ArrowRight
+                    className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Link>
+            </div>
+          ) : null}
+
           {can("inventory") ? (
             <div
               className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:400ms] ${CARD_CELL_CLASS}`}

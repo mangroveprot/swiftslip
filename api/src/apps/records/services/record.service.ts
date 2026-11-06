@@ -4,9 +4,14 @@ import {
   departmentForPosition,
   departmentWithLocation,
 } from '@swiftslip/shared/org';
-import type { DtrEntry, DtrHeader, SessionUser } from '@swiftslip/shared/types';
+import type {
+  DtrEntry,
+  DtrHeader,
+  SessionUser,
+  StorageBackend,
+} from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
-import { AttachmentService } from '../../attachments';
+import { AttachmentService, readOtherFiles } from '../../attachments';
 import { ProfileService } from '../../profile';
 import { withDeletionReminder } from '../../retention/services/retention-notice';
 import { RecordEntryRepository, RecordRepository } from '../repositories';
@@ -58,14 +63,18 @@ class RecordService extends BaseService<'dtr_records', RecordRepository> {
           sort: { day: 'asc' },
         },
       );
+      // The additional supporting files travel as a plain list (their bytes
+      // stay in storage) — pulled out so `record` remains an exact DtrHeader.
+      const { other_attachments, ...header } = record;
       return {
         success: true as const,
         document: {
-          record: record as unknown as DtrHeader & { id: string },
+          record: header as unknown as DtrHeader & { id: string },
           entries: entries as unknown as DtrEntry[],
           ...(record.attachment_name
             ? { attachment: { name: record.attachment_name } }
             : {}),
+          others: readOtherFiles(other_attachments),
         },
       };
     } catch (error) {
@@ -155,7 +164,22 @@ class RecordService extends BaseService<'dtr_records', RecordRepository> {
       const removed = await this.repository.delete({ id, owner_id: user.id });
       if (!removed)
         throw new ErrorResponse('NOT_FOUND_ERROR', 'Record not found.');
-      await AttachmentService.removeFiles([removed.attachment_path]);
+      // Deleting the row must take its files with it (best effort).
+      const refs: { key: string; backend?: StorageBackend }[] = [];
+      if (removed.attachment_path) {
+        refs.push({
+          key: removed.attachment_path,
+          backend: (removed as Record<string, unknown>)
+            .attachment_backend as StorageBackend,
+        });
+      }
+      refs.push(
+        ...readOtherFiles(removed.other_attachments).map((file) => ({
+          key: file.path,
+          backend: file.backend,
+        })),
+      );
+      await AttachmentService.removeFiles(refs);
       if (!quiet) {
         await ActivityLogService.logBy(user, {
           action: 'record.deleted',

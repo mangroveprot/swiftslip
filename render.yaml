@@ -35,3 +35,24 @@ services:
         value: gemini-3.1-flash-lite
       - key: RGC_INVENTORY_DATABASE_URL
         sync: false
+      # Backblaze B2 — needed when Settings → Storage is "b2-only", or when
+      # Supabase overflows under "supabase-first".
+      #
+      # `sync: false` below declares the NAME ONLY — there is no `value:` here,
+      # so NO secret is ever written to this file or to git. The real values are
+      # typed into the Render dashboard (Environment), and locally into api/.env
+      # (which .gitignore and .dockerignore both exclude). Both end up in the
+      # same process.env that config/index.ts reads. This block is only a
+      # checklist so a service recreated from this Blueprint asks for them too.
+      # Without them the deployed API cannot reach B2 and a "b2-only" rule makes
+      # attachment uploads fail with 503 instead of routing there.
+      - key: B2_ENDPOINT
+        value: https://s3.us-west-004.backblazeb2.com
+      - key: B2_REGION
+        value: us-west-004
+      - key: B2_BUCKET
+        value: swiftslip
+      - key: B2_UPLOAD_KEY_ID
+        sync: false
+      - key: B2_UPLOAD_APP_KEY
+        sync: false

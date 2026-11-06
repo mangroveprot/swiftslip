@@ -9,10 +9,12 @@ import {
   Loader2,
   Maximize2,
   Printer,
+  Save,
+  Send,
 } from "lucide-react";
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 
-import { createObForm, saveObForm } from "@/api/official-business.functions";
+import { createObForm, saveObForm, submitObForm } from "@/api/official-business.functions";
 import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
@@ -35,12 +37,24 @@ import { isDraftId, promoteDraft, readDraft, writeDraft } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { usePdfAttachment } from "@/lib/pdf-attachments";
 import { deleteSignatureBackup, readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
+import {
+  EMPTY_OB_HR_FIELDS,
+  isObLocked,
+  OB_HR_STATUS_LABELS,
+  obSupervisorDone,
+  needsReapprovalAfterSave,
+  type ObHrFields,
+  type ObHrStatus,
+} from "@swiftslip/shared/hr";
+import type { ObSigners } from "@swiftslip/shared/api-types";
 import type { ObEntry, ObForm } from "@swiftslip/shared/types";
 import { APP } from "@/config/app";
 import { buildDraftObForm } from "../lib/draft-form";
 import { splitDestinations } from "../lib/places";
+import { hasStatusCard } from "../lib/status-card";
 import { obFormQueryOptions, obFormsQueryOptions } from "../queries";
 import { ObAssistantChat } from "./ObAssistantChat";
 import { ObAttachmentCard } from "./ObAttachmentCard";
@@ -48,8 +62,10 @@ import { ObEditorSkeleton } from "./ObEditorSkeleton";
 import { ObFormFields } from "./ObFormFields";
 import { ObItineraryTable } from "./ObItineraryTable";
 import { ObPreview } from "./ObPreview";
+import { ObStatusCard } from "./ObStatusCard";
 
 type SaveStatus = "idle" | AutoSaveStatus;
+type PendingAction = "save" | "submit" | "download";
 
 const DRAFT_FEATURE = "ob";
 
@@ -60,17 +76,42 @@ function buildRows(rows: ObEntry[]): ObEntry[] {
     .map((r, idx) => ({ ...r, idx }));
 }
 
-/** Write a save into the query cache WITHOUT dropping the `attachment` sibling.
- *  A bare `{ form, entries }` write replaces the whole entry, so the file the
- *  card renders would vanish until the next refetch (e.g. the auto-save fired by
- *  ticking "Approved" made the attachment look deleted). */
+/** Write a save into the query cache WITHOUT dropping the `attachment` sibling
+ *  or the HR columns (`hr_status`, reject reason, sign-off fields). A bare
+ *  `{ form, entries }` write replaces the whole entry, so the file the card
+ *  renders would vanish until the next refetch — and the employee's editor
+ *  would briefly look editable again because the HR state was gone. */
 function writeFormCache(
   qc: QueryClient,
   id: string,
-  next: { form: ObForm & { id: string }; entries: ObEntry[] },
+  next: {
+    form: ObForm & { id: string; hr_status?: ObHrStatus } & Partial<ObHrFields>;
+    entries: ObEntry[];
+    signers?: ObSigners;
+  },
 ) {
-  qc.setQueryData(obFormQueryOptions(id).queryKey, (prev) => (prev ? { ...prev, ...next } : next));
+  qc.setQueryData(obFormQueryOptions(id).queryKey, (prev) =>
+    prev
+      ? { ...prev, ...next, form: { ...prev.form, ...next.form } }
+      : { ...next, form: { ...EMPTY_OB_HR_FIELDS, ...next.form } },
+  );
 }
+
+/**
+ * The HR-owned columns a save voids when it sends the form back for
+ * re-approval. The API clears them; the cache must too, or the preview would
+ * keep printing an exit clearance that is no longer signed.
+ */
+const CLEARED_SIGNOFFS = {
+  hr_approved_by: null,
+  hr_approved_at: null,
+  departure_signed_by: null,
+  departure_signed_at: null,
+  arrival_date: "",
+  arrival_time: "",
+  arrival_signed_by: null,
+  arrival_signed_at: null,
+} satisfies Partial<ObHrFields>;
 
 /**
  * One editor per record — including across that record's own save. Saving a
@@ -97,7 +138,6 @@ function ObEditorBody({
   onPromoted: (draft: string, real: string) => void;
 }) {
   const session = useSession();
-  const canEdit = Boolean(session);
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -112,6 +152,27 @@ function ObEditorBody({
     ...obFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
+
+  // HR owns the lock (D6): only the state sitting in HR's queue is read-only.
+  // A draft / rejected / approved / departed / completed form is editable; a
+  // save on an already-approved form sends it back to HR for re-approval.
+  const hrStatus = data?.form.hr_status ?? "draft";
+  const supervisorApproved = data ? obSupervisorDone(data.form) : false;
+  const canEdit = Boolean(session) && !isObLocked(hrStatus);
+  // The status card's own note: when a save would send the form back to HR.
+  const reapprovalHint =
+    needsReapprovalAfterSave(hrStatus) || hrStatus === "waiting_supervisor"
+      ? hrStatus === "departed"
+        ? supervisorApproved
+          ? "This form can still be edited, but saving a content change sends it back to HR for re-approval."
+          : "Adding only the supervisor approval keeps your departure. Editing any other detail sends the form back to HR for re-approval."
+        : hrStatus === "waiting_supervisor"
+          ? "Adding only the supervisor approval keeps this form with HR's approval. Editing any other detail sends it back for re-approval."
+          : "This form can still be edited, but saving a change sends it back to HR for re-approval."
+      : null;
+  // The attached slip travels with the exported PDF, on its own page after the
+  // form. Joins the card's own query, so this costs no extra request.
+  const pdfAttachments = usePdfAttachment("ob", rowId ?? id, data?.attachment);
   const profileQuery = useQuery(profileQueryOptions());
   const profile = profileQuery.data ?? null;
   const profileReady = profileQuery.data !== undefined || profileQuery.isError;
@@ -138,12 +199,13 @@ function ObEditorBody({
 
   const [form, setForm] = useState<ObForm | null>(null);
   const [rows, setRows] = useState<ObEntry[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<PendingAction | null>(null);
+  const busy = pending !== null;
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const latestRef = useRef({ form, rows, canEdit });
-  latestRef.current = { form, rows, canEdit };
+  const latestRef = useRef({ form, rows, canEdit, hrStatus });
+  latestRef.current = { form, rows, canEdit, hrStatus };
 
   const snapshotOf = (f: ObForm, r: ObEntry[]) =>
     JSON.stringify({ form: f, entries: buildRows(r) });
@@ -224,10 +286,20 @@ function ObEditorBody({
     }
     const entries = buildRows(r);
     const target = rowIdRef.current;
-    await saveObForm({ data: { id: target, form: f, entries } });
+    const saved = await saveObForm({ data: { id: target, form: f, entries } });
     deleteSignatureBackup("ob", target);
     savedSigRef.current = f.employee_signature;
-    writeFormCache(qc, target, { form: { ...f, id: target }, entries });
+    const wentBack = saved.hr_status === "submitted" && latestRef.current.hrStatus !== "submitted";
+    writeFormCache(qc, target, {
+      form: {
+        ...f,
+        id: target,
+        hr_status: saved.hr_status,
+        ...(wentBack ? CLEARED_SIGNOFFS : {}),
+      },
+      entries,
+      ...(wentBack ? { signers: {} } : {}),
+    });
     qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
   }
 
@@ -338,18 +410,29 @@ function ObEditorBody({
             ? "Unsaved changes"
             : "";
 
-  async function persist(f: ObForm, entries: ObEntry[]) {
+  async function persist(f: ObForm, entries: ObEntry[]): Promise<ObHrStatus | undefined> {
     // insertDraft already writes content — don't save again on first create.
     if (!rowIdRef.current) {
       await insertDraft();
-      return;
+      return undefined;
     }
     const target = rowIdRef.current;
-    await saveObForm({ data: { id: target, form: f, entries } });
+    const saved = await saveObForm({ data: { id: target, form: f, entries } });
     deleteSignatureBackup("ob", target);
-    writeFormCache(qc, target, { form: { ...f, id: target }, entries });
+    const wentBack = saved.hr_status === "submitted" && latestRef.current.hrStatus !== "submitted";
+    writeFormCache(qc, target, {
+      form: {
+        ...f,
+        id: target,
+        hr_status: saved.hr_status,
+        ...(wentBack ? CLEARED_SIGNOFFS : {}),
+      },
+      entries,
+      ...(wentBack ? { signers: {} } : {}),
+    });
     auto.setPersisted(JSON.stringify({ form: f, entries }));
     qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
+    return saved.hr_status;
   }
 
   /** Resolve a real row id, creating the draft's row on the spot. */
@@ -370,23 +453,65 @@ function ObEditorBody({
     const entries = buildRows(rows);
     // Cancel any armed auto-save so it cannot insert/save in parallel with us.
     auto.setPersisted(snapshotOf(form, rows));
-    setBusy(true);
+    setPending("save");
     setSaveStatus("saving");
     try {
-      await persist(form, entries);
+      const nextStatus = await persist(form, entries);
       setSaveStatus("saved");
-      toast.success("Saved");
+      const wentBack = nextStatus === "submitted" && hrStatus !== "submitted";
+      toast.success(wentBack ? "Saved. The form is back with HR for re-approval." : "Saved");
     } catch (e) {
       setSaveStatus("error");
       toast.error(e instanceof Error ? e.message : "Save failed.");
     } finally {
-      setBusy(false);
+      setPending(null);
+    }
+  }
+
+  /**
+   * Save, then hand the form to HR. The save must land before the submit: HR
+   * reviews what is in the database, not what is on this screen.
+   */
+  async function onSubmitForHr() {
+    if (!form) return;
+    // Cancel any armed auto-save so it cannot insert/save in parallel with us.
+    auto.setPersisted(snapshotOf(form, rows));
+    setPending("submit");
+    setSaveStatus("saving");
+    try {
+      await persist(form, buildRows(rows));
+      const target = rowIdRef.current;
+      if (!target) throw new Error("This form is not ready yet.");
+      await submitObForm({ data: { id: target } });
+      qc.setQueryData(obFormQueryOptions(target).queryKey, (prev) =>
+        prev
+          ? {
+              ...prev,
+              form: { ...prev.form, hr_status: "submitted" as const, hr_reject_reason: "" },
+            }
+          : prev,
+      );
+      qc.invalidateQueries({
+        queryKey: obFormsQueryOptions().queryKey,
+        refetchType: "none",
+      });
+      setSaveStatus("saved");
+      toast.success(
+        hrStatus === "rejected"
+          ? "Resubmitted to HR for approval."
+          : "Submitted to HR for approval.",
+      );
+    } catch (e) {
+      setSaveStatus("error");
+      toast.error(e instanceof Error ? e.message : "Could not submit this form.");
+    } finally {
+      setPending(null);
     }
   }
 
   async function download() {
     if (!form) return;
-    setBusy(true);
+    setPending("download");
     const toastId = toast.loading("Preparing Word file…");
     try {
       // docxtemplater + pizzip are only needed when exporting (~330 kB) — keeping
@@ -395,13 +520,17 @@ function ObEditorBody({
       await downloadObWord({
         form,
         rows: buildRows(rows),
+        // Same HR columns + signers the preview beside this button renders, so
+        // the Word file and the sheet can never disagree about a signed box.
+        hr: data?.form,
+        signers: data?.signers,
         fileName: `${APP.name}_OB_${form.employee_name || "form"}.docx`,
       });
       toast.success("Word file downloaded", { id: toastId });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Word download failed.", { id: toastId });
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   }
 
@@ -422,7 +551,7 @@ function ObEditorBody({
   );
 
   return (
-    <main className="flex min-h-0 flex-col px-4 py-3 md:px-6 md:py-5 lg:h-full lg:overflow-hidden print:block print:h-auto print:overflow-visible print:p-0">
+    <main className="flex min-h-full w-full flex-col px-4 py-3 md:px-6 md:py-5 print:block print:h-auto print:overflow-visible print:p-0">
       <header className="no-print mb-5 flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <Link
@@ -462,6 +591,7 @@ function ObEditorBody({
                   void savePdfFrom(
                     "ob-sheet",
                     pdfFileName(APP.name, "OB", form.employee_name || "form"),
+                    pdfAttachments,
                   )
                 }
               >
@@ -492,51 +622,91 @@ function ObEditorBody({
               className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
-                saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
+                pending === "save" || (pending === null && saveStatus === "saving")
+                  ? "Saving"
+                  : pending === null && saveStatus === "saved"
+                    ? "Saved"
+                    : "Save"
               }
               title="Save your changes to this form"
               onClick={() => onSave()}
             >
-              {saveStatus === "saving" ? (
+              {pending === "save" || (pending === null && saveStatus === "saving") ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              ) : saveStatus === "saved" ? (
+              ) : pending === null && saveStatus === "saved" ? (
                 <Check className="size-4" aria-hidden="true" />
-              ) : null}
+              ) : (
+                <Save className="size-4" aria-hidden="true" />
+              )}
               <span>Save</span>
+            </button>
+          ) : null}
+          {canEdit && form && (hrStatus === "draft" || hrStatus === "rejected") ? (
+            <button
+              type="button"
+              className="btn btn-primary disabled:opacity-60"
+              disabled={busy}
+              title="Send this form to HR for approval"
+              onClick={() => void onSubmitForHr()}
+            >
+              {pending === "submit" ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Send className="size-4" aria-hidden="true" />
+              )}
+              <span>{hrStatus === "rejected" ? "Resubmit to HR" : "Submit to HR"}</span>
             </button>
           ) : null}
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-6 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-        <div className="no-print @container min-h-0 rounded-xl bg-card p-5 sm:p-6 lg:overflow-y-auto lg:p-8">
-          <ObFormFields form={form} setForm={setForm} canEdit={canEdit} />
+      <div className="grid gap-6 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        {/* The form column. The status card is its own card sitting ABOVE the
+            form — never inside the form card. The whole page scrolls (like the
+            HR form detail), so neither this column nor the form card clips its
+            content. It reads the same data as the header line, so the two can
+            never disagree. */}
+        <div className="no-print flex flex-col gap-5">
+          {data && hasStatusCard(data.form) ? (
+            <div className="shrink-0">
+              <ObStatusCard
+                audience="employee"
+                doc={data.form}
+                signers={data.signers}
+                hint={reapprovalHint}
+              />
+            </div>
+          ) : null}
 
-          <div className="mt-6 border-t pt-5">
-            <ObItineraryTable
-              rows={rows}
-              setRows={setRows}
-              canEdit={canEdit}
-              busy={busy}
-              placeOptions={placeOptions}
-            />
-          </div>
+          <div className="@container rounded-xl bg-card p-5 sm:p-6 lg:p-8">
+            <ObFormFields form={form} setForm={setForm} canEdit={canEdit} />
 
-          <div className="mt-6 border-t pt-5">
-            <SignatureField
-              variant="ob"
-              value={form.employee_signature}
-              disabled={!canEdit}
-              savedSignature={profile?.signature}
-              onChange={(v) => setForm({ ...form, employee_signature: v })}
-            />
+            <div className="mt-6 border-t pt-5">
+              <ObItineraryTable
+                rows={rows}
+                setRows={setRows}
+                canEdit={canEdit}
+                busy={busy}
+                placeOptions={placeOptions}
+              />
+            </div>
+
+            <div className="mt-6 border-t pt-5">
+              <SignatureField
+                variant="ob"
+                value={form.employee_signature}
+                disabled={!canEdit}
+                savedSignature={profile?.signature}
+                onChange={(v) => setForm({ ...form, employee_signature: v })}
+              />
+            </div>
           </div>
         </div>
 
         {/* The attachment stays first in the preview column, and on paper it
             drops below the sheet (`print:order`) so a slip still follows the
             form on its own page. */}
-        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
+        <div className="flex flex-col gap-3 print:gap-0 print:overflow-visible">
           <div className="print:order-2">{attachmentCard}</div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
             <p className="text-sm font-semibold">Preview</p>
@@ -550,8 +720,26 @@ function ObEditorBody({
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
-            <ObPreview sheetId="ob-sheet" form={form} rows={rows} />
+          <div className="rounded-sm print:order-1 print:overflow-visible">
+            {/* Clicking the sheet itself opens the full view — the same action
+                as the small icon above, without hunting for it. Same wrapper
+                the HR detail page already uses; it prints as-is (no ring, no
+                cursor) so the paper output is unchanged. */}
+            <button
+              type="button"
+              className="block w-full cursor-pointer overflow-hidden rounded-sm bg-paper text-left ring-offset-background transition-shadow hover:ring-2 hover:ring-dashboard-rule/30 print:cursor-auto print:ring-0 print:hover:ring-0"
+              aria-label="Open the full view"
+              title="Full view: zoom in/out and drag the form around"
+              onClick={() => setPreviewOpen(true)}
+            >
+              <ObPreview
+                sheetId="ob-sheet"
+                form={form}
+                rows={rows}
+                hr={data?.form}
+                signers={data?.signers}
+              />
+            </button>
           </div>
         </div>
       </div>
@@ -566,7 +754,7 @@ function ObEditorBody({
         onOpenChange={setPreviewOpen}
         title="Official Business Form (full view)"
       >
-        <ObPreview form={form} rows={rows} />
+        <ObPreview form={form} rows={rows} hr={data?.form} signers={data?.signers} />
       </PreviewLightbox>
     </main>
   );

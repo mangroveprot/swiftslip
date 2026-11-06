@@ -4,6 +4,7 @@
  * The web client uses these to type its fetch wrappers.
  */
 import type { FormEvent } from "./forms";
+import type { ObHrFields, ObHrStatus } from "./hr";
 import type {
   AppKey,
   CosForm,
@@ -159,8 +160,33 @@ export type ObSummary = {
   position: string;
   date_of_ob: string;
   attachment_approved: boolean;
+  /** The HR approval state (shared `ObHrStatus`) — the status badge. */
+  hr_status: ObHrStatus;
   updated_at: string;
   deletes_in_days?: number;
+};
+
+/**
+ * One row of the HR review queue — an `ObSummary` plus the supervisor signal
+ * the queue card shows next to the status chip.
+ */
+export type HrObSummary = ObSummary & {
+  /** `approved_by` as typed (empty while the supervisor has not signed). */
+  approved_by: string;
+};
+
+/** One notification row as `GET /api/notifications` returns it. */
+export type NotificationRow = {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  /** Relative link inside this app (`/hr/ob/<id>` or `/official-business/<id>`). */
+  link: string;
+  read_at: string | null;
+  created_at: string;
+  /** The actor's display name, or null for a system event. */
+  actor_name: string | null;
 };
 
 export type LoaSummary = {
@@ -204,11 +230,48 @@ export type OtSummary = {
 
 type Attached = { attachment?: { name: string } };
 
+/**
+ * A person who signed an OB form, already resolved from the stored account id
+ * so the printed sheet can show the same name + e-signature as the paper form.
+ */
+export type ObSigner = {
+  name: string;
+  /** Data URL of the saved signature; "" when none is on file. */
+  signature: string;
+  /**
+   * The signer's designation from their profile (e.g. "HR ASSOCIATE") — the
+   * line the paper form prints under the name in the "Verified by: HRD" box.
+   * "" when the profile has none.
+   */
+  position: string;
+};
+
+/** Who signed each part of an OB form. A key is absent until that signature exists. */
+export type ObSigners = {
+  /** `hr_approved_by` — the "Verified by: HRD" box. */
+  approved?: ObSigner;
+  /** `hr_rejected_by` — the HR reviewer who bounced the form back. */
+  rejected?: ObSigner;
+  /** `departure_signed_by` — the exit-clearance departure row. */
+  departure?: ObSigner;
+  /** `arrival_signed_by` — the exit-clearance arrival row. */
+  arrival?: ObSigner;
+};
+
 export type RecordDetail = Attached & {
   record: DtrHeader & { id: string };
   entries: DtrEntry[];
+  others: OtherFile[];
 };
-export type ObDetail = Attached & { form: ObForm & { id: string }; entries: ObEntry[] };
+export type ObDetail = Attached & {
+  form: ObForm & ObHrFields & { id: string };
+  entries: ObEntry[];
+  /** Names + positions + saved signatures for the boxes HR fills (see `ObSigners`). */
+  signers?: ObSigners;
+};
+
+/** `GET /api/hr/ob/:id` — the same detail an HR reviewer opens from the queue. */
+export type HrObDetail = ObDetail;
 export type LoaDetail = Attached & { form: LoaForm & { id: string }; others: OtherFile[] };
 export type CosDetail = Attached & { form: CosForm & { id: string }; schedules: CosSchedule[] };
 export type OtDetail = Attached & {

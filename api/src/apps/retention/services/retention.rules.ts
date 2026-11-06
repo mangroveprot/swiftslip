@@ -4,6 +4,7 @@ import {
 } from '@swiftslip/shared/schemas';
 import { readOtherFiles } from '../../attachments/utils/other-files';
 import { OTHER_FILES_TABLES } from '../types';
+import type { StorageBackend } from '@swiftslip/shared/types';
 
 /**
  * The selection rules of a cleanup run, kept pure and free of Supabase so they
@@ -53,6 +54,7 @@ export const cutoffFor = (days: number, now: number = Date.now()) =>
  */
 export type RuleFields = {
   attachment_path?: string | null;
+  attachment_backend?: string | null;
   attachment_approved?: boolean;
   /** Non-DTR forms. */
   employee_name?: string;
@@ -88,17 +90,25 @@ export function isFinished(type: RetentionFormType, row: RuleFields): boolean {
   return row.attachment_approved === true || !row.attachment_path;
 }
 
-/** Every storage path the row owns: the main slip plus LOA/OT extras. */
+/** Every storage path the row owns: the main slip plus LOA/OT/DTR extras. */
 export function pathsOf(
   type: RetentionFormType,
   row: RuleFields & { other_attachments?: unknown },
-): string[] {
-  const paths: string[] = [];
-  if (row.attachment_path) paths.push(row.attachment_path);
+): { key: string; backend: StorageBackend }[] {
+  const refs: { key: string; backend: StorageBackend }[] = [];
+  if (row.attachment_path) {
+    refs.push({
+      key: row.attachment_path,
+      backend: (row.attachment_backend ?? 'supabase') as StorageBackend,
+    });
+  }
   if (OTHER_FILES_TABLES.includes(type)) {
-    paths.push(
-      ...readOtherFiles(row.other_attachments).map((file) => file.path),
+    refs.push(
+      ...readOtherFiles(row.other_attachments).map((file) => ({
+        key: file.path,
+        backend: file.backend ?? 'supabase',
+      })),
     );
   }
-  return paths;
+  return refs;
 }

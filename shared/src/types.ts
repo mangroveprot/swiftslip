@@ -14,16 +14,16 @@ export type AccountPhoto = { id: string; photo: string };
 /**
  * The applications behind the "Where would you like to go?" chooser.
  *
- * Only `swiftslip`, `inventory` and `ticketing` are GRANTABLE. `admin` is
+ * `swiftslip`, `inventory`, `ticketing` and `hr` are GRANTABLE. `admin` is
  * deliberately excluded: the Admin Panel is gated on `role === "admin"` alone,
  * and admins also bypass every access rule, so an `admin` rule could never take
  * effect. Keeping it out of `GRANTABLE_APP_KEYS` means the admin UI can't offer
  * it.
  */
-export const APP_KEYS = ["admin", "swiftslip", "inventory", "ticketing"] as const;
+export const APP_KEYS = ["admin", "swiftslip", "inventory", "ticketing", "hr"] as const;
 export type AppKey = (typeof APP_KEYS)[number];
 
-export const GRANTABLE_APP_KEYS = ["swiftslip", "inventory", "ticketing"] as const;
+export const GRANTABLE_APP_KEYS = ["swiftslip", "inventory", "ticketing", "hr"] as const;
 export type GrantableAppKey = (typeof GRANTABLE_APP_KEYS)[number];
 
 /** Apps this app hosts itself, each with a route and a server guard. */
@@ -34,6 +34,7 @@ export const APP_HOME = {
   admin: "/admin",
   swiftslip: "/records",
   inventory: "/rgc-asset-inventory",
+  hr: "/hr",
 } as const satisfies Record<InternalAppKey, string>;
 
 /**
@@ -195,11 +196,27 @@ export type LoaForm = {
   attachment_approved: boolean;
 };
 
+/**
+ * The two object stores a file can physically live on.
+ *
+ * It lives here rather than in `schemas.ts` because `OtherFile` needs it and
+ * `schemas.ts` imports this file — a type must never depend on its importer.
+ * `schemas.ts` re-exports it, so every existing `@swiftslip/shared/schemas`
+ * import keeps working.
+ */
+export const STORAGE_BACKENDS = ["supabase", "b2"] as const;
+export type StorageBackend = (typeof STORAGE_BACKENDS)[number];
+
 /** One additional supporting file on an LOA form: its path in storage + name. */
 /** One stored supporting document: its bucket path plus the original name. */
 export type OtherFile = {
   path: string;
   name: string;
+  /**
+   * Which backend holds the file. Absent means 'supabase' — every file stored
+   * before migration 0031 lives in Supabase Storage.
+   */
+  backend?: StorageBackend;
 };
 
 /** Kept for the LOA card, which had this name first. Same shape. */

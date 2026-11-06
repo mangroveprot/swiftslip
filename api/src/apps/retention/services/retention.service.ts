@@ -2,7 +2,7 @@ import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { logger } from '../../../common/shared/services';
 import { ActivityLogService } from '../../activity-log';
 import { AttachmentService } from '../../attachments';
-import type { SessionUser } from '@swiftslip/shared/types';
+import type { SessionUser, StorageBackend } from '@swiftslip/shared/types';
 import {
   RETENTION_FORM_TYPES,
   type CleanupRunSummary,
@@ -146,7 +146,7 @@ class RetentionService {
   private async collect(type: RetentionFormType, cutoff: string) {
     const repo = this.formRepo(RETENTION_TABLES[type]);
     const rows: ExpiredRow[] = [];
-    const paths: string[] = [];
+    const paths: { key: string; backend: StorageBackend }[] = [];
     for (let offset = 0; ; offset += CLEANUP_BATCH) {
       const page = await repo.findAll(
         { created_at: { lt: cutoff } },

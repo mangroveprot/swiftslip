@@ -41,6 +41,7 @@ import {
 import { localToday } from "@/lib/form-draft";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { usePdfAttachment, usePdfOtherAttachments } from "@/lib/pdf-attachments";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { LoaForm } from "@swiftslip/shared/types";
@@ -118,6 +119,14 @@ function LoaEditorBody({
     ...loaOtherUrlsQueryOptions(rowId ?? ""),
     enabled: rowId !== null && others.length > 0,
   });
+
+  // The exported PDF carries the same files the print path does — the approval
+  // attachment first, then every other attachment — after the form's own pages.
+  // These join the SAME signed-URL queries the cards above already resolved.
+  const pdfAttachments = [
+    ...usePdfAttachment("loa", rowId ?? id, data?.attachment),
+    ...usePdfOtherAttachments("loa", rowId ?? id, others),
+  ];
 
   const [form, setForm] = useState<LoaForm | null>(null);
   const [busy, setBusy] = useState(false);
@@ -448,6 +457,7 @@ function LoaEditorBody({
                   void savePdfFrom(
                     "loa-sheet",
                     pdfFileName(APP.name, "LOA", form.employee_name || "form"),
+                    pdfAttachments,
                   )
                 }
               >

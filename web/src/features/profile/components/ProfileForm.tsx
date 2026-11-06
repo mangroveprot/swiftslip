@@ -25,8 +25,6 @@ import {
 } from "@/lib/photo";
 import { toast } from "@/lib/toast";
 import {
-  DEPARTMENTS,
-  DESIGNATIONS,
   departmentForPosition,
   normalizeDesignation,
   normalizePosition,
@@ -64,13 +62,13 @@ export function ProfileForm() {
   const qc = useQueryClient();
   const { data } = useQuery(profileQueryOptions());
   // Live org lists from `org_designations` / `org_departments` /
-  // `org_positions` so the pickers reflect admin edits (add / rename /
-  // delete). The hardcoded constants stay only as a fallback for the very
-  // first render before the query resolves, and for the cases where the
-  // server returns no rows.
+  // `org_positions` — the ONLY source for the pickers. Until the query
+  // resolves they are empty on purpose: a built-in fallback list kept
+  // offering values the tables no longer hold (deleted IT positions turning
+  // up under Field Monitoring), so there is nothing to fall back to now.
   const { data: orgLists } = useQuery(orgOptionsQueryOptions());
-  const designationOptions = orgLists?.designations ?? DESIGNATIONS;
-  const baseDepartments = orgLists?.departments ?? DEPARTMENTS;
+  const designationOptions = orgLists?.designations ?? [];
+  const baseDepartments = orgLists?.departments ?? [];
   const [form, setForm] = useState<EmployeeProfile>(empty);
   // The last-saved profile (or whatever the server returned). Compared with
   // `form` to decide whether Save profile can do anything — leaving the button

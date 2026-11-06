@@ -4,7 +4,12 @@ import {
   departmentForPosition,
   departmentWithLocation,
 } from '@swiftslip/shared/org';
-import type { OtEntry, OtForm, SessionUser } from '@swiftslip/shared/types';
+import type {
+  OtEntry,
+  OtForm,
+  SessionUser,
+  StorageBackend,
+} from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
 import { AttachmentService, readOtherFiles } from '../../attachments';
 import { ProfileService } from '../../profile';
@@ -159,10 +164,21 @@ class OtService extends BaseService<'ot_forms', OtFormRepository> {
       const removed = await this.repository.delete({ id, owner_id: user.id });
       if (!removed)
         throw new ErrorResponse('NOT_FOUND_ERROR', 'Form not found.');
-      await AttachmentService.removeFiles([
-        removed.attachment_path,
-        ...readOtherFiles(removed.other_attachments).map((file) => file.path),
-      ]);
+      const refs: { key: string; backend?: StorageBackend }[] = [];
+      if (removed.attachment_path) {
+        refs.push({
+          key: removed.attachment_path,
+          backend: (removed as Record<string, unknown>)
+            .attachment_backend as StorageBackend,
+        });
+      }
+      refs.push(
+        ...readOtherFiles(removed.other_attachments).map((file) => ({
+          key: file.path,
+          backend: file.backend,
+        })),
+      );
+      await AttachmentService.removeFiles(refs);
       if (!quiet) {
         await ActivityLogService.logBy(user, {
           action: 'ot.deleted',

@@ -2,6 +2,7 @@ import type { z } from "zod";
 
 import { api, documentOf, documentsOf, seg } from "@/lib/api-client";
 import type { AttachmentLink, ObDetail, ObSummary } from "@swiftslip/shared/api-types";
+import type { ObHrStatus } from "@swiftslip/shared/hr";
 import type {
   attachmentUploadInput,
   createObFormInput,
@@ -21,9 +22,19 @@ export const getObForm = async ({ data }: { data: z.input<typeof idInput> }) =>
 export const createObForm = async ({ data }: { data: z.input<typeof createObFormInput> }) =>
   documentOf(await api.post<{ id: string }>("/official-business", data));
 
+/** Saves the form and reports the HR state the API ended up in (a save can hand
+ *  an approved form back to HR for re-approval). */
 export const saveObForm = async ({ data }: { data: z.input<typeof saveObFormInput> }) => {
   const { id, ...body } = data;
-  await api.put(`/official-business/${seg(id)}`, body);
+  const saved = documentOf(
+    await api.put<{ hr_status: ObHrStatus }>(`/official-business/${seg(id)}`, body),
+  );
+  return { ok: true as const, hr_status: saved.hr_status };
+};
+
+/** Hand the form to HR (draft | rejected → submitted). */
+export const submitObForm = async ({ data }: { data: z.input<typeof idInput> }) => {
+  await api.post(`/official-business/${seg(data.id)}/submit`);
   return { ok: true as const };
 };
 

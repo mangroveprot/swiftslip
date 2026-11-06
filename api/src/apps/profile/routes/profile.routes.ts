@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { validate } from '../../../common/shared';
-import { employeeProfileSchema, profilePhotoInput } from '@swiftslip/shared/schemas';
+import {
+  employeeProfileSchema,
+  profilePhotoInput,
+} from '@swiftslip/shared/schemas';
 import { authenticate } from '../../auth/middlewares';
 import { ProfileController } from '../controllers';
 

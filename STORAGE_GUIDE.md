@@ -2,12 +2,21 @@
 
 Reference for how file storage is set up and how to use it when a feature needs it.
 
-> **Implementation status (this repo):** the optional `api/src/apps/files` module now uses B2 as a
-> **second** storage backend for future features — see `ACTIVITY_LOG.md` (2026-10-30). The form/DTR
-> attachments keep using Supabase Storage and are unchanged. The module uses the **server-relay**
-> upload (browser → API → B2; the presigned-PUT flow in §7.2 is *not* used) and **presigned GET**
-> downloads (§7.4), so private files never go through the public Worker. Keys are bucket-root
-> `{uuid}.{ext}`; metadata and ownership live in the `public.files` table (`0030_files.sql`).
+> **Implementation status (this repo):** `api/src/apps/files` uses B2 as a **second** storage
+> backend — see `ACTIVITY_LOG.md` (2026-10-30). **Form/DTR attachments use it too**: the
+> `FileStorageService` refactor makes every attachment upload call
+> `StorageService.pickBackend()` and persist an `attachment_backend` marker, so the admin's
+> Settings → Storage rule decides where new uploads land. Files already stored never move.
+> `/files` keys are bucket-root `{uuid}.{ext}`; form attachments are prefixed
+> `FormAttachement/<uid>/<uuid>.<ext>`. Metadata for `/files` lives in `public.files`
+> (`0030_files.sql`). Uploads use the **server-relay** flow (browser → API → B2; the
+> presigned-PUT flow in §7.2 is *not* used) and **presigned GET** downloads (§7.4), so private
+> files never go through the public Worker.
+>
+> ⚠️ **Deploy status (2026-11-05):** that refactor is still **uncommitted in the working tree**.
+> Any build from git HEAD ignores the rule and writes every attachment to Supabase Storage.
+> The `B2_*` variables are already set on the Render host, so only commit + deploy remains before
+> a `b2-only` rule can be trusted.
 >
 > **Admin:** Admin Panel → Settings → Storage shows usage for both backends (approved / other /
 > orphan / free bytes per backend), lets an admin pick where new uploads go (Supabase first → B2

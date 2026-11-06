@@ -22,8 +22,6 @@ import { sessionQueryOptions } from "@/features/auth/queries";
 import { toast } from "@/lib/toast";
 import { relativeTime } from "@swiftslip/shared/time";
 import {
-  DEPARTMENTS,
-  DESIGNATIONS,
   departmentForPosition,
   normalizeDesignation,
   normalizePosition,
@@ -61,10 +59,11 @@ function roleText(role: string) {
 /**
  * The department a row shows: the one stored on the profile, or the one its
  * position implies for rows that were never backfilled / predate migration
- * 0023. The office branch is never a department, so `designation` is not used.
+ * 0023 — resolved against the live `org_positions` rows, never a built-in
+ * copy. The office branch is never a department, so `designation` is not used.
  */
-function displayDepartment(a: Account) {
-  return a.department.trim() || departmentForPosition(a.position);
+function displayDepartment(a: Account, lists?: OrgLists) {
+  return a.department.trim() || departmentForPosition(a.position, lists);
 }
 
 /**
@@ -72,9 +71,12 @@ function displayDepartment(a: Account) {
  * the real name, the Designation (office), the Department, and the Position.
  * Anything less and the forms that auto-fill from the profile print blanks.
  */
-function isIncomplete(a: Account) {
+function isIncomplete(a: Account, lists?: OrgLists) {
   return (
-    !a.full_name.trim() || !a.designation.trim() || !displayDepartment(a) || !a.position.trim()
+    !a.full_name.trim() ||
+    !a.designation.trim() ||
+    !displayDepartment(a, lists) ||
+    !a.position.trim()
   );
 }
 
@@ -102,6 +104,9 @@ export function UserManagement() {
   const { data: session } = useQuery(sessionQueryOptions());
   const qc = useQueryClient();
   const { data: accounts, isLoading } = useQuery(accessCodesQueryOptions());
+  // The same org tables the pickers read, so a row whose department is blank
+  // can still show the department its position is filed under.
+  const { data: orgLists } = useQuery(orgOptionsQueryOptions());
   // Faces for the roster — same shared batch cache the other admin lists use,
   // so opening User management after App access costs no extra request.
   const photos = useUserPhotos((accounts ?? []).map((account) => account.id));
@@ -118,19 +123,24 @@ export function UserManagement() {
     accounts: all.length,
     admins: all.filter((a) => a.role === "admin").length,
     staff: all.filter((a) => a.role === "user").length,
-    incomplete: all.filter(isIncomplete).length,
+    incomplete: all.filter((a) => isIncomplete(a, orgLists)).length,
   };
 
   const query = search.trim().toLowerCase();
   const list = all.filter((a) => {
     const byChip =
-      filter === "all" ? true : filter === "incomplete" ? isIncomplete(a) : a.role === filter;
+      filter === "all"
+        ? true
+        : filter === "incomplete"
+          ? isIncomplete(a, orgLists)
+          : a.role === filter;
     if (!byChip) return false;
     if (!query) return true;
     // `displayDepartment` too: a row awaiting backfill still answers to the
     // department its position implies.
     return `${a.id_number} ${a.full_name} ${a.designation} ${a.department} ${a.position} ${displayDepartment(
       a,
+      orgLists,
     )} ${roleText(a.role)} ${a.role}`
       .toLowerCase()
       .includes(query);
@@ -277,8 +287,8 @@ export function UserManagement() {
               <tbody>
                 {list.map((a) => {
                   const isYou = a.id === session?.id;
-                  const incomplete = isIncomplete(a);
-                  const shownDepartment = displayDepartment(a);
+                  const incomplete = isIncomplete(a, orgLists);
+                  const shownDepartment = displayDepartment(a, orgLists);
                   return (
                     <tr key={a.id} className="border-b transition-colors hover:bg-muted/30">
                       <td className="py-5 pr-4 align-middle text-sm tabular-nums">{a.id_number}</td>
@@ -600,11 +610,11 @@ function AccountDialog({
 
   // The Position picker only offers what fits under the chosen Department —
   // a Position lives under exactly one Department, so the pair is the unit.
-  // Both lists come from the editable org options table (falling back to the
-  // fixed constants when the migration hasn't run), so a renamed item shows up
-  // here without a code change.
-  const baseDepartments = orgLists?.departments ?? DEPARTMENTS;
-  const designationOptions = orgLists?.designations ?? DESIGNATIONS;
+  // Both lists come straight from the editable org options table (no built-in
+  // fallback copy), so a renamed item shows up here without a code change and
+  // a deleted one stays gone.
+  const baseDepartments = orgLists?.departments ?? [];
+  const designationOptions = orgLists?.designations ?? [];
   const positionList = positionsUnder(department, orgLists);
   // The department picker has to be able to SHOW the department the picked
   // position implies, even when that department isn't on the shared list yet

@@ -1,22 +1,18 @@
 /**
  * The admin-editable Designation / Department / Position lists behind the
  * pickers (`org_designations` / `org_departments` / `org_positions`), seeded
- * from the constants in `shared/org`. An emptied department/position table
- * falls back to the constants, so the pickers never go blank.
+ * by migrations 0024 / 0025. The tables ARE the list: `list()` returns their
+ * rows exactly as they stand, with no constant fallback, so a value an
+ * administrator deleted stays deleted instead of coming back from a hard-coded
+ * copy (IT Support kept reappearing under Field Monitoring because of that
+ * copy).
  *
  * Renames and deletions cascade: profiles hold the same strings by value and
  * app_access_rules key on Department / Position. Leaving them behind would
  * silently orphan rules and print stale org data on forms.
  */
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
-import {
-  DEPARTMENT_POSITIONS,
-  DESIGNATIONS,
-  departmentForPosition,
-  normalizePosition,
-  type OrgLists,
-  type OrgOptionKind,
-} from '@swiftslip/shared/org';
+import { type OrgLists, type OrgOptionKind } from '@swiftslip/shared/org';
 import type { SessionUser } from '@swiftslip/shared/types';
 import { ProfileRepository } from '../../profile/repositories';
 import { AccessRuleRepository } from '../../access/repositories';
@@ -32,17 +28,6 @@ export type OrgAddInput =
   | { kind: 'department'; value: string }
   | { kind: 'position'; value: string; department?: string | undefined };
 
-/** The constant fallback — also the source of the seed data. */
-function fallbackLists(): OrgLists {
-  return {
-    designations: [...DESIGNATIONS],
-    departments: Object.keys(DEPARTMENT_POSITIONS),
-    positions: Object.entries(DEPARTMENT_POSITIONS).flatMap(([dept, list]) =>
-      list.map((value) => ({ value, department: dept })),
-    ),
-  };
-}
-
 class OrgOptionService {
   private designations = new OrgDesignationRepository();
   private departments = new OrgDepartmentRepository();
@@ -50,6 +35,14 @@ class OrgOptionService {
   private profiles = new ProfileRepository();
   private rules = new AccessRuleRepository();
 
+  /**
+   * The three lists exactly as the tables hold them.
+   *
+   * No fallback to a built-in copy: an emptied table is reported as empty, so
+   * a deleted value stays deleted on every picker that reads this. (An empty
+   * designation list was always treated as legitimate; the departments and
+   * positions pickers now behave the same way.)
+   */
   async list(): Promise<ServiceResponse<OrgLists>> {
     try {
       const sort = { value: 'asc' as const };
@@ -58,18 +51,15 @@ class OrgOptionService {
         this.departments.findAll({}, { sort }),
         this.positions.findAll({}, { sort }),
       ]);
-      const fallback = fallbackLists();
       return {
         success: true,
         document: {
-          // An empty designation list is a legitimate (if odd) state.
           designations: des.map((d) => d.value),
-          departments: dept.length
-            ? dept.map((d) => d.value)
-            : fallback.departments,
-          positions: pos.length
-            ? pos.map((p) => ({ value: p.value, department: p.department }))
-            : fallback.positions,
+          departments: dept.map((d) => d.value),
+          positions: pos.map((p) => ({
+            value: p.value,
+            department: p.department,
+          })),
         },
       };
     } catch (error) {
@@ -101,11 +91,12 @@ class OrgOptionService {
         } else if (input.kind === 'department') {
           await this.departments.create({ value });
         } else {
+          // The department the admin had selected in the picker. No lookup
+          // fallback: deriving one from a built-in map would file the new
+          // position under a name the table may not even hold any more.
           await this.positions.create({
             value,
-            department:
-              (input.department ?? '').trim() ||
-              departmentForPosition(normalizePosition(value)),
+            department: (input.department ?? '').trim(),
           });
         }
       } catch (error) {
@@ -208,7 +199,9 @@ class OrgOptionService {
   /**
    * Remove one option from the list. Profiles keep what they hold — the value
    * just stops being offered — but access rules keyed on it are deleted, since
-   * a rule that matches nobody is a trap.
+   * a rule that matches nobody is a trap. Deleting a department also deletes
+   * the positions filed under it, so nothing is left pointing at a name the
+   * list no longer holds.
    */
   async remove(
     actor: SessionUser,
@@ -220,6 +213,32 @@ class OrgOptionService {
       } else {
         if (input.kind === 'department') {
           await this.departments.deleteMany({ value: input.value });
+          // The department's positions go with it. Left behind they point at
+          // a name the list no longer holds, so no picker would offer them
+          // again — which is how "Field Monitoring" ended up filed under the
+          // deleted "Operations" and vanished from the Field Monitoring
+          // Officer picker. Profiles keep the values they hold; the positions
+          // simply stop being offered, exactly as deleting one outright does.
+          const owned = await this.positions.findAll({
+            department: input.value,
+          });
+          if (owned.length) {
+            await this.positions.deleteMany({ department: input.value });
+            for (const position of owned) {
+              // A rule keyed on a position that no longer exists matches
+              // nobody — the same trap `remove` already clears for a
+              // position deleted on its own.
+              await this.rules.deleteMany({
+                scope: 'position',
+                scope_value: position.value,
+              });
+              await ActivityLogService.logBy(actor, {
+                action: 'org.updated',
+                target: `position: ${position.value}`,
+                detail: 'deleted with its department',
+              });
+            }
+          }
         } else {
           await this.positions.deleteMany({ value: input.value });
         }

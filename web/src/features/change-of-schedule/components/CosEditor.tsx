@@ -40,6 +40,7 @@ import {
 } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
 import { printSheet } from "@/lib/print";
+import { usePdfAttachment } from "@/lib/pdf-attachments";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
@@ -111,6 +112,9 @@ function CosEditorBody({
     ...cosFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
+  // The attached slip travels with the exported PDF, on its own page after the
+  // form. Joins the card's own query, so this costs no extra request.
+  const pdfAttachments = usePdfAttachment("cos", rowId ?? id, data?.attachment);
   const profileQuery = useQuery(profileQueryOptions());
   const profile = profileQuery.data ?? null;
   const profileReady = profileQuery.data !== undefined || profileQuery.isError;
@@ -425,6 +429,7 @@ function CosEditorBody({
                   void savePdfFrom(
                     "cos-sheet",
                     pdfFileName(APP.name, "COS", form.employee_name || "form"),
+                    pdfAttachments,
                   )
                 }
               >

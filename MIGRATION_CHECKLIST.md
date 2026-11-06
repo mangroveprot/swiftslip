@@ -240,8 +240,11 @@ Manual, admin-only cleanup of forms older than N days, plus their storage files.
 
 ### Phase 8 — Optional B2 file storage (`/api/files`) + Storage settings page ✅ code done; migration + real-bucket test pending
 
-Added per `STORAGE_GUIDE.md` as a **second, optional** storage backend for future features. The
-existing Supabase Storage attachments are untouched.
+Added per `STORAGE_GUIDE.md` as a **second, optional** storage backend. The later
+`FileStorageService` refactor also routed **form/DTR attachments** through the admin's rule
+(`pickBackend()` + `attachment_backend`); files already in Supabase are not migrated.
+⚠️ That refactor is still **uncommitted** (2026-11-05) — a build from git HEAD ignores the
+rule entirely and writes every attachment to Supabase. Deploy it before testing `b2-only`.
 - [x] `api/src/apps/files` (controller → service → `B2Repository` / `FileRepository`), mounted at
       `/api/files` behind `authenticate`
 - [x] Server-relay upload: base64 JSON → API → B2 `PutObject`, with the attachment magic-byte gate
@@ -269,6 +272,111 @@ existing Supabase Storage attachments are untouched.
       Editor, add `B2_ENDPOINT`, `B2_UPLOAD_KEY_ID`, `B2_UPLOAD_APP_KEY` to `api/.env`, then test
       `/api/files` upload → `GET /files/url?key=` → `DELETE /files?key=`, and open
       Admin Panel → Settings → Storage. Not tested against a real B2 bucket.
+- [ ] **Deploy the `FileStorageService` refactor first.** On 2026-11-05 the live service was still
+      running git HEAD, where `pickBackend()` only feeds the dashboard's "next backend" field: a
+      brand-new OT attachment went to Supabase while the saved rule was `b2-only`. The `B2_*`
+      variables are **already set** on the Render service (owner, 2026-11-05; `render.yaml` now
+      declares them too). So only **commit + push the working tree** remains — Render rebuilds
+      from git. Then upload a **new** attachment and check the URL is a B2 presigned link.
+      Existing Supabase files stay put by design.
+
+### Phase 9 — HR approval app for Official Business + in-app notifications ✅ code done; migration not applied yet
+Separate grantable `hr` app (`/hr`, own shell + App Chooser card). Scope locked to **OB only**;
+LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10).
+- [x] `api/drizzle/migrations/0035_hr_approval.sql` — `'hr'` added to the `app_access_rules` CHECK;
+      12 HR columns on `ob_forms`; `notifications` table (recipient-scoped, RLS on, no policies)
+- [x] `api/drizzle/migrations/0036_ob_arrival_signoff.sql` — `arrival_date` / `arrival_time` on
+      `ob_forms`, so the exit-clearance arrival row prints what HR typed (not just the audit stamp).
+      **Extended 2026-11-06** for the status cards: `submitted_at`, `hr_rejected_at`,
+      `hr_rejected_by`, `supervisor_approved_at`, backfilled from the workflow's own
+      `notifications` rows (`ob_submitted` / `ob_resubmitted` / `ob_rejected` carry the exact
+      moment and the person) instead of guessing from `updated_at` — NULL where no record
+      survives, so the card shows "—" rather than a wrong date.
+- [x] OB preview follows the completed paper form: the Exit clearance rows auto-fill from the
+      HR departure/arrival signatures (typed date/time, residence, destination, return-leg swap)
+      and "Verified by: HRD" fills with the approver's name + saved signature. Signer ids are
+      resolved to names/signatures on read (`resolveObSigners`) for both the employee and HR views.
+      Format per the owner's photo, after his review round: the first cell prints the **label
+      only** (no date/time line above it), the guard/HR cell prints a **small signature, then
+      time, then date** sitting **on the underline** like the residence/destination boxes, sized
+      and wrapped so it can never spill over the cell's edge on a narrow screen (one line at A4
+      width), and the HRD cell prints **signature → name → position** (the signer's
+      `profiles.designation`). The Word download fills the same boxes — tokens added by
+      `tokenize-ob-template.mjs`, which no longer writes the `{departure_when}`/`{arrival_when}`
+      lines and now renders a full fill *and* an empty fill to validate
+      before writing `public/ob_form_template.docx`.
+- [x] OB status cards (owner's reference mock, 2026-11-06) — `ObStatusLine` (dot + status · name
+      · id · one-line summary) under the title on **both** screens, and one status card for the
+      form's current state: at the top of the **form column** in `ObEditor`, at the top of the
+      **rail** in `HrObDetailPage` (the approve/reject action card stays below it). One builder,
+      `web/src/features/official-business/lib/status-card.ts`, derives the state (Overdue is
+      derived, never stored) and every row for both audiences — HR stacks label-left/value-right
+      rows, the employee lays the same facts out in columns — so the header line, the card and
+      the two screens can never disagree. Cards render nothing before submission (draft).
+- [x] `shared/src/hr.ts` — statuses/labels (`waiting_supervisor` included), `ObHrFields`,
+      `isObLocked` (only `submitted`), `needsReapprovalAfterSave`, supervisor helpers,
+      notification kinds; `APP_KEYS` / `GRANTABLE_APP_KEYS` / `APP_HOME` += `hr`;
+      zod inputs (`submitObInput`, `rejectObInput`, `signDepartureInput`, `signArrivalInput`,
+      `markNotificationsReadInput`), API types, activity labels
+- [x] `apps/hr` — `GET /hr/ob` (queue, drafts excluded), `GET /hr/ob/:id`,
+      `POST /hr/ob/:id/approve` (→ `waiting_supervisor` | `approved`), `/reject` (reason
+      required), `/sign-departure`, `/sign-arrival`; guarded `authenticate, requireApp('hr')`
+- [x] `apps/notifications` — `GET /notifications`, `POST /notifications/read`;
+      `ob.submitted` / `ob.resubmitted` → HR, `ob.approved` / `ob.rejected` /
+      `ob.departure_signed` → employee (no arrival notification)
+- [x] OB: `POST /official-business/:id/submit`; `FORM_LOCKED` only while `submitted`;
+      save returns the resulting `hr_status`; content edits on `approved|completed` send it
+      back to `submitted` (HR re-approval); supervisor-only saves keep `departed` and its
+      signed departure, and promote `waiting_supervisor` → `approved`; delete stays
+      owner-only and works in **every** status
+- [x] Access: HR auto-grant for department `"HR Department"` or a position under it
+      (explicit rules still win; admins bypass); default OFF
+- [x] Web: `api/hr.functions.ts` + `notifications.functions.ts`, `features/hr/**`
+      (layout, queue, detail with five progress steps, status chip, notification bell,
+      queries/actions), routes `/hr`, `/hr/ob/$id` and `/hr/profile`; `ObList` chip + delete in every
+      status; `ObEditor` banner/reject/submit/lock; bell in the employee sidebar, the
+      mobile header and the HR queue header; `AppAccess` / `ActivityLogs` labels
+- [x] HR UI: reference-led approval desk — grouped queue table, live Review queue /
+      Completed nav counts (`?view=completed`), SwiftSlip page gradient + sidebar
+      palette + Geist type (HR + Account nav only), shared form-list empty states,
+      admin-style underline search, detail with five-step stepper, itinerary chips,
+      Exit clearance timeline, supervisor-slip rail and scaled live preview. My
+      Account lives at `/hr/profile` so it stays inside the HR shell.
+- [x] `npm run typecheck` and `npm run lint` pass for shared, api and web
+- [ ] **Owner to run:** paste `0035_hr_approval.sql` **and** `0036_ob_arrival_signoff.sql` in the
+      Supabase SQL Editor **before** deploying, then sign in as an HR account and walk one OB form
+      through Submit → Approve (with and without the supervisor signature) → Sign departure.
+      **`0036` was checked against the live DB on 2026-11-06: the arrival half IS applied**
+      (`ob_forms.arrival_date` reads back and `POST /hr/ob/:id/sign-arrival` has signed an
+      arrival since), **but the four status-card columns added on 2026-11-06 are not** — they
+      are ABSENT from `ob_forms`. Paste `0036_ob_arrival_signoff.sql` **again**: every statement
+      is `IF NOT EXISTS` / NULL-guarded, so re-running it only adds the four columns and fills
+      them in. Until then the status cards show "—" for *Rejected on*, *Employee told*,
+      *Waiting for* and *Supervisor approved*.
+      On the unsigned-supervisor copy, confirm arrival is refused, then save only the
+      supervisor name + slip as the employee and confirm the departure is kept and
+      arrival can now be signed. Also test Reject → edit → Resubmit and one
+      edit-after-approval → re-approve, checking the bell on both sides. Confirm the preview's
+      Exit clearance fills after departure/arrival (signature, then time, then date, with the
+      date/time printed in the guard cell rather than above the label) and
+      "Verified by: HRD" fills with signature, name and position after approval — then press
+      **Download Word** and confirm the .docx prints the same boxes, still on one page.
+      Not tested against the real database.
+
+Intentional behaviour (do not "fix" back):
+- Drafts and empty scaffolds never reach the HR queue; the employee must press
+  *Submit for HR approval*. Only `submitted` is read-only. `rejected`,
+  `waiting_supervisor`, `approved`, `departed` and `completed` are editable; saving a
+  content change on an already-approved/completed form clears HR's approval + sign-offs
+  and puts it back in the HR queue for re-approval. A supervisor-only save on a departed
+  form keeps it departed, so the employee can add the missing signature without losing
+  the signed departure.
+- The owner can delete their form in any status (completed included); HR cannot delete.
+- The supervisor indicator never blocks HR's approval **or departure**: HR can sign out a
+  form in `waiting_supervisor`. It does block completion — `sign-arrival` is refused until
+  the supervisor name + ticked approval slip are saved.
+- HR recipients = profiles with `department = "HR Department"` or a `designation` under it;
+  the submitter is excluded. Bell and queue poll every 30 s; opening the bell marks all read.
 
 ## 4. Cookie / auth contract (Phase 2, needed by Phase 5)
 
@@ -327,6 +435,15 @@ existing Supabase Storage attachments are untouched.
 | DELETE | `/inventory/options?kind=&id=` | inventory | `deleteOptionQuery` | – |
 | GET | `/inventory/reports/:branchId` | inventory | – | `InventoryReportDocument` |
 | POST | `/inventory/reports/downloads` | inventory | `reportDownloadInput` | – |
+| POST | `/official-business/:id/submit` | user | – | – (draft\|rejected → submitted) |
+| GET | `/hr/ob` | hr | – | `documents` (OB queue, drafts excluded) |
+| GET | `/hr/ob/:id` | hr | – | `{form, entries, attachment?}` |
+| POST | `/hr/ob/:id/approve` | hr | – | – (submitted → approved) |
+| POST | `/hr/ob/:id/reject` | hr | `rejectObInput` | – (submitted → rejected) |
+| POST | `/hr/ob/:id/sign-departure` | hr | `signDepartureInput` | – (waiting_supervisor/approved → departed) |
+| POST | `/hr/ob/:id/sign-arrival` | hr | `signArrivalInput` | – (departed → completed) |
+| GET | `/notifications` | user | – | `{unread, documents}` |
+| POST | `/notifications/read` | user | `markNotificationsReadInput` | – (marks all read) |
 
 ## 5. Smoke test (after `npm run setup` and filling `api/.env`)
 
@@ -346,4 +463,8 @@ Known behaviour changes in Phase 2 (intentional, listed so nobody "fixes" them b
   the database must have migrations **through 0029** applied (`0027` adds `ticketing` to the `app_access_rules` CHECK;
   `0028` adds `retention_settings` + `cleanup_runs`, needed by Admin Panel → Settings → Data retention;
   `0029` lifts the 30-day floor on the keep period — only needed if `0028` was applied before 2026-10-29).
+- Phase 9 needs **`0035_hr_approval.sql`** applied before the HR app is usable (`hr` rule storage,
+  `ob_forms.hr_status`, `notifications`). Without it the `/hr` and `/notifications` calls error.
+  Apply **`0036_ob_arrival_signoff.sql`** as well; without it `sign-arrival` cannot store the
+  typed arrival date/time and the OB preview's arrival box stays empty.
 - Sign-in failure delay and throttle numbers are unchanged (10 per ID / 20 per IP / 15 min, 250 ms).

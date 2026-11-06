@@ -7,10 +7,12 @@ import { BiometricImportRoutes } from '../../apps/biometric-import';
 import { CosRoutes } from '../../apps/cos';
 import { AuthRoutes } from '../../apps/auth';
 import { FileRoutes } from '../../apps/files';
+import { HrRoutes } from '../../apps/hr';
 import { InventoryAssetRoutes } from '../../apps/inventory-assets';
 import { InventoryOptionRoutes } from '../../apps/inventory-options';
 import { InventoryReportRoutes } from '../../apps/inventory-reports';
 import { LoaRoutes } from '../../apps/loa';
+import { NotificationRoutes } from '../../apps/notifications';
 import { OfficialBusinessRoutes } from '../../apps/official-business';
 import { OtRoutes } from '../../apps/ot';
 import { RecordRoutes } from '../../apps/records';
@@ -36,10 +38,12 @@ router.use('/admin/storage', StorageRoutes);
 router.use('/admin', AdminRoutes);
 router.use('/records', RecordRoutes);
 router.use('/official-business', OfficialBusinessRoutes);
+router.use('/hr', HrRoutes);
+router.use('/notifications', NotificationRoutes);
 router.use('/loa', LoaRoutes);
 router.use('/cos', CosRoutes);
 router.use('/ot', OtRoutes);
-// Optional B2 file store for future features (Supabase attachments untouched).
+// B2 file store; form attachments route here too via FileStorageService.
 router.use('/files', FileRoutes);
 router.use('/biometric-import', BiometricImportRoutes);
 router.use('/ai', AiRoutes);

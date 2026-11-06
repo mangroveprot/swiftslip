@@ -42,6 +42,7 @@ import {
 import { localToday } from "@/lib/form-draft";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { usePdfAttachment, usePdfOtherAttachments } from "@/lib/pdf-attachments";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { OtEntry, OtForm } from "@swiftslip/shared/types";
@@ -126,6 +127,14 @@ function OtEditorBody({
     ...otOtherUrlsQueryOptions(rowId ?? ""),
     enabled: rowId !== null && others.length > 0,
   });
+
+  // The exported PDF carries the same files the print path does — the approval
+  // attachment first, then every other attachment — after the form's own pages.
+  // These join the SAME signed-URL queries the cards above already resolved.
+  const pdfAttachments = [
+    ...usePdfAttachment("ot", rowId ?? id, data?.attachment),
+    ...usePdfOtherAttachments("ot", rowId ?? id, others),
+  ];
 
   const [form, setForm] = useState<OtForm | null>(null);
   const [entries, setEntries] = useState<OtEntry[]>([]);
@@ -429,6 +438,7 @@ function OtEditorBody({
                   void savePdfFrom(
                     "ot-sheet",
                     pdfFileName(APP.name, "OT", form.employee_name || "form"),
+                    pdfAttachments,
                   )
                 }
               >
@@ -512,7 +522,14 @@ function OtEditorBody({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
+        {/* THE COLUMN IS THE SCROLL AREA — the LOA treatment. Nothing inside
+            it scrolls on its own: the approval card, the sheet and the
+            attachments card are one long page you scroll top to bottom, so the
+            form never "sinks" behind a card that ate the column's height.
+            Screen-only: on print the column is `print:overflow-visible` and
+            the `print:order-*` sequence still puts the sheet (1) first, then
+            the approval slip (2), then the extra files (3). */}
+        <div className="flex min-h-0 flex-col gap-3 lg:overflow-y-auto print:gap-0 print:overflow-visible">
           <div className="print:order-2">{attachmentCard}</div>
           <div className="no-print flex shrink-0 items-center justify-between gap-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -528,21 +545,19 @@ function OtEditorBody({
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
+          <div className="rounded-sm print:order-1 print:overflow-visible">
             {/* The editor's rows as they stand — NOT the persisted subset — so
                 adding an OT line shows up in the sheet straight away. */}
             <OtPreview sheetId="ot-sheet" form={form} entries={entries} />
           </div>
           {/* The extra supporting documents. They used to sit at the bottom of
               the FORM column, which is its own scroll area — so the card was
-              always below the fold and users never learned it existed. This
-              column has spare room under the preview, and the card is now
-              always on screen next to the approval attachment at the top. The
-              cap keeps a full set of files (8, each with an inline image
-              preview) from crowding the preview out of the column: past it the
-              card scrolls itself. Screen-only, like the card always was — its
-              printable copies are mounted below. */}
-          <div className="no-print max-h-[45%] shrink-0 overflow-y-auto">
+              always below the fold and users never learned it existed. They
+              now live in the preview column and simply flow after the sheet:
+              the column scrolls them into view like everything else, no cap
+              and no scrollbar of their own. Screen-only, like the card always
+              was — its printable copies are mounted below. */}
+          <div className="no-print">
             <OtOtherAttachmentsCard
               id={rowId ?? id}
               canEdit={canEdit}

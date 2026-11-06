@@ -4,6 +4,7 @@ import { LayoutGrid } from "lucide-react";
 
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { NotificationBell } from "@/features/hr/components/NotificationBell";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "./sidebar-classes";
 import { roleLabel, NAV_SECTIONS } from "./nav-items";
@@ -79,6 +80,10 @@ export function Sidebar({
       </nav>
 
       <SidebarFooter name={name} photo={photo} sublabel={caption}>
+        <div className="flex items-center justify-between gap-2 py-1 pl-2">
+          <span className="text-sm text-foreground/75">Notifications</span>
+          <NotificationBell />
+        </div>
         {/* Shown when there is more than one app to move between. Keyed on the
             resolved grants rather than the role: a staff account given the
             inventory alongside SwiftSlip needs this just as an admin does, and

@@ -33,6 +33,11 @@ router.delete(
   validate(deleteRowQuery, 'query'),
   OfficialBusinessController.remove,
 );
+router.post(
+  '/:id/submit',
+  validate(idInput, 'params'),
+  OfficialBusinessController.submit,
+);
 
 // POST/GET/DELETE /:id/attachment
 router.use(

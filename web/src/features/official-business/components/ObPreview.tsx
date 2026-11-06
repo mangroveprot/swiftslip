@@ -1,6 +1,9 @@
 import { APP } from "@/config/app";
+import { resolveExitSignoff, type ExitLeg } from "@/features/official-business/lib/exit-signoff";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import { formatTime12h } from "@swiftslip/shared/time";
+import type { ObSigners } from "@swiftslip/shared/api-types";
+import type { ObHrFields } from "@swiftslip/shared/hr";
 import type { ObEntry, ObForm } from "@swiftslip/shared/types";
 
 // Matches public/ob_template.docx (see public/example.png): 50%-gray header
@@ -12,15 +15,32 @@ export function ObPreview({
   form,
   rows,
   sheetId,
+  hr,
+  signers,
 }: {
   form: ObForm;
   rows: ObEntry[];
   /** DOM id for the sheet — only the inline editor copy carries one, so the
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
+  /**
+   * HR-owned sign-off columns. The HR detail page passes the same object it
+   * already holds as `form`; the employee editor passes the loaded row so the
+   * preview can fill the boxes HR signed even though its edit state is ObForm.
+   */
+  hr?: Partial<ObHrFields> | null | undefined;
+  /** Resolved names, positions + e-signatures for those boxes. */
+  signers?: ObSigners | null | undefined;
 }) {
   const padded: (ObEntry | null)[] = [...rows];
   while (padded.length < MIN_ROWS) padded.push(null);
+
+  const details = hr ?? {};
+  const {
+    verified: verifiedByHr,
+    departure: departureLeg,
+    arrival: arrivalLeg,
+  } = resolveExitSignoff(hr, signers);
 
   return (
     <div
@@ -145,11 +165,15 @@ export function ObPreview({
               <td className="border-r border-ink px-2 pb-1 pt-2 align-top">
                 <p className="text-left text-[14px] font-bold">&nbsp;</p>
                 <div className="flex h-12 flex-col items-center justify-end gap-0.5 pb-0.5">
+                  {/* The cell is narrower than 11rem at preview width, so the
+                      drawing is capped at the cell's own width as well —
+                      without the min() it spills over the "Approved by" cell
+                      beside it. */}
                   {form.employee_signature ? (
                     <img
                       src={form.employee_signature}
                       alt=""
-                      className="max-h-[2.25rem] w-auto max-w-[11rem] object-contain mix-blend-multiply"
+                      className="max-h-[2.25rem] w-auto max-w-[min(11rem,100%)] object-contain mix-blend-multiply"
                     />
                   ) : null}
                   {form.employee_name ? (
@@ -188,7 +212,30 @@ export function ObPreview({
               {/* Verified by HRD */}
               <td className="px-2 pb-1 pt-2 align-top">
                 <p className="text-left text-[14px] font-bold">&nbsp;</p>
-                <div className="h-12" />
+                {/* Paper order: signature, printed name, then the position line. */}
+                <div className="flex h-12 flex-col items-center justify-end gap-0.5 pb-0.5">
+                  {/* Same cell-width cap as the employee signature: 8.5rem is
+                      wider than this cell at preview size, so the drawing
+                      used to push into the "Approved by" cell and past the
+                      box border. */}
+                  {verifiedByHr?.signature ? (
+                    <img
+                      src={verifiedByHr.signature}
+                      alt=""
+                      className="max-h-[2.25rem] w-auto max-w-[min(8.5rem,100%)] object-contain mix-blend-multiply"
+                    />
+                  ) : null}
+                  {verifiedByHr?.name ? (
+                    <p className="text-center text-[12px] font-medium leading-tight tracking-wide">
+                      {verifiedByHr.name}
+                    </p>
+                  ) : null}
+                  {verifiedByHr?.position ? (
+                    <p className="text-center text-[11px] leading-tight tracking-wide">
+                      {verifiedByHr.position}
+                    </p>
+                  ) : null}
+                </div>
                 <div className="-mx-2 mt-1 border-t border-ink px-2 pt-0.5">
                   <p className="text-center text-[10px] font-semibold">VERIFIED BY: HRD</p>
                   <p className="text-center text-[11px]">Printed Name and Signature</p>
@@ -231,27 +278,41 @@ export function ObPreview({
               <td className="px-2 py-1">SIGNATURE OF SECURITY GUARD / HR</td>
             </tr>
             <tr>
-              <td className="px-2 py-2 text-left text-[11px]">Date / Time of Actual Departure</td>
-              <td className="px-3 py-2 align-bottom">
-                <div className="border-b border-ink pt-3" />
+              <td className="px-2 py-2 text-left align-bottom text-[11px] leading-tight">
+                <div>Date / Time of Actual Departure</div>
               </td>
               <td className="px-3 py-2 align-bottom">
-                <div className="border-b border-ink pt-3" />
+                <div className="min-h-[17px] border-b border-ink pt-3 text-[11px] font-medium">
+                  {departureLeg.signed ? details.residence : ""}
+                </div>
               </td>
               <td className="px-3 py-2 align-bottom">
-                <div className="border-b border-ink pt-3" />
+                <div className="min-h-[17px] border-b border-ink pt-3 text-[11px] font-medium">
+                  {departureLeg.signed ? details.destination : ""}
+                </div>
+              </td>
+              <td className="px-1.5 py-2 align-bottom">
+                <ExitSignature leg={departureLeg} />
               </td>
             </tr>
             <tr>
-              <td className="px-2 py-2 text-left text-[11px]">Date / Time of Actual Arrival</td>
-              <td className="px-3 py-2 align-bottom">
-                <div className="border-b border-ink pt-3" />
+              <td className="px-2 py-2 text-left align-bottom text-[11px] leading-tight">
+                <div>Date / Time of Actual Arrival</div>
               </td>
               <td className="px-3 py-2 align-bottom">
-                <div className="border-b border-ink pt-3" />
+                <div className="min-h-[17px] border-b border-ink pt-3 text-[11px] font-medium">
+                  {/* The return leg swaps the departure route, exactly like the
+                      paper form: where they were, then where they came back to. */}
+                  {arrivalLeg.signed ? details.destination : ""}
+                </div>
               </td>
               <td className="px-3 py-2 align-bottom">
-                <div className="border-b border-ink pt-3" />
+                <div className="min-h-[17px] border-b border-ink pt-3 text-[11px] font-medium">
+                  {arrivalLeg.signed ? details.residence : ""}
+                </div>
+              </td>
+              <td className="px-1.5 py-2 align-bottom">
+                <ExitSignature leg={arrivalLeg} />
               </td>
             </tr>
           </tbody>
@@ -277,5 +338,43 @@ function HeaderField({
       </span>
       <div className="mt-0.5 min-h-[16px] text-left font-medium">{value}</div>
     </td>
+  );
+}
+
+/**
+ * The "Signature of Security Guard / HR" cell, left to right exactly like the
+ * paper form: a small signature, then the time, then the date.
+ *
+ * Three things the owner asked for, in one box:
+ *
+ * 1. The content sits at the **bottom** of the cell, right on the underline,
+ *    the way the residence/destination boxes beside it do (an earlier version
+ *    centred it in a 40px box, which left it floating in the middle).
+ * 2. Time and date travel **together** as one group, so a narrow preview column
+ *    drops the pair to the second line instead of splitting them — and only
+ *    splits them further if the group itself cannot fit.
+ * 3. Nothing can spill over the cell's right border: every piece is unbreakable
+ *    on its own and the pieces wrap instead of overflowing (that spill is what
+ *    made the date collide with the edge on a small screen).
+ *
+ * An unsigned row keeps the original blank underline.
+ */
+function ExitSignature({ leg }: { leg: ExitLeg }) {
+  return (
+    <div className="flex min-h-[2.5rem] flex-wrap items-end gap-x-1 gap-y-0.5 border-b border-ink px-0.5 pb-0.5">
+      {leg.signer?.signature ? (
+        <img
+          src={leg.signer.signature}
+          alt=""
+          className="h-[18px] w-auto max-w-[2.5rem] shrink-0 object-contain mix-blend-multiply"
+        />
+      ) : null}
+      {leg.signed ? (
+        <span className="flex flex-wrap items-baseline gap-x-0.5 gap-y-0.5 text-[10px] font-medium leading-tight">
+          <span className="whitespace-nowrap">{leg.time}</span>
+          <span className="whitespace-nowrap">{leg.date}</span>
+        </span>
+      ) : null}
+    </div>
   );
 }

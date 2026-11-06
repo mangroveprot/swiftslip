@@ -1,5 +1,5 @@
 import { ErrorResponse } from '../../../common/shared';
-import { StorageRepository } from '../../attachments/repositories';
+import FileStorageService from '../../storage/services/file-storage.service';
 
 /**
  * Profile photos in object storage.
@@ -9,13 +9,12 @@ import { StorageRepository } from '../../attachments/repositories';
  * bucket reads as a filing cabinet rather than one flat pile:
  *
  *   swiftslip/
- *     FormAttachement/<user id>/<row id>-<file>   form attachments
+ *     FormAttachement/<user id>/<uuid>.<ext>   form attachments
  *     ProfilePhoto/<user id>.<ext>             one square per person
  *
- * Deliberately NOT routed through `FileStorageService`: that service applies
- * the admin's Supabase-vs-B2 rule, and a profile picture is a few kilobytes
- * that every screen needs — it should never end up on B2 and never need a
- * backend decision.
+ * Routed through `FileStorageService` so the storage layer is a single
+ * gateway, but the backend is hard-coded to 'supabase' — a profile picture is
+ * a few kilobytes that every screen needs and should never end up on B2.
  *
  * The database stores the object PATH, never a URL. Signed links expire, so a
  * stored URL would rot; `photoUrl()` mints a fresh one on every read.
@@ -31,7 +30,8 @@ export const PROFILE_PHOTO_ROOT = 'ProfilePhoto';
 export const PROFILE_PHOTO_MAX_BYTES = 2 * 1024 * 1024;
 
 /** Only the three types the upload menu promises. */
-const DATA_URL = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/i;
+const DATA_URL =
+  /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\s]+)$/i;
 
 const EXTENSIONS: Record<string, string> = {
   'image/png': 'png',
@@ -39,22 +39,22 @@ const EXTENSIONS: Record<string, string> = {
   'image/webp': 'webp',
 };
 
-const storage = new StorageRepository();
-
 /**
  * A stored value is a path unless it predates this change — rows written while
  * the photo lived in the column hold a `data:` URL, and a hand-fixed row could
  * hold a full link. Those are returned untouched so no one's face disappears.
  */
 function isPath(stored: string): boolean {
-  return Boolean(stored) && !stored.startsWith('data:') && !stored.startsWith('http');
+  return (
+    Boolean(stored) && !stored.startsWith('data:') && !stored.startsWith('http')
+  );
 }
 
 /** The object path → a signed URL an `<img>` can load. Empty stays empty. */
 export async function photoUrl(stored: string): Promise<string> {
   if (!stored) return '';
   if (!isPath(stored)) return stored;
-  return (await storage.signedUrl(stored)) ?? '';
+  return (await FileStorageService.signedUrl(stored, 'supabase')) ?? '';
 }
 
 /**
@@ -64,7 +64,10 @@ export async function photoUrl(stored: string): Promise<string> {
  * place when the format is unchanged; when the extension moves (png → webp)
  * the old object is removed by `removePhoto`.
  */
-export async function storePhoto(userId: string, dataUrl: string): Promise<string> {
+export async function storePhoto(
+  userId: string,
+  dataUrl: string,
+): Promise<string> {
   const match = DATA_URL.exec(dataUrl);
   if (!match) {
     throw new ErrorResponse(
@@ -84,15 +87,17 @@ export async function storePhoto(userId: string, dataUrl: string): Promise<strin
   const extension = EXTENSIONS[contentType] ?? 'webp';
   const path = `${PROFILE_PHOTO_ROOT}/${userId}.${extension}`;
 
-  await storage.ensureBucket();
-  await storage.upload(path, buffer, contentType);
+  await FileStorageService.upload(path, buffer, contentType, 'supabase');
   return path;
 }
 
 /** Best effort: a photo that is already gone is not an error. */
 export async function removePhoto(stored: string): Promise<void> {
   if (!isPath(stored)) return;
-  await storage.removeQuietly([stored]);
+  await FileStorageService.removeRefQuietly({
+    key: stored,
+    backend: 'supabase',
+  });
 }
 
 /** True when a stored value points at an object (rather than inline bytes). */

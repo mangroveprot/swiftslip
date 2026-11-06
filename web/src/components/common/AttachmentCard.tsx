@@ -12,6 +12,7 @@ import {
   uploadRecordAttachment,
 } from "@/api/records.functions";
 import { AttachmentFileDialog } from "@/components/common/AttachmentFileDialog";
+import { AttachmentViewerDialog } from "@/components/common/AttachmentViewerDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import {
   cosAttachmentUrlQueryOptions,
@@ -114,6 +115,8 @@ export function AttachmentCard({
   onEnsureRow,
   stamp,
   children,
+  signedUrl,
+  signedUrlLoading = false,
   cardClassName = "relative shrink-0 rounded-xl border bg-card p-3 shadow-sm",
 }: {
   kind: AttachmentKind;
@@ -135,6 +138,12 @@ export function AttachmentCard({
   stamp?: ReactNode;
   /** Extra controls under the file row (the OB "Approved" checkbox). */
   children?: ReactNode;
+  /** A caller-scoped signed link. HR reviewers are not the row's owner, so the
+   *  employee attachment endpoint cannot serve them; when this is set (even to
+   *  `null`) the card skips its own owner-scoped URL query. */
+  signedUrl?: string | null;
+  /** Loading state for a caller-supplied `signedUrl`. */
+  signedUrlLoading?: boolean;
   /** Shell classes for the card itself. Overridable so a form can match its
    *  own boxed layout without restyling the other screens that share this card. */
   cardClassName?: string;
@@ -147,11 +156,16 @@ export function AttachmentCard({
    *  was open (the DTR biometric import, the other-attachments window…); it
    *  now lives inside this window, exactly like the biometric one. */
   const [uploading, setUploading] = useState(false);
+  /** The uploaded file open in the modal viewer — never a new browser tab. */
+  const [viewing, setViewing] = useState(false);
   const copy = COPY[kind];
-  const { data: signed, isLoading: signing } = useQuery({
+  const usesCallerLink = signedUrl !== undefined;
+  const { data: ownerSigned, isLoading: ownerSigning } = useQuery({
     ...URL_QUERY[kind](id),
-    enabled: Boolean(file),
+    enabled: !usesCallerLink && Boolean(file),
   });
+  const signed = usesCallerLink ? (signedUrl ? { url: signedUrl } : null) : ownerSigned;
+  const signing = usesCallerLink ? signedUrlLoading : ownerSigning;
   const isImage = file ? IMAGE_RE.test(file.name) : false;
   /** PDFs don't preview inline on screen, but they can be embedded for print. */
   const isPdf = file ? /\.pdf$/i.test(file.name) : false;
@@ -317,12 +331,22 @@ export function AttachmentCard({
               {signing ? (
                 <p className="text-xs text-muted-foreground print:hidden">Preparing link…</p>
               ) : isImage && signed?.url ? (
-                <img
-                  src={signed.url}
-                  alt={file.name}
-                  loading="lazy"
-                  className="mt-1.5 max-h-28 w-auto rounded border print:max-h-[24cm] print:max-w-full print:rounded-none"
-                />
+                // The thumbnail itself is the button — one click on the
+                // picture opens it whole in the modal below.
+                <button
+                  type="button"
+                  className="mt-1.5 block cursor-zoom-in text-left"
+                  aria-label={`Open ${file.name}`}
+                  title="Open the full attachment"
+                  onClick={() => setViewing(true)}
+                >
+                  <img
+                    src={signed.url}
+                    alt={file.name}
+                    loading="lazy"
+                    className="max-h-28 w-auto rounded border print:max-h-[24cm] print:max-w-full print:rounded-none"
+                  />
+                </button>
               ) : null}
             </div>
             {signed?.url ? (
@@ -339,16 +363,17 @@ export function AttachmentCard({
               </button>
             ) : null}
             {signed?.url ? (
-              <a
-                href={signed.url}
-                target="_blank"
-                rel="noreferrer"
+              // Opens in the modal below — this card never sends a file to a
+              // new browser tab any more.
+              <button
+                type="button"
                 className="btn btn-outline size-7 shrink-0 p-0 print:hidden"
                 aria-label="Open attachment"
                 title="Open attachment"
+                onClick={() => setViewing(true)}
               >
                 <ExternalLink className="size-3.5" aria-hidden="true" />
-              </a>
+              </button>
             ) : null}
             {canEdit ? (
               <>
@@ -412,6 +437,16 @@ export function AttachmentCard({
         busy={busy}
         onClose={() => setUploading(false)}
         onAttach={attachFile}
+      />
+
+      {/* The already-uploaded file, read in place: images and PDFs open in
+          this window instead of a new browser tab. */}
+      <AttachmentViewerDialog
+        open={viewing && Boolean(signed?.url)}
+        title={copy.title}
+        fileName={file?.name ?? ""}
+        url={signed?.url ?? null}
+        onClose={() => setViewing(false)}
       />
 
       <ConfirmDialog

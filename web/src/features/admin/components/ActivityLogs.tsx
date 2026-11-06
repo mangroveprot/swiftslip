@@ -61,6 +61,7 @@ const APP_NAMES: Record<string, string> = {
   swiftslip: "SwiftSlip",
   inventory: "Inventory",
   ticketing: "Ticketing",
+  hr: "HR Approvals",
 };
 
 const SCOPE_NAMES: Record<string, string> = {

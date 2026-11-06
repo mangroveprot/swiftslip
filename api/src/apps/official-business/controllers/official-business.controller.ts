@@ -54,9 +54,25 @@ class OfficialBusinessController {
   static async save(req: Request, res: Response): Promise<void> {
     try {
       const response = await OfficialBusinessService.save(
-        (req.user as SessionUser).id,
+        req.user as SessionUser,
         req.params.id as string,
         req.body,
+      );
+      if (response.success) {
+        ApiResponse.success(res, response);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      ApiResponse.error(res, error as ErrorResponseType);
+    }
+  }
+
+  static async submit(req: Request, res: Response): Promise<void> {
+    try {
+      const response = await OfficialBusinessService.submit(
+        req.user as SessionUser,
+        req.params.id as string,
       );
       if (response.success) {
         ApiResponse.success(res, response);

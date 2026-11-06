@@ -1854,3 +1854,511 @@
   width: 100%;
   height: 100%;
 }
+
+/* ── HR approval desk ──────────────────────────────────────────────────────
+   Layout helpers only. The HR app stays on SwiftSlip's own palette and Geist
+   type scale; these classes describe the reference's paper-like detail sheet
+   without importing a second theme. */
+
+/* Tiny all-caps labels above a read-only value (ID NUMBER, POSITION…). */
+.hr-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+/* Paper card used for the detail sheet and the right rail. A 1px rule is the
+   whole decoration: the reference gets its depth from spacing, not shadows. */
+.hr-card {
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) + 0.5rem);
+  background: var(--color-card);
+  box-shadow: 0 1px 1px color-mix(in oklab, var(--color-foreground) 4%, transparent);
+}
+
+/* Underlined inputs inside the exit-clearance timeline. They read as values
+   typed on a paper form rather than a dashboard field. */
+.hr-underlined-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  padding: 0.35rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-foreground);
+  outline: none;
+}
+
+.hr-underlined-input:focus {
+  border-bottom-color: var(--color-foreground);
+}
+
+.hr-underlined-input::placeholder {
+  font-weight: 400;
+  color: var(--color-muted-foreground);
+}
+
+/* The sheet in the rail is a real A4 layout, so shrink the whole thing instead
+   of overriding its internal font sizes. `zoom` (not transform) keeps the
+   parent's height honest, so the card never leaves a blank half-page. */
+.hr-preview-zoom {
+  width: 100%;
+  zoom: 0.56;
+}
+
+@media (max-width: 1023px) {
+  .hr-preview-zoom {
+    width: 100%;
+    zoom: 1;
+  }
+}
+
+/* A quiet scrollbar for the horizontal stepper on narrow screens. */
+.hr-stepper {
+  scrollbar-width: none;
+}
+
+.hr-stepper::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Animated status illustrations ─────────────────────────────────────────
+   Two drawn loops for the OB statuses that need a picture: `submitted`
+   ("Waiting for HR", a clipboard filling in) and `departed` ("On OB", a hand
+   lifting a briefcase). Rendered inline by StatusIllustration.tsx so the ink
+   follows the app's theme tokens instead of the OS media query — a reviewer
+   who forces light mode on a dark OS still gets light ink.
+
+   Every class and keyframe is prefixed `si-`. The source SVGs used bare
+   `.ln` / `.ac` / `.d` and a global `svg{...}` rule, which would collide with
+   each other (and with every other svg on the page) as soon as both drawings
+   appeared together. Override hooks: `--icon-line`, `--icon-accent`,
+   `--icon-ground`, settable on any ancestor or on the svg itself. */
+.si-art {
+  --si-line: var(--icon-line, var(--foreground));
+  --si-accent: var(--icon-accent, var(--logo-mark));
+  /* The On OB ground line keeps the artwork's own blue-grey — it reads as a
+     shadow, not as text, so it should not follow --muted-foreground. */
+  --si-ground: var(--icon-ground, #7e83b5);
+  display: block;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.dark .si-art {
+  --si-ground: var(--icon-ground, #7c81ba);
+}
+
+/* Compact status icons are square (60x60 viewBox at 20px) and drawn about the
+   box centre, so they sit on the label's optical centre. `align-self` keeps
+   that true even if a parent badge isn't using `items-center`. */
+.si-compact {
+  align-self: center;
+}
+
+/* `--si-stroke` is set inline by StatusIllustration.tsx: a size-independent
+   1.35px hairline converted into each viewBox's own user units. The fallback
+   keeps raw SVG markup (the standalone preview) from collapsing to a hairline
+   so faint it disappears. */
+.si-line,
+.si-accent,
+.si-ground {
+  fill: none;
+  stroke-width: var(--si-stroke, 2);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.si-line {
+  stroke: var(--si-line);
+}
+
+.si-accent {
+  stroke: var(--si-accent);
+}
+
+.si-ground {
+  stroke: var(--si-ground);
+}
+
+/* Default = the finished drawing, fully inked. `.si-anim` opts into the loop,
+   so `animated={false}` and reduced motion both need no extra rules. */
+.si-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.si-anim .si-draw {
+  stroke-dashoffset: 1;
+}
+
+/* Waiting for HR — one 5s loop: the clipboard outline draws, two checklist
+   lines write in, a check pops with a small wiggle, then everything erases. */
+.si-anim .si-wfhr-d1 {
+  animation: si-wfhr-draw-1 5s infinite;
+}
+
+.si-anim .si-wfhr-d2 {
+  animation: si-wfhr-draw-2 5s infinite;
+}
+
+.si-anim .si-wfhr-d3 {
+  animation: si-wfhr-draw-3 5s infinite;
+}
+
+.si-anim .si-wfhr-d4 {
+  animation: si-wfhr-draw-4 5s infinite;
+}
+
+.si-anim .si-wfhr-check {
+  transform-origin: 30px 51px;
+  animation: si-wfhr-pop 5s infinite;
+}
+
+.si-anim .si-wfhr-clip {
+  transform-origin: 30px 40px;
+  animation: si-wfhr-nudge 5s infinite;
+}
+
+@keyframes si-wfhr-draw-1 {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  20%,
+  92% {
+    stroke-dashoffset: 0;
+    animation-timing-function: ease-in;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes si-wfhr-draw-2 {
+  0%,
+  16% {
+    stroke-dashoffset: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  30%,
+  92% {
+    stroke-dashoffset: 0;
+    animation-timing-function: ease-in;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes si-wfhr-draw-3 {
+  0%,
+  28% {
+    stroke-dashoffset: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  40%,
+  92% {
+    stroke-dashoffset: 0;
+    animation-timing-function: ease-in;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes si-wfhr-draw-4 {
+  0%,
+  42% {
+    stroke-dashoffset: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  54%,
+  92% {
+    stroke-dashoffset: 0;
+    animation-timing-function: ease-in;
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes si-wfhr-pop {
+  0%,
+  53% {
+    transform: scale(1);
+  }
+  58% {
+    transform: scale(1.25);
+    animation-timing-function: ease-out;
+  }
+  64%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes si-wfhr-nudge {
+  0%,
+  56% {
+    transform: rotate(0);
+  }
+  60% {
+    transform: rotate(-3deg);
+  }
+  64% {
+    transform: rotate(2deg);
+  }
+  68%,
+  100% {
+    transform: rotate(0);
+  }
+}
+
+/* On OB — one 6s loop: the case draws in, a hand reaches down, grips, lifts
+   with a gentle swing, sets it back, then the lines erase. */
+.si-anim .si-onob-draw {
+  animation: si-onob-draw 6s infinite;
+}
+
+.si-anim .si-onob-bag {
+  transform-origin: 340px 150px;
+  animation: si-onob-bag 6s infinite;
+}
+
+.si-anim .si-onob-hand {
+  animation: si-onob-hand 6s infinite;
+}
+
+.si-anim .si-onob-fing {
+  transform-origin: 340px 88px;
+  animation: si-onob-fing 6s infinite;
+}
+
+@keyframes si-onob-draw {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  }
+  16% {
+    stroke-dashoffset: 0;
+  }
+  94% {
+    stroke-dashoffset: 0;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
+  }
+  100% {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes si-onob-hand {
+  0%,
+  16% {
+    transform: translateY(-170px);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.3, 1);
+  }
+  34% {
+    transform: translateY(6px);
+    animation-timing-function: ease-out;
+  }
+  38% {
+    transform: translateY(0);
+  }
+  46% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  62% {
+    transform: translateY(-78px);
+    animation-timing-function: ease-in-out;
+  }
+  66% {
+    transform: translateY(-70px);
+  }
+  78% {
+    transform: translateY(-70px);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1);
+  }
+  86% {
+    transform: translateY(5px);
+    animation-timing-function: ease-out;
+  }
+  89% {
+    transform: translateY(0);
+  }
+  91% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.4);
+  }
+  100% {
+    transform: translateY(-170px);
+  }
+}
+
+@keyframes si-onob-bag {
+  0%,
+  46% {
+    transform: translateY(0) rotate(0);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  62% {
+    transform: translateY(-78px) rotate(0);
+    animation-timing-function: ease-in-out;
+  }
+  66% {
+    transform: translateY(-70px) rotate(-4deg);
+    animation-timing-function: ease-in-out;
+  }
+  72% {
+    transform: translateY(-70px) rotate(3deg);
+    animation-timing-function: ease-in-out;
+  }
+  77% {
+    transform: translateY(-70px) rotate(-1deg);
+    animation-timing-function: ease-in-out;
+  }
+  80% {
+    transform: translateY(-70px) rotate(0);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1);
+  }
+  86% {
+    transform: translateY(5px);
+    animation-timing-function: ease-out;
+  }
+  89%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes si-onob-fing {
+  0%,
+  35% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1, 0.92);
+    animation-timing-function: ease-out;
+  }
+  45% {
+    transform: scale(1);
+  }
+  84% {
+    transform: scale(1);
+  }
+  88% {
+    transform: scale(1, 0.95);
+  }
+  91%,
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Compact icons reuse the large scenes' draw-in keyframes, so their transform
+   origins must move from the tall viewBoxes to the square 60x60 grid. The On OB
+   -78px lift is replaced by a ~5-unit bob: the full lift would fling the case
+   clean out of a 60-unit box and undo the centring. */
+.si-compact .si-wfhr-clip {
+  transform-origin: 30px 30px;
+}
+
+.si-compact .si-wfhr-check {
+  transform-origin: 27px 43px;
+}
+
+.si-anim .si-compact-bag {
+  transform-origin: 30px 30px;
+  animation: si-compact-bag 6s infinite;
+}
+
+@keyframes si-compact-bag {
+  0%,
+  46% {
+    transform: translateY(0) rotate(0);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  62% {
+    transform: translateY(-5px) rotate(0);
+    animation-timing-function: ease-in-out;
+  }
+  66% {
+    transform: translateY(-4px) rotate(-2deg);
+  }
+  72% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+  80% {
+    transform: translateY(-5px) rotate(0);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1);
+  }
+  89%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+}
+
+/* Reduced motion: the loop is off, but the drawing stays fully inked and the
+   hand stays down on the handle (transform:none is the gripping pose). */
+@media (prefers-reduced-motion: reduce) {
+  .si-anim .si-draw,
+  .si-anim .si-wfhr-check,
+  .si-anim .si-wfhr-clip,
+  .si-anim .si-onob-bag,
+  .si-anim .si-onob-hand,
+  .si-anim .si-onob-fing,
+  .si-anim .si-compact-bag {
+    animation: none;
+  }
+
+  .si-anim .si-draw {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ─── Pending status ring ("Waiting for Supervisor") ─────────────────────────
+
+   The queue's third status is a hollow amber ring rather than a filled dot:
+   pending, not active. It is a 6px hairline (1px border, not the old 2px
+   donut) so it reads like the owner's thin hand-drawn reference, and it emits
+   one quiet ripple that stops around icon size (~16px) instead of growing into
+   a loud halo. The ripple inherits the ring's own border colour, so both the
+   light and dark amber still come from status-meta.ts. */
+.status-ring-pulse {
+  position: relative;
+}
+
+.status-ring-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid;
+  border-color: inherit;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: status-ring-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes status-ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  70%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-ring-pulse::after {
+    animation: none;
+    opacity: 0;
+  }
+}

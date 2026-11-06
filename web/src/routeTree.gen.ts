@@ -13,8 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ChooseRouteImport } from './routes/choose'
+import { Route as HrRouteImport } from './routes/hr'
 import { Route as RgcAssetInventoryRouteImport } from './routes/rgc-asset-inventory'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as HrIndexRouteImport } from './routes/hr/index'
+import { Route as HrProfileRouteImport } from './routes/hr/profile'
 import { Route as RgcAssetInventoryIndexRouteImport } from './routes/rgc-asset-inventory.index'
 import { Route as RgcAssetInventoryReportsRouteImport } from './routes/rgc-asset-inventory.reports'
 import { Route as RgcAssetInventorySettingsRouteImport } from './routes/rgc-asset-inventory.settings'
@@ -28,6 +31,7 @@ import { Route as AppOvertimeIndexRouteImport } from './routes/_app/overtime/ind
 import { Route as AppOvertimeIdRouteImport } from './routes/_app/overtime/$id'
 import { Route as AppRecordsIndexRouteImport } from './routes/_app/records/index'
 import { Route as AppRecordsIdRouteImport } from './routes/_app/records/$id'
+import { Route as HrObIdRouteImport } from './routes/hr/ob/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -48,6 +52,11 @@ const ChooseRoute = ChooseRouteImport.update({
   path: '/choose',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HrRoute = HrRouteImport.update({
+  id: '/hr',
+  path: '/hr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RgcAssetInventoryRoute = RgcAssetInventoryRouteImport.update({
   id: '/rgc-asset-inventory',
   path: '/rgc-asset-inventory',
@@ -57,6 +66,16 @@ const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AppRoute,
+} as any)
+const HrIndexRoute = HrIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HrRoute,
+} as any)
+const HrProfileRoute = HrProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => HrRoute,
 } as any)
 const RgcAssetInventoryIndexRoute = RgcAssetInventoryIndexRouteImport.update({
   id: '/',
@@ -127,21 +146,30 @@ const AppRecordsIdRoute = AppRecordsIdRouteImport.update({
   path: '/records/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const HrObIdRoute = HrObIdRouteImport.update({
+  id: '/ob/$id',
+  path: '/ob/$id',
+  getParentRoute: () => HrRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
+  '/hr': typeof HrRouteWithChildren
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/profile': typeof AppProfileRoute
+  '/hr/profile': typeof HrProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
+  '/hr/': typeof HrIndexRoute
   '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
   '/change-of-schedule/$id': typeof AppChangeOfScheduleIdRoute
   '/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/overtime/$id': typeof AppOvertimeIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/hr/ob/$id': typeof HrObIdRoute
   '/change-of-schedule/': typeof AppChangeOfScheduleIndexRoute
   '/leave-of-absence/': typeof AppLeaveOfAbsenceIndexRoute
   '/official-business/': typeof AppOfficialBusinessIndexRoute
@@ -153,14 +181,17 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
   '/profile': typeof AppProfileRoute
+  '/hr/profile': typeof HrProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
+  '/hr': typeof HrIndexRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryIndexRoute
   '/change-of-schedule/$id': typeof AppChangeOfScheduleIdRoute
   '/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/overtime/$id': typeof AppOvertimeIdRoute
   '/records/$id': typeof AppRecordsIdRoute
+  '/hr/ob/$id': typeof HrObIdRoute
   '/change-of-schedule': typeof AppChangeOfScheduleIndexRoute
   '/leave-of-absence': typeof AppLeaveOfAbsenceIndexRoute
   '/official-business': typeof AppOfficialBusinessIndexRoute
@@ -173,16 +204,20 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
+  '/hr': typeof HrRouteWithChildren
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/_app/profile': typeof AppProfileRoute
+  '/hr/profile': typeof HrProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
+  '/hr/': typeof HrIndexRoute
   '/rgc-asset-inventory/': typeof RgcAssetInventoryIndexRoute
   '/_app/change-of-schedule/$id': typeof AppChangeOfScheduleIdRoute
   '/_app/leave-of-absence/$id': typeof AppLeaveOfAbsenceIdRoute
   '/_app/official-business/$id': typeof AppOfficialBusinessIdRoute
   '/_app/overtime/$id': typeof AppOvertimeIdRoute
   '/_app/records/$id': typeof AppRecordsIdRoute
+  '/hr/ob/$id': typeof HrObIdRoute
   '/_app/change-of-schedule/': typeof AppChangeOfScheduleIndexRoute
   '/_app/leave-of-absence/': typeof AppLeaveOfAbsenceIndexRoute
   '/_app/official-business/': typeof AppOfficialBusinessIndexRoute
@@ -195,16 +230,20 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/choose'
+    | '/hr'
     | '/rgc-asset-inventory'
     | '/profile'
+    | '/hr/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
+    | '/hr/'
     | '/rgc-asset-inventory/'
     | '/change-of-schedule/$id'
     | '/leave-of-absence/$id'
     | '/official-business/$id'
     | '/overtime/$id'
     | '/records/$id'
+    | '/hr/ob/$id'
     | '/change-of-schedule/'
     | '/leave-of-absence/'
     | '/official-business/'
@@ -216,14 +255,17 @@ export interface FileRouteTypes {
     | '/admin'
     | '/choose'
     | '/profile'
+    | '/hr/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
+    | '/hr'
     | '/rgc-asset-inventory'
     | '/change-of-schedule/$id'
     | '/leave-of-absence/$id'
     | '/official-business/$id'
     | '/overtime/$id'
     | '/records/$id'
+    | '/hr/ob/$id'
     | '/change-of-schedule'
     | '/leave-of-absence'
     | '/official-business'
@@ -235,16 +277,20 @@ export interface FileRouteTypes {
     | '/_app'
     | '/admin'
     | '/choose'
+    | '/hr'
     | '/rgc-asset-inventory'
     | '/_app/profile'
+    | '/hr/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
+    | '/hr/'
     | '/rgc-asset-inventory/'
     | '/_app/change-of-schedule/$id'
     | '/_app/leave-of-absence/$id'
     | '/_app/official-business/$id'
     | '/_app/overtime/$id'
     | '/_app/records/$id'
+    | '/hr/ob/$id'
     | '/_app/change-of-schedule/'
     | '/_app/leave-of-absence/'
     | '/_app/official-business/'
@@ -257,6 +303,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   AdminRoute: typeof AdminRoute
   ChooseRoute: typeof ChooseRoute
+  HrRoute: typeof HrRouteWithChildren
   RgcAssetInventoryRoute: typeof RgcAssetInventoryRouteWithChildren
 }
 
@@ -290,6 +337,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChooseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hr': {
+      id: '/hr'
+      path: '/hr'
+      fullPath: '/hr'
+      preLoaderRoute: typeof HrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rgc-asset-inventory': {
       id: '/rgc-asset-inventory'
       path: '/rgc-asset-inventory'
@@ -303,6 +357,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile'
       preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/hr/': {
+      id: '/hr/'
+      path: '/'
+      fullPath: '/hr/'
+      preLoaderRoute: typeof HrIndexRouteImport
+      parentRoute: typeof HrRoute
+    }
+    '/hr/profile': {
+      id: '/hr/profile'
+      path: '/profile'
+      fullPath: '/hr/profile'
+      preLoaderRoute: typeof HrProfileRouteImport
+      parentRoute: typeof HrRoute
     }
     '/rgc-asset-inventory/': {
       id: '/rgc-asset-inventory/'
@@ -395,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRecordsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/hr/ob/$id': {
+      id: '/hr/ob/$id'
+      path: '/ob/$id'
+      fullPath: '/hr/ob/$id'
+      preLoaderRoute: typeof HrObIdRouteImport
+      parentRoute: typeof HrRoute
+    }
   }
 }
 
@@ -428,6 +503,20 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface HrRouteChildren {
+  HrProfileRoute: typeof HrProfileRoute
+  HrIndexRoute: typeof HrIndexRoute
+  HrObIdRoute: typeof HrObIdRoute
+}
+
+const HrRouteChildren: HrRouteChildren = {
+  HrProfileRoute: HrProfileRoute,
+  HrIndexRoute: HrIndexRoute,
+  HrObIdRoute: HrObIdRoute,
+}
+
+const HrRouteWithChildren = HrRoute._addFileChildren(HrRouteChildren)
+
 interface RgcAssetInventoryRouteChildren {
   RgcAssetInventoryReportsRoute: typeof RgcAssetInventoryReportsRoute
   RgcAssetInventorySettingsRoute: typeof RgcAssetInventorySettingsRoute
@@ -448,6 +537,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AdminRoute: AdminRoute,
   ChooseRoute: ChooseRoute,
+  HrRoute: HrRouteWithChildren,
   RgcAssetInventoryRoute: RgcAssetInventoryRouteWithChildren,
 }
 export const routeTree = rootRouteImport

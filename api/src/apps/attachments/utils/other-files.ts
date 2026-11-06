@@ -6,9 +6,17 @@ export function readOtherFiles(raw: unknown): OtherFile[] {
   const out: OtherFile[] = [];
   for (const entry of raw) {
     if (!entry || typeof entry !== 'object') continue;
-    const { path, name } = entry as { path?: unknown; name?: unknown };
+    const { path, name, backend } = entry as {
+      path?: unknown;
+      name?: unknown;
+      backend?: unknown;
+    };
     if (typeof path === 'string' && typeof name === 'string') {
-      out.push({ path, name });
+      out.push({
+        path,
+        name,
+        backend: backend === 'b2' ? 'b2' : 'supabase',
+      });
     }
   }
   return out;

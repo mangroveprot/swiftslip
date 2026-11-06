@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * One-off: move the storage root from `ApprovalSlip` to `FormAttachement`.
  *
@@ -69,7 +68,9 @@ async function main() {
   if (phase === 'verify') {
     const sample = [...supabaseObjects, ...b2Objects].slice(0, 5);
     for (const object of sample) {
-      console.log(`  ${object.key}  ->  ${retarget(object.key) ?? '(skipped)'}`);
+      console.log(
+        `  ${object.key}  ->  ${retarget(object.key) ?? '(skipped)'}`,
+      );
     }
     console.log(
       '\nRead-only. Nothing was changed. Run --phase=copy to duplicate them.',
@@ -106,7 +107,9 @@ async function main() {
     }
 
     console.log(`\nCopied ${copied} object(s). Old objects are untouched.`);
-    console.log('Next: run 0033_rename_storage_root.sql, then deploy, then --phase=cleanup.');
+    console.log(
+      'Next: run 0033_rename_storage_root.sql, then deploy, then --phase=cleanup.',
+    );
     return;
   }
 
