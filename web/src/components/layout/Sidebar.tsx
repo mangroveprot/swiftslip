@@ -2,12 +2,12 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid } from "lucide-react";
 
-import { SignOutButton } from "@/components/common/SignOutButton";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { NotificationBell } from "@/features/hr/components/NotificationBell";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "./sidebar-classes";
-import { roleLabel, NAV_SECTIONS } from "./nav-items";
+import { accountCaption, roleLabel, NAV_SECTIONS } from "./nav-items";
 import { InstallButton } from "./InstallButton";
 import {
   SidebarBrand,
@@ -29,12 +29,16 @@ export function Sidebar({
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const name = label || roleLabel(role);
-  // Role under the name — skipped when it would just repeat the name itself.
-  const caption = label && label !== roleLabel(role) ? roleLabel(role) : undefined;
   // Same query the route guards use, so this is a cache hit rather than a new
   // request. Only the granted apps are needed, never the session itself.
   const { data: session } = useQuery(sessionQueryOptions());
   const apps = session?.apps;
+  // The caption is "Role - Position" from the same cached profile the My
+  // Account page edits; it falls back to the role alone until a position is
+  // on file. Skipped when it would just repeat the name itself.
+  const { data: profile } = useQuery(profileQueryOptions());
+  const caption = accountCaption(role, profile?.designation);
+  const sublabel = label && label !== caption ? caption : undefined;
   // The profile photo, if one has been set — one cached entry shared by every
   // screen that shows a face. The footer falls back to initials while it
   // loads, so this never blocks paint.
@@ -79,11 +83,10 @@ export function Sidebar({
         ))}
       </nav>
 
-      <SidebarFooter name={name} photo={photo} sublabel={caption}>
-        <div className="flex items-center justify-between gap-2 py-1 pl-2">
-          <span className="text-sm text-foreground/75">Notifications</span>
-          <NotificationBell />
-        </div>
+      {/* The identity block IS the account entry: clicking it opens My
+          Account, which is why the old "Account" nav row is gone. */}
+      <SidebarFooter name={name} photo={photo} sublabel={sublabel} to="/profile">
+        <NotificationBell variant="row" />
         {/* Shown when there is more than one app to move between. Keyed on the
             resolved grants rather than the role: a staff account given the
             inventory alongside SwiftSlip needs this just as an admin does, and
@@ -95,7 +98,6 @@ export function Sidebar({
           </Link>
         ) : null}
         <InstallButton className={SIDEBAR_ACTION_CLASS} />
-        <SignOutButton className={SIDEBAR_ACTION_CLASS} />
       </SidebarFooter>
     </SidebarShell>
   );

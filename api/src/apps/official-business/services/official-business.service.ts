@@ -10,7 +10,17 @@ import {
   obSupervisorDone,
   type ObHrFields,
   type ObHrStatus,
+  type ObResubmitEvent,
+  type ObSubmitSnapshot,
 } from '@swiftslip/shared/hr';
+import {
+  obResubmitChanges,
+  obSubmitSnapshot,
+} from '@swiftslip/shared/ob-resubmit';
+import {
+  obMissingRequiredFields,
+  obRequiredMessage,
+} from '@swiftslip/shared/ob-required';
 import type {
   ObEntry,
   ObForm,
@@ -24,7 +34,10 @@ import { NotificationService } from '../../notifications';
 import { ProfileService } from '../../profile';
 import { withDeletionReminder } from '../../retention/services/retention-notice';
 import { ObEntryRepository, ObFormRepository } from '../repositories';
-import { resolveObSigners } from '../utils/ob-signers';
+import {
+  resolveObResubmitReviewers,
+  resolveObSigners,
+} from '../utils/ob-signers';
 
 const toFailure = (error: unknown) => ({
   success: false as const,
@@ -76,6 +89,21 @@ class OfficialBusinessService extends BaseService<
     super(new ObFormRepository());
   }
 
+  /**
+   * The itinerary as the submit check reads it — every persisted stop, in
+   * order, with the three cells the sheet marks required.
+   */
+  private async readEntries(id: string): Promise<ObEntry[]> {
+    const rows = await this.entries.findAll(
+      { form_id: id },
+      {
+        select: 'idx,from_place,to_place,purpose,time_departure,time_return',
+        sort: { idx: 'asc' },
+      },
+    );
+    return rows as unknown as ObEntry[];
+  }
+
   /** The owner's forms, newest first, each with its list of destinations. */
   async list(ownerId: string) {
     try {
@@ -87,7 +115,7 @@ class OfficialBusinessService extends BaseService<
           // retention reminder needs to tell a form that is about to be
           // deleted from one that will be kept.
           select:
-            'id,employee_name,id_number,department,position,date_of_ob,attachment_approved,attachment_path,date_filed,hr_status,created_at,updated_at',
+            'id,employee_name,id_number,department,position,date_of_ob,attachment_approved,attachment_path,date_filed,hr_status,resubmit_count,resubmit_history,created_at,updated_at',
           sort: { updated_at: 'desc' },
         },
       );
@@ -133,12 +161,24 @@ class OfficialBusinessService extends BaseService<
         },
       );
       // The same resolved signers the HR detail uses, so the employee's preview
-      // prints the completed exit-clearance boxes too.
-      const signers = await resolveObSigners(form);
+      // prints the completed exit-clearance boxes too. The resubmit history is
+      // decorated with the reviewer behind each old rejection so the historical
+      // record stays complete after the live `hr_rejected_*` columns are cleared
+      // on resubmit. The waiting-for-HR card no longer repeats that old
+      // rejection; rejection facts belong to the rejected card only.
+      const [signers, resubmitHistory] = await Promise.all([
+        resolveObSigners(form),
+        resolveObResubmitReviewers(
+          (form.resubmit_history ?? []) as ObResubmitEvent[],
+        ),
+      ]);
       return {
         success: true as const,
         document: {
-          form: form as unknown as ObForm & ObHrFields & { id: string },
+          form: {
+            ...(form as unknown as ObForm & ObHrFields & { id: string }),
+            resubmit_history: resubmitHistory,
+          },
           entries: entries as unknown as ObEntry[],
           signers,
           // Only the file's name travels here, and only when there is one.
@@ -248,6 +288,16 @@ class OfficialBusinessService extends BaseService<
           : currentStatus;
 
       const now = new Date().toISOString();
+      // A content save on an approved form is a resubmit: diff the content HR
+      // approved (the stored snapshot) against what is being saved now, and
+      // replace the snapshot so the next trip has a fresh baseline.
+      const submittedSnapshot = obSubmitSnapshot(form, entries);
+      const submittedChanges = resubmitted
+        ? obResubmitChanges(
+            (current.submit_snapshot ?? null) as ObSubmitSnapshot | null,
+            submittedSnapshot,
+          )
+        : [];
       // The supervisor half is complete the moment the approval slip is ticked:
       // stamp it only on that false → true transition, so a later save leaves
       // the original approval time alone (and an already-true slip never
@@ -274,6 +324,20 @@ class OfficialBusinessService extends BaseService<
           ...(resubmitted
             ? {
                 submitted_at: now,
+                // A save that revokes an approval is a resubmit too: the form
+                // is back in HR's queue, and the badge must say so (0037).
+                resubmit_count: (current.resubmit_count ?? 0) + 1,
+                resubmit_history: [
+                  ...(current.resubmit_history ?? []),
+                  {
+                    at: now,
+                    how: 'edited' as const,
+                    ...(submittedChanges.length
+                      ? { changes: submittedChanges }
+                      : {}),
+                  },
+                ],
+                submit_snapshot: submittedSnapshot,
                 hr_reject_reason: '',
                 hr_rejected_at: null,
                 hr_rejected_by: null,
@@ -358,6 +422,35 @@ class OfficialBusinessService extends BaseService<
         );
       }
 
+      // The asterisks are enforced here, not only in the editor: a stale tab,
+      // a resubmit of a half-fixed rejection or a direct POST must not hand HR
+      // a form the paper sheet would not accept (shared list = one meaning of
+      // "required" for the highlight and this check).
+      const entries = await this.readEntries(id);
+      const missing = obMissingRequiredFields(
+        form as unknown as ObForm,
+        entries,
+      );
+      if (missing.length) {
+        throw new ErrorResponse(
+          'REQUIRED_FIELD_MISSING',
+          obRequiredMessage(missing),
+          missing.map((field) => field.label),
+        );
+      }
+
+      const resubmitted = current === 'rejected';
+      const previousReason = (form.hr_reject_reason ?? '').trim();
+      const previousRejectedAt = form.hr_rejected_at ?? null;
+      const previousRejectedBy = form.hr_rejected_by ?? null;
+      const history = (form.resubmit_history ?? []) as ObResubmitEvent[];
+      // What HR last reviewed is the previous snapshot; the form row already
+      // holds the edited content, so the diff is snapshot → current.
+      const snapshot = obSubmitSnapshot(form as unknown as ObForm, entries);
+      const changes = obResubmitChanges(
+        (form.submit_snapshot ?? null) as ObSubmitSnapshot | null,
+        snapshot,
+      );
       const now = new Date().toISOString();
       await this.repository.update(
         { id, owner_id: user.id },
@@ -368,10 +461,34 @@ class OfficialBusinessService extends BaseService<
           hr_rejected_at: null,
           hr_rejected_by: null,
           updated_at: now,
+          // The baseline for the next resubmit. Written on a first submit too,
+          // so the first edit after it has something to diff against.
+          submit_snapshot: snapshot,
+          // Only a re-entry counts: a first submission leaves the counter and
+          // the history exactly as they were.
+          ...(resubmitted
+            ? {
+                resubmit_count: (form.resubmit_count ?? 0) + 1,
+                resubmit_history: [
+                  ...history,
+                  {
+                    at: now,
+                    how: 'rejected' as const,
+                    ...(previousReason ? { reason: previousReason } : {}),
+                    ...(previousRejectedAt
+                      ? { rejected_at: previousRejectedAt }
+                      : {}),
+                    ...(previousRejectedBy
+                      ? { rejected_by: previousRejectedBy }
+                      : {}),
+                    ...(changes.length ? { changes } : {}),
+                  },
+                ],
+              }
+            : {}),
         },
       );
 
-      const resubmitted = current === 'rejected';
       await ActivityLogService.logBy(user, {
         action: 'ob.submitted',
         target: `${form.employee_name || user.label} (${form.id_number || user.idNumber})`,

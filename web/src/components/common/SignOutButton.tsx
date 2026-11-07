@@ -8,27 +8,23 @@ import { APP } from "@/config/app";
 import { ConfirmModal } from "@/components/common/ConfirmModal";
 
 /**
- * The one Sign out button — icon + confirmation warning + the actual sign-out
- * flow (cancel queries → clear cache → sign out → back to the login screen).
- * Every surface (SwiftSlip sidebar, admin sidebar, app chooser, inventory
- * sidebar) renders this instead of re-implementing any of it.
- *
- * <SignOutButton className="btn btn-outline w-full" />
+ * The one sign-out flow — confirmation warning + cancel queries → clear cache
+ * → sign out → back to the login screen. Exposed as a hook because two
+ * triggers render it differently: `SignOutButton` (app chooser, inventory) and
+ * the sidebar identity menu (`AccountMenu`). Neither re-implements the flow.
  */
-type SignOutButtonProps = {
-  /** Button classes — defaults to the plain header/footer button. */
-  className?: string;
-  /** Named in the warning ("…sign in again to access <name>"). */
-  accessName?: string;
-  /** Runs right before signing out — e.g. to close an open menu. */
-  onSignOutStart?: () => void;
-};
-
-export function SignOutButton({
-  className = "btn btn-outline",
+// The hook and its trigger live together so the sign-out flow has exactly one
+// copy; the component file split would only move this warning, not fix it.
+// eslint-disable-next-line react-refresh/only-export-components
+export function useSignOutFlow({
   accessName,
   onSignOutStart,
-}: SignOutButtonProps) {
+}: {
+  /** Named in the warning ("…sign in again to access <name>"). */
+  accessName?: string | undefined;
+  /** Runs right before signing out — e.g. to close an open menu. */
+  onSignOutStart?: (() => void) | undefined;
+} = {}) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const queryClient = useQueryClient();
@@ -51,13 +47,11 @@ export function SignOutButton({
     }
   }
 
-  return (
-    <>
-      <button type="button" className={className} onClick={() => setConfirmOpen(true)}>
-        <LogOut className="size-4 shrink-0" aria-hidden="true" />
-        Sign out
-      </button>
-
+  return {
+    /** Open the confirmation dialog. */
+    open: () => setConfirmOpen(true),
+    /** Render this once, outside the trigger's portal/menu. */
+    modal: (
       <ConfirmModal
         isOpen={confirmOpen}
         title="Sign out?"
@@ -68,6 +62,40 @@ export function SignOutButton({
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => void handleSignOut()}
       />
+    ),
+  };
+}
+
+/**
+ * The one Sign out button — icon + the shared confirmation flow. Every surface
+ * that still needs a standalone button (app chooser, inventory sidebar) renders
+ * this; the main sidebars put Sign out inside the identity menu instead.
+ *
+ * <SignOutButton className="btn btn-outline w-full" />
+ */
+type SignOutButtonProps = {
+  /** Button classes — defaults to the plain header/footer button. */
+  className?: string;
+  /** Named in the warning ("…sign in again to access <name>"). */
+  accessName?: string;
+  /** Runs right before signing out — e.g. to close an open menu. */
+  onSignOutStart?: () => void;
+};
+
+export function SignOutButton({
+  className = "btn btn-outline",
+  accessName,
+  onSignOutStart,
+}: SignOutButtonProps) {
+  const { open, modal } = useSignOutFlow({ accessName, onSignOutStart });
+
+  return (
+    <>
+      <button type="button" className={className} onClick={open}>
+        <LogOut className="size-4 shrink-0" aria-hidden="true" />
+        Sign out
+      </button>
+      {modal}
     </>
   );
 }

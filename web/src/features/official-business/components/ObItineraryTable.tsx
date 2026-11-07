@@ -3,10 +3,11 @@ import { ArrowRight, Loader2, PencilLine, Sparkles, Trash, X } from "lucide-reac
 
 import { writeObPurpose } from "@/api/official-business.functions";
 import { AiMascot } from "@/components/common/AiMascot";
-import { toast } from "@/lib/toast";
+import { friendlyError, toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import type { ObEntry } from "@swiftslip/shared/types";
 
-import { ObSection, Req } from "./ObSection";
+import { ObHint, ObSection, Req } from "./ObSection";
 
 const EMPTY_ROW: Omit<ObEntry, "idx"> = {
   from_place: "",
@@ -38,6 +39,8 @@ export function ObItineraryTable({
   canEdit,
   busy,
   placeOptions,
+  invalid,
+  hints,
 }: {
   rows: ObEntry[];
   setRows: (rows: ObEntry[]) => void;
@@ -45,6 +48,10 @@ export function ObItineraryTable({
   busy: boolean;
   /** Destinations already used on other OB forms, offered as suggestions. */
   placeOptions: string[];
+  /** Required cells the submit check found empty (from shared `ob-required`). */
+  invalid?: ReadonlySet<string> | undefined;
+  /** `key → instruction` for the red line under each of those cells. */
+  hints?: Readonly<Record<string, string>> | undefined;
 }) {
   const [confirming, setConfirming] = useState<number | null>(null);
 
@@ -87,12 +94,24 @@ export function ObItineraryTable({
     >
       <div className={rows.length > 1 ? "space-y-6" : ""}>
         {rows.length === 0 ? (
-          <div className="rounded-lg border border-dashed bg-background/50 px-4 py-8 text-center text-sm text-muted-foreground">
-            No stops yet. Click “Add stop” to add the first destination.
+          <div>
+            <div
+              className={cn(
+                "rounded-lg border border-dashed bg-background/50 px-4 py-8 text-center text-sm text-muted-foreground",
+                invalid?.has("entries") && "border-destructive/70 text-destructive",
+              )}
+              aria-invalid={invalid?.has("entries") || undefined}
+            >
+              No stops yet. Click “Add stop” to add the first destination.
+            </div>
+            <ObHint text={hints?.["entries"]} />
           </div>
         ) : (
           rows.map((row, i) => {
             const showHeader = rows.length > 1;
+            const bad = (column: keyof ObEntry) =>
+              invalid?.has(`entry:${row.idx}:${column}`) ?? false;
+            const hintFor = (column: keyof ObEntry) => hints?.[`entry:${row.idx}:${column}`];
             return (
               <div
                 key={row.idx}
@@ -152,6 +171,8 @@ export function ObItineraryTable({
                         value={row.from_place}
                         options={placeOptions}
                         disabled={!canEdit}
+                        invalid={bad("from_place")}
+                        hint={hintFor("from_place")}
                         ariaLabel="From"
                         placeholder="Where you leave from"
                         onChange={(v) => update(row.idx, { from_place: v })}
@@ -167,6 +188,8 @@ export function ObItineraryTable({
                         value={row.to_place}
                         options={placeOptions}
                         disabled={!canEdit}
+                        invalid={bad("to_place")}
+                        hint={hintFor("to_place")}
                         onChange={(v) => update(row.idx, { to_place: v })}
                       />
                     </div>
@@ -175,6 +198,8 @@ export function ObItineraryTable({
                   <PurposeField
                     value={row.purpose}
                     disabled={!canEdit}
+                    invalid={bad("purpose")}
+                    hint={hintFor("purpose")}
                     onChange={(v) => update(row.idx, { purpose: v })}
                   />
 
@@ -222,6 +247,8 @@ function PlaceInput({
   value,
   options,
   disabled,
+  invalid = false,
+  hint,
   ariaLabel,
   placeholder,
   onChange,
@@ -229,11 +256,15 @@ function PlaceInput({
   value: string;
   options: string[];
   disabled: boolean;
+  invalid?: boolean | undefined;
+  /** What to do about the empty cell — shown in red under the input. */
+  hint?: string | undefined;
   ariaLabel: string;
   placeholder: string;
   onChange: (value: string) => void;
 }) {
   const listId = useId();
+  const hintId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
@@ -263,54 +294,59 @@ function PlaceInput({
   }
 
   return (
-    <div ref={wrapRef} className="relative">
-      <input
-        type="text"
-        className={FIELD_INPUT}
-        disabled={disabled}
-        value={value}
-        role="combobox"
-        aria-label={ariaLabel}
-        aria-autocomplete="list"
-        aria-expanded={open && suggestions.length > 0}
-        aria-controls={listId}
-        placeholder={placeholder}
-        onFocus={() => {
-          setOpen(true);
-          setTyped(null);
-          setActive(-1);
-        }}
-        onChange={(event) => {
-          onChange(event.target.value);
-          setTyped(event.target.value);
-          setOpen(true);
-          setActive(-1);
-        }}
-        onBlur={() => {
-          setOpen(false);
-          setTyped(null);
-          setActive(-1);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowDown") {
-            event.preventDefault();
+    <div>
+      <div ref={wrapRef} className="relative">
+        <input
+          type="text"
+          className={cn(FIELD_INPUT, invalid && "ring-1 ring-destructive/60")}
+          disabled={disabled}
+          value={value}
+          role="combobox"
+          aria-label={ariaLabel}
+          aria-invalid={invalid || undefined}
+          aria-describedby={hint ? hintId : undefined}
+          aria-autocomplete="list"
+          aria-expanded={open && suggestions.length > 0}
+          aria-controls={listId}
+          placeholder={placeholder}
+          onFocus={() => {
             setOpen(true);
-            setActive((index) => Math.min(index + 1, suggestions.length - 1));
-          } else if (event.key === "ArrowUp") {
-            event.preventDefault();
-            setActive((index) => Math.max(index - 1, -1));
-          } else if (event.key === "Enter" && active >= 0 && suggestions[active]) {
-            event.preventDefault();
-            choose(suggestions[active]);
-          } else if (event.key === "Escape") {
-            setOpen(false);
+            setTyped(null);
             setActive(-1);
-          }
-        }}
-      />
-      {open && suggestions.length > 0 ? (
-        <PlaceSuggestions id={listId} options={suggestions} active={active} onChoose={choose} />
-      ) : null}
+          }}
+          onChange={(event) => {
+            onChange(event.target.value);
+            setTyped(event.target.value);
+            setOpen(true);
+            setActive(-1);
+          }}
+          onBlur={() => {
+            setOpen(false);
+            setTyped(null);
+            setActive(-1);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              setOpen(true);
+              setActive((index) => Math.min(index + 1, suggestions.length - 1));
+            } else if (event.key === "ArrowUp") {
+              event.preventDefault();
+              setActive((index) => Math.max(index - 1, -1));
+            } else if (event.key === "Enter" && active >= 0 && suggestions[active]) {
+              event.preventDefault();
+              choose(suggestions[active]);
+            } else if (event.key === "Escape") {
+              setOpen(false);
+              setActive(-1);
+            }
+          }}
+        />
+        {open && suggestions.length > 0 ? (
+          <PlaceSuggestions id={listId} options={suggestions} active={active} onChoose={choose} />
+        ) : null}
+      </div>
+      <ObHint text={hint} id={hintId} />
     </div>
   );
 }
@@ -363,14 +399,20 @@ function DestinationChips({
   value,
   options,
   disabled,
+  invalid = false,
+  hint,
   onChange,
 }: {
   value: string;
   options: string[];
   disabled: boolean;
+  invalid?: boolean | undefined;
+  /** What to do about the empty cell — shown in red under the chips. */
+  hint?: string | undefined;
   onChange: (value: string) => void;
 }) {
   const listId = useId();
+  const hintId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
@@ -416,74 +458,84 @@ function DestinationChips({
   }
 
   return (
-    <div ref={wrapRef} className="relative">
-      <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md bg-muted px-2 py-1.5 focus-within:ring-2 focus-within:ring-primary/25">
-        {places.map((place, i) => (
-          <span
-            key={`${place}-${i}`}
-            className="inline-flex items-center gap-1 rounded border border-border bg-card py-0.5 pr-1 pl-2 text-sm"
-          >
-            {place}
-            {!disabled ? (
-              <button
-                type="button"
-                className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label={`Remove ${place}`}
-                title={`Remove ${place}`}
-                onClick={() => removeAt(i)}
-              >
-                <X className="size-3.5" aria-hidden="true" />
-              </button>
-            ) : null}
-          </span>
-        ))}
-        {!disabled ? (
-          <input
-            type="text"
-            className="h-7 min-w-[7rem] flex-1 bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-            value={draft}
-            role="combobox"
-            aria-label="Add a place"
-            aria-autocomplete="list"
-            aria-expanded={open && suggestions.length > 0}
-            aria-controls={listId}
-            placeholder={places.length ? "Add a place" : "Type a place, then press Enter"}
-            onFocus={() => setOpen(true)}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setOpen(true);
-              setActive(-1);
-            }}
-            onBlur={() => {
-              setOpen(false);
-              addPlaces(draft);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowDown") {
-                event.preventDefault();
+    <div>
+      <div ref={wrapRef} className="relative">
+        <div
+          className={cn(
+            "flex min-h-10 flex-wrap items-center gap-1.5 rounded-md bg-muted px-2 py-1.5 focus-within:ring-2 focus-within:ring-primary/25",
+            invalid && "ring-1 ring-destructive/60",
+          )}
+          aria-invalid={invalid || undefined}
+          aria-describedby={hint ? hintId : undefined}
+        >
+          {places.map((place, i) => (
+            <span
+              key={`${place}-${i}`}
+              className="inline-flex items-center gap-1 rounded border border-border bg-card py-0.5 pr-1 pl-2 text-sm"
+            >
+              {place}
+              {!disabled ? (
+                <button
+                  type="button"
+                  className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={`Remove ${place}`}
+                  title={`Remove ${place}`}
+                  onClick={() => removeAt(i)}
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                </button>
+              ) : null}
+            </span>
+          ))}
+          {!disabled ? (
+            <input
+              type="text"
+              className="h-7 min-w-[7rem] flex-1 bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              value={draft}
+              role="combobox"
+              aria-label="Add a place"
+              aria-autocomplete="list"
+              aria-expanded={open && suggestions.length > 0}
+              aria-controls={listId}
+              placeholder={places.length ? "Add a place" : "Type a place, then press Enter"}
+              onFocus={() => setOpen(true)}
+              onChange={(event) => {
+                setDraft(event.target.value);
                 setOpen(true);
-                setActive((index) => Math.min(index + 1, suggestions.length - 1));
-              } else if (event.key === "ArrowUp") {
-                event.preventDefault();
-                setActive((index) => Math.max(index - 1, -1));
-              } else if (event.key === "Enter" || event.key === ",") {
-                event.preventDefault();
-                if (active >= 0 && suggestions[active]) choose(suggestions[active]);
-                else addPlaces(draft);
-              } else if (event.key === "Escape") {
-                setOpen(false);
                 setActive(-1);
-              } else if (event.key === "Backspace" && draft === "" && places.length > 0) {
-                removeAt(places.length - 1);
-              }
-            }}
-          />
+              }}
+              onBlur={() => {
+                setOpen(false);
+                addPlaces(draft);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setOpen(true);
+                  setActive((index) => Math.min(index + 1, suggestions.length - 1));
+                } else if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setActive((index) => Math.max(index - 1, -1));
+                } else if (event.key === "Enter" || event.key === ",") {
+                  event.preventDefault();
+                  if (active >= 0 && suggestions[active]) choose(suggestions[active]);
+                  else addPlaces(draft);
+                } else if (event.key === "Escape") {
+                  setOpen(false);
+                  setActive(-1);
+                } else if (event.key === "Backspace" && draft === "" && places.length > 0) {
+                  removeAt(places.length - 1);
+                }
+              }}
+            />
+          ) : null}
+        </div>
+
+        {open && suggestions.length > 0 ? (
+          <PlaceSuggestions id={listId} options={suggestions} active={active} onChoose={choose} />
         ) : null}
       </div>
-
-      {open && suggestions.length > 0 ? (
-        <PlaceSuggestions id={listId} options={suggestions} active={active} onChoose={choose} />
-      ) : null}
+      <ObHint text={hint} id={hintId} />
     </div>
   );
 }
@@ -499,12 +551,18 @@ function DestinationChips({
 function PurposeField({
   value,
   disabled,
+  invalid = false,
+  hint,
   onChange,
 }: {
   value: string;
   disabled: boolean;
+  invalid?: boolean | undefined;
+  /** What to do about the empty cell — shown in red under the textarea. */
+  hint?: string | undefined;
   onChange: (value: string) => void;
 }) {
+  const hintId = useId();
   const [genOpen, setGenOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState<null | "generate" | "enhance">(null);
@@ -520,7 +578,7 @@ function PurposeField({
       setGenOpen(false);
       setNotes("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not generate the purpose.");
+      toast.error(friendlyError(e, "Could not write the purpose. Please try again."));
     } finally {
       setBusy(null);
     }
@@ -539,7 +597,7 @@ function PurposeField({
       });
       onChange(purpose);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not improve the wording.");
+      toast.error(friendlyError(e, "Could not improve the wording. Please try again."));
     } finally {
       setBusy(null);
     }
@@ -646,10 +704,13 @@ function PurposeField({
       <AutoTextarea
         value={value}
         disabled={disabled || busy !== null}
+        invalid={invalid}
         ariaLabel="Purpose(s)"
+        describedBy={hint ? hintId : undefined}
         minRows={3}
         onChange={onChange}
       />
+      <ObHint text={hint} id={hintId} />
     </div>
   );
 }
@@ -663,13 +724,18 @@ function PurposeField({
 function AutoTextarea({
   value,
   disabled,
+  invalid = false,
   ariaLabel,
+  describedBy,
   minRows = 1,
   onChange,
 }: {
   value: string;
   disabled: boolean;
+  invalid?: boolean | undefined;
   ariaLabel: string;
+  /** Id of the red instruction line below, when the cell is empty. */
+  describedBy?: string | undefined;
   minRows?: number;
   onChange: (value: string) => void;
 }) {
@@ -686,11 +752,16 @@ function AutoTextarea({
     <textarea
       ref={ref}
       rows={1}
-      className="w-full resize-none overflow-hidden rounded-md border-0 bg-muted px-3 py-2 text-sm whitespace-pre-wrap break-words text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:text-muted-foreground"
+      className={cn(
+        "w-full resize-none overflow-hidden rounded-md border-0 bg-muted px-3 py-2 text-sm whitespace-pre-wrap break-words text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:text-muted-foreground",
+        invalid && "ring-1 ring-destructive/60",
+      )}
       style={{ minHeight: `calc(${minRows} * 1.25rem + 0.75rem)` }}
       disabled={disabled}
       value={value}
       aria-label={ariaLabel}
+      aria-invalid={invalid || undefined}
+      aria-describedby={describedBy}
       onChange={(ev) => onChange(ev.target.value)}
     />
   );

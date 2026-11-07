@@ -2,7 +2,6 @@ import { useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 
 import { APP } from "@/config/app";
-import { NotificationBell } from "@/features/hr/components/NotificationBell";
 import type { SessionUser } from "@swiftslip/shared/types";
 import { MobileSidebarDrawer } from "./MobileSidebarDrawer";
 import { Sidebar } from "./Sidebar";
@@ -37,12 +36,9 @@ export function AppShell({ session, children }: { session: SessionUser; children
             {APP.name}
           </span>
         </span>
-        <span className="flex items-center gap-2">
-          <NotificationBell />
-          <button className="btn btn-outline" onClick={() => setMenuOpen((v) => !v)}>
-            {menuOpen ? "Close" : "Menu"}
-          </button>
-        </span>
+        <button className="btn btn-outline" onClick={() => setMenuOpen((v) => !v)}>
+          {menuOpen ? "Close" : "Menu"}
+        </button>
       </header>
       <MobileSidebarDrawer open={menuOpen} onClose={() => setMenuOpen(false)}>
         <Sidebar role={session.role} label={session.label} onNavigate={() => setMenuOpen(false)} />

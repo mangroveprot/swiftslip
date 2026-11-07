@@ -1,15 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Clock,
-  Loader2,
-  MapPin,
-  Maximize2,
-  Pencil,
-} from "lucide-react";
+import { ArrowLeft, Check, Clock, Loader2, Maximize2, Pencil } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
@@ -22,11 +13,17 @@ import { isMissingRow } from "@/lib/missing-row";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { ObSigner } from "@swiftslip/shared/api-types";
-import { obSupervisorState, type ObHrStatus } from "@swiftslip/shared/hr";
+import {
+  latestObResubmit,
+  obSupervisorState,
+  type ObHrStatus,
+  type ObResubmitChange,
+} from "@swiftslip/shared/hr";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import { formatTime12h, relativeTime } from "@swiftslip/shared/time";
 import { ObPreview } from "@/features/official-business/components/ObPreview";
-import { ObStatusCard } from "@/features/official-business/components/ObStatusCard";
+import { ObStatusCard, ObStatusLine } from "@/features/official-business/components/ObStatusCard";
+import { EmployeeProfileCard } from "./EmployeeProfileCard";
 import { hrObAttachmentUrlQueryOptions, hrObQueryOptions, useHrActions } from "../queries";
 
 const STEPS = [
@@ -218,6 +215,10 @@ export function HrObDetailPage({ id }: { id: string }) {
   if (!form || !status) return <DetailSkeleton />;
 
   const supervisor = obSupervisorState(form);
+  const latestResubmit = latestObResubmit(form.resubmit_history);
+  const changeMap = new Map<string, ObResubmitChange>(
+    (latestResubmit?.changes ?? []).map((change) => [change.key, change]),
+  );
   const supervisorDone = supervisor.state === "approved";
   const departureDone = status === "departed" || status === "completed";
   const departureCurrent = status === "approved" || status === "waiting_supervisor";
@@ -282,6 +283,66 @@ export function HrObDetailPage({ id }: { id: string }) {
     setArrivalTime(stamp.time);
   };
 
+  const reviewDecision =
+    status === "submitted" ? (
+      <section>
+        {!rejecting ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="btn h-8 bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
+              disabled={busy}
+              onClick={() => void approve()}
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : null}
+              Approve
+            </button>
+            <button
+              type="button"
+              className="btn h-8 border border-destructive/70 bg-transparent text-destructive hover:bg-destructive/10"
+              disabled={busy}
+              onClick={() => setRejecting(true)}
+            >
+              Reject
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <label className="block text-xs font-medium">
+              Why is it rejected?
+              <textarea
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                rows={3}
+                maxLength={1000}
+                placeholder="Tell the employee what needs to change."
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="btn h-8 bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60"
+                disabled={busy || reason.trim().length === 0}
+                onClick={() => void reject()}
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                Confirm rejection
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline h-8"
+                disabled={busy}
+                onClick={() => setRejecting(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    ) : null;
+
   return (
     <main className="flex min-h-full w-full flex-col px-4 py-6 md:px-6 md:py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -298,49 +359,110 @@ export function HrObDetailPage({ id }: { id: string }) {
         <h1 className="text-[2.15rem] font-semibold leading-none tracking-[-0.045em] sm:text-[2.75rem]">
           Official Business Form
         </h1>
-        {/* No status line here: the right-rail ObStatusCard already states the
-            status, and the facts below repeat the employee name / id / date.
-            Keeping both showed "Waiting for HR" twice on one screen. The
-            employee editor dropped the same line for the same reason. */}
+        <ObStatusLine
+          audience="hr"
+          doc={{ ...form, employee_photo: data?.employee?.photo ?? null }}
+          signers={data?.signers}
+        />
       </header>
 
       <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-        <section className="hr-card min-w-0 overflow-hidden">
-          <div className="px-6 pb-5 pt-6 md:px-8">
-            <Progress status={status} supervisorDone={supervisorDone} />
+        <div className="min-w-0 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="min-w-0 flex-1">
+              <Progress status={status} supervisorDone={supervisorDone} />
+            </div>
+            {latestResubmit ? (
+              <span className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400">
+                Changed fields marked
+              </span>
+            ) : null}
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-5 border-t border-border/70 px-6 py-6 md:grid-cols-4 md:px-8">
-            <Fact label="ID number" value={form.id_number} />
-            <Fact label="Employee name" value={form.employee_name} />
-            <Fact label="Department / location" value={form.department} />
-            <Fact label="Position" value={form.position} />
-          </dl>
+          <section className="hr-card px-6 py-6 md:px-8">
+            <h2 className="text-sm font-medium">Form details</h2>
 
-          <section className="border-t border-border/70 px-6 py-6 md:px-8">
-            <h2 className="text-sm font-medium">Itinerary</h2>
-            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2">
-              <span className="text-sm">{itinerary.from || "—"}</span>
-              <ArrowRight className="size-4 text-muted-foreground" aria-hidden="true" />
-              {itinerary.destinations.length ? (
-                itinerary.destinations.map((place) => (
-                  <span
-                    key={place}
-                    className="rounded-md border border-border bg-card px-2.5 py-1 text-sm"
-                  >
-                    {place}
-                  </span>
-                ))
-              ) : (
-                <span className="text-sm text-muted-foreground">No destination</span>
-              )}
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <ReviewField
+                label="ID number"
+                value={form.id_number}
+                change={changeMap.get("id_number")}
+              />
+              <ReviewField
+                label="Employee name"
+                value={form.employee_name}
+                change={changeMap.get("employee_name")}
+              />
+              <ReviewField
+                label="Department / location"
+                value={form.department}
+                change={changeMap.get("department")}
+              />
+              <ReviewField
+                label="Position"
+                value={form.position}
+                change={changeMap.get("position")}
+              />
+              <ReviewField
+                label="Date filed"
+                value={formatMonthDayYear(form.date_filed) || form.date_filed}
+                change={changeMap.get("date_filed")}
+              />
+              <ReviewField
+                label="Date of OB"
+                value={formatMonthDayYear(form.date_of_ob) || form.date_of_ob}
+                change={changeMap.get("date_of_ob")}
+              />
+              <ReviewField
+                label="Approved by (supervisor / dept. head)"
+                value={form.approved_by}
+                change={changeMap.get("approved_by")}
+              />
             </div>
-            {itinerary.purpose ? (
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">{itinerary.purpose}</p>
-            ) : null}
+
+            <h3 className="mt-7 text-sm font-medium">Itinerary</h3>
+            <div className="mt-3 space-y-5">
+              {entries.map((entry, index) => (
+                <div
+                  key={entry.idx}
+                  className={cn(index > 0 && "border-t border-border/70 pt-5")}
+                >
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <ReviewField
+                      label="From"
+                      value={entry.from_place}
+                      change={changeMap.get(`entry:${entry.idx}:from_place`)}
+                    />
+                    <ReviewField
+                      label="Destination"
+                      value={entry.to_place}
+                      change={changeMap.get(`entry:${entry.idx}:to_place`)}
+                    />
+                    <ReviewField
+                      label="Purpose"
+                      value={entry.purpose}
+                      change={changeMap.get(`entry:${entry.idx}:purpose`)}
+                    />
+                    <ReviewField
+                      label="Departure time"
+                      value={entry.time_departure}
+                      change={changeMap.get(`entry:${entry.idx}:time_departure`)}
+                    />
+                    <ReviewField
+                      label="Return time"
+                      value={entry.time_return}
+                      change={changeMap.get(`entry:${entry.idx}:time_return`)}
+                    />
+                  </div>
+                </div>
+              ))}
+              {!entries.length ? (
+                <p className="text-sm text-muted-foreground">No itinerary stops.</p>
+              ) : null}
+            </div>
           </section>
 
-          <section className="border-t border-border/70 px-6 py-6 md:px-8">
+          <section className="hr-card px-6 py-6 md:px-8">
             <h2 className="text-xl font-bold leading-tight tracking-tight">Exit clearance</h2>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
               {arrivalDone
@@ -512,81 +634,24 @@ export function HrObDetailPage({ id }: { id: string }) {
               </li>
             </ol>
           </section>
-        </section>
+        </div>
 
         <aside className="space-y-4">
-          {/* The one status card for the form's current state, at the top of
-              the rail — the reference's mock. The decision card below stays:
-              HR still has to approve or reject. */}
-          <ObStatusCard audience="hr" doc={form} signers={data?.signers} className="p-5" />
+          {/* Who HR is reviewing. Approve / Reject live in the card footer. */}
+          {data?.employee ? (
+            <EmployeeProfileCard employee={data.employee} actions={reviewDecision} />
+          ) : (
+            reviewDecision
+          )}
 
-          {status === "submitted" ? (
-            <section className="hr-card p-5">
-              {/* Layout follows the owner's reference: plain heading (no icon
-                  circle), roomier body copy, a full-width solid-green Approve
-                  and a borderless red Reject — colours sampled from it. */}
-              <h2 className="text-base font-bold">Review this request</h2>
-              <p className="mt-3 text-sm leading-5 text-[#4b564f] dark:text-[#a8b0aa]">
-                HR can approve even while the supervisor&apos;s signature is missing. The employee
-                can still be signed out, but completion needs the supervisor&apos;s approval.
-              </p>
-
-              {!rejecting ? (
-                <div className="mt-4 flex flex-col gap-3">
-                  <button
-                    type="button"
-                    className="btn h-10 w-full bg-[#14583a] text-white hover:bg-[#104730] disabled:opacity-60"
-                    disabled={busy}
-                    onClick={() => void approve()}
-                  >
-                    {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="btn w-full text-[#a3261f] hover:text-[#7f1c16] dark:text-[#e8776a] dark:hover:text-[#f2958a]"
-                    disabled={busy}
-                    onClick={() => setRejecting(true)}
-                  >
-                    Reject
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  <label className="block text-xs font-medium">
-                    Why is it rejected?
-                    <textarea
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                      rows={4}
-                      maxLength={1000}
-                      placeholder="Tell the employee what needs to change."
-                      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40"
-                    />
-                  </label>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      className="btn bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60"
-                      disabled={busy || reason.trim().length === 0}
-                      onClick={() => void reject()}
-                    >
-                      {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-                      Confirm rejection
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      disabled={busy}
-                      onClick={() => setRejecting(false)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
-          ) : null}
+          {/* The one status card for the form's current state. Changed fields
+              are marked on the sheet; this card only names which ones. */}
+          <ObStatusCard
+            audience="hr"
+            doc={{ ...form, employee_photo: data?.employee?.photo ?? null }}
+            signers={data?.signers}
+            className="p-5"
+          />
 
           <AttachmentCard
             kind="ob"
@@ -693,11 +758,29 @@ function Progress({ status, supervisorDone }: { status: ObHrStatus; supervisorDo
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function ReviewField({
+  label,
+  value,
+  change,
+}: {
+  label: string;
+  value: string;
+  change?: ObResubmitChange | undefined;
+}) {
   return (
     <div className="min-w-0">
-      <dt className="hr-label">{label}</dt>
-      <dd className="mt-1.5 break-words text-sm font-medium leading-5">{value || "—"}</dd>
+      <p className="hr-label">{label}</p>
+      <p className="mt-1.5 flex flex-wrap items-center gap-2 break-words text-sm font-semibold leading-5">
+        <span>{value || "—"}</span>
+        {change ? (
+          <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+            Changed
+          </span>
+        ) : null}
+      </p>
+      {change ? (
+        <p className="mt-0.5 text-xs text-muted-foreground">Was: {change.from || "Empty"}</p>
+      ) : null}
     </div>
   );
 }

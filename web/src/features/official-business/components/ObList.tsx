@@ -8,6 +8,7 @@ import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { DeletionNotice } from "@/components/common/DeletionNotice";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
+import { ResubmitBadge } from "@/components/common/ResubmitBadge";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -16,7 +17,7 @@ import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
 import { relativeTime } from "@swiftslip/shared/time";
-import type { ObHrStatus } from "@swiftslip/shared/hr";
+import type { ObHrStatus, ObResubmitEvent } from "@swiftslip/shared/hr";
 import {
   buildPlaceFacets,
   destinationKeys,
@@ -38,6 +39,10 @@ type ObRow = {
   attachment_approved: boolean;
   /** HR approval state — the status chip on the card. */
   hr_status: ObHrStatus;
+  /** How often the form has gone back to HR (0037); 0 = first time through. */
+  resubmit_count?: number;
+  /** The trips back to HR, oldest first — the card's line reads the latest. */
+  resubmit_history?: ObResubmitEvent[];
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
   deletes_in_days?: number;
@@ -489,6 +494,11 @@ function ObCard({
               {f.employee_name || "Untitled form"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{f.id_number || "No ID number"}</p>
+            <ResubmitBadge
+              count={f.resubmit_count}
+              history={f.resubmit_history}
+              className="mt-1.5"
+            />
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <Link

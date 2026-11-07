@@ -1,9 +1,19 @@
 import { Link } from "@tanstack/react-router";
+import { ArrowRightFromLine, ChevronsUpDown, Monitor, Moon, Sun, User } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
+import { useSignOutFlow } from "@/components/common/SignOutButton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { APP } from "@/config/app";
-import { ThemeToggle } from "./ThemeToggle";
+import { useTheme } from "@/lib/use-theme";
+import { cn } from "@/lib/utils";
 
 /**
  * Building blocks shared by the SwiftSlip portal sidebar and the Admin
@@ -84,41 +94,127 @@ export function SidebarSoonBadge() {
   );
 }
 
+const THEME_LABEL = {
+  light: "Light",
+  dark: "Dark",
+  system: "System",
+} as const;
+
+/** Quiet row highlight. The shared menu item uses the orange accent, which reads as a solid bar on the dark card. */
+const MENU_ITEM =
+  "rounded-lg px-2 py-2 focus:bg-muted focus:text-foreground data-[highlighted]:bg-muted data-[highlighted]:text-foreground dark:focus:bg-white/10 dark:focus:text-foreground dark:data-[highlighted]:bg-white/10 dark:data-[highlighted]:text-foreground";
+
 /**
- * Footer pinned under the nav: avatar + the signed-in user's name over a
- * caption (role or employee number), then the plain icon rows passed as
- * children (Switch app / Install / Sign out).
- * The theme toggle sits beside the name, at the top-right of the footer — the
- * one spot that is always visible in both the portal and the Admin Panel.
+ * Footer pinned under the nav. Utility rows come first (Notifications / Switch
+ * app / Install), then the signed-in identity. That identity is one button: it
+ * opens a solid card upward with My account, Theme, and Sign out.
  *
  * `photo` is the profile picture when the person has set one; without it the
  * avatar falls back to their initials, so the footer never renders an empty
- * circle while the profile query is still in flight.
+ * circle while the profile query is still in flight. The whole row is one
+ * target with an up/down arrow.
+ *
+ * `to` is the My Account route for this app (`/profile` or `/hr/profile`).
+ * Theme cycles inside the menu and does not close it or navigate.
  */
 export function SidebarFooter({
   name,
   photo,
   sublabel,
+  to,
+  signOutAccessName,
   children,
 }: {
   name: string;
   photo?: string | undefined;
   sublabel?: ReactNode;
+  /** The My Account route that the menu's first item opens. */
+  to?: string | undefined;
+  /** Named in the sign-out warning ("…sign in again to access <name>"). */
+  signOutAccessName?: string | undefined;
   children: ReactNode;
 }) {
+  const { open: openSignOut, modal: signOutModal } = useSignOutFlow({
+    accessName: signOutAccessName,
+  });
+  const { preference, cycle } = useTheme();
+  const themeLabel = THEME_LABEL[preference];
+  const ThemeIcon = preference === "dark" ? Moon : preference === "system" ? Monitor : Sun;
+
+  const identity = (
+    <>
+      <ProfileAvatar photo={photo} name={name} size={36} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold">{name}</span>
+        {sublabel ? (
+          <span className="block truncate text-xs text-muted-foreground">{sublabel}</span>
+        ) : null}
+      </span>
+    </>
+  );
+
   return (
-    <footer className="shrink-0 border-t border-border px-2 py-4">
-      <div className="flex items-center gap-3 px-2 pb-3">
-        <ProfileAvatar photo={photo} name={name} size={36} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold">{name}</span>
-          {sublabel ? (
-            <span className="block truncate text-xs text-muted-foreground">{sublabel}</span>
-          ) : null}
-        </span>
-        <ThemeToggle />
-      </div>
+    <footer className="shrink-0 border-t border-border px-2 py-3">
       <div className="space-y-0.5">{children}</div>
+      <div className="mt-2 flex items-center px-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`${name} — open account menu`}
+              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:bg-muted/60"
+            >
+              {identity}
+              <ChevronsUpDown
+                className="size-3.5 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 group-data-[state=open]:opacity-100"
+                aria-hidden="true"
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="top"
+            align="start"
+            sideOffset={8}
+            className="z-[80] w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg"
+          >
+            {to ? (
+              <DropdownMenuItem asChild>
+                <Link to={to} className={cn("flex w-full items-center gap-2", MENU_ITEM)}>
+                  <User className="size-4" aria-hidden="true" />
+                  My account
+                </Link>
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                cycle();
+              }}
+              className={MENU_ITEM}
+              aria-label={`Theme: ${themeLabel}. Click to change.`}
+            >
+              <Sun className="size-4" aria-hidden="true" />
+              <span>Theme</span>
+              <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                {themeLabel}
+                <ThemeIcon className="size-3.5" aria-hidden="true" />
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-border" />
+            <DropdownMenuItem
+              onSelect={() => openSignOut()}
+              className={cn(
+                MENU_ITEM,
+                "text-destructive focus:bg-destructive/15 focus:text-destructive data-[highlighted]:bg-destructive/15 data-[highlighted]:text-destructive dark:focus:bg-destructive/15 dark:focus:text-destructive dark:data-[highlighted]:bg-destructive/15 dark:data-[highlighted]:text-destructive",
+              )}
+            >
+              <ArrowRightFromLine className="size-4" aria-hidden="true" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {signOutModal}
     </footer>
   );
 }

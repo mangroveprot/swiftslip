@@ -8,7 +8,7 @@
  * SCOPE — Official Business only (see HR_APPROVAL_SPEC.md §1). The other four
  * form flows are untouched.
  */
-import type { ObForm } from "./types";
+import type { ObEntry, ObForm } from "./types";
 
 /** The department whose accounts act as HR reviewers. */
 export const HR_DEPARTMENT = "HR Department";
@@ -47,6 +47,130 @@ export const OB_HR_STATUS_LABELS: Record<ObHrStatus, string> = {
 };
 
 /**
+ * One field the employee changed before a resubmit — keyed the same way the
+ * required-field list keys a cell (`entry:<idx>:<column>`), so the HR sheet can
+ * put a "Changed / Was: …" note under exactly that box.
+ */
+export type ObResubmitChange = {
+  /** Form field key, or `entry:<idx>:<column>` for an itinerary cell. */
+  key: string;
+  /** What the paper sheet calls it ("Destination", "Purpose(s)", "Date of OB"). */
+  label: string;
+  /** The value HR last reviewed. */
+  from: string;
+  /** The value the employee sent back. */
+  to: string;
+};
+
+/**
+ * One trip back to HR (migration 0037): the form has been through the queue
+ * before and is in it again. `how` says why it came back — `rejected` is a
+ * resubmit after HR bounced it, `edited` is content changed after approval —
+ * and `reason` keeps HR's rejection text the resubmit answers (the live
+ * `hr_reject_reason` column is cleared on the next submit, so without this the
+ * history would lose what was actually fixed).
+ *
+ * `changes` (migration 0038) is the diff between the version HR last reviewed
+ * and the one sent back. The `rejected_*` fields are the rejection this event
+ * answers, kept here because the live columns are cleared on resubmit; the
+ * resolved name/position/photo are decorated on read for the cards.
+ */
+export type ObResubmitEvent = {
+  /** When it went back to HR (ISO stamp). */
+  at: string;
+  how: "rejected" | "edited";
+  /** HR's rejection reason at the time, when there was one. */
+  reason?: string;
+  /** When HR rejected the version this resubmit answers. */
+  rejected_at?: string;
+  /** The HR account that rejected that version. */
+  rejected_by?: string;
+  /** What the employee changed, field by field (migration 0038). */
+  changes?: ObResubmitChange[];
+  /** Resolved reviewer profile, added by the API on read (never stored). */
+  rejected_by_name?: string;
+  rejected_by_position?: string;
+  rejected_by_photo?: string;
+};
+
+/**
+ * The content HR last reviewed, stored on `ob_forms.submit_snapshot`
+ * (migration 0038) at every submit. On the next resubmit the API diffs the new
+ * content against this to answer "what changed and what was it before".
+ *
+ * Signatures and supervisor-only fields are deliberately left out: they are
+ * not what the reviewer is being asked to re-read, and the signature is a large
+ * data URL that would bloat every history row.
+ */
+export type ObSubmitSnapshot = {
+  form: Record<string, string>;
+  entries: Array<{
+    idx: number;
+    from_place: string;
+    to_place: string;
+    purpose: string;
+    time_departure: string;
+    time_return: string;
+  }>;
+};
+
+export const EMPTY_OB_SUBMIT_SNAPSHOT: ObSubmitSnapshot = { form: {}, entries: [] };
+
+/** The latest trip back to HR, or null for a first-time submission. */
+export function latestObResubmit(
+  history: readonly ObResubmitEvent[] | null | undefined,
+): ObResubmitEvent | null {
+  return history && history.length ? (history[history.length - 1] ?? null) : null;
+}
+
+/** "1st", "2nd", "3rd", "4th", "11th", "21st" — for "9th submission". */
+export function ordinal(value: number): string {
+  const n = Math.max(1, Math.trunc(value));
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
+/**
+ * The one-line queue caption under the status. A form whose history predates
+ * migration 0038 has a count but no `how`, so it falls back to the attempt
+ * number ("9th submission") rather than inventing a reason.
+ */
+export function obResubmitLine(
+  count: number | null | undefined,
+  history: readonly ObResubmitEvent[] | null | undefined,
+): string | null {
+  const times = count ?? 0;
+  if (times <= 0) return null;
+  const latest = latestObResubmit(history);
+  if (latest?.how === "rejected") return "Resubmitted after rejection";
+  if (latest?.how === "edited") return "Edited after approval";
+  return `${ordinal(times + 1)} submission`;
+}
+
+/** Unique field names from an event's diff, in the order they were compared. */
+export function obChangeSummary(changes: readonly ObResubmitChange[] | null | undefined): string[] {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  for (const change of changes ?? []) {
+    const label = change.label.trim();
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  return labels;
+}
+
+/**
  * The HR-owned columns on `ob_forms` (migration 0035). `ObForm` stays the
  * employee's editable header; these are appended by the API on read so the
  * employee's editor never writes them.
@@ -55,6 +179,15 @@ export type ObHrFields = {
   hr_status: ObHrStatus;
   /** When the employee submitted (or resubmitted) the form. */
   submitted_at: string | null;
+  /** How many times the form has gone back to HR for review (migration 0037). */
+  resubmit_count: number;
+  /** The trips themselves, oldest first — the history both screens show. */
+  resubmit_history: ObResubmitEvent[];
+  /**
+   * The content HR last reviewed (migration 0038). The API writes it on every
+   * submit and diffs it on a resubmit; the UI only reads it.
+   */
+  submit_snapshot: ObSubmitSnapshot | null;
   /** Why HR rejected it; cleared on the next submit. */
   hr_reject_reason: string;
   /** When HR rejected it; cleared with the reason on the next submit. */
@@ -82,6 +215,9 @@ export type ObHrFields = {
 export const EMPTY_OB_HR_FIELDS: ObHrFields = {
   hr_status: "draft",
   submitted_at: null,
+  resubmit_count: 0,
+  resubmit_history: [],
+  submit_snapshot: null,
   hr_reject_reason: "",
   hr_rejected_at: null,
   hr_rejected_by: null,

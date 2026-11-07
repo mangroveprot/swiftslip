@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { SignOutButton } from "@/components/common/SignOutButton";
 import { MobileSidebarDrawer } from "@/components/layout/MobileSidebarDrawer";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "@/components/layout/sidebar-classes";
 import {
@@ -27,7 +26,9 @@ import {
 } from "@/components/layout/sidebar-ui";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { APP } from "@/config/app";
+import { accountCaption } from "@/components/layout/nav-items";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { cn } from "@/lib/utils";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
@@ -85,6 +86,9 @@ export function AdminPanel() {
   // The same photo the portal's sidebar shows — one cache entry, so moving
   // between the panel and the app never re-fetches it.
   const photo = useProfilePhoto();
+  // Position for the footer caption ("Administrator - IT Support"), from the
+  // same cached profile the My Account page edits.
+  const { data: profile } = useQuery(profileQueryOptions());
   const [section, setSection] = useState<Section>("dashboard");
   const [logFilter, setLogFilter] = useState<ActivityLogActionFilter | "all">("all");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -106,7 +110,7 @@ export function AdminPanel() {
       section={section}
       onSelect={(next) => navigate(next)}
       label={mounted ? session?.label : undefined}
-      idNumber={mounted ? session?.idNumber : undefined}
+      position={mounted ? profile?.designation : undefined}
       photo={mounted ? photo : undefined}
       onNavigate={() => setMenuOpen(false)}
     />
@@ -168,14 +172,14 @@ function AdminSidebar({
   section,
   onSelect,
   label,
-  idNumber,
+  position,
   photo,
   onNavigate,
 }: {
   section: Section;
   onSelect: (section: Section) => void;
   label?: string | undefined;
-  idNumber?: string | undefined;
+  position?: string | undefined;
   photo?: string | undefined;
   onNavigate?: () => void;
 }) {
@@ -206,15 +210,17 @@ function AdminSidebar({
       <SidebarFooter
         name={label || "Administrator"}
         photo={photo}
-        // The ID number under the full name. Hide it when the account has no
-        // display name yet (label is the ID) so the footer doesn't repeat it.
-        sublabel={idNumber && idNumber !== label ? idNumber : undefined}
+        // "Role - Position" under the name — the same caption every sidebar
+        // uses, falling back to the role alone when no position is on file.
+        sublabel={accountCaption("admin", position)}
+        // The identity block is the way into My Account (there is no Account
+        // nav row in this panel either).
+        to="/profile"
       >
         <Link to="/choose" onClick={onNavigate} className={SIDEBAR_ACTION_CLASS}>
           <LayoutGrid className="size-4" aria-hidden="true" />
           Switch app
         </Link>
-        <SignOutButton className={SIDEBAR_ACTION_CLASS} />
       </SidebarFooter>
     </SidebarShell>
   );

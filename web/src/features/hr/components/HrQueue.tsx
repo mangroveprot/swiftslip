@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { obReturnState, type ObHrStatus } from "@swiftslip/shared/hr";
 import type { HrObSummary } from "@swiftslip/shared/api-types";
 import { hrQueueQueryOptions } from "../queries";
-import { NotificationBell } from "./NotificationBell";
 import { QueueTable } from "./HrQueueTable";
 
 type HrView = "queue" | "completed" | "rejected";
@@ -320,16 +319,13 @@ export function HrQueue() {
 
   return (
     <main className="@container mx-auto flex min-h-full w-full max-w-[80rem] flex-col px-4 py-8 md:px-10 md:py-11">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[2.15rem] font-semibold leading-none tracking-[-0.045em] sm:text-[2.75rem]">
-            HR Approvals
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Official Business forms employees have sent for review.
-          </p>
-        </div>
-        <NotificationBell className="hidden size-10 rounded-full border border-border bg-card shadow-sm hover:bg-secondary md:inline-flex" />
+      <header>
+        <h1 className="text-[2.15rem] font-semibold leading-none tracking-[-0.045em] sm:text-[2.75rem]">
+          HR Approvals
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          Official Business forms employees have sent for review.
+        </p>
       </header>
 
       {/* The tab strip: counts live here, so the list needs no group headings. */}

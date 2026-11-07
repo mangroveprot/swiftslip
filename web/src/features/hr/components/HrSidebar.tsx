@@ -1,10 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, ClipboardCheck, LayoutGrid, UserRound, XCircle } from "lucide-react";
+import { CircleCheck, CircleX, ClipboardList, LayoutGrid } from "lucide-react";
 
-import { SignOutButton } from "@/components/common/SignOutButton";
 import { InstallButton } from "@/components/layout/InstallButton";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "@/components/layout/sidebar-classes";
+import { accountCaption } from "@/components/layout/nav-items";
 import {
   SidebarBrand,
   SidebarFooter,
@@ -12,14 +12,15 @@ import {
   SidebarShell,
 } from "@/components/layout/sidebar-ui";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
+import { NotificationBell } from "./NotificationBell";
 import { hrQueueQueryOptions } from "../queries";
 
 /**
- * The sidebar's only count: how many forms are waiting in the review queue.
- * Green rather than grey so the number is the first thing a reviewer sees —
- * deliberately NOT the old solid orange pill, which was too loud in dark mode.
- * Rejected and Completed carry no count at all.
+ * Right-aligned count on a review row. Green rather than grey so the number
+ * reads at a glance — deliberately not a solid orange pill, which was too
+ * loud in dark mode.
  */
 function NavCount({ value }: { value: number }) {
   return (
@@ -31,13 +32,14 @@ function NavCount({ value }: { value: number }) {
 
 /**
  * The HR app's sidebar (D1). It reuses the same brand, nav rows, footer and
- * surface as the main SwiftSlip shell. Reviewers get the HR queue plus the
- * Account row — the Records & Forms list stays out of the approval desk.
+ * surface as the main SwiftSlip shell. Reviewers get the HR queue — the
+ * Records & Forms list stays out of the approval desk, and the account lives
+ * in the footer: the profile block at the bottom opens My account / Sign out
+ * (no "Account" nav row), captioned **Role - Position**.
  *
- * Only Review queue shows a count, from the same cached queue the page uses,
- * so it updates after an approval without a second request. Completed and
- * Rejected are filtered views of the same route (`?view=…`), and stay
- * uncluttered — no counter beside them.
+ * Each review row shows a count from the same cached queue the page uses, so
+ * the numbers update after an approval without a second request. Completed and
+ * Rejected are filtered views of the same route (`?view=…`).
  */
 export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -46,6 +48,8 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
   const { data: session } = useQuery(sessionQueryOptions());
   const { data: queue } = useQuery(hrQueueQueryOptions());
+  // Same cached profile the My Account page edits — position for the caption.
+  const { data: profile } = useQuery(profileQueryOptions());
   const photo = useProfilePhoto();
   const apps = session?.apps;
 
@@ -55,13 +59,14 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const reviewActive = onQueue && !completedView && !rejectedView;
   const completedActive = pathname === "/hr" && completedView;
   const rejectedActive = pathname === "/hr" && rejectedView;
-  const accountActive = pathname === "/hr/profile";
 
   const forms = queue ?? [];
   const queueCount = forms.filter(
     (form) =>
       form.hr_status !== "completed" && form.hr_status !== "rejected" && form.hr_status !== "draft",
   ).length;
+  const rejectedCount = forms.filter((form) => form.hr_status === "rejected").length;
+  const completedCount = forms.filter((form) => form.hr_status === "completed").length;
   const loaded = Boolean(queue);
 
   return (
@@ -69,9 +74,9 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
       <SidebarBrand linkHome />
 
       <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-4">
-        <SidebarSection label="HR">
+        <SidebarSection label="Review">
           <Link to="/hr" onClick={onNavigate} className={sidebarRowClass({ active: reviewActive })}>
-            <ClipboardCheck className="size-4 shrink-0" aria-hidden="true" />
+            <ClipboardList className="size-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 truncate">Review queue</span>
             {loaded ? <NavCount value={queueCount} /> : null}
           </Link>
@@ -81,8 +86,9 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={sidebarRowClass({ active: rejectedActive })}
           >
-            <XCircle className="size-4 shrink-0" aria-hidden="true" />
+            <CircleX className="size-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 truncate">Rejected</span>
+            {loaded ? <NavCount value={rejectedCount} /> : null}
           </Link>
           <Link
             to="/hr"
@@ -90,24 +96,23 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={sidebarRowClass({ active: completedActive })}
           >
-            <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+            <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 truncate">Completed</span>
-          </Link>
-        </SidebarSection>
-
-        <SidebarSection label="Account">
-          <Link
-            to="/hr/profile"
-            onClick={onNavigate}
-            className={sidebarRowClass({ active: accountActive })}
-          >
-            <UserRound className="size-4 shrink-0" aria-hidden="true" />
-            <span className="min-w-0 truncate">My Account</span>
+            {loaded ? <NavCount value={completedCount} /> : null}
           </Link>
         </SidebarSection>
       </nav>
 
-      <SidebarFooter name={session?.label ?? "HR"} photo={photo} sublabel="HR reviewer">
+      {/* Identity block = My Account (click to open), captioned Role - Position
+          instead of the old hard-coded "HR reviewer". */}
+      <SidebarFooter
+        name={session?.label ?? "HR"}
+        photo={photo}
+        sublabel={accountCaption(session?.role, profile?.designation)}
+        to="/hr/profile"
+        signOutAccessName="the HR app"
+      >
+        <NotificationBell variant="row" />
         {apps && apps.length > 1 ? (
           <Link to="/choose" onClick={onNavigate} className={SIDEBAR_ACTION_CLASS}>
             <LayoutGrid className="size-4" aria-hidden="true" />
@@ -115,7 +120,6 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         ) : null}
         <InstallButton className={SIDEBAR_ACTION_CLASS} />
-        <SignOutButton className={SIDEBAR_ACTION_CLASS} accessName="the HR app" />
       </SidebarFooter>
     </SidebarShell>
   );

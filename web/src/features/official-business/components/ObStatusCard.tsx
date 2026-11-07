@@ -1,14 +1,18 @@
 import type { ReactNode } from "react";
 
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { cn } from "@/lib/utils";
 import {
   buildStatusCard,
   hasStatusCard,
+  statusDate,
   type ObStatusAudience,
   type ObStatusDoc,
+  type ObStatusField,
 } from "@/features/official-business/lib/status-card";
 import type { ObSigners } from "@swiftslip/shared/api-types";
+import { latestObResubmit } from "@swiftslip/shared/hr";
 
 type ObStatusProps = {
   doc: ObStatusDoc;
@@ -25,20 +29,19 @@ type ObStatusProps = {
 };
 
 /**
- * `● Rejected · Admin · admin · Rejected by Maria Santos on Nov 6, 2026` —
- * the one line under the title: the status dot, the person, their id, and the
- * sentence that says where the form actually is.
- *
- * **Currently not rendered on either screen.** It duplicated the status card
- * (which states the status) and the form's own name / id / date fields, so the
- * employee editor and the HR detail page both dropped it. Kept here as a
- * ready-made summary line if a compact header is needed again; do not re-add
- * it to a page that already shows `ObStatusCard`.
+ * `● Waiting for HR · Resubmitted Nov 7, 2026 · Admi Nastor · admin` — the
+ * compact line under the page title. The HR desk shows the amber resubmit
+ * date here; the employee line does not, because that screen's card already
+ * leads with the same date. On a resubmit the trailing summary stays hidden
+ * so the line does not say it twice.
  */
 export function ObStatusLine({ doc, signers, audience, className }: ObStatusProps) {
   const card = buildStatusCard(audience, doc, signers);
   const employee = doc.employee_name.trim();
   const idNumber = doc.id_number.trim();
+  const resubmitted = (doc.resubmit_count ?? 0) > 0;
+  const resubmitOn =
+    audience === "hr" && resubmitted ? statusDate(latestObResubmit(doc.resubmit_history)?.at) : "";
   const separator = (
     <span className="text-muted-foreground" aria-hidden="true">
       ·
@@ -54,20 +57,78 @@ export function ObStatusLine({ doc, signers, audience, className }: ObStatusProp
       ) : (
         <StatusBadge variant="dot" status={card.status} />
       )}
+      {resubmitOn ? (
+        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+          Resubmitted {resubmitOn}
+        </span>
+      ) : null}
       {employee ? (
         <>
           {separator}
-          <span className="font-medium">{employee}</span>
+          <span className="inline-flex items-center gap-1.5">
+            <ProfileAvatar name={employee} photo={doc.employee_photo ?? undefined} size={18} />
+            <span className="font-medium">{employee}</span>
+          </span>
         </>
       ) : null}
-      {idNumber ? (
+      {idNumber && idNumber !== employee ? (
         <>
           {separator}
           <span className="font-medium">{idNumber}</span>
         </>
       ) : null}
-      {separator}
-      <span className="text-muted-foreground">{card.summary}</span>
+      {!resubmitted ? (
+        <>
+          {separator}
+          <span className="text-muted-foreground">{card.summary}</span>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
+/** A field value, with the person's face when the value names someone. */
+function FieldValue({ field, align = "start" }: { field: ObStatusField; align?: "start" | "end" }) {
+  return (
+    <p
+      className={cn(
+        "flex items-start gap-1.5 text-sm font-semibold break-words",
+        align === "end" && "justify-end text-right",
+        field.tone === "warning" && "text-amber-700 dark:text-amber-400",
+      )}
+    >
+      {field.valuePerson ? (
+        <ProfileAvatar
+          name={field.valuePerson.name}
+          photo={field.valuePerson.photo ?? undefined}
+          size={18}
+          className="mt-0.5"
+        />
+      ) : null}
+      <span>{field.value}</span>
+    </p>
+  );
+}
+
+/** A field note, with a second face when the note names someone else. */
+function FieldNote({ field, align = "start" }: { field: ObStatusField; align?: "start" | "end" }) {
+  if (!field.note) return null;
+  return (
+    <p
+      className={cn(
+        "flex items-start gap-1.5 text-xs text-muted-foreground break-words",
+        align === "end" && "justify-end text-right",
+      )}
+    >
+      {field.notePerson ? (
+        <ProfileAvatar
+          name={field.notePerson.name}
+          photo={field.notePerson.photo ?? undefined}
+          size={16}
+          className="mt-0.5"
+        />
+      ) : null}
+      <span>{field.note}</span>
     </p>
   );
 }
@@ -96,13 +157,15 @@ export function ObStatusCard({ doc, signers, audience, className, hint }: ObStat
           edge, so baseline alignment parked the 20px icon above the label.
           Centring the whole flex row keeps the icon on the label's midline. */}
       <div className={cn(employee ? "flex flex-wrap items-center gap-x-2 gap-y-1" : "block")}>
-        {card.status === "overdue" ? (
-          <StatusBadge variant="dot" tone="warning">
-            Overdue
-          </StatusBadge>
-        ) : (
-          <StatusBadge variant="dot" status={card.status} />
-        )}
+        <span className="inline-flex flex-wrap items-center gap-2">
+          {card.status === "overdue" ? (
+            <StatusBadge variant="dot" tone="warning">
+              Overdue
+            </StatusBadge>
+          ) : (
+            <StatusBadge variant="dot" status={card.status} />
+          )}
+        </span>
         <p className={cn("text-sm text-muted-foreground", !employee && "mt-1")}>
           {card.description}
         </p>
@@ -118,23 +181,19 @@ export function ObStatusCard({ doc, signers, audience, className, hint }: ObStat
           {card.fields.map((field) => (
             <div key={field.label} className={cn(field.full && "sm:col-span-2 lg:col-span-4")}>
               <p className="text-xs text-muted-foreground">{field.label}</p>
-              <p className="text-sm font-semibold break-words">{field.value}</p>
-              {field.note ? (
-                <p className="text-xs text-muted-foreground break-words">{field.note}</p>
-              ) : null}
+              <FieldValue field={field} />
+              <FieldNote field={field} />
             </div>
           ))}
         </div>
       ) : (
         <div className="mt-3 divide-y divide-border border-t border-border">
           {card.fields.map((field) => (
-            <div key={field.label} className="flex gap-4 py-2.5">
-              <p className="w-28 shrink-0 text-xs text-muted-foreground sm:w-32">{field.label}</p>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold break-words">{field.value}</p>
-                {field.note ? (
-                  <p className="text-xs text-muted-foreground break-words">{field.note}</p>
-                ) : null}
+            <div key={field.label} className="flex items-start justify-between gap-4 py-2.5">
+              <p className="shrink-0 pt-0.5 text-xs text-muted-foreground">{field.label}</p>
+              <div className="min-w-0 text-right">
+                <FieldValue field={field} align="end" />
+                <FieldNote field={field} align="end" />
               </div>
             </div>
           ))}

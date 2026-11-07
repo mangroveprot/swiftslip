@@ -15,6 +15,7 @@ import {
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 
 import { createObForm, saveObForm, submitObForm } from "@/api/official-business.functions";
+import { ApiError } from "@/lib/api-client";
 import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
@@ -39,7 +40,7 @@ import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { usePdfAttachment } from "@/lib/pdf-attachments";
 import { deleteSignatureBackup, readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
-import { toast } from "@/lib/toast";
+import { friendlyError, toast } from "@/lib/toast";
 import {
   EMPTY_OB_HR_FIELDS,
   isObLocked,
@@ -50,6 +51,12 @@ import {
   type ObHrStatus,
 } from "@swiftslip/shared/hr";
 import type { ObSigners } from "@swiftslip/shared/api-types";
+import {
+  obMissingRequiredFields,
+  obRequiredHints,
+  obRequiredToast,
+  obRequiredToastFromLabels,
+} from "@swiftslip/shared/ob-required";
 import type { ObEntry, ObForm } from "@swiftslip/shared/types";
 import { APP } from "@/config/app";
 import { buildDraftObForm } from "../lib/draft-form";
@@ -62,10 +69,22 @@ import { ObEditorSkeleton } from "./ObEditorSkeleton";
 import { ObFormFields } from "./ObFormFields";
 import { ObItineraryTable } from "./ObItineraryTable";
 import { ObPreview } from "./ObPreview";
-import { ObStatusCard } from "./ObStatusCard";
+import { ObStatusCard, ObStatusLine } from "./ObStatusCard";
 
 type SaveStatus = "idle" | AutoSaveStatus;
 type PendingAction = "save" | "submit" | "download";
+
+/** The rows that will actually be saved — blank rows never reach the database. */
+function hasAnyValue(row: ObEntry): boolean {
+  return Boolean(
+    row.from_place || row.to_place || row.purpose || row.time_departure || row.time_return,
+  );
+}
+
+/** Missing keys are a set so each field/stop can ask "am I invalid?" in O(1). */
+const NO_INVALID: ReadonlySet<string> = new Set();
+/** The same gate with no missing cells: no red mark and no instruction line. */
+const NO_HINTS: Readonly<Record<string, string>> = {};
 
 const DRAFT_FEATURE = "ob";
 
@@ -203,6 +222,20 @@ function ObEditorBody({
   const busy = pending !== null;
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [previewOpen, setPreviewOpen] = useState(false);
+  // The red marks appear only after the first Submit/Resubmit attempt, then
+  // disappear as the employee fills each cell — never on a quiet draft.
+  const [showRequired, setShowRequired] = useState(false);
+  const missingRequired = useMemo(
+    () => (form ? obMissingRequiredFields(form, rows.filter(hasAnyValue)) : []),
+    [form, rows],
+  );
+  const invalidKeys = showRequired
+    ? new Set(missingRequired.map((field) => field.key))
+    : NO_INVALID;
+  // Every red cell also gets one plain-English line ("Select the date of the
+  // OB."), so the toast's "they are marked in the form" is literally true.
+  const invalidHints = showRequired ? obRequiredHints(missingRequired) : NO_HINTS;
+  const formCardRef = useRef<HTMLDivElement>(null);
 
   const latestRef = useRef({ form, rows, canEdit, hrStatus });
   latestRef.current = { form, rows, canEdit, hrStatus };
@@ -462,10 +495,23 @@ function ObEditorBody({
       toast.success(wentBack ? "Saved. The form is back with HR for re-approval." : "Saved");
     } catch (e) {
       setSaveStatus("error");
-      toast.error(e instanceof Error ? e.message : "Save failed.");
+      toast.error(friendlyError(e, "Could not save this form. Please try again."));
     } finally {
       setPending(null);
     }
+  }
+
+  /**
+   * Bring the first empty cell into view. The toast says "they are marked in
+   * the form" — on a long sheet that is only useful if the page actually shows
+   * one of those marks. The rAF waits for the red marks to paint.
+   */
+  function revealFirstMissing() {
+    requestAnimationFrame(() => {
+      formCardRef.current
+        ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   /**
@@ -474,6 +520,20 @@ function ObEditorBody({
    */
   async function onSubmitForHr() {
     if (!form) return;
+    // The sheet's asterisks are a hard gate on submission / resubmission: a
+    // half-filled form never reaches HR. The same check runs again in the API
+    // (shared `ob-required`) so a stale tab cannot slip past this one.
+    const missing = obMissingRequiredFields(form, rows.filter(hasAnyValue));
+    if (missing.length) {
+      setShowRequired(true);
+      const notice = obRequiredToast(missing);
+      // The app's own toast — sonner's built-in title + description, no custom
+      // notification component, no raw validation copy.
+      toast.error(notice.title, { description: notice.description });
+      revealFirstMissing();
+      return;
+    }
+    setShowRequired(false);
     // Cancel any armed auto-save so it cannot insert/save in parallel with us.
     auto.setPersisted(snapshotOf(form, rows));
     setPending("submit");
@@ -503,7 +563,16 @@ function ObEditorBody({
       );
     } catch (e) {
       setSaveStatus("error");
-      toast.error(e instanceof Error ? e.message : "Could not submit this form.");
+      // The API repeats the required-field check for stale tabs / direct POSTs.
+      // Its answer is the same friendly toast, not a raw validation error.
+      if (e instanceof ApiError && e.code === "REQUIRED_FIELD_MISSING") {
+        setShowRequired(true);
+        const notice = obRequiredToastFromLabels(e.suggestions);
+        toast.error(notice.title, { description: notice.description });
+        revealFirstMissing();
+      } else {
+        toast.error(friendlyError(e, "Could not send this form to HR. Please try again."));
+      }
     } finally {
       setPending(null);
     }
@@ -528,7 +597,9 @@ function ObEditorBody({
       });
       toast.success("Word file downloaded", { id: toastId });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Word download failed.", { id: toastId });
+      toast.error(friendlyError(e, "Could not download the Word file. Please try again."), {
+        id: toastId,
+      });
     } finally {
       setPending(null);
     }
@@ -562,6 +633,13 @@ function ObEditorBody({
             Official Business
           </Link>
           <PageTitle className="mt-2">Official Business Form</PageTitle>
+          {data && hasStatusCard(data.form) ? (
+            <ObStatusLine
+              audience="employee"
+              doc={{ ...data.form, employee_photo: profile?.photo ?? null }}
+              signers={data.signers}
+            />
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -671,15 +749,21 @@ function ObEditorBody({
             <div className="shrink-0">
               <ObStatusCard
                 audience="employee"
-                doc={data.form}
+                doc={{ ...data.form, employee_photo: profile?.photo ?? null }}
                 signers={data.signers}
                 hint={reapprovalHint}
               />
             </div>
           ) : null}
 
-          <div className="@container rounded-xl bg-card p-5 sm:p-6 lg:p-8">
-            <ObFormFields form={form} setForm={setForm} canEdit={canEdit} />
+          <div ref={formCardRef} className="@container rounded-xl bg-card p-5 sm:p-6 lg:p-8">
+            <ObFormFields
+              form={form}
+              setForm={setForm}
+              canEdit={canEdit}
+              invalid={invalidKeys}
+              hints={invalidHints}
+            />
 
             <div className="mt-6 border-t pt-5">
               <ObItineraryTable
@@ -688,6 +772,8 @@ function ObEditorBody({
                 canEdit={canEdit}
                 busy={busy}
                 placeOptions={placeOptions}
+                invalid={invalidKeys}
+                hints={invalidHints}
               />
             </div>
 
@@ -696,6 +782,8 @@ function ObEditorBody({
                 variant="ob"
                 value={form.employee_signature}
                 disabled={!canEdit}
+                invalid={invalidKeys.has("employee_signature")}
+                hint={invalidHints["employee_signature"]}
                 savedSignature={profile?.signature}
                 onChange={(v) => setForm({ ...form, employee_signature: v })}
               />

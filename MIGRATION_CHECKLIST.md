@@ -292,6 +292,64 @@ LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10)
       `notifications` rows (`ob_submitted` / `ob_resubmitted` / `ob_rejected` carry the exact
       moment and the person) instead of guessing from `updated_at` — NULL where no record
       survives, so the card shows "—" rather than a wrong date.
+- [x] `api/drizzle/migrations/0037_ob_resubmit.sql` — `resubmit_count` / `resubmit_history` on
+      `ob_forms`. The workflow already emitted `ob_resubmitted` notifications but the row itself
+      forgot the trip once HR cleared the reject reason; the count now survives on the form and the
+      history keeps `{ at, how: 'rejected' | 'edited', reason?, rejected_at?, rejected_by?,
+      changes? }` (HR's reason and who/when rejected the version being answered). The migration
+      backfills the count from the existing `ob_resubmitted` notifications and is re-runnable.
+- [x] `api/drizzle/migrations/0038_ob_resubmit_snapshot.sql` — `submit_snapshot` jsonb on
+      `ob_forms`. Written by the API on every submit; on the next resubmit it is diffed against the
+      new content to produce `resubmit_history[].changes` (`{ key, label, from, to }`), which is what
+      lets both screens say *what* changed and the HR sheet print "Changed / Was: …". NULL for rows
+      submitted before this migration — those show the count but no field-level diff, never a false
+      "everything changed".
+- [x] Resubmit indication — `ResubmitBadge` is now a line of text (amber, no pill) with the latest
+      trip's wording ("Resubmitted after rejection", "Edited after approval", or "9th submission"
+      for legacy rows): under the status in the HR queue, on the employee's `ObList` card, and on
+      the status card's compact header. The HR queue also replaces the destination's due-date line
+      with "Changed: Purpose, Destination" on a resubmit. The employee header line read
+      "Resubmitted Nov 7, 2026" at the time; **that tail is now removed** as redundant
+      (see the status-card restructure item below).
+- [x] Required fields on submit/resubmit — one list in `shared/src/ob-required.ts` (header cells +
+      employee signature + each stop's From / To / Purpose, plus at least one stop) blocks both
+      `ObEditor` (toast + red inline marks appear only after the first attempt) and the API's
+      `POST /official-business/:id/submit` (`REQUIRED_FIELD_MISSING`), so a stale tab or direct
+      POST cannot hand HR a half-filled sheet.
+- [x] Friendly missing-required feedback (owner's screenshot, 2026-11-07) — the app's **existing**
+      `toast.error` is used with sonner's built-in `description` (no new toast component): title
+      "Not sent to HR yet" + "Fill in Date of OB and Purpose(s) first. They are marked in the
+      form." The same sentence is the API's `REQUIRED_FIELD_MISSING` message. Every red cell now
+      also prints its own plain-English instruction (`shared/src/ob-required.ts` `hint`), including
+      From / To / Purpose(s) / signature / empty itinerary; the header date grid uses
+      `items-start` so one hint cannot lift a column above its neighbours. Save / submit / export /
+      AI failures go through `friendlyError()` so codes and server dumps never reach a toast.
+      `npm run typecheck` and `npm run lint` pass for shared, api and web.
+- [x] Waiting-for-HR card no longer repeats an old rejection (owner's reference, 2026-11-07) —
+      the `submitted` + `resubmits > 0` card is now four current-trip facts (`Resubmitted`,
+      `You changed` with `Was: …` from `resubmit_history.changes`, `Submission` with the ordinal
+      and "Sent back N times", `Waiting for`); `Rejected before` / `Their reason` /
+      `Rejected before by` / `Reason then` are removed, and reviewer/date/reason stay only in
+      `case "rejected"`. `ObStatusLine` drops the amber "Resubmitted …" tail and the duplicate
+      summary on resubmits. Existing `StatusBadge` / `ProfileAvatar` / `FieldValue` / `FieldNote`
+      and all card styles are unchanged — structure and data only. Edited-after-approval copy
+      matches the reference sentence. `npm run typecheck` and `npm run lint` pass (0 errors,
+      6 pre-existing warnings); `buildStatusCard` output verified with a `tsx` probe.
+- [x] HR detail shows who is being reviewed — `ObEmployeeProfile` resolved server-side from the
+      owner's profile (`employeeProfile` in `hr.service.ts`) and rendered by
+      `EmployeeProfileCard`: gradient profile banner, photo, name, ID, department, position,
+      office, supervisor and their five latest OB forms. The queue row also carries the employee's
+      photo (`employee_photo`, signed per response).
+- [x] Notification delivery + identity — the bell refreshes over the shared SSE stream (no 30 s
+      poll); `NotificationService.notify` publishes one targeted ping per recipient after the row
+      is written so a tab cannot refetch before the notification exists. Each row has a kind icon
+      (`features/hr/lib/notification-meta.ts`), unread dot and the actor's photo plus
+      "by Name · Position". Hard-coded "HR reviewer" notes now show the reviewer's position
+      (falling back to "HR").
+- [x] Sidebar account UX — the "Account / My Account" nav row is gone from the main, HR and Admin
+      sidebars; the footer identity block is a link to the matching profile route and its caption
+      is **Role - Position** (`accountCaption`, e.g. "Administrator - IT Support") instead of the
+      old "HR reviewer".
 - [x] OB preview follows the completed paper form: the Exit clearance rows auto-fill from the
       HR departure/arrival signatures (typed date/time, residence, destination, return-leg swap)
       and "Verified by: HRD" fills with the approver's name + saved signature. Signer ids are
@@ -343,8 +401,9 @@ LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10)
       Exit clearance timeline, supervisor-slip rail and scaled live preview. My
       Account lives at `/hr/profile` so it stays inside the HR shell.
 - [x] `npm run typecheck` and `npm run lint` pass for shared, api and web
-- [ ] **Owner to run:** paste `0035_hr_approval.sql` **and** `0036_ob_arrival_signoff.sql` in the
-      Supabase SQL Editor **before** deploying, then sign in as an HR account and walk one OB form
+- [ ] **Owner to run:** paste `0035_hr_approval.sql`, `0036_ob_arrival_signoff.sql` **and**
+      `0037_ob_resubmit.sql` in the Supabase SQL Editor **before** deploying, then sign in as an HR
+      account and walk one OB form
       through Submit → Approve (with and without the supervisor signature) → Sign departure.
       **`0036` was checked against the live DB on 2026-11-06: the arrival half IS applied**
       (`ob_forms.arrival_date` reads back and `POST /hr/ob/:id/sign-arrival` has signed an
@@ -356,7 +415,10 @@ LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10)
       On the unsigned-supervisor copy, confirm arrival is refused, then save only the
       supervisor name + slip as the employee and confirm the departure is kept and
       arrival can now be signed. Also test Reject → edit → Resubmit and one
-      edit-after-approval → re-approve, checking the bell on both sides. Confirm the preview's
+      edit-after-approval → re-approve, checking the bell on both sides and that the form shows
+      "Resubmitted ×N" in the queue, the employee card and the status card. Try submitting with a
+      blank required cell (web must refuse; a direct POST must return `REQUIRED_FIELD_MISSING`).
+      Confirm the preview's
       Exit clearance fills after departure/arrival (signature, then time, then date, with the
       date/time printed in the guard cell rather than above the label) and
       "Verified by: HRD" fills with signature, name and position after approval — then press
@@ -376,7 +438,8 @@ Intentional behaviour (do not "fix" back):
   form in `waiting_supervisor`. It does block completion — `sign-arrival` is refused until
   the supervisor name + ticked approval slip are saved.
 - HR recipients = profiles with `department = "HR Department"` or a `designation` under it;
-  the submitter is excluded. Bell and queue poll every 30 s; opening the bell marks all read.
+  the submitter is excluded. The bell and queue refresh over the shared SSE stream (see the
+  activity log entry for 2026-11-07) — no 30 s polling; opening the bell marks all read.
 
 ## 4. Cookie / auth contract (Phase 2, needed by Phase 5)
 
@@ -466,5 +529,7 @@ Known behaviour changes in Phase 2 (intentional, listed so nobody "fixes" them b
 - Phase 9 needs **`0035_hr_approval.sql`** applied before the HR app is usable (`hr` rule storage,
   `ob_forms.hr_status`, `notifications`). Without it the `/hr` and `/notifications` calls error.
   Apply **`0036_ob_arrival_signoff.sql`** as well; without it `sign-arrival` cannot store the
-  typed arrival date/time and the OB preview's arrival box stays empty.
+  typed arrival date/time and the OB preview's arrival box stays empty. Apply
+  **`0037_ob_resubmit.sql`** for the resubmit badge/history; without it the API's selects and the
+  submit update reference missing columns, so it must be applied before deploying this code.
 - Sign-in failure delay and throttle numbers are unchanged (10 per ID / 20 per IP / 15 min, 250 ms).

@@ -326,6 +326,16 @@ export type Database = {
           owner_id: string | null;
           position: string;
           residence: string;
+          resubmit_count: number;
+          resubmit_history: {
+            at: string;
+            how: 'rejected' | 'edited';
+            reason?: string;
+            rejected_at?: string;
+            rejected_by?: string;
+            changes?: { key: string; label: string; from: string; to: string }[];
+          }[];
+          submit_snapshot: Json | null;
           submitted_at: string | null;
           supervisor_approved_at: string | null;
           updated_at: string;
@@ -363,6 +373,16 @@ export type Database = {
           owner_id?: string | null;
           position?: string;
           residence?: string;
+          resubmit_count?: number;
+          resubmit_history?: {
+            at: string;
+            how: 'rejected' | 'edited';
+            reason?: string;
+            rejected_at?: string;
+            rejected_by?: string;
+            changes?: { key: string; label: string; from: string; to: string }[];
+          }[];
+          submit_snapshot?: Json | null;
           submitted_at?: string | null;
           supervisor_approved_at?: string | null;
           updated_at?: string;
@@ -400,6 +420,16 @@ export type Database = {
           owner_id?: string | null;
           position?: string;
           residence?: string;
+          resubmit_count?: number;
+          resubmit_history?: {
+            at: string;
+            how: 'rejected' | 'edited';
+            reason?: string;
+            rejected_at?: string;
+            rejected_by?: string;
+            changes?: { key: string; label: string; from: string; to: string }[];
+          }[];
+          submit_snapshot?: Json | null;
           submitted_at?: string | null;
           supervisor_approved_at?: string | null;
           updated_at?: string;

@@ -1,9 +1,17 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, ClipboardCheck, Eye, MapPin, PenLine, type LucideIcon } from "lucide-react";
+import { ChevronRight, MapPin } from "lucide-react";
 
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { cn } from "@/lib/utils";
-import { obReturnState, obSupervisorState, type ObReturnState } from "@swiftslip/shared/hr";
+import {
+  latestObResubmit,
+  obChangeSummary,
+  obResubmitLine,
+  obReturnState,
+  obSupervisorState,
+  type ObReturnState,
+} from "@swiftslip/shared/hr";
 import { relativeTime } from "@swiftslip/shared/time";
 import type { HrObSummary } from "@swiftslip/shared/api-types";
 
@@ -19,20 +27,6 @@ function actionLabel(form: HrObSummary): string {
       return obSupervisorState(form).state === "approved" ? "Sign arrival" : "Awaiting slip";
     default:
       return "View";
-  }
-}
-
-/** The icon beside that label — the same verb, drawn. Only actionable rows render one. */
-function actionIcon(form: HrObSummary): LucideIcon {
-  switch (form.hr_status) {
-    case "submitted":
-      return ClipboardCheck;
-    case "waiting_supervisor":
-    case "approved":
-    case "departed":
-      return PenLine;
-    default:
-      return Eye;
   }
 }
 
@@ -52,16 +46,25 @@ function obDateLabel(value: string): string {
 
 function EmployeeCell({ form }: { form: HrObSummary }) {
   return (
-    <div className="min-w-0">
-      <p
-        className="truncate text-sm leading-tight font-semibold tracking-[-0.01em]"
-        title={form.employee_name}
-      >
-        {form.employee_name || "Untitled form"}
-      </p>
-      <p className="mt-1 truncate text-xs text-muted-foreground">
-        {[form.id_number, form.position].filter(Boolean).join(" · ") || "No ID number"}
-      </p>
+    <div className="flex min-w-0 items-center gap-2.5">
+      {/* The face, when the employee has one — the queue reads as people, not
+          rows. Falls back to initials, never an empty circle. */}
+      <ProfileAvatar
+        photo={form.employee_photo ?? undefined}
+        name={form.employee_name || form.id_number || "?"}
+        size={32}
+      />
+      <div className="min-w-0">
+        <p
+          className="truncate text-sm leading-tight font-semibold tracking-[-0.01em]"
+          title={form.employee_name}
+        >
+          {form.employee_name || "Untitled form"}
+        </p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {[form.id_number, form.position].filter(Boolean).join(" · ") || "No ID number"}
+        </p>
+      </div>
     </div>
   );
 }
@@ -69,6 +72,12 @@ function EmployeeCell({ form }: { form: HrObSummary }) {
 function DestinationCell({ form }: { form: HrObSummary }) {
   const places = form.destinations.join(", ");
   const state = obReturnState(form);
+  // On a resubmit the reviewer's question is "what changed?", so that line
+  // replaces the due/OB date under the destination rather than sitting beside
+  // the status as a second badge.
+  const changed = obChangeSummary(latestObResubmit(form.resubmit_history)?.changes);
+  const changedLabel = changed.length ? `Changed: ${changed.join(", ")}` : null;
+
   return (
     <div className="min-w-0">
       <p className="flex items-start gap-1.5 text-sm leading-tight" title={places}>
@@ -78,12 +87,14 @@ function DestinationCell({ form }: { form: HrObSummary }) {
       <p
         className={cn(
           "mt-1 truncate text-xs",
-          state.overdue
-            ? "font-medium text-amber-700 dark:text-amber-300"
-            : "text-muted-foreground",
+          changedLabel
+            ? "font-medium text-amber-700 dark:text-amber-400"
+            : state.overdue
+              ? "font-medium text-amber-700 dark:text-amber-300"
+              : "text-muted-foreground",
         )}
       >
-        {dueBackLabel(form, state)}
+        {changedLabel ?? dueBackLabel(form, state)}
       </p>
     </div>
   );
@@ -117,14 +128,25 @@ function StatusCell({ form }: { form: HrObSummary }) {
   // Overriding the badge's tinted ink keeps the queue legible on the dark card
   // without changing the chip surfaces the rest of the app still uses.
   const ink = "text-foreground dark:text-foreground";
-  if (obReturnState(form).overdue) {
-    return (
-      <StatusBadge variant="dot" tone="warning" className={ink}>
-        Overdue
-      </StatusBadge>
-    );
-  }
-  return <StatusBadge variant="dot" status={form.hr_status} className={ink} />;
+  const badge = obReturnState(form).overdue ? (
+    <StatusBadge variant="dot" tone="warning" className={ink}>
+      Overdue
+    </StatusBadge>
+  ) : (
+    <StatusBadge variant="dot" status={form.hr_status} className={ink} />
+  );
+
+  // A form that has been back to HR says so as a line of text under the status,
+  // not a pill — the reference's queue reads like a record, not a stack of chips.
+  const resubmitLine = obResubmitLine(form.resubmit_count, form.resubmit_history);
+  if (!resubmitLine) return badge;
+
+  return (
+    <div className="min-w-0">
+      {badge}
+      <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-400">{resubmitLine}</p>
+    </div>
+  );
 }
 
 function SupervisorCell({ form }: { form: HrObSummary }) {
@@ -143,7 +165,7 @@ function SupervisorCell({ form }: { form: HrObSummary }) {
   );
 }
 
-/** The verb-first link at the end of the row (and the row's keyboard path). */
+/** The verb-first link at the end of the row; the chevron travels with it. */
 function ActionCell({ form }: { form: HrObSummary }) {
   const supervisor = obSupervisorState(form);
   const actionable =
@@ -151,8 +173,6 @@ function ActionCell({ form }: { form: HrObSummary }) {
     form.hr_status === "approved" ||
     form.hr_status === "waiting_supervisor" ||
     (form.hr_status === "departed" && supervisor.state === "approved");
-  // Only a row HR can actually act on earns an icon; the rest are quiet text.
-  const Icon = actionable ? actionIcon(form) : null;
 
   return (
     <Link
@@ -160,25 +180,23 @@ function ActionCell({ form }: { form: HrObSummary }) {
       params={{ id: form.id }}
       onClick={(event) => event.stopPropagation()}
       className={cn(
-        "inline-flex max-w-full items-start gap-1.5 text-left text-[11px] font-medium leading-tight transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-        actionInk(form, actionable),
+        "inline-flex max-w-full items-center gap-1 text-left text-[11px] font-medium leading-tight transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        actionInk(actionable),
       )}
     >
-      {Icon ? <Icon className="mt-px size-3.5 shrink-0" aria-hidden="true" /> : null}
       <span>{actionLabel(form)}</span>
+      <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
     </Link>
   );
 }
 
 /**
  * The action's ink in the dark reference's palette: green for anything HR can
- * sign, steel blue to review a submission, plain grey when there is nothing
- * to do yet. No border, no pill — the chevron at the end of the cell is the
- * only other affordance, so the column reads as links rather than alarms.
+ * act on, plain grey when there is nothing to do yet. No border, no pill — the
+ * chevron travels with the verb, so the column reads as links, not alarms.
  */
-function actionInk(form: HrObSummary, actionable: boolean): string {
+function actionInk(actionable: boolean): string {
   if (!actionable) return "text-muted-foreground";
-  if (form.hr_status === "submitted") return "text-[#1d5fa6] dark:text-sky-400";
   return "text-dashboard-rule dark:text-emerald-400";
 }
 
@@ -237,13 +255,7 @@ export function QueueTable({ rows }: { rows: HrObSummary[] }) {
                     {relativeTime(form.updated_at)}
                   </td>
                   <td className="py-3.5 pr-4 align-middle">
-                    <div className="flex items-center gap-2">
-                      <ActionCell form={form} />
-                      <ChevronRight
-                        className="ml-auto size-4 shrink-0 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                    </div>
+                    <ActionCell form={form} />
                   </td>
                 </tr>
               ))}
@@ -279,12 +291,8 @@ export function QueueTable({ rows }: { rows: HrObSummary[] }) {
               <div className="mt-2">
                 <SupervisorCell form={form} />
               </div>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3">
                 <ActionCell form={form} />
-                <ChevronRight
-                  className="ml-auto size-4 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
               </div>
             </div>
           </div>

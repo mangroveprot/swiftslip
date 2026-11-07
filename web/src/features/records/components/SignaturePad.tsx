@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -15,6 +15,8 @@ export function SignatureField({
   value,
   disabled,
   required = false,
+  invalid = false,
+  hint,
   savedSignature,
   onChange,
   variant = "default",
@@ -24,6 +26,10 @@ export function SignatureField({
   disabled: boolean;
   /** Puts the red required mark after the label — LOA's form asks for it. */
   required?: boolean;
+  /** The submit check found the signature empty. */
+  invalid?: boolean | undefined;
+  /** Plain-English instruction shown in red under the field when it is empty. */
+  hint?: string | undefined;
   /**
    * Signature saved on the profile (My Account). It's offered under the field as
    * a clickable picture of itself — a third text button next to Draw/Upload was
@@ -50,6 +56,7 @@ export function SignatureField({
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
+  const hintId = useId();
 
   function openEditor() {
     setDraft(value);
@@ -100,9 +107,11 @@ export function SignatureField({
         type="button"
         disabled={disabled}
         onClick={openEditor}
-        className={`mt-2 flex h-14 items-center justify-center rounded-md border border-dashed border-border bg-paper px-3 ${
-          paperWidth === "full" || !value ? "w-full" : "w-fit min-w-[8rem] max-w-full"
-        }`}
+        aria-invalid={invalid || undefined}
+        aria-describedby={hint ? hintId : undefined}
+        className={`mt-2 flex h-14 items-center justify-center rounded-md border border-dashed bg-paper px-3 ${
+          invalid ? "border-destructive/70" : "border-border"
+        } ${paperWidth === "full" || !value ? "w-full" : "w-fit min-w-[8rem] max-w-full"}`}
       >
         {value ? (
           <img
@@ -114,6 +123,12 @@ export function SignatureField({
           <span className="text-xs text-ink/60">No signature yet. Click to draw or upload</span>
         )}
       </button>
+
+      {hint ? (
+        <p id={hintId} className="mt-1.5 text-xs font-medium text-destructive">
+          {hint}
+        </p>
+      ) : null}
 
       {/* The profile's signature as a picture you click to apply it. Showing the
           actual image (instead of a third "Saved" button next to Draw/Upload) is

@@ -4,7 +4,7 @@
  * The web client uses these to type its fetch wrappers.
  */
 import type { FormEvent } from "./forms";
-import type { ObHrFields, ObHrStatus } from "./hr";
+import type { ObHrFields, ObHrStatus, ObResubmitEvent } from "./hr";
 import type {
   AppKey,
   CosForm,
@@ -164,6 +164,12 @@ export type ObSummary = {
   hr_status: ObHrStatus;
   updated_at: string;
   deletes_in_days?: number;
+  /** How often the form has gone back to HR (0 = first time through). */
+  resubmit_count?: number;
+  /** The trips back to HR, oldest first — the queue caption reads the latest. */
+  resubmit_history?: ObResubmitEvent[];
+  /** The employee's profile picture, signed for this response; null when none. */
+  employee_photo?: string | null;
 };
 
 /**
@@ -187,6 +193,10 @@ export type NotificationRow = {
   created_at: string;
   /** The actor's display name, or null for a system event. */
   actor_name: string | null;
+  /** The actor's job title (`profiles.designation`), when their profile has one. */
+  actor_position?: string | null;
+  /** The actor's profile picture, signed for this response; null when none. */
+  actor_photo?: string | null;
 };
 
 export type LoaSummary = {
@@ -244,6 +254,8 @@ export type ObSigner = {
    * "" when the profile has none.
    */
   position: string;
+  /** Profile picture as a signed URL; "" when the signer has none. */
+  photo?: string;
 };
 
 /** Who signed each part of an OB form. A key is absent until that signature exists. */
@@ -270,8 +282,39 @@ export type ObDetail = Attached & {
   signers?: ObSigners;
 };
 
-/** `GET /api/hr/ob/:id` — the same detail an HR reviewer opens from the queue. */
-export type HrObDetail = ObDetail;
+/**
+ * The employee behind an OB form, resolved from their profile when HR opens
+ * the detail: the face, the org facts the sheet has no box for (office,
+ * supervisor) and their latest forms — so a reviewer sees who they are
+ * reviewing instead of four denormalised cells.
+ */
+export type ObEmployeeProfile = {
+  /** Profile picture as a signed URL; "" when the person has none. */
+  photo: string;
+  full_name: string;
+  emp_no: string;
+  department: string;
+  /** Job title — `profiles.designation`. */
+  position: string;
+  /** Office / branch — `profiles.area`. */
+  area: string;
+  supervisor: string;
+  /** Their newest OB forms (max 5), newest first — the form's own history. */
+  recent: {
+    id: string;
+    date_of_ob: string;
+    hr_status: ObHrStatus;
+    updated_at: string;
+  }[];
+};
+
+/**
+ * `GET /api/hr/ob/:id` — the same detail an HR reviewer opens from the queue.
+ * `employee` is null when the form has no owner profile to resolve.
+ */
+export type HrObDetail = ObDetail & {
+  employee?: ObEmployeeProfile | null;
+};
 export type LoaDetail = Attached & { form: LoaForm & { id: string }; others: OtherFile[] };
 export type CosDetail = Attached & { form: CosForm & { id: string }; schedules: CosSchedule[] };
 export type OtDetail = Attached & {

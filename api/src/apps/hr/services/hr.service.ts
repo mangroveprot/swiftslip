@@ -11,19 +11,28 @@
  */
 import { BaseService } from '../../../core/engine';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
-import type { HrObDetail, HrObSummary } from '@swiftslip/shared/api-types';
+import type {
+  HrObDetail,
+  HrObSummary,
+  ObEmployeeProfile,
+} from '@swiftslip/shared/api-types';
 import {
   HR_DEPARTMENT,
   obSupervisorDone,
   type ObHrStatus,
+  type ObResubmitEvent,
 } from '@swiftslip/shared/hr';
 import type { ObEntry, ObForm, SessionUser } from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
 import { NotificationService } from '../../notifications';
 import { OrgPositionRepository } from '../../org-options/repositories';
 import { ProfileRepository } from '../../profile/repositories';
+import { photoUrl } from '../../profile/services/photo-storage';
 import { ObEntryRepository } from '../../official-business/repositories';
-import { resolveObSigners } from '../../official-business/utils/ob-signers';
+import {
+  resolveObResubmitReviewers,
+  resolveObSigners,
+} from '../../official-business/utils/ob-signers';
 import FileStorageService from '../../storage/services/file-storage.service';
 import { backendOf } from '../../storage/utils/backend';
 import { HrObRepository } from '../repositories';
@@ -106,6 +115,74 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
     }
   }
 
+  /**
+   * Profile pictures for a set of accounts, keyed by account id and already
+   * signed for this response. Best effort: a profile row that is missing (or
+   * a storage hiccup) just leaves the map short, and the queue falls back to
+   * initials rather than failing to load.
+   */
+  private async photoMap(ownerIds: string[]): Promise<Map<string, string>> {
+    const photos = new Map<string, string>();
+    if (!ownerIds.length) return photos;
+    try {
+      const rows = await this.profiles.findAll(
+        { access_code_id: ownerIds },
+        { select: 'access_code_id,photo' },
+      );
+      await Promise.all(
+        rows.map(async (row) => {
+          const url = await photoUrl(row.photo ?? '');
+          if (url) photos.set(row.access_code_id, url);
+        }),
+      );
+    } catch {
+      // A missing profile must never blank the queue.
+    }
+    return photos;
+  }
+
+  /**
+   * The employee behind a form, for the detail page's profile banner: the face
+   * plus the org facts the sheet has no box for (office, supervisor) and their
+   * newest OB forms — so a reviewer sees who they are reviewing, not four
+   * denormalised cells. Null when the form has no owner profile to resolve.
+   */
+  private async employeeProfile(
+    form: NonNullable<ObRow>,
+  ): Promise<ObEmployeeProfile | null> {
+    if (!form.owner_id) return null;
+    try {
+      const [profile, recent] = await Promise.all([
+        this.profiles.findOne({ access_code_id: form.owner_id }),
+        this.repository.findAll(
+          { owner_id: form.owner_id },
+          {
+            select: 'id,date_of_ob,hr_status,updated_at',
+            sort: { updated_at: 'desc' },
+            limit: 5,
+          },
+        ),
+      ]);
+      return {
+        photo: await photoUrl(profile?.photo ?? ''),
+        full_name: profile?.full_name || form.employee_name,
+        emp_no: profile?.emp_no || form.id_number,
+        department: profile?.department || form.department,
+        position: profile?.designation || form.position,
+        area: profile?.area ?? '',
+        supervisor: profile?.supervisor || form.approved_by,
+        recent: recent.map((row) => ({
+          id: row.id,
+          date_of_ob: row.date_of_ob,
+          hr_status: row.hr_status as ObHrStatus,
+          updated_at: row.updated_at,
+        })),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   /** The queue: every submitted / waiting-supervisor / approved / rejected /
    *  departed / completed form (drafts excluded). */
   async list(): Promise<ServiceResponse<HrObSummary>> {
@@ -113,12 +190,23 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
       const forms = await this.repository.findAll(
         { hr_status: QUEUE_STATUSES },
         {
+          // `owner_id` is how the employee's picture resolves; `resubmit_count`
+          // and `resubmit_history` are what the row says under its status when
+          // the form has been here before.
           select:
-            'id,employee_name,id_number,department,position,date_of_ob,attachment_approved,approved_by,hr_status,updated_at',
+            'id,owner_id,employee_name,id_number,department,position,date_of_ob,attachment_approved,approved_by,hr_status,resubmit_count,resubmit_history,updated_at',
           sort: { updated_at: 'desc' },
         },
       );
       if (!forms.length) return { success: true, documents: [] };
+
+      const photos = await this.photoMap([
+        ...new Set(
+          forms
+            .map((form) => form.owner_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ]);
 
       const rows = await this.entries.findAll(
         { form_id: forms.map((form) => form.id) },
@@ -145,6 +233,11 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
         hr_status: form.hr_status as ObHrStatus,
         destinations: destinations.get(form.id) ?? [],
         updated_at: form.updated_at,
+        resubmit_count: form.resubmit_count ?? 0,
+        resubmit_history: (form.resubmit_history ?? []) as ObResubmitEvent[],
+        employee_photo: form.owner_id
+          ? (photos.get(form.owner_id) ?? null)
+          : null,
       }));
       return { success: true, documents };
     } catch (error) {
@@ -165,10 +258,25 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
         },
       );
       // The sheet prints names + signatures, but the row only stores ids.
-      const signers = await resolveObSigners(form);
+      // The profile banner reads the same owner row, in one parallel call. The
+      // old rejection's reviewer is resolved from `resubmit_history` too —
+      // the live columns were cleared when the form came back.
+      const [signers, employee, resubmitHistory] = await Promise.all([
+        resolveObSigners(form),
+        this.employeeProfile(form),
+        resolveObResubmitReviewers(
+          (form.resubmit_history ?? []) as ObResubmitEvent[],
+        ),
+      ]);
+      const detail = asDetail(form, entries);
       return {
         success: true,
-        document: { ...asDetail(form, entries), signers },
+        document: {
+          ...detail,
+          form: { ...detail.form, resubmit_history: resubmitHistory },
+          signers,
+          employee,
+        },
       };
     } catch (error) {
       return toFailure(error);
