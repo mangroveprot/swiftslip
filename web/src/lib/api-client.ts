@@ -15,6 +15,13 @@ const BASE = ((import.meta.env["VITE_API_URL"] as string | undefined) || "/api")
 );
 
 /**
+ * Full URL for browser APIs that are not `fetch` — currently only the
+ * EventSource used by `use-live-updates.ts` — so `VITE_API_URL` / the dev proxy
+ * stay in this one file.
+ */
+export const apiStreamUrl = (path: string) => `${BASE}${path}`;
+
+/**
  * Called once when a request that needs a session comes back 401 (cookie
  * expired, account removed, password changed on another device). The router
  * registers it; sign-in / session / sign-out are exempt because a 401 there is

@@ -14,6 +14,7 @@ import { logger } from '../../../common/shared/services';
 import type { NotificationRow } from '@swiftslip/shared/api-types';
 import type { ObNotificationKind } from '@swiftslip/shared/hr';
 import { ProfileRepository } from '../../profile/repositories';
+import { UpdatesService } from '../../updates/services';
 import { NotificationRepository } from '../repositories';
 
 export type NotifyInput = {
@@ -111,6 +112,9 @@ class NotificationService extends BaseService<
         { recipient_id: recipientId, read_at: null },
         { read_at: new Date().toISOString() },
       );
+      // No audit row is written for this, and nobody else's bell changed:
+      // target only this account's other tabs.
+      UpdatesService.publish({ audience: recipientId });
       return { success: true };
     } catch (error) {
       return toFailure(error);

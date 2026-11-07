@@ -21,13 +21,14 @@ import type {
 
 type WithId<T extends z.ZodTypeAny> = z.input<T> & { id: string };
 
+// No refetchInterval here (or on the detail / bell queries below): the shared
+// SSE stream in lib/live-updates.tsx invalidates these when data actually
+// changes, on either the HR or the employee side. Polling every 30 s per tab
+// was three DB reads every 30 s per reviewer whether or not anything changed.
 export const hrQueueQueryOptions = () =>
   queryOptions({
     queryKey: ["hr-ob-queue"],
     queryFn: () => listHrObForms(),
-    // The bell polls every 30 s; the queue shares that rhythm so an approval
-    // made by another reviewer shows up without a manual refresh.
-    refetchInterval: 30_000,
     retry: false,
   });
 
@@ -35,7 +36,6 @@ export const hrObQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ["hr-ob", id],
     queryFn: () => getHrObForm({ data: { id } }),
-    refetchInterval: 30_000,
     retry: false,
   });
 
@@ -45,6 +45,8 @@ export const hrObAttachmentUrlQueryOptions = (id: string) =>
     queryFn: () => getHrObAttachmentUrl({ data: { id } }),
     // B2 signs for five minutes (Supabase for an hour), so keep the link fresh
     // while the reviewer has the detail open instead of reusing a stale one.
+    // This is a signed-URL TTL refresh, not a data-change poll — the stream
+    // deliberately skips `*-attachment` keys.
     staleTime: 2 * 60 * 1000,
     refetchInterval: 2 * 60 * 1000,
     retry: false,
@@ -54,7 +56,6 @@ export const notificationsQueryOptions = () =>
   queryOptions({
     queryKey: ["notifications"],
     queryFn: () => listNotifications(),
-    refetchInterval: 30_000,
     retry: false,
   });
 

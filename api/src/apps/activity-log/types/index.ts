@@ -5,6 +5,7 @@ export type ActivityAction =
   | 'ob.deleted'
   | 'ob.submitted'
   | 'ob.hr_approved'
+  | 'ob.supervisor_approved'
   | 'ob.hr_rejected'
   | 'ob.departure_signed'
   | 'ob.arrival_signed'

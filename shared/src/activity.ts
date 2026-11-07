@@ -7,6 +7,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "ob.deleted": "OB removed",
   "ob.submitted": "OB submitted for HR approval",
   "ob.hr_approved": "OB approved by HR",
+  "ob.supervisor_approved": "OB supervisor approved",
   "ob.hr_rejected": "OB rejected by HR",
   "ob.departure_signed": "OB departure signed by HR",
   "ob.arrival_signed": "OB arrival signed by HR",

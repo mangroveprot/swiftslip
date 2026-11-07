@@ -58,9 +58,16 @@ const webHelmet = helmet({
         'blob:',
         'https://*.supabase.co',
         'https://ticketing.regasco.ph:2424',
+        'https://*.backblazeb2.com',
       ],
       'font-src': ["'self'", 'data:', 'https://fonts.gstatic.com'],
-      'connect-src': ["'self'", 'https://*.supabase.co'],
+      // EventSource opens /api/updates/stream. When VITE_API_URL points at a
+      // separate API origin, that origin must be allowed here too.
+      'connect-src': [
+        "'self'",
+        'https://*.supabase.co',
+        ...config.cors.origins,
+      ],
       'worker-src': ["'self'", 'blob:'],
     },
   },
@@ -85,7 +92,17 @@ if (serveWeb) {
 } else {
   app.use(helmet());
 }
-app.use(compression());
+// SSE must never be compressed: gzip buffers the response, so a pushed change
+// would sit in the buffer until the connection closed. The route also sends
+// `Cache-Control: no-transform` (which compression honours); this filter is an
+// explicit second guard so a future header change cannot silently break it.
+app.use(
+  compression({
+    filter: (req, res) =>
+      !req.path.startsWith('/api/updates/stream') &&
+      compression.filter(req, res),
+  }),
+);
 
 // Static files go BEFORE morgan and the rate limiter, so loading the site
 // (dozens of asset requests) neither floods the log nor eats the API's quota.

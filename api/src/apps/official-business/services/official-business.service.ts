@@ -312,6 +312,24 @@ class OfficialBusinessService extends BaseService<
           body: `${form.employee_name || user.label} edited an OB form${form.date_of_ob ? ` for ${form.date_of_ob}` : ''}. It needs HR approval again.`,
           link: `/hr/ob/${id}`,
         });
+      } else if (supervisorDone) {
+        // The employee completed their supervisor's half while the form was
+        // parked as waiting_supervisor; it is now "Ready for departure" and HR
+        // can sign the employee out. Log it so the live-update signal refreshes
+        // any HR screen showing this form, and tell HR it is actionable.
+        await ActivityLogService.logBy(user, {
+          action: 'ob.supervisor_approved',
+          target: `${form.employee_name || user.label} (${form.id_number || user.idNumber})`,
+          detail: `Form ${id} (ready for departure)`,
+        });
+        await NotificationService.notify({
+          recipients: await HrService.hrRecipients(user.id),
+          actorId: user.id,
+          kind: 'ob_approved',
+          title: 'Official Business ready for departure',
+          body: `${form.employee_name || user.label} completed supervisor approval${form.date_of_ob ? ` for ${form.date_of_ob}` : ''}. HR can now sign the departure.`,
+          link: `/hr/ob/${id}`,
+        });
       }
 
       return { success: true, document: { hr_status: nextStatus } };

@@ -14,6 +14,7 @@ import {
   type ActivityLogFeed,
 } from '@swiftslip/shared/schemas';
 import type { SessionUser } from '@swiftslip/shared/types';
+import { UpdatesService } from '../../updates/services';
 import { ActivityLogRepository } from '../repositories';
 import type { ActivityEntry } from '../types';
 
@@ -26,6 +27,7 @@ const FORM_ACTIONS = [
   'ob.deleted',
   'ob.submitted',
   'ob.hr_approved',
+  'ob.supervisor_approved',
   'ob.hr_rejected',
   'ob.departure_signed',
   'ob.arrival_signed',
@@ -77,10 +79,17 @@ class ActivityLogService extends BaseService<
     super(new ActivityLogRepository());
   }
 
-  /** Append one row. Best effort — never throws. */
+  /**
+   * Append one row. Best effort — never throws.
+   *
+   * This is also the single funnel for live updates: almost every mutation in
+   * the app logs exactly one action here, so publishing from `log()` pushes a
+   * change to other tabs immediately with no extra database read. Passing the
+   * new row id stops the shared watcher from announcing the same change again.
+   */
   async log(entry: ActivityEntry): Promise<void> {
     try {
-      await this.repository.create({
+      const row = await this.repository.create({
         action: entry.action,
         actor_id: entry.actorId ?? null,
         actor_name: entry.actorName ?? null,
@@ -89,6 +98,7 @@ class ActivityLogService extends BaseService<
         detail: entry.detail ?? null,
         ip: entry.ip ?? null,
       });
+      UpdatesService.publish({ signal: row.id });
     } catch (error) {
       logger.error('[activity-log] could not write', error as Error);
     }

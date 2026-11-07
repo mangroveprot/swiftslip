@@ -20,6 +20,7 @@ import { OrgOptionRoutes } from '../../apps/org-options';
 import { ProfileRoutes } from '../../apps/profile';
 import { RetentionRoutes } from '../../apps/retention';
 import { StorageRoutes } from '../../apps/storage';
+import { UpdatesRoutes } from '../../apps/updates';
 import { UserRoutes } from '../../apps/users';
 
 const router = Router();
@@ -29,6 +30,9 @@ router.use('/auth', AuthRoutes);
 router.use('/users', UserRoutes);
 router.use('/profile', ProfileRoutes);
 router.use('/access', AccessRoutes);
+// One SSE stream per signed-in tab; pushes a tiny "data changed" hint so the
+// browser can refetch only what is on screen. See apps/updates/services.
+router.use('/updates', UpdatesRoutes);
 router.use('/org-options', OrgOptionRoutes);
 router.use('/activity-logs', ActivityLogRoutes);
 // Most specific prefix first, like the inventory block below: /admin/retention

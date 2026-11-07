@@ -1,7 +1,9 @@
 # Security headers for static hosts that read a `_headers` file (Cloudflare Pages,
 # Netlify). Keep in sync with `securityHeaders()` in vite.config.ts.
 # If the API is on its own domain (VITE_API_URL=https://api.example.com/api),
-# add that origin to connect-src below.
+# add that origin to connect-src below — the live-update EventSource at
+# /api/updates/stream is a connect-src request too. The Express server does
+# this automatically from CORS_ORIGIN (see core/framework/webserver/express.ts).
 /*
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
