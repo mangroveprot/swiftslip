@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { HrLayout } from "@/features/hr/components/HrLayout";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { loadProfileForGate, needsOnboarding } from "@/features/profile/onboarding";
 import { pageTitle, seo } from "@/lib/seo";
 
 /**
@@ -15,6 +16,10 @@ export const Route = createFileRoute("/hr")({
       revalidateIfStale: true,
     });
     if (!session) throw redirect({ to: "/" });
+    const profile = await loadProfileForGate(context.queryClient);
+    if (profile && needsOnboarding(session.id, profile)) {
+      throw redirect({ to: "/onboarding" });
+    }
     if (!session.apps.includes("hr")) throw redirect({ to: "/choose" });
   },
   head: () =>

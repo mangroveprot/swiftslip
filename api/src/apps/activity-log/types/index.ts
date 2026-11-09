@@ -4,6 +4,7 @@ export type ActivityAction =
   | 'ob.created'
   | 'ob.deleted'
   | 'ob.submitted'
+  | 'ob.resubmit_cancelled'
   | 'ob.hr_approved'
   | 'ob.supervisor_approved'
   | 'ob.hr_rejected'

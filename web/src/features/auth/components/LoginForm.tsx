@@ -6,6 +6,8 @@ import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { signIn } from "@/api/auth.functions";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { APP, SESSION } from "@/config/app";
+import { resetOnboardingSession } from "@/features/profile/onboarding";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { sessionQueryOptions } from "../queries";
 
 /** Shared input shell: flat, hairline border, roomy touch target. */
@@ -75,6 +77,13 @@ export function LoginForm() {
         setFormError("Your session could not be started. Please try again.");
         return;
       }
+      // This is a new sign-in, not a refresh of the old one: forget the
+      // previous "welcome already seen" flag and any half-finished welcome
+      // step, and drop the cached profile so a different account cannot be
+      // judged by the last account's name / signature. `/choose` refetches it
+      // before deciding whether to open the welcome.
+      resetOnboardingSession();
+      queryClient.removeQueries({ queryKey: profileQueryOptions().queryKey });
       // Everyone lands on the chooser: it auto-redirects when only one app is
       // granted (staff on SwiftSlip alone never see a picker) and shows the
       // choice only when there is actually more than one to pick from.

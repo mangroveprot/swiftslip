@@ -63,6 +63,27 @@ export type ObResubmitChange = {
 };
 
 /**
+ * The HR-owned columns as they stood when an edited form went back to HR
+ * (migration 0039). A canceled resubmission restores them, so the approval and
+ * sign-offs the employee withdrew are exactly the ones that come back.
+ */
+export type ObResubmitHrSnapshot = {
+  hr_approved_by?: string | null;
+  hr_approved_at?: string | null;
+  departure_date?: string;
+  departure_time?: string;
+  departure_signed_by?: string | null;
+  departure_signed_at?: string | null;
+  residence?: string;
+  destination?: string;
+  arrival_date?: string;
+  arrival_time?: string;
+  arrival_signed_by?: string | null;
+  arrival_signed_at?: string | null;
+  supervisor_approved_at?: string | null;
+};
+
+/**
  * One trip back to HR (migration 0037): the form has been through the queue
  * before and is in it again. `how` says why it came back — `rejected` is a
  * resubmit after HR bounced it, `edited` is content changed after approval —
@@ -74,6 +95,10 @@ export type ObResubmitChange = {
  * and the one sent back. The `rejected_*` fields are the rejection this event
  * answers, kept here because the live columns are cleared on resubmit; the
  * resolved name/position/photo are decorated on read for the cards.
+ *
+ * An `edited` event also carries what the employee withdrew (migration 0039):
+ * the status before it, the earlier submit stamp and HR's sign-offs, so
+ * `cancelResubmit` can put the approved version back without a version table.
  */
 export type ObResubmitEvent = {
   /** When it went back to HR (ISO stamp). */
@@ -87,10 +112,27 @@ export type ObResubmitEvent = {
   rejected_by?: string;
   /** What the employee changed, field by field (migration 0038). */
   changes?: ObResubmitChange[];
+  /** The HR state before an edited resubmit (migration 0039). */
+  from_status?: ObHrStatus;
+  /** The submit stamp this edited resubmit replaced; restored on cancel. */
+  previous_submitted_at?: string | null;
+  /** HR's sign-offs at resubmit time; restored on cancel. */
+  hr?: ObResubmitHrSnapshot;
   /** Resolved reviewer profile, added by the API on read (never stored). */
   rejected_by_name?: string;
   rejected_by_position?: string;
   rejected_by_photo?: string;
+};
+
+/**
+ * One complete version of the employee-written content — the header fields and
+ * the itinerary rows. Stored whole on `ob_forms.pending_content` while a
+ * post-approval edit waits as a draft, and on `previous_content` while a
+ * resubmission sits in HR's queue so it can be withdrawn (migration 0039).
+ */
+export type ObFormContent = {
+  form: ObForm;
+  entries: ObEntry[];
 };
 
 /**
@@ -239,21 +281,20 @@ export const EMPTY_OB_HR_FIELDS: ObHrFields = {
 /**
  * True when the employee must not edit the form any more: it is sitting in HR's
  * review queue. Everything else — including an already approved, departed or
- * completed form — stays editable; saving one of those sends it back to HR for
- * re-approval (see `needsReapprovalAfterSave`).
+ * completed form — stays editable. An edit to one of those is held as a draft
+ * (see `needsReapprovalAfterSave`) until the employee explicitly resubmits.
  */
 export function isObLocked(status: ObHrStatus): boolean {
   return status === "submitted";
 }
 
 /**
- * Saving a form that has already been through HR revokes that approval: the
- * content HR approved is no longer what the database holds. The save resets the
- * form to `submitted` (and clears the HR sign-offs) so HR sees it again.
- * `waiting_supervisor` is not in this list because HR already approved that
- * content; the API separately compares the form and only lets a supervisor-only
- * save through. A departed form gets the same treatment so the employee can add
- * the missing supervisor signature without losing the signed departure.
+ * HR has already reviewed this form, so changing its content needs a fresh
+ * review. The API no longer sends it back automatically: the edit is stored as
+ * an unsent draft and HR keeps seeing the approved version until the employee
+ * presses "Resubmit to HR". `waiting_supervisor` is handled alongside these
+ * three because HR approved that content too — only the supervisor half is
+ * still missing.
  */
 export function needsReapprovalAfterSave(status: ObHrStatus): boolean {
   return status === "approved" || status === "departed" || status === "completed";

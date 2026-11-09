@@ -54,6 +54,11 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  /* The fill INSIDE a form field (its own token, not `background`): the page
+     and the card decide the surface, the field decides the box you type in.
+     Light it is white against the cream page; dark it goes deeper than the
+     dialog so a field reads as a hole you can write in, not a raised plate. */
+  --color-field: var(--field);
   --color-paper: var(--paper);
   --color-ink: var(--ink);
   --color-glass: var(--glass);
@@ -77,12 +82,16 @@
   --accent-foreground: oklch(0.99 0.005 85);
   /* Same hue as --primary (250, the "New record" button navy) — for the active nav item. */
   --accent-tint: oklch(0.91 0.025 250);
-  --accent-tint-foreground: oklch(0.33 0.09 250);
+  --accent-tint-foreground: oklch(0.24 0.02 250);
   --destructive: oklch(0.52 0.19 27);
   --destructive-foreground: oklch(0.99 0.005 85);
   --border: oklch(0.86 0.012 85);
   --input: oklch(0.86 0.012 85);
   --ring: oklch(0.33 0.09 250);
+  /* Field fill: white, so an input stands ON the cream page/dialog instead of
+     being tinted the same beige as everything around it (which read as
+     "disabled"). */
+  --field: oklch(1 0 0);
   --dashboard-accent: #2f9e44;
   --dashboard-rule: #2f6b4f;
   --dashboard-soft: #e8f4eb;
@@ -167,6 +176,10 @@
   --border: oklch(0.33 0.005 250);
   --input: oklch(0.33 0.005 250);
   --ring: oklch(0.86 0.012 85);
+  /* Field fill: deeper than --background (0.185), because in dark mode a field
+     is a recess. The 1px --input frame around it is what keeps it looking
+     editable instead of like a hole punched in the dialog. */
+  --field: oklch(0.145 0.004 250);
   /* Chart green stays green: bars, by-form-type meters and the soft chips keep
      the dashboard's one saturated hue instead of following the chrome. */
   --dashboard-accent: #51cf66;
@@ -273,10 +286,14 @@
 @utility inp {
   display: block;
   width: 100%;
+  /* 44px: the one field height. Every ordinary input — dialog, settings,
+     picker — is the same box, so nothing in a form looks like a control from
+     a different form. The filled form editors opt out below. */
+  min-height: 2.75rem;
   border: 1px solid var(--color-border);
   border-radius: calc(var(--radius) - 2px);
-  background: var(--color-background);
-  padding: 0.3rem 0.5rem;
+  background: var(--field);
+  padding: 0.3rem 0.75rem;
   font-size: 0.8125rem;
   line-height: 1.25;
   color: var(--color-foreground);
@@ -363,10 +380,29 @@
   cursor: not-allowed;
 }
 
-.inp:focus,
+/* Focus is ONE rule, everywhere: the 1px frame goes to the ink colour — near
+   black on the light theme, near white on the dark one — and nothing else
+   moves. The old3px halo is gone on purpose: the account-dialog spec asks for
+   "a 1px border, no glow", and a glowing field read as a different control
+   from the rest of the form. */
+.inp:focus {
+  border-color: var(--color-foreground);
+}
 .field:focus {
-  border-color: var(--color-ring);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring) 22%, transparent);
+  border-color: var(--color-foreground);
+}
+/* Unlayered on purpose (like the focus rule above): a Tailwind border-colour
+   utility would race the `.inp` shorthand for the same property, and these two
+   states must always win. */
+.inp[aria-invalid="true"] {
+  border-color: var(--color-destructive);
+}
+/* The notch the password eye button sits in. */
+.inp.has-eye {
+  padding-right: 2.5rem;
+}
+.inp::placeholder {
+  color: var(--color-muted-foreground);
 }
 
 /* ── Filled form fields (LOA, OB, DTR) ──────────────────────────────────
@@ -384,7 +420,7 @@
 }
 
 .form-fill .inp:focus {
-  border-color: var(--color-ring);
+  border-color: var(--color-foreground);
 }
 
 /* ── Change of Schedule sheet ───────────────────────────────────────────

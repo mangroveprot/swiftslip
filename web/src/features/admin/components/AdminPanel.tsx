@@ -269,7 +269,9 @@ function isActiveSection(item: AdminItem, section: Section): boolean {
 /**
  * A parent row ("Settings ▾") — not selectable itself. It opens on click and
  * opens by itself when one of its children is the current section, so a deep
- * link into Data retention never hides it.
+ * link into Data retention never hides it. It takes the SAME active ink as a
+ * child while one of those children is current, so the group never reads grey
+ * next to the black active row under it.
  */
 function SettingsGroup({
   item,
@@ -291,7 +293,7 @@ function SettingsGroup({
         <button
           type="button"
           aria-expanded={expanded}
-          className={sidebarRowClass({ active: false })}
+          className={sidebarRowClass({ active: isActiveSection(item, section) })}
         >
           <item.icon className="size-4 shrink-0" aria-hidden="true" />
           <span className="min-w-0 truncate">{item.label}</span>

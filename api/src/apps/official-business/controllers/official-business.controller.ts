@@ -84,6 +84,22 @@ class OfficialBusinessController {
     }
   }
 
+  static async cancelResubmit(req: Request, res: Response): Promise<void> {
+    try {
+      const response = await OfficialBusinessService.cancelResubmit(
+        req.user as SessionUser,
+        req.params.id as string,
+      );
+      if (response.success) {
+        ApiResponse.success(res, response);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      ApiResponse.error(res, error as ErrorResponseType);
+    }
+  }
+
   static async remove(req: Request, res: Response): Promise<void> {
     try {
       const { quiet } = req.query as { quiet?: boolean };

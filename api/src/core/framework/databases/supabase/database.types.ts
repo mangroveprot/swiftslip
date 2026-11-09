@@ -324,7 +324,9 @@ export type Database = {
           id: string;
           id_number: string;
           owner_id: string | null;
+          pending_content: Json | null;
           position: string;
+          previous_content: Json | null;
           residence: string;
           resubmit_count: number;
           resubmit_history: {
@@ -334,6 +336,9 @@ export type Database = {
             rejected_at?: string;
             rejected_by?: string;
             changes?: { key: string; label: string; from: string; to: string }[];
+            from_status?: string;
+            previous_submitted_at?: string | null;
+            hr?: Json;
           }[];
           submit_snapshot: Json | null;
           submitted_at: string | null;
@@ -371,7 +376,9 @@ export type Database = {
           id?: string;
           id_number?: string;
           owner_id?: string | null;
+          pending_content?: Json | null;
           position?: string;
+          previous_content?: Json | null;
           residence?: string;
           resubmit_count?: number;
           resubmit_history?: {
@@ -381,6 +388,9 @@ export type Database = {
             rejected_at?: string;
             rejected_by?: string;
             changes?: { key: string; label: string; from: string; to: string }[];
+            from_status?: string;
+            previous_submitted_at?: string | null;
+            hr?: Json;
           }[];
           submit_snapshot?: Json | null;
           submitted_at?: string | null;
@@ -418,7 +428,9 @@ export type Database = {
           id?: string;
           id_number?: string;
           owner_id?: string | null;
+          pending_content?: Json | null;
           position?: string;
+          previous_content?: Json | null;
           residence?: string;
           resubmit_count?: number;
           resubmit_history?: {
@@ -428,6 +440,9 @@ export type Database = {
             rejected_at?: string;
             rejected_by?: string;
             changes?: { key: string; label: string; from: string; to: string }[];
+            from_status?: string;
+            previous_submitted_at?: string | null;
+            hr?: Json;
           }[];
           submit_snapshot?: Json | null;
           submitted_at?: string | null;

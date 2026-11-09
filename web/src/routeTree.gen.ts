@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as ChooseRouteImport } from './routes/choose'
 import { Route as HrRouteImport } from './routes/hr'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as RgcAssetInventoryRouteImport } from './routes/rgc-asset-inventory'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as HrIndexRouteImport } from './routes/hr/index'
@@ -55,6 +56,11 @@ const ChooseRoute = ChooseRouteImport.update({
 const HrRoute = HrRouteImport.update({
   id: '/hr',
   path: '/hr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RgcAssetInventoryRoute = RgcAssetInventoryRouteImport.update({
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
   '/hr': typeof HrRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/profile': typeof AppProfileRoute
   '/hr/profile': typeof HrProfileRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof AppProfileRoute
   '/hr/profile': typeof HrProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/choose': typeof ChooseRoute
   '/hr': typeof HrRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/_app/profile': typeof AppProfileRoute
   '/hr/profile': typeof HrProfileRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/choose'
     | '/hr'
+    | '/onboarding'
     | '/rgc-asset-inventory'
     | '/profile'
     | '/hr/profile'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/choose'
+    | '/onboarding'
     | '/profile'
     | '/hr/profile'
     | '/rgc-asset-inventory/reports'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/choose'
     | '/hr'
+    | '/onboarding'
     | '/rgc-asset-inventory'
     | '/_app/profile'
     | '/hr/profile'
@@ -304,6 +316,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ChooseRoute: typeof ChooseRoute
   HrRoute: typeof HrRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
   RgcAssetInventoryRoute: typeof RgcAssetInventoryRouteWithChildren
 }
 
@@ -342,6 +355,13 @@ declare module '@tanstack/react-router' {
       path: '/hr'
       fullPath: '/hr'
       preLoaderRoute: typeof HrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rgc-asset-inventory': {
@@ -538,6 +558,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ChooseRoute: ChooseRoute,
   HrRoute: HrRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
   RgcAssetInventoryRoute: RgcAssetInventoryRouteWithChildren,
 }
 export const routeTree = rootRouteImport

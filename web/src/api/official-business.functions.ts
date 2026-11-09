@@ -22,19 +22,32 @@ export const getObForm = async ({ data }: { data: z.input<typeof idInput> }) =>
 export const createObForm = async ({ data }: { data: z.input<typeof createObFormInput> }) =>
   documentOf(await api.post<{ id: string }>("/official-business", data));
 
-/** Saves the form and reports the HR state the API ended up in (a save can hand
- *  an approved form back to HR for re-approval). */
+/** Saves the form and reports the HR state the API ended up in. A content edit
+ *  on an approved form is held as a draft (`pending_changes`), not sent to HR. */
 export const saveObForm = async ({ data }: { data: z.input<typeof saveObFormInput> }) => {
   const { id, ...body } = data;
   const saved = documentOf(
-    await api.put<{ hr_status: ObHrStatus }>(`/official-business/${seg(id)}`, body),
+    await api.put<{ hr_status: ObHrStatus; pending_changes?: boolean }>(
+      `/official-business/${seg(id)}`,
+      body,
+    ),
   );
-  return { ok: true as const, hr_status: saved.hr_status };
+  return {
+    ok: true as const,
+    hr_status: saved.hr_status,
+    pending_changes: Boolean(saved.pending_changes),
+  };
 };
 
-/** Hand the form to HR (draft | rejected → submitted). */
+/** Hand the form to HR (draft | rejected | an approved form with a draft). */
 export const submitObForm = async ({ data }: { data: z.input<typeof idInput> }) => {
   await api.post(`/official-business/${seg(data.id)}/submit`);
+  return { ok: true as const };
+};
+
+/** Withdraw an edited resubmission from HR's queue; the edits stay as a draft. */
+export const cancelObResubmit = async ({ data }: { data: z.input<typeof idInput> }) => {
+  await api.post(`/official-business/${seg(data.id)}/cancel-resubmit`);
   return { ok: true as const };
 };
 

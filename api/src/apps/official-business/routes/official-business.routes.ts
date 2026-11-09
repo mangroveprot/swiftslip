@@ -38,6 +38,11 @@ router.post(
   validate(idInput, 'params'),
   OfficialBusinessController.submit,
 );
+router.post(
+  '/:id/cancel-resubmit',
+  validate(idInput, 'params'),
+  OfficialBusinessController.cancelResubmit,
+);
 
 // POST/GET/DELETE /:id/attachment
 router.use(

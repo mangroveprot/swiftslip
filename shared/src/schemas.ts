@@ -464,6 +464,15 @@ export const fileKeyQuery = z.object({
   key: z.string().min(1).max(400),
 });
 
+/**
+ * `GET /files/attachment?url=` — the short-lived signed link the browser
+ * already holds for a form attachment. The API re-checks the host and the
+ * owner folder before relaying the bytes back on the app's own origin.
+ */
+export const attachmentProxyQuery = z.object({
+  url: z.string().url().max(2048),
+});
+
 export const upsertCodeInput = z.object({
   id: id.optional(),
   /** The account's unique sign-in ID — required, and unique across accounts. */

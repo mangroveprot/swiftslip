@@ -224,7 +224,7 @@ export function QueueTable({ rows }: { rows: HrObSummary[] }) {
                 <th className="py-3 pr-4 font-normal">Destination</th>
                 <th className="w-36 py-3 pr-4 font-normal">Supervisor</th>
                 <th className="w-24 py-3 pr-4 font-normal">Updated</th>
-                <th className="w-48 py-3 pr-4 font-normal">
+                <th className="w-48 py-3 pr-4 text-right font-normal">
                   <span className="sr-only">Action</span>
                 </th>
               </tr>
@@ -254,7 +254,7 @@ export function QueueTable({ rows }: { rows: HrObSummary[] }) {
                   >
                     {relativeTime(form.updated_at)}
                   </td>
-                  <td className="py-3.5 pr-4 align-middle">
+                  <td className="py-3.5 pr-4 text-right align-middle">
                     <ActionCell form={form} />
                   </td>
                 </tr>

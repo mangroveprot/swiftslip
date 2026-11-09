@@ -335,6 +335,79 @@ LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10)
       and all card styles are unchanged — structure and data only. Edited-after-approval copy
       matches the reference sentence. `npm run typecheck` and `npm run lint` pass (0 errors,
       6 pre-existing warnings); `buildStatusCard` output verified with a `tsx` probe.
+- [x] DTR / form "Save as PDF" includes B2 attachments (owner's screenshot, 2026-11-09) —
+      B2 presigned links send `Access-Control-Allow-Origin: null`, so `fetch()` of an attachment's
+      bytes was blocked and the export warned "2 attachments could not be added to the PDF."
+      `GET /api/files/attachment?url=…` (behind `authenticate`) now relays the bytes same-origin;
+      `web/src/lib/attachment-file.ts` `fetchAttachmentBytes()` is used by `save-pdf.ts` and the
+      Download button, with `credentials: "include"` for cross-origin API deployments. The guard
+      accepts only signed HTTPS links on the configured Supabase / B2 hosts under
+      `FormAttachement/`. `npm run typecheck` and `npm run lint` pass for shared, api and web
+      (0 errors, 6 pre-existing `react-refresh` warnings).
+- [x] DTR loading skeletons match the current page (owner's request, 2026-11-09) — DTR was the
+      only editor still using the old shared `EditorSkeleton`, which drew the pre-card-stack page.
+      New `RecordEditorSkeleton` mirrors the back link / eyebrow / title + three actions, the
+      `lg:26rem` / `xl:30rem` two-pane grid, three stacked form cards (record details, five-column
+      daily entries, other attachments) and the preview column (attachment card with the lifted
+      APPROVED seal, "Live preview" row, A4 sheet with letterhead, 4-column header boxes,
+      month/year row, five-column log and both signature rules). New `RecordsListSkeleton` mirrors
+      `RecordCard`'s name / ID, Open + Delete buttons, period / updated lines and the exact
+      `6.25rem × 4.75rem` mini-sheet thumbnail; conditional extras (deletion notice, APPROVED
+      seal) are intentionally omitted. `RecordEditor` / `RecordsList` rewired, obsolete generic
+      `EditorSkeleton` deleted, stale comments in `Skeletons.tsx` and `FormUnavailable.tsx`
+      corrected. `npm run typecheck` and `npm run lint` pass (0 errors, 6 pre-existing warnings).
+- [x] Onboarding reappears on every sign-in (owner's report, 2026-11-09) — the "seen" flag was
+      permanent `localStorage` (`swiftslip.onboarding.seen:<id>`) and was never cleared, so
+      `needsOnboarding()` short-circuited every later login; it also only checked `full_name`, so a
+      saved name hid the welcome even when work details / signature were still missing.
+      `resetOnboardingSession()` now clears seen + step keys at sign-in (after the cookie is
+      confirmed) and at sign-out, and the gate uses `gapCount(profileGaps(profile)) > 0`. Skipping
+      still quiets the welcome for that sign-in; a complete profile never sees it. Sign-in also
+      drops the cached `["profile"]` query so another account cannot inherit the old profile.
+      `OnboardingFlow` opens on the first unfinished step. `npm run typecheck` and `npm run lint`
+      pass (0 errors, 6 pre-existing warnings); 11 gate assertions pass in a `tsx` probe.
+- [x] Onboarding exits through the app chooser (owner's request, 2026-11-09) — the Done card used
+      to say "Go to Daily Time Record" and hardcode `/records`, so a first sign-in that diverted to
+      `/onboarding` skipped `/choose` entirely and users with several granted apps never saw the
+      picker. `enterApp()` now marks the welcome seen and navigates to `/choose`; the button reads
+      "Continue". `/choose` stays the single source of truth: 2+ apps → picker, 1 app →
+      `APP_HOME` auto-redirect. `npm run typecheck` and `npm run lint` pass (0 errors, 6
+      pre-existing warnings).
+- [x] OB RETURN column shows date + time on every signed arrival (owner's request, 2026-11-09) —
+      once HR signs the arrival, the cell prints the time on top and HR's typed `arrival_date`
+      below it (`10:40 AM` / `10/13/2026`); a form with NO signed arrival keeps a bare time (or a
+      blank cell). No same-day exception: an earlier version hid the date when `arrival_date`
+      equalled `date_of_ob`, but Sign arrival prefills exactly that value, so a completed form
+      showed only `12:00 PM`. New shared `time-of-display.ts` (renamed from
+      `return-display.ts`) feeds `ObPreview` (preview, print, Save-as-PDF), the HR detail
+      "Return time" row (`ReviewField.subValue`) and the Word
+      `{time_return}` token via `\n` + `linebreaks: true`. `arrival_time` covers a blank itinerary
+      RETURN; legacy rows without `arrival_date` fall back to `arrival_signed_at`. **Overdue is
+      unchanged** — the owner confirmed it is correctly derived from the Date of OB having passed.
+      Sign arrival still prefills Date of OB, so a late return prints the date HR typed unless HR
+      changes it (owner chose the display fix, not a prefill/data fix). `npm run typecheck` and
+      `npm run lint` pass (0 errors, 6 pre-existing warnings); `tsx` probes pass.
+- [x] OB DEPARTURE column shows HR's signed time when the planned cell is blank (owner's
+      request, 2026-11-09) — a completed form no longer prints an empty DEPARTURE column while
+      EXIT CLEARANCE shows `10:47 AM`. `time-of-display.ts` (renamed from `return-display.ts`)
+      adds `obDepartureTime(row, hr)`: the employee's `time_departure` wins, HR's
+      `departure_time` only fills a blank cell when `departure_signed_at` exists, and unsigned /
+      padded rows stay blank. `ObPreview` (preview, print, Save-as-PDF), the HR detail
+      "Departure time" row and the Word `{time_departure}` token all use it. DEPARTURE prints
+      time only — the date is already in Date of OB + EXIT CLEARANCE. RETURN's two-line rule and
+      Overdue derivation are unchanged. `npm run typecheck` and `npm run lint` pass (0 errors,
+      6 pre-existing warnings); `tsx` probe passes.
+- [x] OB DEPARTURE is time-only; RETURN date only on a late return; HR's signed times shown in the
+      employee form (owner's request, 2026-11-09) — supersedes the "date on every signed arrival"
+      rule above. `time-of-display.ts` `obDepartureDisplay()` now always returns `date: ""`;
+      `obReturnDisplay()` takes `dateOfOb` and emits `arrival.date` only when it differs from
+      `formatMonthDayYear(date_of_ob)`. `ObItineraryTable` shows HR's raw signed time inside a
+      blank planned departure/return input, keeps the "HR recorded: <time>" note below it, and
+      top-aligns the two fields so the note no longer shifts the return label; `ObEditor` passes
+      the HR columns and Date of OB. Preview / lightbox / print / Save-as-PDF / HR rows / Word all
+      use the same helpers.
+      `npm run typecheck` and `npm run lint` pass (0 errors, 6 pre-existing warnings);
+      `.ob-time-probe.ts` passes.
 - [x] HR detail shows who is being reviewed — `ObEmployeeProfile` resolved server-side from the
       owner's profile (`employeeProfile` in `hr.service.ts`) and rendered by
       `EmployeeProfileCard`: gradient profile banner, photo, name, ID, department, position,
@@ -400,10 +473,28 @@ LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10)
       admin-style underline search, detail with five-step stepper, itinerary chips,
       Exit clearance timeline, supervisor-slip rail and scaled live preview. My
       Account lives at `/hr/profile` so it stays inside the HR shell.
+- [x] Post-approval edits wait as a draft; a resubmission can be withdrawn (owner's request,
+      2026-11-09) — a content save on an `approved` / `departed` / `completed` /
+      `waiting_supervisor` form no longer rewrites the live row and re-queues it. The edit is
+      stored whole in `ob_forms.pending_content` (employee header fields + itinerary),
+      `hr_status` and HR's sign-offs stay untouched, so HR keeps reviewing the version it
+      approved. `GET /official-business/:id` overlays the draft for its owner and returns
+      `pending_changes`; the employee list badges it as "Draft changes". "Resubmit to HR" (a
+      status-card action, and the only submit path for those statuses) applies the draft, stashes
+      the approved version in `previous_content` and records `from_status` /
+      `previous_submitted_at` / HR's sign-off snapshot on the `edited` resubmit event.
+      `POST /official-business/:id/cancel-resubmit` restores that version and its sign-offs, moves
+      the sent content back into `pending_content` (nothing typed is lost), pops the event and
+      decrements `resubmit_count`; it is offered only while `submitted` after an `edited`
+      resubmit (first submissions and post-rejection resubmits have no Cancel). Supervisor fields
+      stay live writes. Internal blobs are stripped from both the employee and HR payloads.
+      Migration `0039_ob_resubmit_draft.sql` adds the two jsonb columns.
+      `npm run typecheck` and `npm run lint` pass (0 errors, 6 pre-existing warnings).
 - [x] `npm run typecheck` and `npm run lint` pass for shared, api and web
-- [ ] **Owner to run:** paste `0035_hr_approval.sql`, `0036_ob_arrival_signoff.sql` **and**
-      `0037_ob_resubmit.sql` in the Supabase SQL Editor **before** deploying, then sign in as an HR
-      account and walk one OB form
+- [ ] **Owner to run:** paste `0035_hr_approval.sql`, `0036_ob_arrival_signoff.sql`,
+      `0037_ob_resubmit.sql`, `0038_ob_resubmit_snapshot.sql` **and**
+      `0039_ob_resubmit_draft.sql` in the Supabase SQL Editor **before** deploying, then sign in as
+      an HR account and walk one OB form
       through Submit → Approve (with and without the supervisor signature) → Sign departure.
       **`0036` was checked against the live DB on 2026-11-06: the arrival half IS applied**
       (`ob_forms.arrival_date` reads back and `POST /hr/ob/:id/sign-arrival` has signed an
@@ -428,11 +519,14 @@ LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10)
 Intentional behaviour (do not "fix" back):
 - Drafts and empty scaffolds never reach the HR queue; the employee must press
   *Submit for HR approval*. Only `submitted` is read-only. `rejected`,
-  `waiting_supervisor`, `approved`, `departed` and `completed` are editable; saving a
-  content change on an already-approved/completed form clears HR's approval + sign-offs
-  and puts it back in the HR queue for re-approval. A supervisor-only save on a departed
-  form keeps it departed, so the employee can add the missing signature without losing
-  the signed departure.
+  `waiting_supervisor`, `approved`, `departed` and `completed` are editable; a
+  content change on an already-approved/completed form is **saved as a draft**
+  (`pending_content`) and HR keeps the approved version until the employee presses
+  *Resubmit to HR*. A supervisor-only save on a departed form keeps it departed,
+  so the employee can add the missing signature without losing the signed
+  departure. While an edited resubmission is waiting, *Cancel* restores the
+  approved version and keeps the employee's text as a draft; it is never offered
+  for a first submission or a resubmit after rejection.
 - The owner can delete their form in any status (completed included); HR cannot delete.
 - The supervisor indicator never blocks HR's approval **or departure**: HR can sign out a
   form in `waiting_supervisor`. It does block completion — `sign-arrival` is refused until

@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRightFromLine, ChevronsUpDown, Monitor, Moon, Sun, User } from "lucide-react";
+import {
+  ArrowRightFromLine,
+  ChevronsUpDown,
+  Contrast,
+  Monitor,
+  Moon,
+  Sun,
+  User,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
@@ -8,7 +16,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { APP } from "@/config/app";
@@ -106,8 +113,14 @@ const MENU_ITEM =
 
 /**
  * Footer pinned under the nav. Utility rows come first (Notifications / Switch
- * app / Install), then the signed-in identity. That identity is one button: it
- * opens a solid card upward with My account, Theme, and Sign out.
+ * app / Install), then the signed-in identity at the very bottom. That
+ * identity is one button: it opens a solid card upward with Theme, My account
+ * and Sign out.
+ *
+ * Theme lives INSIDE that card, as its first row, rather than as a footer row
+ * of its own — one press cycles Light → Dark → System in place; the icon is
+ * the half-moon, the one mark for "theme", and the current preference with its
+ * own state icon reads on the right.
  *
  * `photo` is the profile picture when the person has set one; without it the
  * avatar falls back to their initials, so the footer never renders an empty
@@ -115,7 +128,6 @@ const MENU_ITEM =
  * target with an up/down arrow.
  *
  * `to` is the My Account route for this app (`/profile` or `/hr/profile`).
- * Theme cycles inside the menu and does not close it or navigate.
  */
 export function SidebarFooter({
   name,
@@ -177,6 +189,20 @@ export function SidebarFooter({
             sideOffset={8}
             className="z-[80] w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg"
           >
+            {/* Theme first, then the account entries: it cycles in place on
+                select — no navigation, no nested menu. */}
+            <DropdownMenuItem
+              onSelect={cycle}
+              className={cn(MENU_ITEM, "flex items-center gap-2")}
+              aria-label={`Theme: ${themeLabel}. Click to change.`}
+            >
+              <Contrast className="size-4" aria-hidden="true" />
+              Theme
+              <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+                {themeLabel}
+                <ThemeIcon className="size-3.5" aria-hidden="true" />
+              </span>
+            </DropdownMenuItem>
             {to ? (
               <DropdownMenuItem asChild>
                 <Link to={to} className={cn("flex w-full items-center gap-2", MENU_ITEM)}>
@@ -185,22 +211,8 @@ export function SidebarFooter({
                 </Link>
               </DropdownMenuItem>
             ) : null}
-            <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                cycle();
-              }}
-              className={MENU_ITEM}
-              aria-label={`Theme: ${themeLabel}. Click to change.`}
-            >
-              <Sun className="size-4" aria-hidden="true" />
-              <span>Theme</span>
-              <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                {themeLabel}
-                <ThemeIcon className="size-3.5" aria-hidden="true" />
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-border" />
+            {/* No divider: Theme sits above My account, and Sign out closes
+                the card. */}
             <DropdownMenuItem
               onSelect={() => openSignOut()}
               className={cn(

@@ -6,6 +6,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "ob.created": "OB created",
   "ob.deleted": "OB removed",
   "ob.submitted": "OB submitted for HR approval",
+  "ob.resubmit_cancelled": "OB resubmission withdrawn",
   "ob.hr_approved": "OB approved by HR",
   "ob.supervisor_approved": "OB supervisor approved",
   "ob.hr_rejected": "OB rejected by HR",

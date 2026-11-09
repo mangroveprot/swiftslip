@@ -35,6 +35,7 @@
  * A file that will not load (expired link, offline) never fails the export: the
  * form is still saved, and the toast names what was left out.
  */
+import { fetchAttachmentBytes } from "@/lib/attachment-file";
 import { toast } from "@/lib/toast";
 
 /** A4 — the sheet CSS is authored against the same paper size. */
@@ -394,7 +395,7 @@ interface AttachmentImage {
 
 /** Download an image attachment and flatten it to a JPEG the PDF can hold. */
 async function loadAttachmentImage(url: string): Promise<AttachmentImage> {
-  const response = await fetch(url);
+  const response = await fetchAttachmentBytes(url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
   const blob = await response.blob();
@@ -493,7 +494,7 @@ async function buildPdf(
     try {
       if (PDF_ATTACHMENT_RE.test(attachment.name)) {
         // Merged after the images so the final document keeps page order.
-        const response = await fetch(attachment.url);
+        const response = await fetchAttachmentBytes(attachment.url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         pdfs.push({ name: attachment.name, bytes: await response.arrayBuffer() });
         continue;

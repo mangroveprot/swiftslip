@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { AppChooser } from "@/features/auth/components/AppChooser";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { loadProfileForGate, needsOnboarding } from "@/features/profile/onboarding";
 import { pageTitle, seo } from "@/lib/seo";
 import { APP_HOME, isExternalApp, type AppKey, type InternalAppKey } from "@swiftslip/shared/types";
 
@@ -13,6 +14,9 @@ import { APP_HOME, isExternalApp, type AppKey, type InternalAppKey } from "@swif
  * there instead — which is the common case for staff now that access is a
  * grant rather than a role. An app on another host has no route here, so it is
  * always shown in the chooser and opened by the card's own link.
+ *
+ * Onboarding sends the user back here when the welcome is dismissed, so the
+ * same rule applies after profile setup: never hardcode a destination there.
  */
 export const Route = createFileRoute("/choose")({
   beforeLoad: async ({ context }) => {
@@ -21,6 +25,10 @@ export const Route = createFileRoute("/choose")({
       revalidateIfStale: true,
     });
     if (!session) throw redirect({ to: "/" });
+    const profile = await loadProfileForGate(context.queryClient);
+    if (profile && needsOnboarding(session.id, profile)) {
+      throw redirect({ to: "/onboarding" });
+    }
     const apps: AppKey[] = session.apps?.length ? session.apps : ["swiftslip"];
     const only = apps.length === 1 ? apps[0] : undefined;
     if (only && !isExternalApp(only)) throw redirect({ to: APP_HOME[only as InternalAppKey] });

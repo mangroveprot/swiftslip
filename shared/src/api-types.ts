@@ -168,6 +168,8 @@ export type ObSummary = {
   resubmit_count?: number;
   /** The trips back to HR, oldest first — the queue caption reads the latest. */
   resubmit_history?: ObResubmitEvent[];
+  /** Saved edits not yet sent to HR (migration 0039) — the list badges these. */
+  pending_changes?: boolean;
   /** The employee's profile picture, signed for this response; null when none. */
   employee_photo?: string | null;
 };
@@ -280,6 +282,12 @@ export type ObDetail = Attached & {
   entries: ObEntry[];
   /** Names + positions + saved signatures for the boxes HR fills (see `ObSigners`). */
   signers?: ObSigners;
+  /**
+   * True when the employee has edits saved but not sent to HR (migration 0039).
+   * The form/entries above are then the employee's draft; HR still sees the
+   * approved version until they press "Resubmit to HR".
+   */
+  pending_changes?: boolean;
 };
 
 /**

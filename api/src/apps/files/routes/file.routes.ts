@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { validate } from '../../../common/shared';
-import { fileKeyQuery, fileUploadInput } from '@swiftslip/shared/schemas';
+import {
+  attachmentProxyQuery,
+  fileKeyQuery,
+  fileUploadInput,
+} from '@swiftslip/shared/schemas';
 import { authenticate } from '../../auth/middlewares';
 import { FileController } from '../controllers';
 
@@ -11,6 +15,13 @@ router.use(authenticate);
 
 router.post('/', validate(fileUploadInput), FileController.upload);
 router.get('/url', validate(fileKeyQuery, 'query'), FileController.downloadUrl);
+// Same-origin bytes for a form attachment whose signed link (B2) has no CORS.
+// Used when a PDF export or a download needs the file itself, not just a view.
+router.get(
+  '/attachment',
+  validate(attachmentProxyQuery, 'query'),
+  FileController.attachment,
+);
 router.delete('/', validate(fileKeyQuery, 'query'), FileController.remove);
 
 export default router;

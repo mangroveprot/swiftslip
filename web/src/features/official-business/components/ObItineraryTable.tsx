@@ -5,6 +5,15 @@ import { writeObPurpose } from "@/api/official-business.functions";
 import { AiMascot } from "@/components/common/AiMascot";
 import { friendlyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import {
+  obDepartureDisplay,
+  obDepartureInputTime,
+  obDepartureRowIndex,
+  obReturnDisplay,
+  obReturnInputTime,
+  obReturnRowIndex,
+} from "@/features/official-business/lib/time-of-display";
+import type { ObHrFields } from "@swiftslip/shared/hr";
 import type { ObEntry } from "@swiftslip/shared/types";
 
 import { ObHint, ObSection, Req } from "./ObSection";
@@ -41,6 +50,8 @@ export function ObItineraryTable({
   placeOptions,
   invalid,
   hints,
+  hr,
+  dateOfOb,
 }: {
   rows: ObEntry[];
   setRows: (rows: ObEntry[]) => void;
@@ -52,8 +63,20 @@ export function ObItineraryTable({
   invalid?: ReadonlySet<string> | undefined;
   /** `key → instruction` for the red line under each of those cells. */
   hints?: Readonly<Record<string, string>> | undefined;
+  /** HR's sign-off columns, so the employee sees the actual times HR recorded. */
+  hr?: Partial<ObHrFields> | null | undefined;
+  /** The form's Date of OB, used by the shared return display rule. */
+  dateOfOb?: string | null | undefined;
 }) {
   const [confirming, setConfirming] = useState<number | null>(null);
+  // Which time input is focused. While focused, a blank cell shows its native
+  // empty state so the employee can type; on blur the HR-recorded value returns.
+  const [focusedTime, setFocusedTime] = useState<string | null>(null);
+
+  // The same row selection the printed preview uses, so the "HR recorded" line
+  // appears beside the stop that actually carries each signed leg.
+  const departureRow = obDepartureRowIndex(rows);
+  const returnRow = obReturnRowIndex(rows);
 
   // A fresh form opens with one empty stop, like the paper sheet. Removing the
   // last one is allowed — this only seeds the initial state, once.
@@ -112,6 +135,28 @@ export function ObItineraryTable({
             const bad = (column: keyof ObEntry) =>
               invalid?.has(`entry:${row.idx}:${column}`) ?? false;
             const hintFor = (column: keyof ObEntry) => hints?.[`entry:${row.idx}:${column}`];
+            const departureDisplay = obDepartureDisplay(row, {
+              hr,
+              isDepartureRow: i === departureRow,
+            });
+            const returnDisplay = obReturnDisplay(row, {
+              hr,
+              isReturnRow: i === returnRow,
+              dateOfOb,
+            });
+            // HR's actual time is shown beside the input only when the employee
+            // left the planned cell blank. A typed time always wins and already
+            // shows in the input, so the extra line would just repeat it.
+            const hrDepartureTime =
+              i === departureRow && !row.time_departure.trim() ? departureDisplay.time : "";
+            const hrReturnTime =
+              i === returnRow && !row.time_return.trim() ? returnDisplay.time : "";
+            // The same value inside the native time input. It yields to the
+            // employee's own typing and disappears while the field is focused.
+            const departureInput =
+              i === departureRow && !row.time_departure.trim() ? obDepartureInputTime(hr) : "";
+            const returnInput =
+              i === returnRow && !row.time_return.trim() ? obReturnInputTime(hr) : "";
             return (
               <div
                 key={row.idx}
@@ -203,17 +248,28 @@ export function ObItineraryTable({
                     onChange={(v) => update(row.idx, { purpose: v })}
                   />
 
-                  <div className="grid items-end gap-4 @md:grid-cols-2">
+                  <div className="grid items-start gap-4 @md:grid-cols-2">
                     <label className="block">
                       <span className={FIELD_LABEL}>Time of departure (optional)</span>
                       <input
                         type="time"
                         className={FIELD_INPUT}
                         disabled={!canEdit}
-                        value={row.time_departure}
+                        value={
+                          row.time_departure ||
+                          (focusedTime === `departure-${row.idx}` ? "" : departureInput)
+                        }
                         aria-label="Time of departure"
+                        onFocus={() => setFocusedTime(`departure-${row.idx}`)}
+                        onBlur={() => setFocusedTime(null)}
                         onChange={(ev) => update(row.idx, { time_departure: ev.target.value })}
                       />
+                      {hrDepartureTime ? (
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          HR recorded:{" "}
+                          <span className="font-medium text-foreground">{hrDepartureTime}</span>
+                        </span>
+                      ) : null}
                     </label>
                     <label className="block">
                       <span className={FIELD_LABEL}>Time of return (optional)</span>
@@ -221,10 +277,21 @@ export function ObItineraryTable({
                         type="time"
                         className={FIELD_INPUT}
                         disabled={!canEdit}
-                        value={row.time_return}
+                        value={
+                          row.time_return ||
+                          (focusedTime === `return-${row.idx}` ? "" : returnInput)
+                        }
                         aria-label="Time of return"
+                        onFocus={() => setFocusedTime(`return-${row.idx}`)}
+                        onBlur={() => setFocusedTime(null)}
                         onChange={(ev) => update(row.idx, { time_return: ev.target.value })}
                       />
+                      {hrReturnTime ? (
+                        <span className="mt-1 block text-xs text-muted-foreground">
+                          HR recorded:{" "}
+                          <span className="font-medium text-foreground">{hrReturnTime}</span>
+                        </span>
+                      ) : null}
                     </label>
                   </div>
                 </div>

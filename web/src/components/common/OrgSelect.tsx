@@ -50,6 +50,7 @@ export function OrgSelect({
   list,
   value,
   placeholder,
+  emptyLabel,
   allowOthers = true,
   onChange,
   onValidityChange,
@@ -60,6 +61,13 @@ export function OrgSelect({
   list: readonly string[];
   value: string;
   placeholder: string;
+  /**
+   * What the closed control says when nothing is picked. Defaults to "—"; the
+   * account dialog passes "Select a position" so an empty picker reads as an
+   * instruction instead of as a value nobody set. The placeholder itself stays
+   * on the Others box, where it gives an example of what to type.
+   */
+  emptyLabel?: string | undefined;
   /**
    * Whether this person may invent a value that isn't on the list.
    *
@@ -232,13 +240,13 @@ export function OrgSelect({
           aria-labelledby={`${id}-label`}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="inp flex w-full items-center justify-between gap-2 text-left"
+          className="inp min-h-11 flex w-full items-center justify-between gap-2 text-left"
           onClick={() => setOpen((v) => !v)}
         >
           <span
             className={`truncate ${display ? fitText(display) : "text-sm text-muted-foreground"}`}
           >
-            {display || "—"}
+            {display || emptyLabel || "—"}
           </span>
           <ChevronDown
             className={`size-4 shrink-0 opacity-60 transition-transform ${open ? "rotate-180" : ""}`}
@@ -289,7 +297,7 @@ export function OrgSelect({
       {customOpen ? (
         <>
           <input
-            className="inp mt-2"
+            className="inp min-h-11 mt-2"
             value={value}
             placeholder={placeholder}
             aria-label={`${label} — other`}

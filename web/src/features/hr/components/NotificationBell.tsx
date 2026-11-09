@@ -42,7 +42,10 @@ export function NotificationBell({
   variant = "icon",
 }: {
   className?: string;
-  /** `row` is the sidebar footer entry: bell, label, unread count on the right. */
+  /**
+   * `row` is the sidebar footer entry: bell, label, and the unread count as a
+   * red dot sitting ON the bell — never a separate pill on the right.
+   */
   variant?: "icon" | "row";
 }) {
   const navigate = useNavigate();
@@ -71,6 +74,19 @@ export function NotificationBell({
     if (target) void navigate(target);
   }
 
+  /** Red unread count — always anchored to the bell, never a right-side pill. */
+  const badge =
+    unread > 0 ? (
+      <span
+        className={cn(
+          "pointer-events-none absolute flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground",
+          variant === "row" ? "-right-2 -top-2" : "-right-0.5 -top-0.5",
+        )}
+      >
+        {unread > 9 ? "9+" : unread}
+      </span>
+    ) : null;
+
   return (
     <DropdownMenu open={open} onOpenChange={openChange}>
       <DropdownMenuTrigger asChild>
@@ -87,21 +103,20 @@ export function NotificationBell({
           aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
           title="Notifications"
         >
-          <Bell className="size-4 shrink-0" aria-hidden="true" />
           {variant === "row" ? (
-            <>
-              <span>Notifications</span>
-              {unread > 0 ? (
-                <span className="ml-auto min-w-5 shrink-0 rounded-md bg-dashboard-rule/15 px-1.5 py-0.5 text-center text-[11px] font-bold leading-4 tabular-nums text-dashboard-rule dark:bg-emerald-400/15 dark:text-emerald-300">
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              ) : null}
-            </>
-          ) : unread > 0 ? (
-            <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-4 text-destructive-foreground">
-              {unread > 9 ? "9+" : unread}
+            // The count rides ON the bell in both variants; the old grey pill
+            // on the right of the row read as a second control.
+            <span className="relative flex shrink-0 items-center justify-center">
+              <Bell className="size-4" aria-hidden="true" />
+              {badge}
             </span>
-          ) : null}
+          ) : (
+            <>
+              <Bell className="size-4 shrink-0" aria-hidden="true" />
+              {badge}
+            </>
+          )}
+          {variant === "row" ? <span>Notifications</span> : null}
         </button>
       </DropdownMenuTrigger>
 

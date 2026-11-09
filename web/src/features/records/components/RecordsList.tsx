@@ -8,7 +8,6 @@ import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { DeletionNotice } from "@/components/common/DeletionNotice";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
-import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
@@ -17,6 +16,7 @@ import { MONTHS, periodLabel, periodRange } from "@swiftslip/shared/period";
 import { relativeTime } from "@swiftslip/shared/time";
 import type { Period } from "@swiftslip/shared/types";
 import { recordsQueryOptions } from "../queries";
+import { RecordsListSkeleton } from "./RecordsListSkeleton";
 
 type RecordRow = {
   id: string;
@@ -106,7 +106,7 @@ export function RecordsList() {
           </button>
         </div>
       ) : (
-        <ListSkeleton />
+        <RecordsListSkeleton />
       )}
 
       <ConfirmDialog

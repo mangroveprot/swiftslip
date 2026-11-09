@@ -2,9 +2,16 @@ import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import ImageModule from "docxtemplater-image-module-free";
 import { resolveExitSignoff } from "@/features/official-business/lib/exit-signoff";
+import {
+  obDepartureDisplay,
+  obDepartureRowIndex,
+  obDepartureText,
+  obReturnDisplay,
+  obReturnRowIndex,
+  obReturnText,
+} from "@/features/official-business/lib/time-of-display";
 import { base64ToBytes, naturalSize, toBase64 } from "@/lib/signature";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
-import { formatTime12h } from "@swiftslip/shared/time";
 import type { ObSigners } from "@swiftslip/shared/api-types";
 import type { ObHrFields } from "@swiftslip/shared/hr";
 import type { ObEntry, ObForm } from "@swiftslip/shared/types";
@@ -106,13 +113,29 @@ export async function downloadObWord({
   });
 
   // At least one (possibly blank) itinerary row so the box keeps its data cell.
+  // DEPARTURE is time-only. RETURN prints the signed arrival date on a second
+  // line only when it differs from the Date of OB: `linebreaks: true` above
+  // turns the \n into a real Word break, just like the preview cells.
+  const departureRow = obDepartureRowIndex(rows);
+  const returnRow = obReturnRowIndex(rows);
   const items = rows.length
-    ? rows.map((r) => ({
+    ? rows.map((r, i) => ({
         from_place: r.from_place ?? "",
         to_place: r.to_place ?? "",
         purpose: r.purpose ?? "",
-        time_departure: formatTime12h(r.time_departure ?? ""),
-        time_return: formatTime12h(r.time_return ?? ""),
+        time_departure: obDepartureText(
+          obDepartureDisplay(r, {
+            hr,
+            isDepartureRow: i === departureRow,
+          }),
+        ),
+        time_return: obReturnText(
+          obReturnDisplay(r, {
+            hr,
+            isReturnRow: i === returnRow,
+            dateOfOb: form.date_of_ob,
+          }),
+        ),
       }))
     : [{ from_place: "", to_place: "", purpose: "", time_departure: "", time_return: "" }];
 

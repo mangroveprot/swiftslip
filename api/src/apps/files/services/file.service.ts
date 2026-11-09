@@ -5,6 +5,7 @@ import { BaseService } from '../../../core/engine';
 import type { FileLink, StoredFile } from '@swiftslip/shared/api-types';
 import type { SessionUser } from '@swiftslip/shared/types';
 import { readUpload } from '../../attachments/utils';
+import { STORAGE_ROOT } from '../../attachments/repositories';
 import FileStorageService from '../../storage/services/file-storage.service';
 import { FileRepository } from '../repositories';
 import type { FileUploadInput } from '../types';
@@ -100,6 +101,77 @@ class FileService extends BaseService<'files', FileRepository> {
       return {
         success: true,
         document: { url, name: row.original_name, mimeType: row.mime_type },
+      };
+    } catch (error) {
+      return toFailure(error);
+    }
+  }
+
+  /**
+   * Relay one of the caller's own form attachments back on the app's origin.
+   *
+   * Supabase signed links send `Access-Control-Allow-Origin: *`, but Backblaze
+   * B2 presigned links send `null`. A browser can still *show* a B2 file in an
+   * `<img>`/`<iframe>`, yet `fetch()` of those bytes is blocked — which is why
+   * "Save as PDF" used to report that attachments could not be added, and the
+   * Download button failed too. The browser already holds a short-lived link
+   * minted by this API; the server (which has no CORS) reads the bytes and
+   * hands them back same-origin.
+   *
+   * This is deliberately not a general-purpose proxy: only HTTPS links to our
+   * two configured storage hosts, only keys under `FormAttachement/`, and only
+   * links carrying a storage signature are accepted. Access control lives at
+   * the moment the link is minted — the employee endpoints resolve an
+   * owner-scoped row, and the HR endpoint sits behind `requireApp('hr')` — so a
+   * caller can only present a link this API already gave them.
+   */
+  async attachmentBytes(
+    rawUrl: string,
+  ): Promise<ServiceResponse<{ body: Buffer; contentType: string }>> {
+    try {
+      const target = new URL(rawUrl);
+      const supabaseHost = config.db.supabase.url
+        ? new URL(config.db.supabase.url).host
+        : '';
+      const endpoint = config.storage.b2.endpoint;
+      const b2Host = endpoint ? new URL(endpoint).host : '';
+      const isSupabase = target.host === supabaseHost;
+      const isB2 = Boolean(
+        b2Host &&
+        (target.host === b2Host || target.host.endsWith(`.${b2Host}`)),
+      );
+      const path = decodeURIComponent(target.pathname);
+      // Supabase signs with `?token=`, B2's S3 API with `X-Amz-Signature`.
+      const signed = isSupabase
+        ? target.pathname.startsWith('/storage/v1/object/sign/') &&
+          target.searchParams.has('token')
+        : isB2 && target.searchParams.has('X-Amz-Signature');
+
+      if (
+        target.protocol !== 'https:' ||
+        !path.includes(`${STORAGE_ROOT}/`) ||
+        !signed
+      ) {
+        throw new ErrorResponse(
+          'FORBIDDEN',
+          'That file link cannot be read here.',
+        );
+      }
+
+      const response = await fetch(target.toString());
+      if (!response.ok) {
+        throw new ErrorResponse(
+          'NOT_FOUND_ERROR',
+          'That attachment is no longer available.',
+        );
+      }
+      return {
+        success: true,
+        document: {
+          body: Buffer.from(await response.arrayBuffer()),
+          contentType:
+            response.headers.get('content-type') || 'application/octet-stream',
+        },
       };
     } catch (error) {
       return toFailure(error);

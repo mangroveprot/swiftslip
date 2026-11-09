@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { AdminPanel } from "@/features/admin/components/AdminPanel";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { loadProfileForGate, needsOnboarding } from "@/features/profile/onboarding";
 import { pageTitle, seo } from "@/lib/seo";
 
 /**
@@ -16,6 +17,10 @@ export const Route = createFileRoute("/admin")({
       revalidateIfStale: true,
     });
     if (!session) throw redirect({ to: "/" });
+    const profile = await loadProfileForGate(context.queryClient);
+    if (profile && needsOnboarding(session.id, profile)) {
+      throw redirect({ to: "/onboarding" });
+    }
     if (session.role !== "admin") throw redirect({ to: "/records" });
   },
   head: () =>

@@ -18,13 +18,12 @@ import { NotificationBell } from "./NotificationBell";
 import { hrQueueQueryOptions } from "../queries";
 
 /**
- * Right-aligned count on a review row. Green rather than grey so the number
- * reads at a glance — deliberately not a solid orange pill, which was too
- * loud in dark mode.
+ * Right-aligned count on the Review queue row. Red so a waiting request
+ * stands out from the quiet Rejected and Completed rows, which carry no count.
  */
 function NavCount({ value }: { value: number }) {
   return (
-    <span className="ml-auto min-w-5 shrink-0 rounded-md bg-dashboard-rule/15 px-1.5 py-0.5 text-center text-[11px] font-bold leading-4 tabular-nums text-dashboard-rule dark:bg-emerald-400/15 dark:text-emerald-300">
+    <span className="ml-auto min-w-5 shrink-0 rounded-md bg-destructive/15 px-1.5 py-0.5 text-center text-[11px] font-bold leading-4 tabular-nums text-destructive">
       {value}
     </span>
   );
@@ -37,9 +36,9 @@ function NavCount({ value }: { value: number }) {
  * in the footer: the profile block at the bottom opens My account / Sign out
  * (no "Account" nav row), captioned **Role - Position**.
  *
- * Each review row shows a count from the same cached queue the page uses, so
- * the numbers update after an approval without a second request. Completed and
- * Rejected are filtered views of the same route (`?view=…`).
+ * Review queue shows a count from the same cached queue the page uses, so the
+ * number updates after an approval without a second request. Completed and
+ * Rejected are filtered views of the same route (`?view=…`) and carry no count.
  */
 export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -65,8 +64,6 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
     (form) =>
       form.hr_status !== "completed" && form.hr_status !== "rejected" && form.hr_status !== "draft",
   ).length;
-  const rejectedCount = forms.filter((form) => form.hr_status === "rejected").length;
-  const completedCount = forms.filter((form) => form.hr_status === "completed").length;
   const loaded = Boolean(queue);
 
   return (
@@ -88,7 +85,6 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             <CircleX className="size-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 truncate">Rejected</span>
-            {loaded ? <NavCount value={rejectedCount} /> : null}
           </Link>
           <Link
             to="/hr"
@@ -98,7 +94,6 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
           >
             <CircleCheck className="size-4 shrink-0" aria-hidden="true" />
             <span className="min-w-0 truncate">Completed</span>
-            {loaded ? <NavCount value={completedCount} /> : null}
           </Link>
         </SidebarSection>
       </nav>

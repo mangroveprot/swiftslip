@@ -5,7 +5,7 @@ import { FileQuestion } from "lucide-react";
  * Shown when an editor's row cannot be read — most often because the form was
  * deleted (or the URL is a stale bookmark) and the id no longer names anything.
  *
- * Without this the editor fell through to `EditorSkeleton`, so a permanently
+ * Without this the editor fell through to its loading skeleton, so a permanently
  * missing row looked like a page that was still loading, forever. On a hard
  * load the same failure surfaced as the router's generic "This page didn't
  * load" crash screen, which told the user nothing about what to do next.

@@ -1,7 +1,13 @@
 import { APP } from "@/config/app";
 import { resolveExitSignoff, type ExitLeg } from "@/features/official-business/lib/exit-signoff";
+import {
+  obDepartureDisplay,
+  obDepartureRowIndex,
+  obReturnDisplay,
+  obReturnRowIndex,
+  type ObTimeOfDisplay,
+} from "@/features/official-business/lib/time-of-display";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
-import { formatTime12h } from "@swiftslip/shared/time";
 import type { ObSigners } from "@swiftslip/shared/api-types";
 import type { ObHrFields } from "@swiftslip/shared/hr";
 import type { ObEntry, ObForm } from "@swiftslip/shared/types";
@@ -34,6 +40,11 @@ export function ObPreview({
 }) {
   const padded: (ObEntry | null)[] = [...rows];
   while (padded.length < MIN_ROWS) padded.push(null);
+
+  // Only the RETURN row can carry a signed date line (and only on a late
+  // return). DEPARTURE is time-only, but keeps the row index for its fallback.
+  const departureRow = obDepartureRowIndex(rows);
+  const returnRow = obReturnRowIndex(rows);
 
   const details = hr ?? {};
   const {
@@ -138,11 +149,28 @@ export function ObPreview({
               <td className="whitespace-pre-line border border-ink px-1 py-1 text-left align-top break-words">
                 {row?.purpose}
               </td>
+              {/* DEPARTURE is time-only; a blank planned cell falls back to HR's
+                  signed actual departure time so a signed form is never empty. */}
               <td className="whitespace-pre-line border border-ink px-1 py-1 align-top break-words">
-                {row ? formatTime12h(row.time_departure) : null}
+                {row ? (
+                  <TimeOfCell
+                    display={obDepartureDisplay(row, {
+                      hr,
+                      isDepartureRow: i === departureRow,
+                    })}
+                  />
+                ) : null}
               </td>
               <td className="whitespace-pre-line border border-ink px-1 py-1 align-top break-words">
-                {row ? formatTime12h(row.time_return) : null}
+                {row ? (
+                  <TimeOfCell
+                    display={obReturnDisplay(row, {
+                      hr,
+                      isReturnRow: i === returnRow,
+                      dateOfOb: form.date_of_ob,
+                    })}
+                  />
+                ) : null}
               </td>
             </tr>
           ))}
@@ -338,6 +366,25 @@ function HeaderField({
       </span>
       <div className="mt-0.5 min-h-[16px] text-left font-medium">{value}</div>
     </td>
+  );
+}
+
+/**
+ * Renders one TIME OF cell. DEPARTURE is always a single line (time only).
+ * RETURN adds a smaller second line with HR's signed arrival date on a late
+ * return, so both fit the narrow 15% column.
+ */
+function TimeOfCell({ display }: { display: ObTimeOfDisplay }) {
+  if (!display.time && !display.date) return null;
+  return (
+    <>
+      {display.time ? <span className="block whitespace-nowrap">{display.time}</span> : null}
+      {display.date ? (
+        <span className="mt-0.5 block whitespace-nowrap text-[10px] leading-tight md:text-[11px]">
+          {display.date}
+        </span>
+      ) : null}
+    </>
   );
 }
 

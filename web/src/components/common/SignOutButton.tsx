@@ -6,6 +6,7 @@ import { LogOut } from "lucide-react";
 import { signOut } from "@/api/auth.functions";
 import { APP } from "@/config/app";
 import { ConfirmModal } from "@/components/common/ConfirmModal";
+import { resetOnboardingSession } from "@/features/profile/onboarding";
 
 /**
  * The one sign-out flow — confirmation warning + cancel queries → clear cache
@@ -36,6 +37,9 @@ export function useSignOutFlow({
     try {
       await queryClient.cancelQueries();
       queryClient.clear();
+      // Signing in again is a fresh chance to finish the profile. Sign-in also
+      // resets this, which covers expired sessions and a different account.
+      resetOnboardingSession();
       await signOut();
       void navigate({ to: "/", replace: true });
     } catch (e) {

@@ -1,7 +1,20 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, type Ref } from "react";
 
-/** Labelled text input used by the admin settings forms. */
+/**
+ * Labelled text input used by the admin settings forms and the account dialog.
+ *
+ * It is the SAME field as the org pickers (`OrgSelect`): the small sentence
+ * case `.lbl` label, the app's `.inp` box at the shared 44px height, the 1px
+ * frame that darkens on focus with no glow, and one quiet line underneath.
+ * The account-dialog spec asked for exactly that — before it, this label was
+ * upper-case and the box was a different height and fill from the pickers
+ * right below it.
+ *
+ * `error` and `hint` are the two things that can sit under the box: `error`
+ * (red frame + red line) wins over `hint` (quiet line), because a duplicate
+ * ID and its explanation belong to the same field at the same time.
+ */
 export function TextField({
   label,
   value,
@@ -9,6 +22,9 @@ export function TextField({
   type = "text",
   placeholder,
   autoComplete,
+  error,
+  hint,
+  inputRef,
 }: {
   label: string;
   value: string;
@@ -16,25 +32,29 @@ export function TextField({
   type?: "text" | "password";
   placeholder?: string;
   autoComplete?: string;
+  /** One line of red under the field — the field itself takes the red frame. */
+  error?: string | undefined;
+  /** One quiet line under the field (password rules, "leave blank to keep…"). */
+  hint?: string | undefined;
+  /** Lets the caller move the caret here (the dialog returns focus to the ID). */
+  inputRef?: Ref<HTMLInputElement> | undefined;
 }) {
   const [revealed, setRevealed] = useState(false);
   const isPassword = type === "password";
 
   return (
     <label className="block">
-      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
+      <span className="lbl">{label}</span>
       <span className="relative mt-1 block">
         <input
+          ref={inputRef}
           type={isPassword && revealed ? "text" : type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           autoComplete={autoComplete}
-          className={`w-full rounded-md border bg-background py-2 text-sm ${
-            isPassword ? "pr-10 pl-3" : "px-3"
-          }`}
+          aria-invalid={error ? "true" : undefined}
+          className={`inp min-h-11 ${isPassword ? "has-eye" : ""}`}
         />
         {isPassword ? (
           <button
@@ -43,7 +63,7 @@ export function TextField({
             aria-label={revealed ? `Hide ${label}` : `Show ${label}`}
             aria-pressed={revealed}
             title={revealed ? "Hide password" : "Show password"}
-            className="absolute right-0 bottom-0 flex size-9 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
           >
             {revealed ? (
               <EyeOff className="size-4" aria-hidden="true" />
@@ -53,6 +73,13 @@ export function TextField({
           </button>
         ) : null}
       </span>
+      {/* Red line when the field is refused; the quiet rule otherwise — never
+          both, or a rejected ID would read as though its helper also failed. */}
+      {error ? (
+        <span className="mt-1 block text-xs text-destructive">{error}</span>
+      ) : hint ? (
+        <span className="mt-1 block text-xs text-muted-foreground">{hint}</span>
+      ) : null}
     </label>
   );
 }

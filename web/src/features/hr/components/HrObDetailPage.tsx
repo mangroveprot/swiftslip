@@ -1,6 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, Clock, Loader2, Maximize2, Pencil } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  Clock,
+  Download,
+  FileDown,
+  Loader2,
+  Maximize2,
+  Pencil,
+  Printer,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
@@ -8,9 +19,18 @@ import { AttachmentCard } from "@/components/common/AttachmentCard";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { APP } from "@/config/app";
 import { isMissingRow } from "@/lib/missing-row";
-import { toast } from "@/lib/toast";
+import { printSheet } from "@/lib/print";
+import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { friendlyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { ObSigner } from "@swiftslip/shared/api-types";
 import {
@@ -23,7 +43,13 @@ import { formatMonthDayYear } from "@swiftslip/shared/period";
 import { formatTime12h, relativeTime } from "@swiftslip/shared/time";
 import { ObPreview } from "@/features/official-business/components/ObPreview";
 import { ObStatusCard, ObStatusLine } from "@/features/official-business/components/ObStatusCard";
-import { EmployeeProfileCard } from "./EmployeeProfileCard";
+import {
+  obDepartureDisplay,
+  obDepartureRowIndex,
+  obReturnDisplay,
+  obReturnRowIndex,
+} from "@/features/official-business/lib/time-of-display";
+import { EmployeeIdentity } from "./EmployeeProfileCard";
 import { hrObAttachmentUrlQueryOptions, hrObQueryOptions, useHrActions } from "../queries";
 
 const STEPS = [
@@ -145,6 +171,7 @@ export function HrObDetailPage({ id }: { id: string }) {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const [departureDate, setDepartureDate] = useState("");
   const [departureTime, setDepartureTime] = useState("");
@@ -157,6 +184,11 @@ export function HrObDetailPage({ id }: { id: string }) {
   const form = data?.form;
   const entries = useMemo(() => data?.entries ?? [], [data?.entries]);
   const status = form?.hr_status;
+  // The first stop with a departure time and the last stop with a return time
+  // own their signed date lines, matching the sign-off prefill below and the
+  // printed sheet's two TIME OF columns.
+  const departureRow = obDepartureRowIndex(entries);
+  const returnRow = obReturnRowIndex(entries);
 
   // Resolved names + e-signatures for the two exit-clearance rows (the same
   // objects the printed sheet prints). They arrive via `data.signers`.
@@ -213,6 +245,10 @@ export function HrObDetailPage({ id }: { id: string }) {
 
   if (isError && isMissingRow(error)) return <FormUnavailable backTo="/hr" label="the HR queue" />;
   if (!form || !status) return <DetailSkeleton />;
+
+  const office = (data?.employee?.area ?? "").trim();
+  const showOffice =
+    office.length > 0 && !form.department.toLowerCase().includes(office.toLowerCase());
 
   const supervisor = obSupervisorState(form);
   const latestResubmit = latestObResubmit(form.resubmit_history);
@@ -283,14 +319,45 @@ export function HrObDetailPage({ id }: { id: string }) {
     setArrivalTime(stamp.time);
   };
 
+  // The approval slip already has a signed link for this page. PDF export
+  // appends it after the form, the same way the employee editor does.
+  const pdfAttachments =
+    data?.attachment?.name && attachmentLink.data?.url
+      ? [{ name: data.attachment.name, url: attachmentLink.data.url }]
+      : [];
+
+  async function downloadWord() {
+    if (!form) return;
+    setExporting(true);
+    const toastId = toast.loading("Preparing Word file…");
+    try {
+      const { downloadObWord } = await import("@/features/official-business/lib/word-export");
+      await downloadObWord({
+        form,
+        rows: entries,
+        hr: form,
+        signers: data?.signers,
+        fileName: `${APP.name}_OB_${form.employee_name || "form"}.docx`,
+      });
+      toast.success("Word file downloaded", { id: toastId });
+    } catch (error) {
+      toast.error(friendlyError(error, "Could not download the Word file. Please try again."), {
+        id: toastId,
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const reviewDecision =
     status === "submitted" ? (
       <section>
+        <h2 className="text-sm font-semibold">Review this request</h2>
         {!rejecting ? (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               type="button"
-              className="btn h-8 bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
+              className="btn h-8 bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60 dark:bg-dashboard-accent dark:text-primary-foreground dark:hover:bg-dashboard-accent/80"
               disabled={busy}
               onClick={() => void approve()}
             >
@@ -344,8 +411,8 @@ export function HrObDetailPage({ id }: { id: string }) {
     ) : null;
 
   return (
-    <main className="flex min-h-full w-full flex-col px-4 py-6 md:px-6 md:py-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <main className="flex min-h-full w-full flex-col px-4 py-6 md:px-6 md:py-8 print:block print:h-auto print:overflow-visible print:p-0">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/hr"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -355,54 +422,103 @@ export function HrObDetailPage({ id }: { id: string }) {
         </Link>
       </div>
 
-      <header className="mt-6">
-        <h1 className="text-[2.15rem] font-semibold leading-none tracking-[-0.045em] sm:text-[2.75rem]">
-          Official Business Form
-        </h1>
-        <ObStatusLine
-          audience="hr"
-          doc={{ ...form, employee_photo: data?.employee?.photo ?? null }}
-          signers={data?.signers}
-        />
+      <header className="no-print mt-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[2.15rem] font-semibold leading-none tracking-[-0.045em] sm:text-[2.75rem]">
+            Official Business Form
+          </h1>
+          <ObStatusLine
+            audience="hr"
+            doc={{ ...form, employee_photo: data?.employee?.photo ?? null }}
+            signers={data?.signers}
+          />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className="btn btn-outline" aria-label="Export this form">
+              <Download className="size-4" aria-hidden="true" />
+              <span>Export</span>
+              <ChevronDown className="size-3.5" aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 bg-card text-foreground">
+            <DropdownMenuItem
+              className="focus:bg-muted focus:text-foreground"
+              disabled={exporting}
+              onSelect={() =>
+                void savePdfFrom(
+                  "ob-sheet",
+                  pdfFileName(APP.name, "OB", form.employee_name || "form"),
+                  pdfAttachments,
+                )
+              }
+            >
+              <FileDown className="size-4" aria-hidden="true" />
+              Save as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="focus:bg-muted focus:text-foreground"
+              onSelect={() => printSheet()}
+            >
+              <Printer className="size-4" aria-hidden="true" />
+              Print
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="focus:bg-muted focus:text-foreground"
+              disabled={exporting}
+              onSelect={() => void downloadWord()}
+            >
+              <FileDown className="size-4" aria-hidden="true" />
+              Download Word
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
-      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-        <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <div className="min-w-0 flex-1">
-              <Progress status={status} supervisorDone={supervisorDone} />
-            </div>
-            {latestResubmit ? (
-              <span className="shrink-0 text-xs font-medium text-amber-700 dark:text-amber-400">
-                Changed fields marked
-              </span>
-            ) : null}
-          </div>
-
+      <div className="mt-7 grid gap-6 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+        <div className="no-print min-w-0 space-y-4">
           <section className="hr-card px-6 py-6 md:px-8">
-            <h2 className="text-sm font-medium">Form details</h2>
+            <Progress status={status} supervisorDone={supervisorDone} />
 
-            <div className="mt-4 grid gap-5 sm:grid-cols-2">
-              <ReviewField
-                label="ID number"
-                value={form.id_number}
-                change={changeMap.get("id_number")}
-              />
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-medium">Form details</h2>
+              {latestResubmit ? (
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  Changed fields marked
+                </span>
+              ) : null}
+            </div>
+
+            {/* Photo beside the fields the form already has. Office is the one
+                profile fact the sheet does not store on its own, and only when
+                the department line does not already include it. */}
+            <EmployeeIdentity name={form.employee_name} photo={data?.employee?.photo ?? null}>
               <ReviewField
                 label="Employee name"
                 value={form.employee_name}
                 change={changeMap.get("employee_name")}
               />
               <ReviewField
-                label="Department / location"
-                value={form.department}
-                change={changeMap.get("department")}
+                label="ID number"
+                value={form.id_number}
+                change={changeMap.get("id_number")}
               />
               <ReviewField
                 label="Position"
                 value={form.position}
                 change={changeMap.get("position")}
               />
+              <ReviewField
+                label="Department / location"
+                value={form.department}
+                change={changeMap.get("department")}
+              />
+              {showOffice ? (
+                <ReviewField label="Office" value={data?.employee?.area ?? ""} />
+              ) : null}
+            </EmployeeIdentity>
+
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
               <ReviewField
                 label="Date filed"
                 value={formatMonthDayYear(form.date_filed) || form.date_filed}
@@ -422,40 +538,53 @@ export function HrObDetailPage({ id }: { id: string }) {
 
             <h3 className="mt-7 text-sm font-medium">Itinerary</h3>
             <div className="mt-3 space-y-5">
-              {entries.map((entry, index) => (
-                <div
-                  key={entry.idx}
-                  className={cn(index > 0 && "border-t border-border/70 pt-5")}
-                >
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <ReviewField
-                      label="From"
-                      value={entry.from_place}
-                      change={changeMap.get(`entry:${entry.idx}:from_place`)}
-                    />
-                    <ReviewField
-                      label="Destination"
-                      value={entry.to_place}
-                      change={changeMap.get(`entry:${entry.idx}:to_place`)}
-                    />
-                    <ReviewField
-                      label="Purpose"
-                      value={entry.purpose}
-                      change={changeMap.get(`entry:${entry.idx}:purpose`)}
-                    />
-                    <ReviewField
-                      label="Departure time"
-                      value={entry.time_departure}
-                      change={changeMap.get(`entry:${entry.idx}:time_departure`)}
-                    />
-                    <ReviewField
-                      label="Return time"
-                      value={entry.time_return}
-                      change={changeMap.get(`entry:${entry.idx}:time_return`)}
-                    />
+              {entries.map((entry, index) => {
+                const departureDisplay = obDepartureDisplay(entry, {
+                  hr: form,
+                  isDepartureRow: index === departureRow,
+                });
+                const returnDisplay = obReturnDisplay(entry, {
+                  hr: form,
+                  isReturnRow: index === returnRow,
+                  dateOfOb: form.date_of_ob,
+                });
+                return (
+                  <div
+                    key={entry.idx}
+                    className={cn(index > 0 && "border-t border-border/70 pt-5")}
+                  >
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <ReviewField
+                        label="From"
+                        value={entry.from_place}
+                        change={changeMap.get(`entry:${entry.idx}:from_place`)}
+                      />
+                      <ReviewField
+                        label="Destination"
+                        value={entry.to_place}
+                        change={changeMap.get(`entry:${entry.idx}:to_place`)}
+                      />
+                      <ReviewField
+                        label="Purpose"
+                        value={entry.purpose}
+                        change={changeMap.get(`entry:${entry.idx}:purpose`)}
+                      />
+                      <ReviewField
+                        label="Departure time"
+                        value={departureDisplay.time}
+                        subValue={departureDisplay.date}
+                        change={changeMap.get(`entry:${entry.idx}:time_departure`)}
+                      />
+                      <ReviewField
+                        label="Return time"
+                        value={returnDisplay.time}
+                        subValue={returnDisplay.date}
+                        change={changeMap.get(`entry:${entry.idx}:time_return`)}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {!entries.length ? (
                 <p className="text-sm text-muted-foreground">No itinerary stops.</p>
               ) : null}
@@ -636,36 +765,35 @@ export function HrObDetailPage({ id }: { id: string }) {
           </section>
         </div>
 
-        <aside className="space-y-4">
-          {/* Who HR is reviewing. Approve / Reject live in the card footer. */}
-          {data?.employee ? (
-            <EmployeeProfileCard employee={data.employee} actions={reviewDecision} />
-          ) : (
-            reviewDecision
-          )}
+        <aside className="flex flex-col gap-4 print:gap-0 print:overflow-visible">
+          <div className="no-print space-y-4">
+            {reviewDecision ? <div className="hr-card p-5">{reviewDecision}</div> : null}
 
-          {/* The one status card for the form's current state. Changed fields
-              are marked on the sheet; this card only names which ones. */}
-          <ObStatusCard
-            audience="hr"
-            doc={{ ...form, employee_photo: data?.employee?.photo ?? null }}
-            signers={data?.signers}
-            className="p-5"
-          />
+            {/* The one status card for the form's current state. Changed fields
+                are marked on the sheet; this card only names which ones. */}
+            <ObStatusCard
+              audience="hr"
+              doc={{ ...form, employee_photo: data?.employee?.photo ?? null }}
+              signers={data?.signers}
+              className="p-5"
+            />
+          </div>
 
-          <AttachmentCard
-            kind="ob"
-            id={form.id}
-            file={data?.attachment ?? null}
-            canEdit={false}
-            signedUrl={attachmentLink.data?.url ?? null}
-            signedUrlLoading={attachmentLink.isLoading}
-            stamp={supervisor.state === "approved" ? <ApprovedStamp approved size="sm" /> : null}
-            cardClassName="hr-card relative shrink-0 p-5"
-          />
+          <div className="print:order-2">
+            <AttachmentCard
+              kind="ob"
+              id={form.id}
+              file={data?.attachment ?? null}
+              canEdit={false}
+              signedUrl={attachmentLink.data?.url ?? null}
+              signedUrlLoading={attachmentLink.isLoading}
+              stamp={supervisor.state === "approved" ? <ApprovedStamp approved size="sm" /> : null}
+              cardClassName="hr-card relative shrink-0 p-5"
+            />
+          </div>
 
-          <section className="flex min-h-0 flex-col gap-3">
-            <div className="flex shrink-0 items-center justify-between gap-2">
+          <section className="flex min-h-0 flex-col gap-3 print:gap-0">
+            <div className="no-print flex shrink-0 items-center justify-between gap-2">
               <p className="text-sm font-semibold">Preview</p>
               <button
                 type="button"
@@ -681,9 +809,15 @@ export function HrObDetailPage({ id }: { id: string }) {
               type="button"
               onClick={() => setPreviewOpen(true)}
               aria-label="Open the full Official Business form"
-              className="block w-full overflow-hidden rounded-sm bg-paper text-left ring-offset-background transition-shadow hover:ring-2 hover:ring-dashboard-rule/30"
+              className="block w-full overflow-hidden rounded-sm bg-paper text-left ring-offset-background transition-shadow hover:ring-2 hover:ring-dashboard-rule/30 print:cursor-auto print:ring-0 print:hover:ring-0"
             >
-              <ObPreview form={form} rows={entries} hr={form} signers={data?.signers} />
+              <ObPreview
+                sheetId="ob-sheet"
+                form={form}
+                rows={entries}
+                hr={form}
+                signers={data?.signers}
+              />
             </button>
           </section>
         </aside>
@@ -762,10 +896,13 @@ function ReviewField({
   label,
   value,
   change,
+  subValue,
 }: {
   label: string;
   value: string;
   change?: ObResubmitChange | undefined;
+  /** Second line under the value — a TIME OF cell's signed HR date. */
+  subValue?: string | undefined;
 }) {
   return (
     <div className="min-w-0">
@@ -776,6 +913,9 @@ function ReviewField({
           <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
             Changed
           </span>
+        ) : null}
+        {subValue ? (
+          <span className="w-full text-xs font-medium text-muted-foreground">{subValue}</span>
         ) : null}
       </p>
       {change ? (

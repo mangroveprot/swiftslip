@@ -1,6 +1,16 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Clock, ExternalLink, MapPin, Plus, Search, Trash, X } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  ExternalLink,
+  MapPin,
+  PencilLine,
+  Plus,
+  Search,
+  Trash,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { deleteObForm } from "@/api/official-business.functions";
@@ -43,6 +53,8 @@ type ObRow = {
   resubmit_count?: number;
   /** The trips back to HR, oldest first — the card's line reads the latest. */
   resubmit_history?: ObResubmitEvent[];
+  /** Saved edits not yet sent to HR (migration 0039). */
+  pending_changes?: boolean;
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
   deletes_in_days?: number;
@@ -494,11 +506,18 @@ function ObCard({
               {f.employee_name || "Untitled form"}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{f.id_number || "No ID number"}</p>
-            <ResubmitBadge
-              count={f.resubmit_count}
-              history={f.resubmit_history}
-              className="mt-1.5"
-            />
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <ResubmitBadge count={f.resubmit_count} history={f.resubmit_history} />
+              {f.pending_changes ? (
+                <span
+                  className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap text-sky-700 dark:text-sky-400"
+                  title="Your edits are saved as a draft. HR still sees the version it approved until you resubmit."
+                >
+                  <PencilLine className="size-3 shrink-0" aria-hidden="true" />
+                  Draft changes
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <Link

@@ -11,10 +11,16 @@ import {
   Printer,
   Save,
   Send,
+  X,
 } from "lucide-react";
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 
-import { createObForm, saveObForm, submitObForm } from "@/api/official-business.functions";
+import {
+  cancelObResubmit,
+  createObForm,
+  saveObForm,
+  submitObForm,
+} from "@/api/official-business.functions";
 import { ApiError } from "@/lib/api-client";
 import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
@@ -44,8 +50,8 @@ import { friendlyError, toast } from "@/lib/toast";
 import {
   EMPTY_OB_HR_FIELDS,
   isObLocked,
+  latestObResubmit,
   OB_HR_STATUS_LABELS,
-  obSupervisorDone,
   needsReapprovalAfterSave,
   type ObHrFields,
   type ObHrStatus,
@@ -69,10 +75,10 @@ import { ObEditorSkeleton } from "./ObEditorSkeleton";
 import { ObFormFields } from "./ObFormFields";
 import { ObItineraryTable } from "./ObItineraryTable";
 import { ObPreview } from "./ObPreview";
-import { ObStatusCard, ObStatusLine } from "./ObStatusCard";
+import { ObStatusCard } from "./ObStatusCard";
 
 type SaveStatus = "idle" | AutoSaveStatus;
-type PendingAction = "save" | "submit" | "download";
+type PendingAction = "save" | "submit" | "cancel" | "download";
 
 /** The rows that will actually be saved — blank rows never reach the database. */
 function hasAnyValue(row: ObEntry): boolean {
@@ -107,6 +113,7 @@ function writeFormCache(
     form: ObForm & { id: string; hr_status?: ObHrStatus } & Partial<ObHrFields>;
     entries: ObEntry[];
     signers?: ObSigners;
+    pending_changes?: boolean;
   },
 ) {
   qc.setQueryData(obFormQueryOptions(id).queryKey, (prev) =>
@@ -174,21 +181,25 @@ function ObEditorBody({
 
   // HR owns the lock (D6): only the state sitting in HR's queue is read-only.
   // A draft / rejected / approved / departed / completed form is editable; a
-  // save on an already-approved form sends it back to HR for re-approval.
+  // content edit on an already-approved form is kept as a draft and only goes
+  // back to HR when the employee explicitly resubmits.
   const hrStatus = data?.form.hr_status ?? "draft";
-  const supervisorApproved = data ? obSupervisorDone(data.form) : false;
   const canEdit = Boolean(session) && !isObLocked(hrStatus);
-  // The status card's own note: when a save would send the form back to HR.
-  const reapprovalHint =
-    needsReapprovalAfterSave(hrStatus) || hrStatus === "waiting_supervisor"
-      ? hrStatus === "departed"
-        ? supervisorApproved
-          ? "This form can still be edited, but saving a content change sends it back to HR for re-approval."
-          : "Adding only the supervisor approval keeps your departure. Editing any other detail sends the form back to HR for re-approval."
-        : hrStatus === "waiting_supervisor"
-          ? "Adding only the supervisor approval keeps this form with HR's approval. Editing any other detail sends it back for re-approval."
-          : "This form can still be edited, but saving a change sends it back to HR for re-approval."
-      : null;
+  // HR already approved this content, so an edit waits as a draft.
+  const postApprovalStatus =
+    needsReapprovalAfterSave(hrStatus) || hrStatus === "waiting_supervisor";
+  // The API says whether a saved draft is waiting; `dirty` (below) covers edits
+  // made in this tab that the auto-save has not written yet.
+  const [pendingChanges, setPendingChanges] = useState(false);
+  // Only a resubmission that came from an approved version can be withdrawn:
+  // the API kept that version in `previous_content` for exactly this, and tags
+  // the event with `from_status`. Events written before migration 0039 have no
+  // such data, so the API would refuse — never offer the button for them.
+  const latestResubmit = latestObResubmit(data?.form.resubmit_history);
+  const canCancelResubmit =
+    hrStatus === "submitted" &&
+    latestResubmit?.how === "edited" &&
+    Boolean(latestResubmit.from_status);
   // The attached slip travels with the exported PDF, on its own page after the
   // form. Joins the card's own query, so this costs no extra request.
   const pdfAttachments = usePdfAttachment("ob", rowId ?? id, data?.attachment);
@@ -322,16 +333,10 @@ function ObEditorBody({
     const saved = await saveObForm({ data: { id: target, form: f, entries } });
     deleteSignatureBackup("ob", target);
     savedSigRef.current = f.employee_signature;
-    const wentBack = saved.hr_status === "submitted" && latestRef.current.hrStatus !== "submitted";
     writeFormCache(qc, target, {
-      form: {
-        ...f,
-        id: target,
-        hr_status: saved.hr_status,
-        ...(wentBack ? CLEARED_SIGNOFFS : {}),
-      },
+      form: { ...f, id: target, hr_status: saved.hr_status },
       entries,
-      ...(wentBack ? { signers: {} } : {}),
+      pending_changes: saved.pending_changes,
     });
     qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
   }
@@ -364,6 +369,12 @@ function ObEditorBody({
     savedSigRef.current = nextForm.employee_signature;
     auto.setPersisted(incoming);
   }, [data, profileReady, rowId, id, auto]);
+
+  // The API is the source of truth for "there is a saved draft waiting". A save
+  // and a refetch both update it; local typing is covered by `dirty` instead.
+  useEffect(() => {
+    if (data) setPendingChanges(Boolean(data.pending_changes));
+  }, [data]);
 
   // Build a draft from the profile — in the browser, with no request. The starting
   // point becomes the baseline: whatever differs from it is something the user
@@ -432,6 +443,9 @@ function ObEditorBody({
   const dirty = rowIdRef.current
     ? snapshot !== auto.persistedSnapshot()
     : auto.belowBaseline(snapshot);
+  // The status card's action row: a draft waiting to go back to HR, or the
+  // ability to withdraw a resubmission HR has not reviewed yet.
+  const unsentChanges = postApprovalStatus && (pendingChanges || dirty);
   const statusLabel =
     saveStatus === "saving"
       ? "Saving…"
@@ -443,7 +457,10 @@ function ObEditorBody({
             ? "Unsaved changes"
             : "";
 
-  async function persist(f: ObForm, entries: ObEntry[]): Promise<ObHrStatus | undefined> {
+  async function persist(
+    f: ObForm,
+    entries: ObEntry[],
+  ): Promise<{ hr_status: ObHrStatus; pending_changes: boolean } | undefined> {
     // insertDraft already writes content — don't save again on first create.
     if (!rowIdRef.current) {
       await insertDraft();
@@ -452,20 +469,14 @@ function ObEditorBody({
     const target = rowIdRef.current;
     const saved = await saveObForm({ data: { id: target, form: f, entries } });
     deleteSignatureBackup("ob", target);
-    const wentBack = saved.hr_status === "submitted" && latestRef.current.hrStatus !== "submitted";
     writeFormCache(qc, target, {
-      form: {
-        ...f,
-        id: target,
-        hr_status: saved.hr_status,
-        ...(wentBack ? CLEARED_SIGNOFFS : {}),
-      },
+      form: { ...f, id: target, hr_status: saved.hr_status },
       entries,
-      ...(wentBack ? { signers: {} } : {}),
+      pending_changes: saved.pending_changes,
     });
     auto.setPersisted(JSON.stringify({ form: f, entries }));
     qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey, refetchType: "none" });
-    return saved.hr_status;
+    return saved;
   }
 
   /** Resolve a real row id, creating the draft's row on the spot. */
@@ -489,10 +500,14 @@ function ObEditorBody({
     setPending("save");
     setSaveStatus("saving");
     try {
-      const nextStatus = await persist(form, entries);
+      const saved = await persist(form, entries);
       setSaveStatus("saved");
-      const wentBack = nextStatus === "submitted" && hrStatus !== "submitted";
-      toast.success(wentBack ? "Saved. The form is back with HR for re-approval." : "Saved");
+      if (saved) setPendingChanges(saved.pending_changes);
+      toast.success(
+        saved?.pending_changes
+          ? "Saved as a draft. HR still sees the version it approved."
+          : "Saved",
+      );
     } catch (e) {
       setSaveStatus("error");
       toast.error(friendlyError(e, "Could not save this form. Please try again."));
@@ -539,7 +554,15 @@ function ObEditorBody({
     setPending("submit");
     setSaveStatus("saving");
     try {
-      await persist(form, buildRows(rows));
+      const saved = await persist(form, buildRows(rows));
+      // A post-approval form goes back only with a draft. If the employee
+      // reverted their edit, the save already dropped it — there is nothing to
+      // resubmit, and the API would refuse an empty one.
+      if (postApprovalStatus && saved && !saved.pending_changes) {
+        setSaveStatus("idle");
+        toast.info("There are no changes to send to HR.");
+        return;
+      }
       const target = rowIdRef.current;
       if (!target) throw new Error("This form is not ready yet.");
       await submitObForm({ data: { id: target } });
@@ -547,17 +570,29 @@ function ObEditorBody({
         prev
           ? {
               ...prev,
-              form: { ...prev.form, hr_status: "submitted" as const, hr_reject_reason: "" },
+              form: {
+                ...prev.form,
+                ...CLEARED_SIGNOFFS,
+                hr_status: "submitted" as const,
+                hr_reject_reason: "",
+              },
+              signers: {},
+              pending_changes: false,
             }
           : prev,
       );
+      // Refetch the form itself so the new resubmit event (and therefore the
+      // Cancel action) arrives without a reload. The content is unchanged, so
+      // the editor keeps what is on screen.
+      qc.invalidateQueries({ queryKey: obFormQueryOptions(target).queryKey });
       qc.invalidateQueries({
         queryKey: obFormsQueryOptions().queryKey,
         refetchType: "none",
       });
+      setPendingChanges(false);
       setSaveStatus("saved");
       toast.success(
-        hrStatus === "rejected"
+        postApprovalStatus || hrStatus === "rejected"
           ? "Resubmitted to HR for approval."
           : "Submitted to HR for approval.",
       );
@@ -573,6 +608,31 @@ function ObEditorBody({
       } else {
         toast.error(friendlyError(e, "Could not send this form to HR. Please try again."));
       }
+    } finally {
+      setPending(null);
+    }
+  }
+
+  /**
+   * Withdraw a resubmission HR has not reviewed yet. The API restores the
+   * version HR approved (with its sign-offs) and keeps the employee's text as a
+   * draft, so the form disappears from HR's queue without losing the edit.
+   */
+  async function onCancelResubmit() {
+    const target = rowIdRef.current;
+    if (!target) return;
+    setPending("cancel");
+    try {
+      await cancelObResubmit({ data: { id: target } });
+      await qc.invalidateQueries({ queryKey: obFormQueryOptions(target).queryKey });
+      qc.invalidateQueries({
+        queryKey: obFormsQueryOptions().queryKey,
+        refetchType: "none",
+      });
+      setSaveStatus("saved");
+      toast.success("Withdrawn from HR. Your changes are kept as a draft.");
+    } catch (e) {
+      toast.error(friendlyError(e, "Could not withdraw this submission. Please try again."));
     } finally {
       setPending(null);
     }
@@ -633,13 +693,6 @@ function ObEditorBody({
             Official Business
           </Link>
           <PageTitle className="mt-2">Official Business Form</PageTitle>
-          {data && hasStatusCard(data.form) ? (
-            <ObStatusLine
-              audience="employee"
-              doc={{ ...data.form, employee_photo: profile?.photo ?? null }}
-              signers={data.signers}
-            />
-          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -740,10 +793,9 @@ function ObEditorBody({
 
       <div className="grid gap-6 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         {/* The form column. The status card is its own card sitting ABOVE the
-            form — never inside the form card. The whole page scrolls (like the
-            HR form detail), so neither this column nor the form card clips its
-            content. It reads the same data as the header line, so the two can
-            never disagree. */}
+            form — never inside the form card, and it is the only status line
+            on this page. The whole page scrolls (like the HR form detail), so
+            neither this column nor the form card clips its content. */}
         <div className="no-print flex flex-col gap-5">
           {data && hasStatusCard(data.form) ? (
             <div className="shrink-0">
@@ -751,7 +803,51 @@ function ObEditorBody({
                 audience="employee"
                 doc={{ ...data.form, employee_photo: profile?.photo ?? null }}
                 signers={data.signers}
-                hint={reapprovalHint}
+                actions={
+                  unsentChanges ? (
+                    <>
+                      <p className="min-w-0 text-xs text-muted-foreground">
+                        You have changes that have not been sent to HR. HR still sees the version it
+                        approved.
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-primary shrink-0 disabled:opacity-60"
+                        disabled={busy}
+                        title="Send your draft to HR for a fresh review"
+                        onClick={() => void onSubmitForHr()}
+                      >
+                        {pending === "submit" ? (
+                          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Send className="size-4" aria-hidden="true" />
+                        )}
+                        <span>Resubmit to HR</span>
+                      </button>
+                    </>
+                  ) : canCancelResubmit ? (
+                    <>
+                      <p className="min-w-0 text-xs text-muted-foreground">
+                        Changed your mind? Withdraw this form from HR's queue. Your edits stay as a
+                        draft.
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-outline shrink-0 disabled:opacity-60"
+                        disabled={busy}
+                        title="Withdraw this form from HR's queue"
+                        onClick={() => void onCancelResubmit()}
+                      >
+                        {pending === "cancel" ? (
+                          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <X className="size-4" aria-hidden="true" />
+                        )}
+                        <span>Cancel</span>
+                      </button>
+                    </>
+                  ) : undefined
+                }
               />
             </div>
           ) : null}
@@ -774,6 +870,8 @@ function ObEditorBody({
                 placeOptions={placeOptions}
                 invalid={invalidKeys}
                 hints={invalidHints}
+                hr={data?.form}
+                dateOfOb={form.date_of_ob}
               />
             </div>
 

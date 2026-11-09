@@ -1,15 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, Pencil, Search, ShieldCheck, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { deleteCode, upsertCode } from "@/api/access-codes.functions";
+import { ApiError } from "@/lib/api-client";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { TextField } from "@/components/common/FormField";
 import { OrgSelect } from "@/components/common/OrgSelect";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { OrgOptionDialogs, type OrgActionRequest } from "./OrgOptionDialogs";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,21 @@ type Filter = "all" | "admin" | "user" | "incomplete";
 function roleText(role: string) {
   return role === "admin" ? "Administrator" : "Staff";
 }
+
+/**
+ * The two access levels, each carrying the line that says what it can do. The
+ * dialog draws these as radio buttons rather than a select, so nobody has to
+ * pick "Administrator" without knowing that it is the one that can edit,
+ * import and manage this list.
+ */
+const ACCESS_LEVELS: Array<{ value: Role; label: string; blurb: string }> = [
+  {
+    value: "admin",
+    label: "Administrator",
+    blurb: "Can edit records, import files and manage this list.",
+  },
+  { value: "user", label: "Staff", blurb: "Can view, print and download." },
+];
 
 /**
  * The department a row shows: the one stored on the profile, or the one its
@@ -560,8 +575,11 @@ export function UserManagement() {
   );
 }
 
-/** Create ("new") and edit share one dialog — same fields, different labels
- *  and validation. Blank password on edit keeps the current one. */
+/** Create ("new") and edit share one dialog — same fields, same labels, same
+ *  44px boxes and the same custom pickers, different wording underneath:
+ *  "Create account" / "Save changes", a required password against one that may
+ *  stay blank, and the ID number that only Create can be refused on (the red
+ *  line and the caret return to the field it belongs to). */
 function AccountDialog({
   editing,
   onClose,
@@ -574,6 +592,9 @@ function AccountDialog({
   const isNew = editing === "new";
   const account = editing !== "new" ? editing : null;
   const [idNumber, setIdNumber] = useState("");
+  /** Under the ID box: "Enter the ID number." or the duplicate the API refused. */
+  const [idError, setIdError] = useState<string | null>(null);
+  const idRef = useRef<HTMLInputElement>(null);
   const [role, setRole] = useState<Role>("user");
   const [password, setPassword] = useState("");
   const [designation, setDesignation] = useState("");
@@ -597,6 +618,8 @@ function AccountDialog({
   if (openKey && openKey !== openId) {
     setOpenId(openKey);
     setIdNumber(isNew ? "" : (account?.id_number ?? ""));
+    // A refusal belongs to the account that was open before this one.
+    setIdError(null);
     setRole(isNew ? "user" : (account?.role ?? "user"));
     setPassword("");
     setDesignation(isNew ? "" : (account?.designation ?? ""));
@@ -627,10 +650,26 @@ function AccountDialog({
       ? [...baseDepartments, impliedDepartment]
       : baseDepartments;
 
+  /**
+   * Return to the ID box with the caret at the END and nothing selected — the
+   * spec's "the text is not selected, the cursor sits at the end". Programmed
+   * focus is the only place that needs saying out loud: left to the browser it
+   * can arrive as a full-width highlight, which is what made the old dialog
+   * look as though it had pre-selected the number.
+   */
+  function focusId() {
+    const el = idRef.current;
+    if (!el) return;
+    el.focus();
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  }
+
   async function save() {
     if (editing === null) return;
     if (!idNumber.trim()) {
-      toast.error("Enter the ID number.");
+      setIdError("Enter the ID number.");
+      focusId();
       return;
     }
     if (isNew && !password) {
@@ -682,6 +721,14 @@ function AccountDialog({
       toast.success(isNew ? "Account created" : "Account updated");
       onSaved();
     } catch (e) {
+      // A duplicate ID is refused by the FIELD, so it is shown on the field:
+      // red frame, one red line, caret back in the box to retype it. A toast
+      // would say the same thing twice and could not point at the offender.
+      if (e instanceof ApiError && e.code === "UNIQUE_FIELD_ERROR") {
+        setIdError("This ID number is already in use.");
+        focusId();
+        return;
+      }
       toast.error(e instanceof Error ? e.message : "Could not save changes.");
     } finally {
       setBusy(false);
@@ -691,115 +738,192 @@ function AccountDialog({
   return (
     <>
       <Dialog open={editing !== null} onOpenChange={(open) => !open && !busy && onClose()}>
-        <DialogContent>
+        <DialogContent
+          // Radix already traps Tab inside the dialog and closes it on Esc —
+          // what it does NOT get right is where the caret starts: it would put
+          // it on the X in the corner. The dialog opens on its first field, so
+          // the ID number can be typed straight away.
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            focusId();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{isNew ? "Create account" : "Edit account"}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <TextField
-              label="ID Number"
-              value={idNumber}
-              onChange={setIdNumber}
-              placeholder="e.g. 2026-XXX"
-            />
-            <label className="block">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Access level
-              </span>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                <option value="user">Staff</option>
-                <option value="admin">Administrator</option>
-              </select>
-            </label>
-            <OrgSelect
-              id="account-designation"
-              label="Designation"
-              list={designationOptions}
-              value={designation}
-              placeholder="e.g. RGC Dipolog Satellite"
-              onChange={(v) => setDesignation(normalizeDesignation(v))}
-              onValidityChange={setDesignationInvalid}
-              actions={{
-                onAdd: () => setOrgRequest({ kind: "designation", mode: "add" }),
-                onRename: (value) => setOrgRequest({ kind: "designation", mode: "rename", value }),
-                onDelete: (value) => setOrgRequest({ kind: "designation", mode: "delete", value }),
-              }}
-            />
-            <OrgSelect
-              id="account-department"
-              label="Department"
-              list={departmentOptions}
-              value={department}
-              placeholder="e.g. Information Technology"
-              onChange={(v) => {
-                setDepartment(v);
-                // A Position lives under exactly one Department — if the one
-                // already picked doesn't belong here, clear it rather than save
-                // an impossible pair.
-                if (position && !positionsUnder(v, orgLists).includes(position)) setPosition("");
-              }}
-              onValidityChange={setDepartmentInvalid}
-              // Each row carries its own rename / trash; the panel ends with Add.
-              actions={{
-                onAdd: () => setOrgRequest({ kind: "department", mode: "add" }),
-                onRename: (value) => setOrgRequest({ kind: "department", mode: "rename", value }),
-                onDelete: (value) => setOrgRequest({ kind: "department", mode: "delete", value }),
-              }}
-            />
-            <OrgSelect
-              id="account-position"
-              label="Position"
-              list={positionList}
-              value={position}
-              placeholder={department ? "Pick a position in this department" : "e.g. IT Support"}
-              onChange={(v) => {
-                const next = normalizePosition(v);
-                setPosition(next);
-                // The department follows the position only when the current one
-                // can't hold it — a department the admin just picked by hand
-                // must stay picked, or choosing a position under "IT DEP"
-                // silently rewrote the department back to "Information
-                // Technology".
-                const implied = departmentForPosition(next, orgLists);
-                if (implied && !positionsUnder(department, orgLists).includes(next)) {
-                  setDepartment(implied);
-                }
-              }}
-              onValidityChange={setPositionInvalid}
-              actions={{
-                onAdd: () => setOrgRequest({ kind: "position", mode: "add" }),
-                onRename: (value) => setOrgRequest({ kind: "position", mode: "rename", value }),
-                onDelete: (value) => setOrgRequest({ kind: "position", mode: "delete", value }),
-              }}
-            />
-            <TextField
-              label={isNew ? "Password" : "Reset password"}
-              value={password}
-              onChange={setPassword}
-              type="password"
-              placeholder={isNew ? "" : "Leave blank to keep the current password"}
-              autoComplete="new-password"
-            />
-            {isNew ? (
-              <p className="text-xs text-muted-foreground">
-                They will sign in with this ID number and password.
-              </p>
-            ) : null}
-          </div>
+          {/* One form for both modes: Enter in any field saves, Tab walks the
+              fields in the order they are drawn, and every box on the way is
+              the same box. */}
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!busy) void save();
+            }}
+          >
+            <div className="space-y-4">
+              <TextField
+                label="ID number"
+                value={idNumber}
+                onChange={(next) => {
+                  setIdNumber(next);
+                  // The number that was refused is no longer the number shown.
+                  if (idError) setIdError(null);
+                }}
+                placeholder="e.g. 2026-515"
+                error={idError ?? undefined}
+                inputRef={idRef}
+              />
 
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose} disabled={busy}>
-              Cancel
-            </Button>
-            <Button onClick={save} disabled={busy}>
-              {busy ? (isNew ? "Creating…" : "Saving…") : isNew ? "Create account" : "Save changes"}
-            </Button>
-          </DialogFooter>
+              {/* Access level is two radios, each carrying the line that says
+                  what it can do — the select it replaces made nobody guess
+                  what "Administrator" meant. Native inputs, so the arrow keys
+                  move between the two exactly as a radio group should. */}
+              <fieldset>
+                <legend className="lbl">Access level</legend>
+                <div className="mt-1 space-y-1">
+                  {ACCESS_LEVELS.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex cursor-pointer items-start gap-2.5 rounded-md py-1"
+                    >
+                      <input
+                        type="radio"
+                        name="account-access-level"
+                        className="mt-0.5 size-4 shrink-0 accent-primary"
+                        checked={role === option.value}
+                        onChange={() => setRole(option.value)}
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-[13px] leading-5">{option.label}</span>
+                        <span className="block text-xs text-muted-foreground">{option.blurb}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* The office and its department share one row; Position runs the
+                  full width beneath them, as in the reference. */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <OrgSelect
+                  id="account-designation"
+                  label="Designation"
+                  list={designationOptions}
+                  value={designation}
+                  placeholder="e.g. RGC Dipolog Satellite"
+                  emptyLabel="Select a designation"
+                  onChange={(v) => setDesignation(normalizeDesignation(v))}
+                  onValidityChange={setDesignationInvalid}
+                  actions={{
+                    onAdd: () => setOrgRequest({ kind: "designation", mode: "add" }),
+                    onRename: (value) =>
+                      setOrgRequest({ kind: "designation", mode: "rename", value }),
+                    onDelete: (value) =>
+                      setOrgRequest({ kind: "designation", mode: "delete", value }),
+                  }}
+                />
+                <OrgSelect
+                  id="account-department"
+                  label="Department"
+                  list={departmentOptions}
+                  value={department}
+                  placeholder="e.g. Information Technology"
+                  emptyLabel="Select a department"
+                  onChange={(v) => {
+                    setDepartment(v);
+                    // A Position lives under exactly one Department — if the one
+                    // already picked doesn't belong here, clear it rather than save
+                    // an impossible pair.
+                    if (position && !positionsUnder(v, orgLists).includes(position))
+                      setPosition("");
+                  }}
+                  onValidityChange={setDepartmentInvalid}
+                  // Each row carries its own rename / trash; the panel ends with Add.
+                  actions={{
+                    onAdd: () => setOrgRequest({ kind: "department", mode: "add" }),
+                    onRename: (value) =>
+                      setOrgRequest({ kind: "department", mode: "rename", value }),
+                    onDelete: (value) =>
+                      setOrgRequest({ kind: "department", mode: "delete", value }),
+                  }}
+                />
+              </div>
+              <OrgSelect
+                id="account-position"
+                label="Position"
+                list={positionList}
+                value={position}
+                placeholder={department ? "Pick a position in this department" : "e.g. IT Support"}
+                emptyLabel="Select a position"
+                onChange={(v) => {
+                  const next = normalizePosition(v);
+                  setPosition(next);
+                  // The department follows the position only when the current one
+                  // can't hold it — a department the admin just picked by hand
+                  // must stay picked, or choosing a position under "IT DEP"
+                  // silently rewrote the department back to "Information
+                  // Technology".
+                  const implied = departmentForPosition(next, orgLists);
+                  if (implied && !positionsUnder(department, orgLists).includes(next)) {
+                    setDepartment(implied);
+                  }
+                }}
+                onValidityChange={setPositionInvalid}
+                actions={{
+                  onAdd: () => setOrgRequest({ kind: "position", mode: "add" }),
+                  onRename: (value) => setOrgRequest({ kind: "position", mode: "rename", value }),
+                  onDelete: (value) => setOrgRequest({ kind: "position", mode: "delete", value }),
+                }}
+              />
+              {/* The same field as the ID box above it; only the wording of the
+                  rule underneath differs between the two modes. */}
+              <TextField
+                label={isNew ? "Password" : "Reset password"}
+                value={password}
+                onChange={setPassword}
+                type="password"
+                placeholder={
+                  isNew
+                    ? `At least ${PASSWORD_MIN_LENGTH} characters`
+                    : "Leave blank to keep the current password"
+                }
+                autoComplete="new-password"
+                hint={
+                  isNew
+                    ? "They can change it after they sign in."
+                    : "Only fill this in to give the person a new password."
+                }
+              />
+            </div>
+
+            <DialogFooter className="mt-5">
+              <button
+                type="button"
+                className="btn btn-outline focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                onClick={onClose}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                // The same green every other primary action in the app saves
+                // with; in dark mode it lifts to the dashboard green so the ink
+                // on top stays readable instead of turning cream-on-green.
+                className="btn bg-success text-success-foreground hover:bg-success-hover focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:bg-dashboard-accent dark:text-primary-foreground dark:hover:bg-dashboard-accent/80"
+                disabled={busy}
+              >
+                {busy
+                  ? isNew
+                    ? "Creating…"
+                    : "Saving…"
+                  : isNew
+                    ? "Create account"
+                    : "Save changes"}
+              </button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

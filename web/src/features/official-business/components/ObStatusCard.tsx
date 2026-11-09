@@ -26,6 +26,12 @@ type ObStatusProps = {
    * wherever the card is placed.
    */
   hint?: ReactNode | undefined;
+  /**
+   * Buttons that act on this state — "Resubmit to HR" on a draft, "Cancel" on a
+   * resubmission. Rendered in their own row so they are never nested in the
+   * note's paragraph.
+   */
+  actions?: ReactNode | undefined;
 };
 
 /**
@@ -142,7 +148,7 @@ function FieldNote({ field, align = "start" }: { field: ObStatusField; align?: "
  * like a record. Nothing here is a status of its own: it renders whatever
  * `buildStatusCard` derives, so the two screens can never disagree.
  */
-export function ObStatusCard({ doc, signers, audience, className, hint }: ObStatusProps) {
+export function ObStatusCard({ doc, signers, audience, className, hint, actions }: ObStatusProps) {
   if (!hasStatusCard(doc)) return null;
 
   const card = buildStatusCard(audience, doc, signers);
@@ -202,6 +208,11 @@ export function ObStatusCard({ doc, signers, audience, className, hint }: ObStat
       {hint ? (
         <div className="mt-3 border-t border-border pt-3">
           <p className="text-xs text-muted-foreground">{hint}</p>
+        </div>
+      ) : null}
+      {actions ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+          {actions}
         </div>
       ) : null}
     </section>

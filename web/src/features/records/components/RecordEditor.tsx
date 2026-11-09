@@ -29,7 +29,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EditorSkeleton } from "@/components/common/Skeletons";
 import { useSession } from "@/features/auth/use-session";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { DTR_TEMPLATE } from "@swiftslip/shared/dtr-template";
@@ -62,6 +61,7 @@ import { recordQueryOptions, recordsQueryOptions, recordOtherUrlsQueryOptions } 
 import { BiometricImportDialog } from "./BiometricImportDialog";
 import { DailyEntriesTable } from "./DailyEntriesTable";
 import { DtrPreview } from "./DtrPreview";
+import { RecordEditorSkeleton } from "./RecordEditorSkeleton";
 import { RecordHeaderFields } from "./RecordHeaderFields";
 import { RecordOtherAttachmentsCard } from "./RecordOtherAttachmentsCard";
 
@@ -357,7 +357,7 @@ function RecordEditorBody({
   // profile query, so this is normally instant.
   if (isError && isMissingRow(error))
     return <FormUnavailable backTo="/records" label="Time records" />;
-  if (!header) return <EditorSkeleton />;
+  if (!header) return <RecordEditorSkeleton />;
 
   const days = daysForPeriod(header.period, header.month, header.year);
 

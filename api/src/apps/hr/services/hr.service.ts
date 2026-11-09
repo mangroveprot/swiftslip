@@ -59,8 +59,14 @@ type ObRow = Awaited<ReturnType<HrObRepository['findOne']>>;
 
 /** Shape the DB row as the employee form + HR columns the shared types expect. */
 function asDetail(form: NonNullable<ObRow>, entries: ObEntry[]): HrObDetail {
+  // The employee's pending draft and the withdrawn version are internal working
+  // data (each carries a full signature). HR reviews the live row only, so the
+  // blobs never travel to the reviewer.
+  const row = { ...form } as Record<string, unknown>;
+  delete row.pending_content;
+  delete row.previous_content;
   return {
-    form: form as unknown as ObForm & HrObDetail['form'],
+    form: row as unknown as ObForm & HrObDetail['form'],
     entries: entries as unknown as ObEntry[],
     ...(form.attachment_name
       ? { attachment: { name: form.attachment_name } }
