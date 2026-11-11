@@ -9,6 +9,8 @@ import { GRANTABLE_APP_KEYS, RULE_SCOPES, STORAGE_BACKENDS } from "./types";
 import type {
   CosForm,
   CosSchedule,
+  LiqExpense,
+  LiqForm,
   LoaForm,
   ObEntry,
   ObForm,
@@ -242,6 +244,121 @@ export const saveLoaFormInput = z.object({
   id,
   form: loaFormSchema,
 });
+
+export const createLiqFormInput = z.object({
+  // Client passes its local "today" (YYYY-MM-DD) so Date Prepared defaults
+  // correctly for the user's timezone rather than the server's.
+  date_prepared: z.string().optional(),
+});
+
+export const liqFormSchema = z.object({
+  department: z.string(),
+  section_location: z.string(),
+  cost_center: z.string(),
+  date_prepared: z.string(),
+  trip_to: z.string(),
+  purpose: z.string(),
+  currency: z.string(),
+  prepared_by: z.string(),
+  approved_by: z.string(),
+  employee_signature: z.string(),
+  attachment_approved: z.boolean(),
+  approved_via_viber: z.boolean(),
+});
+
+export const liqExpenseSchema = z.object({
+  idx: z.number().int().min(0).max(50),
+  expense_date: z.string(),
+  description: z.string(),
+  transpo: z.string(),
+  fuel_gas: z.string(),
+  meals: z.string(),
+  office_supplies: z.string(),
+  load_accommodation: z.string(),
+  entertainment_gifts: z.string(),
+  other_expenses: z.string(),
+});
+
+export const saveLiqFormInput = z.object({
+  id,
+  form: liqFormSchema,
+  /** One entry per expense line — the child rows behind the form. */
+  entries: z.array(liqExpenseSchema).max(50),
+});
+
+// Conversational agent that reads receipts and fills the Statement of Liquidation.
+export const liqChatMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  text: z.string().max(4000),
+});
+
+/**
+ * One receipt photo/scan. The 5-image ceiling is the "read this file" concept
+ * the DTR biometric import uses, widened for a trip that comes back with a
+ * handful of small receipts instead of one sheet.
+ */
+export const liqChatImageSchema = z.object({
+  mimeType: z.string().min(1).max(100),
+  base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
+});
+
+export const liqChatInput = z.object({
+  // Transcript so far (oldest first). The assistant answers the last user turn.
+  messages: z.array(liqChatMessageSchema).min(1).max(40),
+  // The form exactly as it stands — the assistant patches it, never resets it.
+  form: liqFormSchema,
+  // The expense lines as they stand, so a correction ("change the 159 to 160")
+  // lands on the right row instead of starting over.
+  entries: z.array(liqExpenseSchema).max(50),
+  // The user's local date (YYYY-MM-DD) so "today" / "yesterday" resolve correctly.
+  today: z.string().max(40).optional(),
+  // Up to five receipts in one turn, read the same way the biometric import is.
+  images: z.array(liqChatImageSchema).max(5).optional(),
+});
+
+/**
+ * One expense row as the assistant sends it back. Unlike `liqExpenseSchema`
+ * every cell defaults to `""` and `idx` may be omitted: structured output drops
+ * empty strings, so a strict object would reject the whole turn over six blank
+ * columns the model never mentioned.
+ */
+export const liqChatRowSchema = z.object({
+  idx: z.number().optional(),
+  expense_date: z.string().default(""),
+  description: z.string().default(""),
+  transpo: z.string().default(""),
+  fuel_gas: z.string().default(""),
+  meals: z.string().default(""),
+  office_supplies: z.string().default(""),
+  load_accommodation: z.string().default(""),
+  entertainment_gifts: z.string().default(""),
+  other_expenses: z.string().default(""),
+});
+
+export type LiqChatRow = z.infer<typeof liqChatRowSchema>;
+
+/** The model's answer, validated before it is allowed to reach the client. */
+export const liqChatReplySchema = z.object({
+  reply: z.string().max(4000).default(""),
+  // Only the header cells the assistant decided to change.
+  form: liqFormSchema.partial().optional(),
+  // One row per expense line the assistant filled, in idx order.
+  entries: z.array(liqChatRowSchema).max(50).optional(),
+});
+
+export type LiqChatInput = z.infer<typeof liqChatInput>;
+
+/**
+ * What the LIQ assistant is allowed to send back: a short message, the header
+ * cells it changed, and the full replacement expense lines. Declared by hand
+ * (rather than inferred) so the patches are plain `Partial<LiqForm>` /
+ * `LiqExpense[]`.
+ */
+export type LiqChatReply = {
+  reply: string;
+  form?: Partial<LiqForm>;
+  entries?: LiqExpense[];
+};
 
 export const createCosFormInput = z.object({
   // Client passes its local "today" (YYYY-MM-DD) so Date Filed defaults correctly
@@ -493,6 +610,10 @@ export const upsertCodeInput = z.object({
   designation: z.string().trim().max(200).optional(),
   department: z.string().trim().max(200).optional(),
   position: z.string().trim().max(200).optional(),
+  // The company the employee works for — `profiles.employer`. Stored as a
+  // smallint code: 0 = Regasco, 1 = Mindbridge. Omitted leaves the stored value
+  // untouched, like the other profile fields.
+  employer: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 
 /**
@@ -636,6 +757,10 @@ export const employeeProfileSchema = z.object({
   designation: z.string(),
   area: z.string(),
   department: z.string().default(""),
+  // `employer` is deliberately absent: only an admin can change it (User
+  // management → `updateUserInput`). Keeping it out of this schema means a
+  // self-service profile save can never overwrite the company an admin set,
+  // while `GET /profile/me` still returns it for branding.
   signature: z.string().default(""),
   /**
    * 256 × 256 data URL. The cap is a guard, not a target: the cropper exports
@@ -741,7 +866,7 @@ export const listActivityLogsQuery = z.object({
  * The form types the cleanup can be pointed at, one checkbox each in the
  * admin UI. `dtr` is the Daily Time Record; the rest are the form tables.
  */
-export const RETENTION_FORM_TYPES = ["dtr", "ob", "loa", "cos", "ot"] as const;
+export const RETENTION_FORM_TYPES = ["dtr", "ob", "loa", "cos", "ot", "liq"] as const;
 
 export type RetentionFormType = (typeof RETENTION_FORM_TYPES)[number];
 

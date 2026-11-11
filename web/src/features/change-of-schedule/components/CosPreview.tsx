@@ -1,6 +1,6 @@
-import { APP } from "@/config/app";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { CosForm, CosSchedule } from "@swiftslip/shared/types";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { formatScheduleLine } from "../lib/schedule-line";
 
 /**
@@ -27,6 +27,7 @@ export function CosPreview({
   schedules: CosSchedule[];
   sheetId?: string;
 }) {
+  const { logoPath, isRegasco } = useEmployerLogo();
   const ticked = (on: boolean) => (on ? "✕" : "");
   // At least one (blank) line so the block keeps its value row.
   const padded: (CosSchedule | null)[] = [...schedules];
@@ -36,7 +37,11 @@ export function CosPreview({
     <div id={sheetId} className="print-sheet cos-sheet">
       <div className="form">
         <div className="logo">
-          <img src={APP.obLogoPath} alt="Mindbridge" className="h-auto w-[30%] object-contain" />
+          <img
+            src={logoPath}
+            alt=""
+            className={`h-auto object-contain ${isRegasco ? "w-[48%]" : "w-[30%]"}`}
+          />
         </div>
         <h1>CHANGE OF SCHEDULE FORM</h1>
 

@@ -7,6 +7,11 @@ import { getCosAttachmentUrl, removeCosAttachment, uploadCosAttachment } from "@
 import { getOtAttachmentUrl, removeOtAttachment, uploadOtAttachment } from "@/api/ot.functions";
 import { removeLoaAttachment, uploadLoaAttachment } from "@/api/loa.functions";
 import {
+  getLiqAttachmentUrl,
+  removeLiqAttachment,
+  uploadLiqAttachment,
+} from "@/api/liquidation.functions";
+import {
   getRecordAttachmentUrl,
   removeRecordAttachment,
   uploadRecordAttachment,
@@ -30,6 +35,11 @@ import {
   loaFormsQueryOptions,
 } from "@/features/leave-of-absence/queries";
 import {
+  liqAttachmentUrlQueryOptions,
+  liqFormQueryOptions,
+  liqFormsQueryOptions,
+} from "@/features/liquidation/queries";
+import {
   obAttachmentUrlQueryOptions,
   obFormQueryOptions,
   obFormsQueryOptions,
@@ -45,7 +55,7 @@ import { toast } from "@/lib/toast";
 
 /** What the document means for this row: the OB slip and the LOA approval
  *  attachment drive an approval mark; the DTR's file is a supporting file. */
-type AttachmentKind = "ob" | "loa" | "cos" | "ot" | "record";
+type AttachmentKind = "ob" | "loa" | "cos" | "ot" | "liq" | "record";
 
 const MAX_MB = 10;
 
@@ -81,6 +91,13 @@ const COPY: Record<
     removeDescription:
       "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
   },
+  liq: {
+    title: "Approval attachment",
+    empty: "Attach the approval slip PDF, image or document, up to 10 MB",
+    removeTitle: "Remove this attachment?",
+    removeDescription:
+      "The uploaded file is deleted and the approval mark is cleared. This can't be undone.",
+  },
   record: {
     title: "Attachment",
     empty: "Attach a supporting document PDF, image or document, up to 10 MB",
@@ -94,6 +111,7 @@ const URL_QUERY = {
   loa: loaAttachmentUrlQueryOptions,
   cos: cosAttachmentUrlQueryOptions,
   ot: otAttachmentUrlQueryOptions,
+  liq: liqAttachmentUrlQueryOptions,
   record: recordAttachmentUrlQueryOptions,
 };
 
@@ -185,7 +203,9 @@ export function AttachmentCard({
             ? cosFormQueryOptions(rowId)
             : kind === "ot"
               ? otFormQueryOptions(rowId)
-              : obFormQueryOptions(rowId)
+              : kind === "liq"
+                ? liqFormQueryOptions(rowId)
+                : obFormQueryOptions(rowId)
     ).queryKey;
     const listKey = (
       kind === "record"
@@ -196,7 +216,9 @@ export function AttachmentCard({
             ? cosFormsQueryOptions()
             : kind === "ot"
               ? otFormsQueryOptions()
-              : obFormsQueryOptions()
+              : kind === "liq"
+                ? liqFormsQueryOptions()
+                : obFormsQueryOptions()
     ).queryKey;
     await Promise.all([
       qc.invalidateQueries({ queryKey: urlKey }),
@@ -234,6 +256,7 @@ export function AttachmentCard({
     else if (kind === "loa") await uploadLoaAttachment(payload);
     else if (kind === "cos") await uploadCosAttachment(payload);
     else if (kind === "ot") await uploadOtAttachment(payload);
+    else if (kind === "liq") await uploadLiqAttachment(payload);
     else await uploadRecordAttachment(payload);
     onUploaded?.();
     await refresh(rowId);
@@ -262,6 +285,7 @@ export function AttachmentCard({
       else if (kind === "loa") await removeLoaAttachment({ data: { id } });
       else if (kind === "cos") await removeCosAttachment({ data: { id } });
       else if (kind === "ot") await removeOtAttachment({ data: { id } });
+      else if (kind === "liq") await removeLiqAttachment({ data: { id } });
       else await removeRecordAttachment({ data: { id } });
       onRemoved?.();
       await refresh(id);

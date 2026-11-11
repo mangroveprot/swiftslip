@@ -5,6 +5,11 @@ import { Check, ImagePlus, Loader2, Paperclip, Send, Trash2, X } from "lucide-re
 import { AiLauncher } from "./AiLauncher";
 import { AiMascot } from "./AiMascot";
 import { QuickStartChips, type QuickStartOption } from "./QuickStartChips";
+import {
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENT_MB,
+  prepareAttachment,
+} from "@/lib/attachment-upload";
 import { fileToBase64 } from "@/lib/file";
 import { toast } from "@/lib/toast";
 
@@ -12,8 +17,10 @@ import { toast } from "@/lib/toast";
 export type AssistantMessage = {
   role: "user" | "assistant";
   text: string;
-  /** Name of a file attached to this turn, shown under the text. */
+  /** Name of the single file attached to this turn, shown under the text. */
   fileName?: string;
+  /** Names of several files sent together (the LIQ assistant's receipts). */
+  fileNames?: string[];
   /** The assistant changed the form on this turn. */
   updated?: boolean;
   /** The turn failed — render the bubble in the destructive style. */
@@ -26,11 +33,26 @@ export type AssistantMessage = {
 export type AssistantSubmit = {
   /** The transcript so far (with "Attached: name" in place of the file), oldest first. */
   messages: { role: "user" | "assistant"; text: string }[];
-  /** Base64 payload of the attachment, when the user added one. */
+  /** Base64 payload of the first attachment (`images[0] ?? null`). */
   image: { mimeType: string; base64: string } | null;
+  /** Every attachment on this turn, in pick order — at most `maxAttachments`. */
+  images: { mimeType: string; base64: string }[];
   /** The user's local day (YYYY-MM-DD), so "today"/"tomorrow" resolve correctly. */
   today: string;
 };
+
+/** What the composer accepts: any picture the browser renders, or a PDF. */
+function isChatFile(file: File): boolean {
+  if (file.type.startsWith("image/") || file.type === "application/pdf") return true;
+  // Windows often reports an empty type; judge the extension instead.
+  return !file.type && /\.(pdf|png|jpe?g|gif|webp|bmp)$/i.test(file.name);
+}
+
+/** The transcript line that stands in for a turn's attachments. */
+function attachedLabel(m: AssistantMessage): string {
+  const names = m.fileNames?.length ? m.fileNames : m.fileName ? [m.fileName] : [];
+  return names.length ? `Attached: ${names.join(", ")}` : "";
+}
 
 /** How much of the transcript is replayed to the model. */
 const MAX_TURNS = 20;
@@ -47,9 +69,15 @@ const MAX_TURNS = 20;
  * hints, placeholder) and the API call differ, so those arrive as props and the
  * per-form files stay thin wrappers around this component.
  *
- * Each turn builds the transcript plus any attachment, then calls `onSubmit`,
+ * Each turn builds the transcript plus any attachments, then calls `onSubmit`,
  * which performs the server request and applies the returned patch. This
  * component only owns presentation and the chat's own state.
+ *
+ * A turn normally carries one photo or PDF, but some forms come back with
+ * several at once — a trip's receipts, say — so `maxAttachments` widens the
+ * composer to a small list (10 MB each). `compressImages` downscales every
+ * picture before it is base64-encoded, which is what lets five receipts fit in
+ * a single request; a PDF always travels byte for byte.
  */
 export function AssistantChat({
   title,
@@ -63,6 +91,8 @@ export function AssistantChat({
   attachTitle,
   launcherLabel,
   launcherOpenLabel,
+  maxAttachments = 1,
+  compressImages = false,
   onSubmit,
 }: {
   /** Heading in the orange header, e.g. "LOA Assistant". */
@@ -87,6 +117,10 @@ export function AssistantChat({
   launcherLabel: string;
   /** Accessible name for the open launcher. */
   launcherOpenLabel: string;
+  /** Most files one turn may carry — the default keeps a single attachment. */
+  maxAttachments?: number;
+  /** Downscale pictures before encoding them (several receipts in one request). */
+  compressImages?: boolean;
   /** Runs the turn and reports the reply (and whether the form changed). */
   onSubmit: (submit: AssistantSubmit) => Promise<{ reply: string; changed: boolean }>;
 }) {
@@ -94,7 +128,7 @@ export function AssistantChat({
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachments, setAttachments] = useState<File[]>([]);
   const [mounted, setMounted] = useState(false);
   // Captured once so the opening bubble keeps a stable timestamp.
   const [greetingTime] = useState(nowLabel);
@@ -130,41 +164,90 @@ export function AssistantChat({
   }, [messages, busy, open]);
 
   // Grow the composer with what's being typed instead of scrolling inside it.
+  // `auto` first so the box can shrink again, and re-run on open: the textarea
+  // only exists once the window is mounted, so measuring on mount alone left it
+  // at its CSS height while the placeholder wrapped out of it.
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    el.style.height = "0px";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [input]);
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+  }, [input, open]);
+
+  /**
+   * Queue picked or pasted files while respecting the cap. With the default
+   * single slot a new pick swaps the current file, exactly as before; with
+   * several slots the list fills up and anything past the cap is dropped
+   * rather than silently pushing someone's receipt out.
+   */
+  function addFiles(picked: File[]) {
+    if (busy || picked.length === 0) return;
+    const sendable: File[] = [];
+    for (const file of picked) {
+      if (!isChatFile(file)) {
+        toast.error(`${file.name} is not a photo or PDF.`);
+        continue;
+      }
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        toast.error(`${file.name} is larger than ${MAX_ATTACHMENT_MB} MB.`);
+        continue;
+      }
+      sendable.push(file);
+    }
+    if (sendable.length === 0) return;
+    const last = sendable[sendable.length - 1];
+    if (!last) return;
+    setAttachments((prev) => {
+      if (maxAttachments <= 1) return [last];
+      const room = Math.max(0, maxAttachments - prev.length);
+      return room === 0 ? prev : [...prev, ...sendable.slice(0, room)];
+    });
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }
 
   async function send(preset?: string) {
     const text = (preset ?? input).trim();
-    if (busy || (!text && !attachment)) return;
+    if (busy || (!text && attachments.length === 0)) return;
 
-    const file = attachment;
+    const files = attachments;
+    const first = files[0]?.name;
     const outgoing: AssistantMessage = {
       role: "user",
       text,
       time: nowLabel(),
-      ...(file ? { fileName: file.name } : {}),
+      ...(files.length === 1 && first ? { fileName: first } : {}),
+      ...(files.length > 1 ? { fileNames: files.map((file) => file.name) } : {}),
     };
     const next = [...messages, outgoing];
     setMessages(next);
     // A quick-start chip sends a canned prompt; keep any half-typed draft.
     if (preset === undefined) setInput("");
-    setAttachment(null);
+    setAttachments([]);
     setBusy(true);
 
     try {
-      const image = file
-        ? { mimeType: file.type || "application/pdf", base64: await fileToBase64(file) }
-        : null;
+      const images = await Promise.all(
+        files.map(async (file) => {
+          // A receipt photo is downscaled first so five of them still fit in
+          // one request; a PDF is never re-encoded.
+          const prepared =
+            compressImages && file.type.startsWith("image/") ? await prepareAttachment(file) : file;
+          return {
+            mimeType: prepared.type || file.type || "application/pdf",
+            base64: await fileToBase64(prepared),
+          };
+        }),
+      );
       const reply = await onSubmit({
         messages: next.slice(-MAX_TURNS).map((m) => ({
           role: m.role,
-          text: m.text || (m.fileName ? `Attached: ${m.fileName}` : ""),
+          text: m.text || attachedLabel(m),
         })),
-        image,
+        image: images[0] ?? null,
+        images,
         today: localToday(),
       });
       setMessages((prev) => [
@@ -177,12 +260,18 @@ export function AssistantChat({
         },
       ]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "The assistant could not reply.");
+      // Show what actually failed: "the AI returned an unexpected response" is
+      // far more useful on screen than a generic apology.
+      const message =
+        e instanceof Error && e.message
+          ? e.message
+          : "The assistant could not reply. Please try again.";
+      toast.error(message);
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          text: "Sorry, I couldn't process that. Please try again.",
+          text: message,
           time: nowLabel(),
           error: true,
         },
@@ -277,18 +366,26 @@ export function AssistantChat({
           </div>
 
           <footer className="shrink-0 border-t border-border bg-card p-2.5">
-            {attachment ? (
-              <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-[11px]">
-                <Paperclip className="size-3 shrink-0 text-regasco" aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate">{attachment.name}</span>
-                <button
-                  type="button"
-                  className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Remove attachment"
-                  onClick={() => setAttachment(null)}
-                >
-                  <X className="size-3.5" aria-hidden="true" />
-                </button>
+            {attachments.length ? (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {attachments.map((file, index) => (
+                  <span
+                    key={`${file.name}-${file.lastModified}-${index}`}
+                    className="flex max-w-full items-center gap-1.5 rounded-lg border border-border bg-muted/50 px-2.5 py-1.5 text-[11px]"
+                  >
+                    <Paperclip className="size-3 shrink-0 text-regasco" aria-hidden="true" />
+                    <span className="min-w-0 max-w-40 truncate">{file.name}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label={`Remove ${file.name}`}
+                      title="Remove this file"
+                      onClick={() => removeAttachment(index)}
+                    >
+                      <X className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
               </div>
             ) : null}
 
@@ -297,17 +394,17 @@ export function AssistantChat({
                 ref={fileRef}
                 type="file"
                 accept="application/pdf,image/*"
+                multiple={maxAttachments > 1}
                 className="hidden"
                 onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) setAttachment(f);
+                  addFiles(Array.from(e.target.files ?? []));
                   e.target.value = "";
                 }}
               />
               <button
                 type="button"
                 className="flex size-9 shrink-0 items-center justify-center rounded-full text-regasco transition-colors hover:bg-regasco/10 disabled:opacity-50"
-                aria-label="Attach a photo or PDF"
+                aria-label={maxAttachments > 1 ? "Attach photos or a PDF" : "Attach a photo or PDF"}
                 title={attachTitle}
                 disabled={busy}
                 onClick={() => fileRef.current?.click()}
@@ -317,12 +414,20 @@ export function AssistantChat({
               <textarea
                 ref={inputRef}
                 rows={1}
-                className="min-h-9 max-h-32 flex-1 resize-none overflow-y-auto rounded-[1.25rem] border border-border bg-background px-4 py-2 text-sm leading-snug text-foreground outline-none transition placeholder:text-muted-foreground focus:border-regasco/60 focus:ring-4 focus:ring-regasco/15"
+                className="min-h-[3.5rem] max-h-32 flex-1 resize-none overflow-y-auto rounded-[1.25rem] border border-border bg-background px-4 py-2 text-sm leading-snug text-foreground outline-none transition placeholder:text-muted-foreground focus:border-regasco/60 focus:ring-4 focus:ring-regasco/15"
                 placeholder={placeholder}
                 aria-label="Message the assistant"
                 value={input}
                 disabled={busy}
                 onChange={(e) => setInput(e.target.value)}
+                onPaste={(e) => {
+                  // A screenshot pasted straight into the composer is an
+                  // attachment, not text — queue it like a picked file.
+                  const files = Array.from(e.clipboardData.files);
+                  if (files.length === 0) return;
+                  e.preventDefault();
+                  addFiles(files);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -335,7 +440,7 @@ export function AssistantChat({
                 className="flex size-9 shrink-0 items-center justify-center rounded-full bg-regasco text-white shadow-sm transition hover:brightness-105 disabled:opacity-50"
                 aria-label="Send"
                 title="Send"
-                disabled={busy || (!input.trim() && !attachment)}
+                disabled={busy || (!input.trim() && attachments.length === 0)}
                 onClick={() => void send()}
               >
                 {busy ? (
@@ -385,6 +490,7 @@ function Bubble({
   title: string;
 }) {
   const mine = m.role === "user";
+  const fileNames = m.fileNames?.length ? m.fileNames : m.fileName ? [m.fileName] : [];
   return (
     <div
       className={`ai-message-in flex items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}
@@ -404,12 +510,16 @@ function Bubble({
           ].join(" ")}
         >
           {m.text}
-          {m.fileName ? (
+          {fileNames.length ? (
             <span
-              className={`mt-1 flex items-center gap-1 text-[11px] ${mine ? "text-white/80" : "text-muted-foreground"}`}
+              className={`mt-1 flex flex-col gap-0.5 text-[11px] ${mine ? "text-white/80" : "text-muted-foreground"}`}
             >
-              <Paperclip className="size-3 shrink-0" aria-hidden="true" />
-              <span className="truncate">{m.fileName}</span>
+              {fileNames.map((name, i) => (
+                <span key={`${name}-${i}`} className="flex items-center gap-1">
+                  <Paperclip className="size-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{name}</span>
+                </span>
+              ))}
             </span>
           ) : null}
           {m.updated ? (

@@ -2,6 +2,7 @@ import { Outlet, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { APP } from "@/config/app";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { MobileSidebarDrawer } from "@/components/layout/MobileSidebarDrawer";
 import { NotificationBell } from "./NotificationBell";
 import { HrSidebar } from "./HrSidebar";
@@ -13,6 +14,7 @@ import { HrSidebar } from "./HrSidebar";
  */
 export function HrLayout() {
   const [open, setOpen] = useState(false);
+  const { logoPath, isRegasco } = useEmployerLogo();
   const page = useRouterState({
     select: (state) => state.matches[state.matches.length - 1]?.routeId ?? state.location.pathname,
   });
@@ -26,9 +28,9 @@ export function HrLayout() {
       <header className="no-print flex items-center justify-between border-b border-border bg-glass px-4 py-3 md:hidden">
         <span className="flex items-center gap-2">
           <img
-            src={APP.mindbridgeLogoPath}
-            alt="Mindbridge"
-            className="h-10 w-auto object-contain"
+            src={logoPath}
+            alt={isRegasco ? "Regasco" : "Mindbridge"}
+            className={`w-auto object-contain ${isRegasco ? "h-8" : "h-10"}`}
           />
           <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
             {APP.name}

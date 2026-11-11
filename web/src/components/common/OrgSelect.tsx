@@ -52,6 +52,7 @@ export function OrgSelect({
   placeholder,
   emptyLabel,
   allowOthers = true,
+  allowBlank = true,
   onChange,
   onValidityChange,
   id,
@@ -78,6 +79,12 @@ export function OrgSelect({
    * nobody is locked out of seeing or clearing it.
    */
   allowOthers?: boolean;
+  /**
+   * Whether the list offers the blank "—" row. True everywhere a value may be
+   * left unset; false for a required fixed choice like Employer, where an empty
+   * pick would only mean "reset to the default".
+   */
+  allowBlank?: boolean;
   onChange: (next: string) => void;
   /**
    * Reports "Others is selected but nothing has been typed". Only this
@@ -260,7 +267,7 @@ export function OrgSelect({
             aria-label={label}
             className="absolute z-[60] mt-1 max-h-64 w-full overflow-y-auto rounded-md border bg-background py-1 shadow-lg"
           >
-            {row("", "—")}
+            {allowBlank ? row("", "—") : null}
             {options.map((option) => row(option, option))}
             {/* The Others escape only appears where there is no Add row (My
                 Account), so a sentinel value can never carry the maintenance

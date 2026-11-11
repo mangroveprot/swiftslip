@@ -2,6 +2,8 @@ import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import type {
   CosChatInput,
   CosChatReply,
+  LiqChatInput,
+  LiqChatReply,
   LoaChatInput,
   LoaChatReply,
   ObChatInput,
@@ -13,6 +15,7 @@ import type { SessionUser } from '@swiftslip/shared/types';
 import { ActivityLogService } from '../../activity-log';
 import { chatCosAssistant } from '../prompts/cos-chat';
 import { writeCosReason } from '../prompts/cos-reason';
+import { chatLiqAssistant } from '../prompts/liq-chat';
 import { chatLoaAssistant } from '../prompts/loa-chat';
 import { writeLoaReason } from '../prompts/loa-reason';
 import { chatObAssistant } from '../prompts/ob-chat';
@@ -102,6 +105,13 @@ class AiService {
     input: OtChatInput,
   ): Promise<ServiceResponse<OtChatReply>> {
     return this.run(user, 'OT assistant', () => chatOtAssistant(input));
+  }
+
+  liqChat(
+    user: SessionUser,
+    input: LiqChatInput,
+  ): Promise<ServiceResponse<LiqChatReply>> {
+    return this.run(user, 'LIQ assistant', () => chatLiqAssistant(input));
   }
 }
 

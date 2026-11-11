@@ -19,6 +19,7 @@ export const EMPTY_PROFILE: EmployeeProfile = {
   designation: "",
   area: "",
   department: "",
+  employer: 1,
   signature: "",
   photo: "",
   supervisor: "",

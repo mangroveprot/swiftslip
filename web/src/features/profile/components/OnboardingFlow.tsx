@@ -41,6 +41,7 @@ const empty: EmployeeProfile = {
   designation: "",
   area: "",
   department: "",
+  employer: 1,
   signature: "",
   photo: "",
   supervisor: "",

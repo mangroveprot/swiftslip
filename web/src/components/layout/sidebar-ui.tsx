@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { APP } from "@/config/app";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { useTheme } from "@/lib/use-theme";
 import { cn } from "@/lib/utils";
 
@@ -50,9 +51,14 @@ export function SidebarShell({ children }: { children: ReactNode }) {
  * link back to the portal's landing screen, mirroring the old header.
  */
 export function SidebarBrand({ subtitle, linkHome }: { subtitle?: string; linkHome?: boolean }) {
+  const { logoPath, isRegasco } = useEmployerLogo();
   const body = (
     <>
-      <img src={APP.mindbridgeLogoPath} alt="Mindbridge" className="h-10 w-auto object-contain" />
+      <img
+        src={logoPath}
+        alt={isRegasco ? "Regasco" : "Mindbridge"}
+        className={`w-auto object-contain ${isRegasco ? "h-8" : "h-10"}`}
+      />
       <span
         className="mt-1.5 block text-2xl font-semibold"
         style={{ fontFamily: "var(--font-display)" }}

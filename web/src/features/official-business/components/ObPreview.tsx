@@ -1,4 +1,3 @@
-import { APP } from "@/config/app";
 import { resolveExitSignoff, type ExitLeg } from "@/features/official-business/lib/exit-signoff";
 import {
   obDepartureDisplay,
@@ -10,7 +9,9 @@ import {
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { ObSigners } from "@swiftslip/shared/api-types";
 import type { ObHrFields } from "@swiftslip/shared/hr";
+import type { Employer } from "@swiftslip/shared/org";
 import type { ObEntry, ObForm } from "@swiftslip/shared/types";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 
 // Matches public/ob_template.docx (see public/example.png): 50%-gray header
 // fill, black bold text, and FOUR separate bordered boxes stacked with gaps.
@@ -23,6 +24,7 @@ export function ObPreview({
   sheetId,
   hr,
   signers,
+  employer,
 }: {
   form: ObForm;
   rows: ObEntry[];
@@ -37,7 +39,14 @@ export function ObPreview({
   hr?: Partial<ObHrFields> | null | undefined;
   /** Resolved names, positions + e-signatures for those boxes. */
   signers?: ObSigners | null | undefined;
+  /**
+   * The form owner's employer, so the letterhead is their company. HR passes
+   * the reviewed employee's code; the employee's own editor omits it and the
+   * preview follows the signed-in profile.
+   */
+  employer?: Employer | undefined;
 }) {
+  const { logoPath, isRegasco } = useEmployerLogo(employer);
   const padded: (ObEntry | null)[] = [...rows];
   while (padded.length < MIN_ROWS) padded.push(null);
 
@@ -63,7 +72,11 @@ export function ObPreview({
           as a % of the sheet width (not fixed px) so it keeps the same proportion
           on screen and in print, where .print-sheet stretches to full A4 width. */}
       <div className="mb-2 flex flex-col items-center justify-center gap-0">
-        <img src={APP.obLogoPath} alt="" className="h-auto w-[30%] object-contain" />
+        <img
+          src={logoPath}
+          alt=""
+          className={`h-auto object-contain ${isRegasco ? "w-[48%]" : "w-[30%]"}`}
+        />
         <h1
           className="-mt-1 text-center text-[18px] font-extrabold tracking-wide"
           style={{

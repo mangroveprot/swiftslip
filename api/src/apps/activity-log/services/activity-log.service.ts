@@ -38,6 +38,8 @@ const FORM_ACTIONS = [
   'cos.deleted',
   'ot.created',
   'ot.deleted',
+  'liq.created',
+  'liq.deleted',
   'record.created',
   'record.deleted',
   'attachment.uploaded',

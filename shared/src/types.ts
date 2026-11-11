@@ -1,3 +1,5 @@
+import type { Employer } from "./org";
+
 export type PresetPeriod = "first_half" | "second_half" | "full";
 export type Period = PresetPeriod | `custom:${number}-${number}` | `span:${number}-${number}`;
 export type Role = "admin" | "user";
@@ -78,6 +80,8 @@ export type EmployeeProfile = {
    * fixed list, editable on its own so an off-list position can still name one.
    */
   department: string;
+  /** The company the employee works for — `profiles.employer` (0 = Regasco, 1 = Mindbridge). */
+  employer: Employer;
   /** Data URL (PNG) of the saved signature — auto-filled into new forms. */
   signature: string;
   /**
@@ -194,6 +198,48 @@ export type LoaForm = {
   employee_signature: string;
   /** The uploaded medical certificate has been approved. */
   attachment_approved: boolean;
+};
+
+/** Statement of Liquidation (LIQ) header — mirrors the GN 238 sheet. */
+export type LiqForm = {
+  /** DEPARTMENT box. */
+  department: string;
+  /** SECTION/LOCATION box. */
+  section_location: string;
+  /** COST CENTER TO BE CHARGED box (static blank for now). */
+  cost_center: string;
+  /** DATE PREPARED box, as typed. */
+  date_prepared: string;
+  /** TRIP TO box. */
+  trip_to: string;
+  /** PURPOSE box. */
+  purpose: string;
+  /** "PESOS" | "DOLLARS" — the two currency boxes. */
+  currency: string;
+  /** The name printed under PREPARED BY. */
+  prepared_by: string;
+  /** The name printed under APPROVED BY. */
+  approved_by: string;
+  /** Data URL (PNG) of the saved signature — printed above PREPARED BY. */
+  employee_signature: string;
+  /** The uploaded approval slip has been approved (the "Approved via Viber" note). */
+  attachment_approved: boolean;
+  /** When true, show the "Approved via Viber" note under the approver. */
+  approved_via_viber: boolean;
+};
+
+/** One expense line on a Statement of Liquidation. Amounts are typed text. */
+export type LiqExpense = {
+  idx: number;
+  expense_date: string;
+  description: string;
+  transpo: string;
+  fuel_gas: string;
+  meals: string;
+  office_supplies: string;
+  load_accommodation: string;
+  entertainment_gifts: string;
+  other_expenses: string;
 };
 
 /**

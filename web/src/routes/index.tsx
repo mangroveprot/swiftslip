@@ -18,9 +18,9 @@ export const Route = createFileRoute("/")({
   },
   head: () =>
     seo({
-      title: pageTitle("Daily Time Records"),
+      title: pageTitle("Sign in"),
       description:
-        "Password-protected Daily Time Record portal with biometric log import, printing and download.",
+        "Sign in with your ID number and password to open the SwiftSlip employee forms and time records portal.",
     }),
   component: LoginForm,
 });

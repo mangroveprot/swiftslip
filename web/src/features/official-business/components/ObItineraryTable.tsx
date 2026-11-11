@@ -1,8 +1,9 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+﻿import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ArrowRight, Loader2, PencilLine, Sparkles, Trash, X } from "lucide-react";
 
 import { writeObPurpose } from "@/api/official-business.functions";
 import { AiMascot } from "@/components/common/AiMascot";
+import { PlaceChips, PlaceSuggestions } from "@/components/common/PlaceChips";
 import { friendlyError, toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
@@ -25,18 +26,6 @@ const EMPTY_ROW: Omit<ObEntry, "idx"> = {
   time_departure: "",
   time_return: "",
 };
-
-/** `to_place` holds comma-separated destinations; a stop can visit several. */
-function splitPlaces(value: string): string[] {
-  return value
-    .split(/[,;\n]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
-function joinPlaces(places: string[]): string {
-  return places.join(", ");
-}
 
 const FIELD_INPUT =
   "h-10 w-full rounded-md border-0 bg-muted px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:text-muted-foreground";
@@ -61,7 +50,7 @@ export function ObItineraryTable({
   placeOptions: string[];
   /** Required cells the submit check found empty (from shared `ob-required`). */
   invalid?: ReadonlySet<string> | undefined;
-  /** `key → instruction` for the red line under each of those cells. */
+  /** `key â†’ instruction` for the red line under each of those cells. */
   hints?: Readonly<Record<string, string>> | undefined;
   /** HR's sign-off columns, so the employee sees the actual times HR recorded. */
   hr?: Partial<ObHrFields> | null | undefined;
@@ -79,7 +68,7 @@ export function ObItineraryTable({
   const returnRow = obReturnRowIndex(rows);
 
   // A fresh form opens with one empty stop, like the paper sheet. Removing the
-  // last one is allowed — this only seeds the initial state, once.
+  // last one is allowed â€” this only seeds the initial state, once.
   const seeded = useRef(false);
   useEffect(() => {
     if (seeded.current) return;
@@ -125,7 +114,7 @@ export function ObItineraryTable({
               )}
               aria-invalid={invalid?.has("entries") || undefined}
             >
-              No stops yet. Click “Add stop” to add the first destination.
+              No stops yet. Click â€œAdd stopâ€ to add the first destination.
             </div>
             <ObHint text={hints?.["entries"]} />
           </div>
@@ -229,7 +218,7 @@ export function ObItineraryTable({
                         To
                         <Req />
                       </span>
-                      <DestinationChips
+                      <PlaceChips
                         value={row.to_place}
                         options={placeOptions}
                         disabled={!canEdit}
@@ -324,7 +313,7 @@ function PlaceInput({
   options: string[];
   disabled: boolean;
   invalid?: boolean | undefined;
-  /** What to do about the empty cell — shown in red under the input. */
+  /** What to do about the empty cell â€” shown in red under the input. */
   hint?: string | undefined;
   ariaLabel: string;
   placeholder: string;
@@ -418,195 +407,6 @@ function PlaceInput({
   );
 }
 
-/** The shared destination suggestion menu used by From and To. */
-function PlaceSuggestions({
-  id,
-  options,
-  active,
-  onChoose,
-}: {
-  id: string;
-  options: string[];
-  active: number;
-  onChoose: (option: string) => void;
-}) {
-  return (
-    <div
-      id={id}
-      role="listbox"
-      aria-label="Places already used"
-      className="absolute top-full right-0 left-0 z-30 mt-1 max-h-60 overflow-y-auto rounded-lg border bg-card p-1.5 shadow-lg"
-    >
-      {options.map((option, index) => (
-        <button
-          key={option}
-          type="button"
-          role="option"
-          aria-selected={index === active}
-          className={`flex w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
-            index === active ? "bg-muted" : "hover:bg-muted"
-          }`}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => onChoose(option)}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/**
- * The multi-place "To" field: each destination is a chip, and the inline input
- * adds another. Typing opens a short list of places already used; Enter adds the
- * highlighted suggestion or whatever was typed. Stored as a comma-separated
- * `to_place`, which the preview, the Word export and the OB list already read.
- */
-function DestinationChips({
-  value,
-  options,
-  disabled,
-  invalid = false,
-  hint,
-  onChange,
-}: {
-  value: string;
-  options: string[];
-  disabled: boolean;
-  invalid?: boolean | undefined;
-  /** What to do about the empty cell — shown in red under the chips. */
-  hint?: string | undefined;
-  onChange: (value: string) => void;
-}) {
-  const listId = useId();
-  const hintId = useId();
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [draft, setDraft] = useState("");
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(-1);
-  const places = splitPlaces(value);
-  const suggestions = options
-    .filter((option) => !places.some((place) => place.toLowerCase() === option.toLowerCase()))
-    .filter((option) => !draft.trim() || option.toLowerCase().includes(draft.trim().toLowerCase()))
-    .slice(0, 6);
-
-  // Same pointer dismissal as the From field, so opening one place menu closes
-  // the other even when focus events are delayed.
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: PointerEvent) {
-      if (!wrapRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
-
-  function addPlaces(raw: string) {
-    const additions = splitPlaces(raw);
-    if (additions.length === 0) return;
-    const next = [...places];
-    for (const place of additions) {
-      if (!next.some((existing) => existing.toLowerCase() === place.toLowerCase())) {
-        next.push(place);
-      }
-    }
-    if (next.length !== places.length) onChange(joinPlaces(next));
-    setDraft("");
-    setActive(-1);
-  }
-
-  function choose(place: string) {
-    addPlaces(place);
-    setOpen(true);
-  }
-
-  function removeAt(index: number) {
-    onChange(joinPlaces(places.filter((_, i) => i !== index)));
-  }
-
-  return (
-    <div>
-      <div ref={wrapRef} className="relative">
-        <div
-          className={cn(
-            "flex min-h-10 flex-wrap items-center gap-1.5 rounded-md bg-muted px-2 py-1.5 focus-within:ring-2 focus-within:ring-primary/25",
-            invalid && "ring-1 ring-destructive/60",
-          )}
-          aria-invalid={invalid || undefined}
-          aria-describedby={hint ? hintId : undefined}
-        >
-          {places.map((place, i) => (
-            <span
-              key={`${place}-${i}`}
-              className="inline-flex items-center gap-1 rounded border border-border bg-card py-0.5 pr-1 pl-2 text-sm"
-            >
-              {place}
-              {!disabled ? (
-                <button
-                  type="button"
-                  className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label={`Remove ${place}`}
-                  title={`Remove ${place}`}
-                  onClick={() => removeAt(i)}
-                >
-                  <X className="size-3.5" aria-hidden="true" />
-                </button>
-              ) : null}
-            </span>
-          ))}
-          {!disabled ? (
-            <input
-              type="text"
-              className="h-7 min-w-[7rem] flex-1 bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-              value={draft}
-              role="combobox"
-              aria-label="Add a place"
-              aria-autocomplete="list"
-              aria-expanded={open && suggestions.length > 0}
-              aria-controls={listId}
-              placeholder={places.length ? "Add a place" : "Type a place, then press Enter"}
-              onFocus={() => setOpen(true)}
-              onChange={(event) => {
-                setDraft(event.target.value);
-                setOpen(true);
-                setActive(-1);
-              }}
-              onBlur={() => {
-                setOpen(false);
-                addPlaces(draft);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowDown") {
-                  event.preventDefault();
-                  setOpen(true);
-                  setActive((index) => Math.min(index + 1, suggestions.length - 1));
-                } else if (event.key === "ArrowUp") {
-                  event.preventDefault();
-                  setActive((index) => Math.max(index - 1, -1));
-                } else if (event.key === "Enter" || event.key === ",") {
-                  event.preventDefault();
-                  if (active >= 0 && suggestions[active]) choose(suggestions[active]);
-                  else addPlaces(draft);
-                } else if (event.key === "Escape") {
-                  setOpen(false);
-                  setActive(-1);
-                } else if (event.key === "Backspace" && draft === "" && places.length > 0) {
-                  removeAt(places.length - 1);
-                }
-              }}
-            />
-          ) : null}
-        </div>
-
-        {open && suggestions.length > 0 ? (
-          <PlaceSuggestions id={listId} options={suggestions} active={active} onChoose={choose} />
-        ) : null}
-      </div>
-      <ObHint text={hint} id={hintId} />
-    </div>
-  );
-}
-
 /**
  * The Purpose(s) field with two AI helpers:
  *  - Write for me: the user types a few notes/instructions and the AI writes a
@@ -625,7 +425,7 @@ function PurposeField({
   value: string;
   disabled: boolean;
   invalid?: boolean | undefined;
-  /** What to do about the empty cell — shown in red under the textarea. */
+  /** What to do about the empty cell â€” shown in red under the textarea. */
   hint?: string | undefined;
   onChange: (value: string) => void;
 }) {

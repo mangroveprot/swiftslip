@@ -817,6 +817,7 @@ export function HrObDetailPage({ id }: { id: string }) {
                 rows={entries}
                 hr={form}
                 signers={data?.signers}
+                employer={data?.employee?.employer}
               />
             </button>
           </section>
@@ -828,7 +829,13 @@ export function HrObDetailPage({ id }: { id: string }) {
         onOpenChange={setPreviewOpen}
         title="Official Business Form — full view"
       >
-        <ObPreview form={form} rows={entries} hr={form} signers={data?.signers} />
+        <ObPreview
+          form={form}
+          rows={entries}
+          hr={form}
+          signers={data?.signers}
+          employer={data?.employee?.employer}
+        />
       </PreviewLightbox>
     </main>
   );

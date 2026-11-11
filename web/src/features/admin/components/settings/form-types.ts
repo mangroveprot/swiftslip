@@ -9,4 +9,5 @@ export const FORM_TYPE_LABELS: Record<RetentionFormType, string> = {
   loa: "Leave of Absence",
   cos: "Change of Schedule",
   ot: "Overtime",
+  liq: "Statement of Liquidation",
 };

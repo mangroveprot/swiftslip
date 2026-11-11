@@ -19,13 +19,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { sessionQueryOptions } from "@/features/auth/queries";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { toast } from "@/lib/toast";
 import { relativeTime } from "@swiftslip/shared/time";
 import {
   departmentForPosition,
+  EMPLOYER_LABELS,
+  employerCode,
+  employerLabel,
   normalizeDesignation,
   normalizePosition,
   positionsUnder,
+  type Employer,
   type OrgLists,
 } from "@swiftslip/shared/org";
 
@@ -44,6 +49,8 @@ type Account = {
   department: string;
   /** Profile `designation` — the job title. */
   position: string;
+  /** Profile `employer` — the company the employee works for (0 = Regasco, 1 = Mindbridge). */
+  employer: Employer;
   id_number: string;
   role: Role;
   created_at: string;
@@ -131,7 +138,14 @@ export function UserManagement() {
   const [removing, setRemoving] = useState<Account | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
 
-  const refresh = () => qc.invalidateQueries({ queryKey: accessCodesQueryOptions().queryKey });
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: accessCodesQueryOptions().queryKey });
+    // The admin may have just edited their own account (employer, position,
+    // name). Refresh the cached profile so the sidebar caption and every
+    // employer-aware logo switch immediately instead of waiting out its
+    // five-minute staleTime.
+    void qc.invalidateQueries({ queryKey: profileQueryOptions().queryKey });
+  };
 
   const all = accounts ?? [];
   const totals = {
@@ -153,10 +167,9 @@ export function UserManagement() {
     if (!query) return true;
     // `displayDepartment` too: a row awaiting backfill still answers to the
     // department its position implies.
-    return `${a.id_number} ${a.full_name} ${a.designation} ${a.department} ${a.position} ${displayDepartment(
-      a,
-      orgLists,
-    )} ${roleText(a.role)} ${a.role}`
+    return `${a.id_number} ${a.full_name} ${a.designation} ${a.department} ${a.position} ${employerLabel(
+      a.employer,
+    )} ${displayDepartment(a, orgLists)} ${roleText(a.role)} ${a.role}`
       .toLowerCase()
       .includes(query);
   });
@@ -517,6 +530,8 @@ export function UserManagement() {
                     >
                       {shownDepartment || "Not set"}
                     </dd>
+                    <dt className="text-muted-foreground">Employer</dt>
+                    <dd className="min-w-0 truncate">{employerLabel(a.employer)}</dd>
                     <dt className="text-muted-foreground">Access</dt>
                     <dd className="flex items-center gap-1.5">
                       {a.role === "admin" ? (
@@ -600,6 +615,7 @@ function AccountDialog({
   const [designation, setDesignation] = useState("");
   const [department, setDepartment] = useState("");
   const [position, setPosition] = useState("");
+  const [employer, setEmployer] = useState<Employer>(1);
   // Set by the pickers themselves: "Others…" is selected but nothing typed.
   const [designationInvalid, setDesignationInvalid] = useState(false);
   const [departmentInvalid, setDepartmentInvalid] = useState(false);
@@ -629,6 +645,7 @@ function AccountDialog({
       isNew ? "" : account?.department || departmentForPosition(account?.position ?? "", orgLists),
     );
     setPosition(isNew ? "" : (account?.position ?? ""));
+    setEmployer(isNew ? 1 : (account?.employer ?? 1));
   }
 
   // The Position picker only offers what fits under the chosen Department —
@@ -715,6 +732,9 @@ function AccountDialog({
           ...(designation.trim() ? { designation: designation.trim() } : {}),
           ...(department.trim() ? { department: department.trim() } : {}),
           ...(position.trim() ? { position: position.trim() } : {}),
+          // Employer is always sent as its stored code (0 = Regasco,
+          // 1 = Mindbridge); the picker itself speaks labels.
+          employer,
           ...(account ? { id: account.id } : {}),
         },
       });
@@ -875,6 +895,20 @@ function AccountDialog({
                   onRename: (value) => setOrgRequest({ kind: "position", mode: "rename", value }),
                   onDelete: (value) => setOrgRequest({ kind: "position", mode: "delete", value }),
                 }}
+              />
+              {/* Two fixed choices, not an admin-maintained list: the company
+                  the person works for. The picker shows labels; the API gets
+                  the 0/1 code through the shared converter. */}
+              <OrgSelect
+                id="account-employer"
+                label="Employer"
+                list={EMPLOYER_LABELS}
+                value={employerLabel(employer)}
+                placeholder="e.g. Regasco"
+                emptyLabel="Select an employer"
+                allowOthers={false}
+                allowBlank={false}
+                onChange={(label) => setEmployer(employerCode(label))}
               />
               {/* The same field as the ID box above it; only the wording of the
                   rule underneath differs between the two modes. */}

@@ -1,6 +1,6 @@
-import { APP } from "@/config/app";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { OtEntry, OtForm } from "@swiftslip/shared/types";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { formatOtDateFiled, formatOtHours } from "../lib/ot-line";
 
 // Matches public/ot_template.docx: 65%-gray header fill, black bold text, and
@@ -20,6 +20,7 @@ export function OtPreview({
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
 }) {
+  const { logoPath, isRegasco } = useEmployerLogo();
   const padded: (OtEntry | null)[] = [...entries];
   while (padded.length < MIN_ROWS) padded.push(null);
 
@@ -33,7 +34,11 @@ export function OtPreview({
           as a % of the sheet width (not fixed px) so it keeps the same proportion
           on screen and in print, where .print-sheet stretches to full A4 width. */}
       <div className="mb-2 flex flex-col items-center justify-center gap-0">
-        <img src={APP.obLogoPath} alt="" className="h-auto w-[30%] object-contain" />
+        <img
+          src={logoPath}
+          alt=""
+          className={`h-auto object-contain ${isRegasco ? "w-[48%]" : "w-[30%]"}`}
+        />
         <h1
           className="-mt-1 text-center text-[18px] font-extrabold tracking-wide"
           style={{

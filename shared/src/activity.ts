@@ -18,6 +18,8 @@ export const ACTION_LABELS: Record<string, string> = {
   "cos.deleted": "COS removed",
   "ot.created": "OT created",
   "ot.deleted": "OT removed",
+  "liq.created": "Liquidation created",
+  "liq.deleted": "Liquidation removed",
   "record.created": "DTR record created",
   "record.deleted": "DTR record removed",
   "attachment.uploaded": "Approval slip uploaded",

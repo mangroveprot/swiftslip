@@ -45,6 +45,7 @@ const FORM_TABLES = [
   { table: 'loa_forms', type: 'loa' },
   { table: 'cos_forms', type: 'cos' },
   { table: 'ot_forms', type: 'ot' },
+  { table: 'liq_forms', type: 'liq' },
 ] as const satisfies ReadonlyArray<{ table: string; type: FormKind }>;
 
 const isLoopbackIp = (ip: string) =>
@@ -74,6 +75,7 @@ class AdminService {
     loa_forms: new BaseRepository('loa_forms'),
     cos_forms: new BaseRepository('cos_forms'),
     ot_forms: new BaseRepository('ot_forms'),
+    liq_forms: new BaseRepository('liq_forms'),
   };
   private logs = new ActivityLogRepository();
 

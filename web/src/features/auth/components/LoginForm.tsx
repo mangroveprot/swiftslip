@@ -119,12 +119,18 @@ export function LoginForm() {
       <ThemeToggle className="absolute top-4 right-4 sm:top-6 sm:right-6" />
 
       <div className="w-full max-w-[25rem] rounded-xl border border-border/80 bg-card p-7 sm:p-9">
-        <img src={APP.mindbridgeLogoPath} alt="Mindbridge" className="h-9 w-auto object-contain" />
-
-        <h1 className="mt-7 font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-foreground">
-          {APP.name}
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-foreground/70">
+        <div className="flex items-center gap-3">
+          <img
+            src={APP.regascoMascotPath}
+            alt="Regasco"
+            className="h-11 w-auto shrink-0 object-contain"
+          />
+          <h1 className="regasco-word text-[1.75rem]">
+            {APP.name}
+            <span className="regasco-word__bar" aria-hidden="true" />
+          </h1>
+        </div>
+        <p className="mt-4 text-sm leading-relaxed text-foreground/70">
           Sign in with the ID number and password issued by your administrator.
         </p>
 

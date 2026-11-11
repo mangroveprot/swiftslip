@@ -176,6 +176,7 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
         department: profile?.department || form.department,
         position: profile?.designation || form.position,
         area: profile?.area ?? '',
+        employer: profile?.employer === 0 ? 0 : 1,
         supervisor: profile?.supervisor || form.approved_by,
         recent: recent.map((row) => ({
           id: row.id,

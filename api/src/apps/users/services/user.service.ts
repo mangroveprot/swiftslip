@@ -2,6 +2,7 @@ import { BaseService } from '../../../core/engine';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { PasswordService } from '../../../common/shared/services/password.service';
 import { PASSWORD_MIN_LENGTH } from '@swiftslip/shared/schemas';
+import { employerLabel, type Employer } from '@swiftslip/shared/org';
 import type { AccountPhoto, Role, SessionUser } from '@swiftslip/shared/types';
 import { ProfileRepository } from '../../profile/repositories';
 import { photoUrl } from '../../profile/services/photo-storage';
@@ -24,7 +25,7 @@ const USER_PHOTO_LIMIT = 100;
  * only to read a name wastes bandwidth and memory on every admin page load.
  */
 const PROFILE_NAME_COLUMNS =
-  'access_code_id,full_name,area,department,designation';
+  'access_code_id,full_name,area,department,designation,employer';
 
 /** One row in user management: the account joined with its profile. */
 export type AccountListItem = {
@@ -38,6 +39,8 @@ export type AccountListItem = {
   department: string;
   /** The job title — `profiles.designation`. */
   position: string;
+  /** The company the employee works for — `profiles.employer`. */
+  employer: Employer;
 };
 
 export type AccountInput = {
@@ -49,6 +52,7 @@ export type AccountInput = {
   designation?: string | undefined;
   department?: string | undefined;
   position?: string | undefined;
+  employer?: Employer | undefined;
 };
 
 class UserService extends BaseService<'users', UserRepository> {
@@ -130,6 +134,7 @@ class UserService extends BaseService<'users', UserRepository> {
           designation: p?.area ?? '',
           department: p?.department ?? '',
           position: p?.designation ?? '',
+          employer: (p?.employer ?? 1) as Employer,
         };
       });
       return {
@@ -176,6 +181,7 @@ class UserService extends BaseService<'users', UserRepository> {
           area: input.designation ?? '',
           department: input.department ?? '',
           designation: input.position ?? '',
+          employer: input.employer ?? 1,
         },
         'access_code_id',
       );
@@ -243,7 +249,8 @@ class UserService extends BaseService<'users', UserRepository> {
       if (
         input.designation !== undefined ||
         input.department !== undefined ||
-        input.position !== undefined
+        input.position !== undefined ||
+        input.employer !== undefined
       ) {
         await this.writeProfileDetails(id, input);
       }
@@ -354,6 +361,7 @@ class UserService extends BaseService<'users', UserRepository> {
         area: input.designation ?? existing?.area ?? '',
         department: input.department ?? existing?.department ?? '',
         designation: input.position ?? existing?.designation ?? '',
+        employer: input.employer ?? existing?.employer ?? 1,
       },
       'access_code_id',
     );
@@ -375,6 +383,9 @@ class UserService extends BaseService<'users', UserRepository> {
         input.designation ? `designation: ${input.designation}` : null,
         input.department ? `department: ${input.department}` : null,
         input.position ? `position: ${input.position}` : null,
+        input.employer !== undefined
+          ? `employer: ${employerLabel(input.employer)}`
+          : null,
       ]
         .filter(Boolean)
         .join(', '),

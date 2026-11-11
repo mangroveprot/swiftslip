@@ -77,6 +77,25 @@ export function destinationKeys(destinations: string[]) {
   return [...keys];
 }
 
+/**
+ * The suggestion list the place fields offer: every destination already used on
+ * the employee's own forms, plus any seed values (their office / branch, which
+ * is the most likely starting point even before a form has used it). Deduped on
+ * a case-insensitive key so "Dipolog" and "dipolog" appear once.
+ */
+export function buildPlaceOptions(forms: PlaceForm[], seed: readonly string[] = []): string[] {
+  const seen = new Map<string, string>();
+  const remember = (value: string) => {
+    for (const part of splitDestinations(value)) {
+      const key = part.toLowerCase();
+      if (!seen.has(key)) seen.set(key, part);
+    }
+  };
+  seed.forEach(remember);
+  for (const form of forms) form.destinations.forEach(remember);
+  return [...seen.values()].sort((a, b) => a.localeCompare(b));
+}
+
 /** Levenshtein distance, used only on the short destination keys. */
 function editDistance(a: string, b: string) {
   if (a === b) return 0;

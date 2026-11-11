@@ -98,12 +98,12 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </SidebarSection>
       </nav>
 
-      {/* Identity block = My Account (click to open), captioned Role - Position
-          instead of the old hard-coded "HR reviewer". */}
+      {/* Identity block = My Account (click to open), captioned Employer -
+          Position instead of the old hard-coded "HR reviewer". */}
       <SidebarFooter
         name={session?.label ?? "HR"}
         photo={photo}
-        sublabel={accountCaption(session?.role, profile?.designation)}
+        sublabel={accountCaption(profile?.employer, profile?.designation)}
         to="/hr/profile"
         signOutAccessName="the HR app"
       >

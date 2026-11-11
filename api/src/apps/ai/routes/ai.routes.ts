@@ -9,6 +9,7 @@ import {
   cosChatInput,
   otReasonInput,
   otChatInput,
+  liqChatInput,
 } from '@swiftslip/shared/schemas';
 import { authenticate } from '../../auth/middlewares';
 import { AiController } from '../controllers';
@@ -25,5 +26,6 @@ router.post('/cos/reason', validate(cosReasonInput), AiController.cosReason);
 router.post('/cos/chat', validate(cosChatInput), AiController.cosChat);
 router.post('/ot/reason', validate(otReasonInput), AiController.otReason);
 router.post('/ot/chat', validate(otChatInput), AiController.otChat);
+router.post('/liq/chat', validate(liqChatInput), AiController.liqChat);
 
 export default router;

@@ -5,6 +5,7 @@
  */
 import type { FormEvent } from "./forms";
 import type { ObHrFields, ObHrStatus, ObResubmitEvent } from "./hr";
+import type { Employer } from "./org";
 import type {
   AppKey,
   CosForm,
@@ -12,6 +13,8 @@ import type {
   DtrEntry,
   DtrHeader,
   GrantableAppKey,
+  LiqExpense,
+  LiqForm,
   LoaForm,
   ObEntry,
   ObForm,
@@ -76,6 +79,8 @@ export type AccountListItem = {
   department: string;
   /** The job title — `profiles.designation`. */
   position: string;
+  /** The company the employee works for — `profiles.employer` (0 = Regasco, 1 = Mindbridge). */
+  employer: Employer;
 };
 
 export type OrgLists = {
@@ -214,6 +219,23 @@ export type LoaSummary = {
   deletes_in_days?: number;
 };
 
+export type LiqSummary = {
+  id: string;
+  department: string;
+  section_location: string;
+  prepared_by: string;
+  date_prepared: string;
+  trip_to: string;
+  purpose: string;
+  currency: string;
+  /** Approval slip ticked — badges the card as Approved, like the other lists. */
+  attachment_approved: boolean;
+  /** Sum of every expense column, computed by the API from the child rows. */
+  grand_total: number;
+  updated_at: string;
+  deletes_in_days?: number;
+};
+
 export type CosSummary = {
   id: string;
   employee_name: string;
@@ -306,6 +328,9 @@ export type ObEmployeeProfile = {
   position: string;
   /** Office / branch — `profiles.area`. */
   area: string;
+  /** The owner's company — `profiles.employer` (0 = Regasco, 1 = Mindbridge),
+   *  so the reviewed form's letterhead matches their employer. */
+  employer: Employer;
   supervisor: string;
   /** Their newest OB forms (max 5), newest first — the form's own history. */
   recent: {
@@ -324,6 +349,7 @@ export type HrObDetail = ObDetail & {
   employee?: ObEmployeeProfile | null;
 };
 export type LoaDetail = Attached & { form: LoaForm & { id: string }; others: OtherFile[] };
+export type LiqDetail = Attached & { form: LiqForm & { id: string }; entries: LiqExpense[] };
 export type CosDetail = Attached & { form: CosForm & { id: string }; schedules: CosSchedule[] };
 export type OtDetail = Attached & {
   form: OtForm & { id: string };

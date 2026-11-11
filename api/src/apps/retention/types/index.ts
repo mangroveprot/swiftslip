@@ -1,11 +1,11 @@
 import type { RetentionFormType } from '@swiftslip/shared/schemas';
 
 /**
- * The five form tables the cleanup can walk, keyed by the checkbox the admin
+ * The form tables the cleanup can walk, keyed by the checkbox the admin
  * ticks in Settings → Data retention. Not every table has the same columns
  * (`dtr_records` has no approval flag; LOA, OT and DTR records carry
- * `other_attachments`), so the service treats the rows as the loose
- * `ExpiredRow` shape below.
+ * `other_attachments`; LIQ has neither and names its owner `prepared_by`), so
+ * the service treats the rows as the loose `ExpiredRow` shape below.
  */
 export const RETENTION_TABLES = {
   dtr: 'dtr_records',
@@ -13,6 +13,7 @@ export const RETENTION_TABLES = {
   loa: 'loa_forms',
   cos: 'cos_forms',
   ot: 'ot_forms',
+  liq: 'liq_forms',
 } as const satisfies Record<RetentionFormType, string>;
 
 export type RetentionTable = (typeof RETENTION_TABLES)[RetentionFormType];
@@ -31,6 +32,7 @@ export const SELECTS: Record<RetentionFormType, string> = {
   loa: 'id,attachment_path,attachment_backend,attachment_approved,other_attachments,employee_name,date_filed',
   cos: 'id,attachment_path,attachment_backend,attachment_approved,employee_name,date_filed',
   ot: 'id,attachment_path,attachment_backend,attachment_approved,other_attachments,employee_name,date_filed',
+  liq: 'id,prepared_by,date_prepared',
 };
 
 /**

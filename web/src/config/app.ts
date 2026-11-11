@@ -25,6 +25,19 @@ export const APP = {
   logoPath: "/mindbridge_logo.png",
   obLogoPath: "/mindbridge_logo.png",
   mindbridgeLogoPath: "/mindbridge_logo.png",
+  /**
+   * The Regasco company mark, shown instead of the Mindbridge logo when the
+   * signed-in employee's `profiles.employer` is `0`. A wide wordmark
+   * (3840 × 684, ≈ 5.6:1) against Mindbridge's 461 × 149 (≈ 3.1:1), so every
+   * call site gives it more width than the Mindbridge logo to keep the printed
+   * height similar — see `employerLogoPath()` / `useEmployerLogo()`.
+   */
+  regascoLogoPath: "/regasco_wordmark.webp",
+  /**
+   * The Regasco mascot (245 × 300, portrait) — used only on the sign-in page,
+   * where there is no profile yet to pick a brand from.
+   */
+  regascoMascotPath: "/regasco_logo.webp",
   faviconPath: "/favicon.png",
 } as const;
 

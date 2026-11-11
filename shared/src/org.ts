@@ -10,11 +10,12 @@
  *
  * The CHOICES live in the database — `org_designations`, `org_departments` and
  * `org_positions` (migrations 0024 / 0025) — and reach the pickers as an
- * `OrgLists`. Nothing here hard-codes an option any more: a value an
- * administrator deleted stays deleted instead of coming back from a constant,
- * which is how "IT Support" and "IT Programmer" kept appearing under a Field
- * Monitoring department that had never held them. Adding a value is a row, not
- * a code change.
+ * `OrgLists`. Nothing here hard-codes a Designation / Department / Position any
+ * more: a value an administrator deleted stays deleted instead of coming back
+ * from a constant, which is how "IT Support" and "IT Programmer" kept appearing
+ * under a Field Monitoring department that had never held them. Adding a value
+ * is a row, not a code change. (The employer list below is the one deliberate
+ * exception — it is a fixed company choice, not an editable org list.)
  *
  * The columns are still free text on `profiles.area` / `profiles.designation`;
  * the lists exist so people stop inventing spellings, and "Others" exists so a
@@ -23,6 +24,54 @@
 
 /** Sentinel option meaning "the value isn't on the list". */
 export const OTHERS = "__others__";
+
+/**
+ * The two employers an account can belong to, stored as smallint codes:
+ * 0 = Regasco, 1 = Mindbridge.
+ *
+ * Fixed on purpose: this is the company the person works for, not an
+ * admin-maintained org list like Designation / Department / Position. The code
+ * is what the database and API carry; the helpers below are the ONE converter
+ * between that code and the label the screen shows, so the frontend never has
+ * to remember which number means which company.
+ */
+export const EMPLOYERS = [
+  { value: 0, label: "Regasco" },
+  { value: 1, label: "Mindbridge" },
+] as const;
+
+/** A stored employer code: 0 = Regasco, 1 = Mindbridge. */
+export type Employer = (typeof EMPLOYERS)[number]["value"];
+
+/** The default the database column uses (and the fallback for an unknown code). */
+export const DEFAULT_EMPLOYER: Employer = 1;
+
+/** The labels in picker order — what the frontend offers and prints. */
+export const EMPLOYER_LABELS = EMPLOYERS.map((employer) => employer.label);
+
+/**
+ * Stored code → the company name the screen prints. Unknown or missing values
+ * fall back to the column default (Mindbridge) so a legacy row still reads.
+ */
+export function employerLabel(value: number | null | undefined): string {
+  return (
+    EMPLOYERS.find((employer) => employer.value === value)?.label ??
+    EMPLOYERS.find((employer) => employer.value === DEFAULT_EMPLOYER)?.label ??
+    "Mindbridge"
+  );
+}
+
+/**
+ * Company name → the stored code. Case-insensitive, and unknown/blank input
+ * falls back to the column default (Mindbridge) so a picker can never write an
+ * invalid code.
+ */
+export function employerCode(label: string | null | undefined): Employer {
+  const wanted = (label ?? "").trim().toLowerCase();
+  return (
+    EMPLOYERS.find((employer) => employer.label.toLowerCase() === wanted)?.value ?? DEFAULT_EMPLOYER
+  );
+}
 
 /** The admin-editable lists behind the pickers (migrations 0024 / 0025):
  *  designations, departments, and every position with the department it sits

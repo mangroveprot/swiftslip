@@ -2,7 +2,12 @@ import type { LoaOtherFile } from '@swiftslip/shared/types';
 
 /** Rows that can hold a document; `(id, owner_id)` always identifies one. */
 export type AttachmentTable =
-  'ob_forms' | 'loa_forms' | 'cos_forms' | 'ot_forms' | 'dtr_records';
+  | 'ob_forms'
+  | 'loa_forms'
+  | 'cos_forms'
+  | 'ot_forms'
+  | 'liq_forms'
+  | 'dtr_records';
 
 /**
  * Rows that carry the extra `other_attachments` list (the "supporting

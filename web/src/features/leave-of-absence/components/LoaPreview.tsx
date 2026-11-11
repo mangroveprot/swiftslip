@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
 
-import { APP } from "@/config/app";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { LoaForm } from "@swiftslip/shared/types";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 
 // Pixel replica of public/loa_form_template.docx (APPLICATION FOR LEAVE OF
 // ABSENCE). Every row below encodes the template's document.xml exactly:
@@ -155,6 +155,7 @@ export function LoaPreview({
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
 }) {
+  const { logoPath, isRegasco } = useEmployerLogo();
   const box = (type: string) => (form.leave_type === type ? "✓" : " ");
   const withPay = form.pay_status === "with_pay" ? "✓" : " ";
   const withoutPay = form.pay_status === "without_pay" ? "✓" : " ";
@@ -191,9 +192,9 @@ export function LoaPreview({
           (phone icon inline, ~40px before the number, as Word's tab renders). */}
       <div className="flex flex-col items-center text-center">
         <img
-          src={APP.mindbridgeLogoPath}
+          src={logoPath}
           alt=""
-          className="h-auto w-[36.7%] object-contain"
+          className={`h-auto object-contain ${isRegasco ? "w-[52%]" : "w-[36.7%]"}`}
           style={{ position: "relative", top: -5.4 }}
         />
         <p style={{ fontSize: PT.h10, marginTop: 10 }}>

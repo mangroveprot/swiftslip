@@ -59,6 +59,9 @@ export type RuleFields = {
   /** Non-DTR forms. */
   employee_name?: string;
   date_filed?: string;
+  /** Statement of Liquidation: it has no employee_name/date_filed box. */
+  prepared_by?: string;
+  date_prepared?: string;
   /** DTR only. */
   name?: string;
   emp_no?: string;
@@ -71,6 +74,7 @@ export type RuleFields = {
  */
 export function isScaffold(type: RetentionFormType, row: RuleFields): boolean {
   if (type === 'dtr') return !row.name && !row.emp_no;
+  if (type === 'liq') return !row.prepared_by && !row.date_prepared;
   return !row.employee_name && !row.date_filed;
 }
 

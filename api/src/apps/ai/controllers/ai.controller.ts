@@ -131,6 +131,22 @@ class AiController {
       ApiResponse.error(res, error as ErrorResponseType);
     }
   }
+
+  static async liqChat(req: Request, res: Response): Promise<void> {
+    try {
+      const response = await AiService.liqChat(
+        req.user as SessionUser,
+        req.body,
+      );
+      if (response.success) {
+        ApiResponse.success(res, response);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      ApiResponse.error(res, error as ErrorResponseType);
+    }
+  }
 }
 
 export default AiController;

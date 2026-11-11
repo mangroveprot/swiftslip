@@ -42,12 +42,17 @@ const empty: EmployeeProfile = {
   designation: "",
   area: "",
   department: "",
+  employer: 1,
   signature: "",
   photo: "",
   supervisor: "",
 };
 
-const FIELDS: Array<{ key: keyof EmployeeProfile; label: string; placeholder?: string }> = [
+const FIELDS: Array<{
+  key: "emp_no" | "full_name" | "supervisor";
+  label: string;
+  placeholder?: string;
+}> = [
   { key: "emp_no", label: "Emp No.", placeholder: "e.g. 2024-0113" },
   { key: "full_name", label: "Full name", placeholder: "Juan Dela Cruz" },
   {

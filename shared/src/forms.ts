@@ -1,12 +1,13 @@
 /**
- * The four SwiftSlip form types, shared by the server's dashboard counts and
- * the admin chart so both use the same labels and order.
+ * The form types, shared by the server's dashboard counts and the admin chart
+ * so both use the same labels and order.
  */
 export const FORM_TYPES = [
   { key: "ob", label: "Official Business", short: "OB" },
   { key: "loa", label: "Leave of Absence", short: "LOA" },
   { key: "cos", label: "Change of Schedule", short: "COS" },
   { key: "ot", label: "Overtime", short: "OT" },
+  { key: "liq", label: "Statement of Liquidation", short: "LIQ" },
 ] as const;
 
 export type FormKind = (typeof FORM_TYPES)[number]["key"];

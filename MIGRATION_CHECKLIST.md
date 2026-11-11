@@ -535,6 +535,149 @@ Intentional behaviour (do not "fix" back):
   the submitter is excluded. The bell and queue refresh over the shared SSE stream (see the
   activity log entry for 2026-11-07) — no 30 s polling; opening the bell marks all read.
 
+### Phase 10 — Statement of Liquidation (LIQ) ✅ code done; migration not applied yet
+A sixth employee form, modelled on LOA (owner-filled, no HR queue): the employee fills it, prints
+it and hands the paper in. The sheet is a cell-for-cell copy of the office's **GN 238 (REV 03/00)**
+landscape page, and **only the cells the owner fills today are editable** — everything else prints
+exactly as the paper form leaves it, including the ADVANCES / APPROVALS / ACCOUNTING DISTRIBUTION
+bands at the bottom. A floating assistant reads up to five receipt photos in one turn and fills the
+four expense rows plus the header, like the DTR biometric import reads one sheet.
+- [x] `api/drizzle/migrations/0040_liq_forms.sql` — `liq_forms` (department, section/location,
+      cost center, date prepared, trip to, purpose, currency, prepared by, approved by) +
+      `liq_expenses` (15 lines, `idx` 1..15, `UNIQUE (form_id, idx)`, cascade). Amounts are text so
+      the typed value round-trips ("1,250.50"), like every other form's money cells. The header also
+      carries the same approval trail as OB/COS/OT: `employee_signature`, `attachment_approved`,
+      `approved_via_viber`, `attachment_path`, `attachment_name`, `attachment_backend`. The file is
+      idempotent (`CREATE TABLE IF NOT EXISTS` plus `ALTER TABLE … ADD COLUMN IF NOT EXISTS`), so
+      re-running it upgrades a table created before those columns existed.
+- [x] `shared/src/liq.ts` — the one place the maths lives: `liqAmount` (tolerates commas/blanks),
+      `liqLineTotal`, `liqTotals` (per line + per column + grand), `liqMoney` ("1,250.50" / "-"),
+      `liqDate` (`d-MMM-yy` for the header, `mm/dd/yy` for a line), `liqToday`, `liqAmountInWords`.
+      The API's list totals and the printed sheet both call it, so they cannot disagree.
+- [x] `shared/src/{schemas,types,api-types,forms,activity}.ts` — `createLiqFormInput`,
+      `liqFormSchema`, `liqExpenseSchema`, `saveLiqFormInput`, `LiqForm` / `LiqExpense`,
+      `LiqSummary` / `LiqDetail`, `liq` in `FORM_TYPES`, `liq.created` / `liq.deleted`, and `liq`
+      in `RETENTION_FORM_TYPES`.
+- [x] `api/src/apps/liquidation/**` — repository → service → controller → routes, mounted at
+      `/liquidation`. `list()` sums the child rows in one extra query; `createFromProfile()`
+      prefills department / section / prepared-by / approved-by / signature from the profile;
+      `save()` replaces the 15 expense rows wholesale (like COS schedules / OT entries) and persists
+      the signature, the approval tick and the Viber note. `GET` returns
+      `attachment: { name }` when a slip exists, and `remove()` deletes the stored file too.
+      `POST/GET/DELETE /:id/attachment` come from the shared `buildAttachmentRoutes` with
+      `table: 'liq_forms'` (no `other-attachments` endpoint — the sheet has no supporting-files box).
+- [x] Retention: `liq` is a cleanup type (`liq_forms`), and since the table has no
+      `employee_name` / `date_filed` its `SELECTS` and `isScaffold()` use `prepared_by` /
+      `date_prepared` instead. Admin dashboard counts and the Settings label know the new type.
+- [x] Web: `api/liquidation.functions.ts`, `features/liquidation/**` (list, editor, form card,
+      live sheet, skeleton), routes `/liquidation` + `/liquidation/$id`, sidebar row, and the
+      `.liq-sheet` styles (a `.liq-sheet`-scoped copy of the sheet's `c1`–`c32` cell
+      classes, plus the shared `lb-*` grid for the three lower bands).
+      The editor is LOA's: draft → autosave → Save, `PromoteDraft` swap, fit-to-width preview and
+      the full-view lightbox.
+- [x] Export: **Print** and **Save as PDF**, both landscape. `styles.css` gives the sheet a named
+      `@page liq { size: A4 landscape; margin: 8mm }` (and binds the body to it while the sheet is
+      on the page, so Chromium cannot append a blank portrait page); the sheet prints at
+      `zoom: 0.8` inside a 190 mm flex wrapper so it is centred **across and down** one page.
+      `save-pdf.ts` gained `orientation` / `centered` on `Paper` (`PAPER_LIQ`), an orientation-aware
+      `contentBox()`, a landscape `jsPDF` and centred drawing, plus a stage at least as wide as the
+      sheet so the right-hand columns are not clipped.
+- [x] **AI assistant (receipt reader).** `AssistantChat` gained optional `maxAttachments` (default
+      1) and `compressImages` (default false), so LOA / OB / OT / COS behave exactly as before;
+      `AssistantSubmit` now carries `images[]` and keeps `image` = `images[0]`. LIQ passes
+      `maxAttachments={5}` and `compressImages`, so one turn can carry five receipts, each
+      downscaled by `prepareAttachment` before it is base64-encoded.
+      `shared/src/schemas.ts` adds `liqChatInput` (`messages`, current `form`, current `entries`,
+      `today`, `images` max 5) and `liqChatReplySchema` (`{reply, form?, entries?}`);
+      `api/src/apps/ai/prompts/liq-chat.ts` holds the receipt prompt, the five `inline_data` parts,
+      the Gemini response schema and the sanitising, and is exposed as `POST /ai/liq/chat`
+      (`AiService.liqChat`). `web/src/features/liquidation/components/LiqAssistantChat.tsx` is the
+      thin wrapper; `LiqEditor.applyAssistantPatch` merges entries **by `idx`** over the stored
+      rows, so rows the model did not send keep the user's text, and the change
+      then flows through the ordinary autosave.
+      The model never decides the arithmetic: amounts go through `liqAmount` → `liqMoney`, dates
+      through `liqDate`, `idx` is clamped to 1..15 (first wins), empty rows are dropped, and the
+      bubble's `Total: … (… in words)` is computed server-side from `liqTotals` /
+      `liqAmountInWords`.
+- [x] **Add / delete expense lines.** The blank paper form's four rows are the minimum the sheet
+      prints (`LIQ_MIN_LINES`); "Add expense" opens another line up to the 15 the child table
+      stores (`LIQ_LINES`), each card carries a trash button, and deleting closes the gap (later
+      lines move up, the freed last row blanks). `LiqSheet` prints `max(4, last filled line)` rows
+      (first 34px, the rest 26.8px) and a 15-line form still prints one A4 landscape page (checked
+      with Chrome's `--print-to-pdf`: 1 page). The editor scrolls with the page, so the single
+      default scrollbar sits at the window's right edge, and the preview column (attachment card +
+      sheet) is `lg:sticky lg:top-2 lg:self-start`, so it stays on screen while the form scrolls
+      past.
+- [x] **Dates, trips and the lower bands.** DATE PREPARED and every expense-line DATE are native
+      `<input type="date">` pickers, converted through `liqIsoDate` ⇄ `liqDate` so the sheet still
+      prints its own spelling (`11-Nov-26`, `11/10/26`). TRIP TO is the same chip field OB uses —
+      `components/common/PlaceChips.tsx` (chips with an X each, an inline "Add a place" input and a
+      suggestion list built from the employee's OB destinations via `buildPlaceOptions`) — and the
+      value stays the comma-separated text the sheet prints. The earlier "From OB" menu and its
+      per-trip copying are gone; chips do the same job with fewer moving parts. The three lower
+      boxes are **one 10-column grid** (`lb-*`) under the TOTAL row, not nested tables, so the
+      section rules run edge to edge with no white gaps; the preview/print wrapper keeps an 18px
+      gutter around the 1204px sheet.
+- [x] **Signature and the Viber approval trail.** The saved profile signature is printed above
+      PREPARED BY, like the OB sheet: drafts seed `employee_signature` from the profile, the editor
+      falls back to `profile.signature` for rows saved before the column existed, and the assistant
+      payload strips it (print-only, so it is not resent with every turn). The approval slip uses the
+      shared `AttachmentCard` with a new `liq` kind and its own `LiqAttachmentCard`: uploading ticks
+      **Approved** and switches on the blue "Approved via Viber" note printed above APPROVED BY;
+      removing the file clears both. `liqAttachmentUrlQueryOptions` supplies the signed link.
+- [x] `npm run typecheck` and `npm run lint` pass for shared, api and web (0 errors, pre-existing
+      `react-refresh` warnings only); `vite build` passes. The rendered sheet was checked with a
+      temporary `tsx` harness: the 23-column header/expense grid and the 10-column lower grid have no
+      missing or overflowing cell, and the computed cells (line total, column totals, grand total,
+      amount in words, both date spellings, balance due) come out right.
+- [ ] **Owner to run:** paste `0040_liq_forms.sql` in the Supabase SQL Editor (re-run it if the
+      table already exists — it adds the signature / approval / attachment columns), then in
+      `npm run dev` create a form, type an expense line, let it autosave, reload, delete it, and
+      confirm Print / Save as PDF each give **one centred A4 landscape page**. Upload an approval
+      slip from the card and confirm the sheet prints "Approved via Viber" above the approver's
+      name, then remove it and confirm both marks clear. Then open the assistant, attach up to five
+      receipt photos, and confirm each receipt fills its own line and the header stays as typed.
+      Also add lines up to 15 and confirm Print / Save as PDF still give one page.
+      Not tested against the real database or the live Gemini key.
+
+Intentional behaviour (do not "fix" back):
+- The sheet is read-only; the values are typed in the left-hand card, so the same input never
+  exists twice. The blank paper form's **four** expense rows are the minimum the sheet prints, and
+  it grows a row for every line in use up to the **15** the child table stores (`LIQ_MIN_LINES`,
+  `LIQ_LINES`). "Add expense" opens a line; the trash button on a line removes it, later lines move
+  up to close the gap and the freed last row goes back to blank.
+- One receipt = one row = one amount column. The row's amount lives in exactly one of the seven
+  columns; the column `<select>` moves the typed amount rather than copying it, and an empty row
+  remembers the column that was chosen until an amount is typed.
+- The AI patches the form, it never resets it: `applyAssistantPatch` merges by `idx`, so a receipt
+  read into row 2 leaves rows 1, 3, 4 and every header cell the model did not mention alone.
+- `liqChatReplySchema` uses `liqChatRowSchema`, **not** `liqExpenseSchema`, and
+  `RESPONSE_SCHEMA.entries.items` lists every cell in `required` + `propertyOrdering`. Both are
+  load-bearing: structured output omits empty strings (so the strict schema rejects every reply),
+  and an optional-key row makes Gemini 3.1 Flash Lite repeat one amount for all four receipts
+  instead of reading each photo. Do not "simplify" either back.
+- The lower bands (advances / approvals / accounting) are one table with a shared 10-column grid.
+  Do not go back to three nested tables: their independent row heights left white strips under the
+  shorter panels. The first row's top border is dropped because the TOTAL row above already draws
+  that edge.
+- The lower-left totals follow GN 238 exactly: the **TOTAL** row is the total of the advances typed
+  in the DATE / OFFICE rows (there is no advances input, so it prints blank), **TOTAL EXPENSES**
+  carries the grand total, and **BALANCE DUE EMPLOYEE** prints it in parentheses `(150.00)` — the
+  reference sheet's own example uses parentheses. BALANCE DUE COMPANY stays blank. Do not "fix" the
+  parentheses back to a bare number: the owner asked for the paper's presentation.
+- The sheet's rules are a uniform **1.5px solid #000** (75 declarations, LIQ section of
+  `web/src/styles.css` only), not 1px: the live preview shrinks the 1204px sheet to ~55%, where a
+  hairline turns into a washed-out grey line. 2px was tried and the owner called it too heavy, so
+  1.5px is the agreed weight — do not "tidy" it to 1px, and re-check that a 15-line form still
+  prints one A4 landscape page if you change it. The lower block keeps the paper's spacing (band 18,
+  column header 17, advance rows 16, TOTAL EXPENSES 22, balance rows 18, expense rows 29), which is
+  why it is taller than the first port.
+- The approval slipped in as a file, not as a second form: `attachment_approved` is the single tick
+  and it drives `approved_via_viber` (one boolean pair, like OB). No separate "Approved via Viber"
+  checkbox — uploading the slip already means approval, and removing it clears both marks.
+- PREPARED BY prints the saved signature; there is still no HR queue, no Word export and no
+  signature capture inside LIQ itself (the profile's signature is the one used).
+
 ## 4. Cookie / auth contract (Phase 2, needed by Phase 5)
 
 - Cookie name `swiftslip-session`, `httpOnly`, `sameSite=lax`, `secure` in production, 12 h.

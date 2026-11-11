@@ -75,6 +75,10 @@ interface Paper {
   right: number;
   bottom: number;
   left: number;
+  /** A4 is portrait unless the form says otherwise. */
+  orientation?: "portrait" | "landscape";
+  /** Centre the sheet on the page instead of anchoring it to the top-left. */
+  centered?: boolean;
 }
 
 /** `@page { size: A4; margin: 6mm 14mm 14mm }` — DTR / OB / COS / OT. */
@@ -82,6 +86,16 @@ const PAPER_DEFAULT: Paper = { top: 6, right: 14, bottom: 14, left: 14 };
 
 /** `@page loa { margin: 13.8mm 5.22mm 6.35mm 9.53mm }` — the LOA template. */
 const PAPER_LOA: Paper = { top: 13.8, right: 5.22, bottom: 6.35, left: 9.53 };
+
+/** `@page liq { size: A4 landscape; margin: 8mm }` — the LIQ sheet. */
+const PAPER_LIQ: Paper = {
+  top: 8,
+  right: 8,
+  bottom: 8,
+  left: 8,
+  orientation: "landscape",
+  centered: true,
+};
 
 /**
  * The print rules, re-applied to the stage. They are a copy of the
@@ -162,20 +176,26 @@ export interface PdfAttachment {
 
 /* ------------------------------------------------------------------ paper - */
 
-/** The paper a form prints on — the LOA template has its own page. */
+/** The paper a form prints on — LOA and LIQ have their own pages. */
 function paperFor(element: HTMLElement): Paper {
+  if (element.classList.contains("liq-print-sheet")) return PAPER_LIQ;
   return element.classList.contains("loa-print-sheet") ? PAPER_LOA : PAPER_DEFAULT;
 }
 
 /** The width and height of the printable area, in CSS px. */
 function contentBox(paper: Paper) {
+  const landscape = paper.orientation === "landscape";
+  const pageWidthPt = landscape ? A4.heightPt : A4.widthPt;
+  const pageHeightPt = landscape ? A4.widthPt : A4.heightPt;
+  const pageWidthMm = landscape ? 297 : 210;
+  const pageHeightMm = landscape ? 210 : 297;
   return {
-    widthPx: Math.round((210 - paper.left - paper.right) * MM_TO_PX),
-    heightPx: (297 - paper.top - paper.bottom) * MM_TO_PX,
+    widthPx: Math.round((pageWidthMm - paper.left - paper.right) * MM_TO_PX),
+    heightPx: (pageHeightMm - paper.top - paper.bottom) * MM_TO_PX,
     xPt: paper.left * MM_TO_PT,
     yPt: paper.top * MM_TO_PT,
-    widthPt: A4.widthPt - (paper.left + paper.right) * MM_TO_PT,
-    heightPt: A4.heightPt - (paper.top + paper.bottom) * MM_TO_PT,
+    widthPt: pageWidthPt - (paper.left + paper.right) * MM_TO_PT,
+    heightPt: pageHeightPt - (paper.top + paper.bottom) * MM_TO_PT,
   };
 }
 
@@ -206,6 +226,11 @@ async function renderToCanvas(
   const { widthPx } = contentBox(paper);
   ensureStageStyles();
 
+  // A landscape sheet is authored wider than the printable box (the LIQ sheet
+  // is a fixed 1204px). The stage must be at least as wide as the sheet, or the
+  // capture clips the right-hand columns.
+  const stageWidth = Math.max(widthPx, paper.orientation === "landscape" ? sheet.offsetWidth : 0);
+
   // Off to the left of the viewport: laid out for real, but never seen and
   // never able to start a scrollbar.
   const stage = document.createElement("div");
@@ -214,7 +239,7 @@ async function renderToCanvas(
     "position: fixed",
     "top: 0",
     "left: -10000px",
-    `width: ${widthPx}px`,
+    `width: ${stageWidth}px`,
     "background: #fff",
     "pointer-events: none",
     "z-index: -1",
@@ -457,8 +482,9 @@ async function buildPdf(
   attachments: readonly PdfAttachment[],
 ): Promise<{ blob: Blob; skipped: string[] }> {
   const { jsPDF } = await import("jspdf");
+  const orientation = paper.orientation === "landscape" ? "landscape" : "portrait";
   const pdf = new jsPDF({
-    orientation: "portrait",
+    orientation,
     unit: "pt",
     format: "a4",
     compress: true,
@@ -468,18 +494,22 @@ async function buildPdf(
   const box = contentBox(paper);
 
   pages.forEach((page, index) => {
-    if (index > 0) pdf.addPage("a4", "portrait");
+    if (index > 0) pdf.addPage("a4", orientation);
     const aspect = page.height / Math.max(1, page.width);
     // A slice always fits the width; one taller than the printable area (a
     // single very tall row) is scaled down rather than cropped — showing all of
     // it beats a clean cut line.
     const drawWidth = Math.min(box.widthPt, box.heightPt / aspect);
     const drawHeight = drawWidth * aspect;
+    // A one-page sheet that is smaller than the paper sits in the middle, the
+    // way it does in print preview; multi-page forms still start at the top.
+    const x = paper.centered ? box.xPt + (box.widthPt - drawWidth) / 2 : box.xPt;
+    const y = paper.centered ? box.yPt + (box.heightPt - drawHeight) / 2 : box.yPt;
     pdf.addImage(
       page.toDataURL("image/jpeg", 0.92),
       "JPEG",
-      box.xPt,
-      box.yPt,
+      x,
+      y,
       drawWidth,
       drawHeight,
       undefined,

@@ -27,10 +27,12 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { APP } from "@/config/app";
 import { accountCaption } from "@/components/layout/nav-items";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { cn } from "@/lib/utils";
+import type { Employer } from "@swiftslip/shared/org";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
@@ -86,9 +88,10 @@ export function AdminPanel() {
   // The same photo the portal's sidebar shows — one cache entry, so moving
   // between the panel and the app never re-fetches it.
   const photo = useProfilePhoto();
-  // Position for the footer caption ("Administrator - IT Support"), from the
-  // same cached profile the My Account page edits.
+  // Position and employer for the footer caption ("Mindbridge - IT Support"),
+  // from the same cached profile the My Account page edits.
   const { data: profile } = useQuery(profileQueryOptions());
+  const { logoPath, isRegasco } = useEmployerLogo();
   const [section, setSection] = useState<Section>("dashboard");
   const [logFilter, setLogFilter] = useState<ActivityLogActionFilter | "all">("all");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -110,6 +113,7 @@ export function AdminPanel() {
       section={section}
       onSelect={(next) => navigate(next)}
       label={mounted ? session?.label : undefined}
+      employer={mounted ? profile?.employer : undefined}
       position={mounted ? profile?.designation : undefined}
       photo={mounted ? photo : undefined}
       onNavigate={() => setMenuOpen(false)}
@@ -123,9 +127,9 @@ export function AdminPanel() {
       <header className="no-print flex items-center justify-between border-b border-border bg-glass px-4 py-3 md:hidden">
         <span className="flex items-center gap-2">
           <img
-            src={APP.mindbridgeLogoPath}
-            alt="Mindbridge"
-            className="h-7 w-auto object-contain"
+            src={logoPath}
+            alt={isRegasco ? "Regasco" : "Mindbridge"}
+            className={`w-auto object-contain ${isRegasco ? "h-6" : "h-7"}`}
           />
           <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
             {APP.name}
@@ -172,6 +176,7 @@ function AdminSidebar({
   section,
   onSelect,
   label,
+  employer,
   position,
   photo,
   onNavigate,
@@ -179,6 +184,7 @@ function AdminSidebar({
   section: Section;
   onSelect: (section: Section) => void;
   label?: string | undefined;
+  employer?: Employer | undefined;
   position?: string | undefined;
   photo?: string | undefined;
   onNavigate?: () => void;
@@ -210,9 +216,9 @@ function AdminSidebar({
       <SidebarFooter
         name={label || "Administrator"}
         photo={photo}
-        // "Role - Position" under the name — the same caption every sidebar
-        // uses, falling back to the role alone when no position is on file.
-        sublabel={accountCaption("admin", position)}
+        // "Employer - Position" under the name — the same caption every sidebar
+        // uses, falling back to whichever half is known.
+        sublabel={accountCaption(employer, position)}
         // The identity block is the way into My Account (there is no Account
         // nav row in this panel either).
         to="/profile"

@@ -2,6 +2,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 
 import { APP } from "@/config/app";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import type { SessionUser } from "@swiftslip/shared/types";
 import { MobileSidebarDrawer } from "./MobileSidebarDrawer";
 import { Sidebar } from "./Sidebar";
@@ -9,6 +10,7 @@ import { Sidebar } from "./Sidebar";
 /** Chrome (sidebar / mobile header) around every signed-in page. */
 export function AppShell({ session, children }: { session: SessionUser; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { logoPath, isRegasco } = useEmployerLogo();
   // Re-key the content area per page (the deepest matched route) so each tab
   // switch replays a smooth fade/rise instead of hard-cutting to the new page.
   // Saving a draft only swaps the `$id` param — same route, so the key holds
@@ -28,9 +30,9 @@ export function AppShell({ session, children }: { session: SessionUser; children
       <header className="no-print flex items-center justify-between border-b border-border bg-glass px-4 py-3 md:hidden">
         <span className="flex items-center gap-2">
           <img
-            src={APP.mindbridgeLogoPath}
-            alt="Mindbridge"
-            className="h-10 w-auto object-contain"
+            src={logoPath}
+            alt={isRegasco ? "Regasco" : "Mindbridge"}
+            className={`w-auto object-contain ${isRegasco ? "h-8" : "h-10"}`}
           />
           <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
             {APP.name}

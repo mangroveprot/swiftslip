@@ -8,6 +8,7 @@ import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
+import { profileQueryOptions } from "@/features/profile/queries";
 import { APP } from "@/config/app";
 import type { AppKey } from "@swiftslip/shared/types";
 import { EXTERNAL_APPS } from "@swiftslip/shared/types";
@@ -73,6 +74,10 @@ export function AppChooser() {
   // The chooser is the first screen after sign-in, so the face here is what
   // makes "Signed in as …" read as a person rather than a string.
   const photo = useProfilePhoto();
+  // The SwiftSlip card carries the employee's own company mark: Regasco
+  // employees see the Regasco wordmark, everyone else the Mindbridge logo.
+  const { data: profile } = useQuery(profileQueryOptions());
+  const isRegasco = profile?.employer === 0;
 
   const apps = session?.apps?.length ? session.apps : ["swiftslip"];
   const can = (key: AppKey) => apps.includes(key);
@@ -80,12 +85,16 @@ export function AppChooser() {
   return (
     <main className="relative flex min-h-dvh flex-col justify-center px-4 py-20 md:px-8 md:py-24">
       <header className="absolute inset-x-0 top-0 mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-6 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-3">
           <img
-            src={APP.mindbridgeLogoPath}
-            alt="Mindbridge"
-            className="h-10 w-auto object-contain"
+            src={APP.regascoMascotPath}
+            alt="Regasco"
+            className="h-11 w-auto shrink-0 object-contain"
           />
+          <span className="regasco-word text-[1.75rem]">
+            {APP.name}
+            <span className="regasco-word__bar" aria-hidden="true" />
+          </span>
         </span>
 
         <span className="flex items-center gap-2 text-sm sm:gap-3">
@@ -125,11 +134,19 @@ export function AppChooser() {
             >
               <Link to="/admin" className={CARD_CLASS}>
                 <span>
-                  <span className="relative flex h-11 w-11 items-center justify-center rounded-lg border bg-paper motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                  <span
+                    className={`relative flex h-11 items-center justify-center rounded-lg border bg-paper motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110 ${
+                      isRegasco ? "w-28 px-2" : "w-11"
+                    }`}
+                  >
                     <img
-                      src={APP.mindbridgeLogoPath}
+                      src={isRegasco ? APP.regascoLogoPath : APP.mindbridgeLogoPath}
                       alt=""
-                      className="h-5 w-auto object-contain"
+                      className={
+                        isRegasco
+                          ? "h-4 w-auto max-w-full object-contain"
+                          : "h-5 w-auto object-contain"
+                      }
                     />
                     {/* Corner badge — mirrors the "Admin" pill the admin panel header
                       puts next to this same logo, so the two read as the same surface. */}
@@ -160,11 +177,19 @@ export function AppChooser() {
             >
               <Link to="/records" className={CARD_CLASS}>
                 <span>
-                  <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-paper motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                  <span
+                    className={`flex h-11 items-center justify-center rounded-lg border bg-paper motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110 ${
+                      isRegasco ? "w-28 px-2" : "w-11"
+                    }`}
+                  >
                     <img
-                      src={APP.mindbridgeLogoPath}
+                      src={isRegasco ? APP.regascoLogoPath : APP.mindbridgeLogoPath}
                       alt=""
-                      className="h-6 w-auto object-contain"
+                      className={
+                        isRegasco
+                          ? "h-4 w-auto max-w-full object-contain"
+                          : "h-6 w-auto object-contain"
+                      }
                     />
                   </span>
                   <span className="mt-3 block text-base font-semibold">{APP.name}</span>

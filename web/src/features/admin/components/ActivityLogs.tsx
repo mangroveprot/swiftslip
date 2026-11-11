@@ -161,6 +161,7 @@ function formatAccountDetail(detail: string | null) {
       if (key === "designation") return `Designation: ${value}`;
       if (key === "department") return `Department: ${value}`;
       if (key === "position") return `Position: ${value}`;
+      if (key === "employer") return `Employer: ${value}`;
       return part;
     })
     .join(" · ");

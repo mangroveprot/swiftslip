@@ -16,6 +16,8 @@ export type ActivityAction =
   | 'cos.deleted'
   | 'ot.created'
   | 'ot.deleted'
+  | 'liq.created'
+  | 'liq.deleted'
   | 'record.created'
   | 'record.deleted'
   | 'attachment.uploaded'

@@ -33,11 +33,11 @@ export function Sidebar({
   // request. Only the granted apps are needed, never the session itself.
   const { data: session } = useQuery(sessionQueryOptions());
   const apps = session?.apps;
-  // The caption is "Role - Position" from the same cached profile the My
-  // Account page edits; it falls back to the role alone until a position is
-  // on file. Skipped when it would just repeat the name itself.
+  // The caption is "Employer - Position" from the same cached profile the My
+  // Account page edits; it falls back to whichever half is known until the
+  // profile loads. Skipped when it would just repeat the name itself.
   const { data: profile } = useQuery(profileQueryOptions());
-  const caption = accountCaption(role, profile?.designation);
+  const caption = accountCaption(profile?.employer, profile?.designation);
   const sublabel = label && label !== caption ? caption : undefined;
   // The profile photo, if one has been set — one cached entry shared by every
   // screen that shows a face. The footer falls back to initials while it

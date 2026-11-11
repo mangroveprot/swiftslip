@@ -1,5 +1,6 @@
-import { Briefcase, Calendar, CalendarDays, Clock, type LucideIcon } from "lucide-react";
+import { Briefcase, Calendar, CalendarDays, Clock, Receipt, type LucideIcon } from "lucide-react";
 
+import { employerLabel, type Employer } from "@swiftslip/shared/org";
 import type { Role } from "@swiftslip/shared/types";
 
 export type NavItem = {
@@ -34,6 +35,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: "Leave of Absence", to: "/leave-of-absence", icon: Calendar },
       { label: "Change of Schedule", to: "/change-of-schedule", icon: CalendarDays },
       { label: "Overtime", to: "/overtime", icon: Clock },
+      { label: "Statement of Liquidation", to: "/liquidation", icon: Receipt },
     ],
   },
 ];
@@ -43,13 +45,14 @@ export function roleLabel(role: Role | undefined) {
 }
 
 /**
- * The caption under the name in a sidebar footer — **Role - Position**
- * ("Administrator - IT Support"), falling back to the role alone when the
- * profile has no position yet, so the line never ends on a dangling dash.
- * Replaces the hard-coded "HR reviewer" caption: the same account reads
- * differently in each shell, but its own role and title never change.
+ * The caption under the name in a sidebar footer — **Employer - Position**
+ * ("Mindbridge - IT Support"), falling back to whichever half is known when the
+ * profile is still loading or has no position yet, so the line never ends on a
+ * dangling dash. The employer replaces the old role caption: the sidebar says
+ * which company the account belongs to, not whether it is an administrator.
  */
-export function accountCaption(role: Role | undefined, position?: string | null): string {
+export function accountCaption(employer: Employer | undefined, position?: string | null): string {
+  const company = employer === undefined ? "" : employerLabel(employer);
   const title = (position ?? "").trim();
-  return title ? `${roleLabel(role)} - ${title}` : roleLabel(role);
+  return [company, title].filter(Boolean).join(" - ");
 }

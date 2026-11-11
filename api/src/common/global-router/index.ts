@@ -11,6 +11,7 @@ import { HrRoutes } from '../../apps/hr';
 import { InventoryAssetRoutes } from '../../apps/inventory-assets';
 import { InventoryOptionRoutes } from '../../apps/inventory-options';
 import { InventoryReportRoutes } from '../../apps/inventory-reports';
+import { LiquidationRoutes } from '../../apps/liquidation';
 import { LoaRoutes } from '../../apps/loa';
 import { NotificationRoutes } from '../../apps/notifications';
 import { OfficialBusinessRoutes } from '../../apps/official-business';
@@ -47,6 +48,7 @@ router.use('/notifications', NotificationRoutes);
 router.use('/loa', LoaRoutes);
 router.use('/cos', CosRoutes);
 router.use('/ot', OtRoutes);
+router.use('/liquidation', LiquidationRoutes);
 // B2 file store; form attachments route here too via FileStorageService.
 router.use('/files', FileRoutes);
 router.use('/biometric-import', BiometricImportRoutes);

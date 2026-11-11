@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { APP } from "@/config/app";
+import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { formatPeriodDateRange, formatShortDate } from "@swiftslip/shared/period";
 import type { DtrEntry, DtrHeader, DtrTemplate } from "@swiftslip/shared/types";
 import { withRestDayRemarks } from "../lib/rest-day";
@@ -106,6 +106,7 @@ export function DtrPreview({
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
 }) {
+  const { logoPath, isRegasco } = useEmployerLogo();
   const monthRange = formatPeriodDateRange(header.period, header.month, header.year);
 
   return (
@@ -116,9 +117,11 @@ export function DtrPreview({
         style={{ fontFamily: SHEET_FONT }}
       >
         <img
-          src={APP.logoPath}
+          src={logoPath}
           alt=""
-          className="mb-1.5 block w-[1.55in] object-contain object-left"
+          className={`mb-1.5 block object-contain object-left ${
+            isRegasco ? "w-[2.5in]" : "w-[1.55in]"
+          }`}
         />
 
         <table className={`w-full table-fixed border-collapse border border-ink ${GAP}`}>

@@ -252,6 +252,7 @@ export type Database = {
           department: string;
           designation: string;
           emp_no: string;
+          employer: number;
           full_name: string;
           photo: string;
           signature: string;
@@ -264,6 +265,7 @@ export type Database = {
           department?: string;
           designation?: string;
           emp_no?: string;
+          employer?: number;
           full_name?: string;
           photo?: string;
           signature?: string;
@@ -276,6 +278,7 @@ export type Database = {
           department?: string;
           designation?: string;
           emp_no?: string;
+          employer?: number;
           full_name?: string;
           photo?: string;
           signature?: string;
@@ -624,6 +627,133 @@ export type Database = {
             columns: ['owner_id'];
             isOneToOne: false;
             referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      liq_forms: {
+        Row: {
+          approved_by: string;
+          approved_via_viber: boolean;
+          attachment_approved: boolean;
+          attachment_backend: string;
+          attachment_name: string | null;
+          attachment_path: string | null;
+          cost_center: string;
+          created_at: string;
+          currency: string;
+          date_prepared: string;
+          department: string;
+          employee_signature: string;
+          id: string;
+          owner_id: string | null;
+          prepared_by: string;
+          purpose: string;
+          section_location: string;
+          trip_to: string;
+          updated_at: string;
+        };
+        Insert: {
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_backend?: string;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          cost_center?: string;
+          created_at?: string;
+          currency?: string;
+          date_prepared?: string;
+          department?: string;
+          employee_signature?: string;
+          id?: string;
+          owner_id?: string | null;
+          prepared_by?: string;
+          purpose?: string;
+          section_location?: string;
+          trip_to?: string;
+          updated_at?: string;
+        };
+        Update: {
+          approved_by?: string;
+          approved_via_viber?: boolean;
+          attachment_approved?: boolean;
+          attachment_backend?: string;
+          attachment_name?: string | null;
+          attachment_path?: string | null;
+          cost_center?: string;
+          created_at?: string;
+          currency?: string;
+          date_prepared?: string;
+          department?: string;
+          employee_signature?: string;
+          id?: string;
+          owner_id?: string | null;
+          prepared_by?: string;
+          purpose?: string;
+          section_location?: string;
+          trip_to?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'liq_forms_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      liq_expenses: {
+        Row: {
+          description: string;
+          entertainment_gifts: string;
+          expense_date: string;
+          form_id: string;
+          fuel_gas: string;
+          id: string;
+          idx: number;
+          load_accommodation: string;
+          meals: string;
+          office_supplies: string;
+          other_expenses: string;
+          transpo: string;
+        };
+        Insert: {
+          description?: string;
+          entertainment_gifts?: string;
+          expense_date?: string;
+          form_id: string;
+          fuel_gas?: string;
+          id?: string;
+          idx: number;
+          load_accommodation?: string;
+          meals?: string;
+          office_supplies?: string;
+          other_expenses?: string;
+          transpo?: string;
+        };
+        Update: {
+          description?: string;
+          entertainment_gifts?: string;
+          expense_date?: string;
+          form_id?: string;
+          fuel_gas?: string;
+          id?: string;
+          idx?: number;
+          load_accommodation?: string;
+          meals?: string;
+          office_supplies?: string;
+          other_expenses?: string;
+          transpo?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'liq_expenses_form_id_fkey';
+            columns: ['form_id'];
+            isOneToOne: false;
+            referencedRelation: 'liq_forms';
             referencedColumns: ['id'];
           },
         ];
