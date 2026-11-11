@@ -4,6 +4,7 @@ import { ArrowRight, ExternalLink } from "lucide-react";
 import { useState } from "react";
 
 import { PageTitle } from "@/components/common/PageTitle";
+import { BrandLockup } from "@/components/common/BrandLockup";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { SignOutButton } from "@/components/common/SignOutButton";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -85,17 +86,7 @@ export function AppChooser() {
   return (
     <main className="relative flex min-h-dvh flex-col justify-center px-4 py-20 md:px-8 md:py-24">
       <header className="absolute inset-x-0 top-0 mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-6 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
-        <span className="flex items-center gap-3">
-          <img
-            src={APP.regascoMascotPath}
-            alt="Regasco"
-            className="h-11 w-auto shrink-0 object-contain"
-          />
-          <span className="regasco-word text-[1.75rem]">
-            {APP.name}
-            <span className="regasco-word__bar" aria-hidden="true" />
-          </span>
-        </span>
+        <BrandLockup />
 
         <span className="flex items-center gap-2 text-sm sm:gap-3">
           {/* App-level preference */}

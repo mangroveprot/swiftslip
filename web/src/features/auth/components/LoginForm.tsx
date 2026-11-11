@@ -4,8 +4,9 @@ import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { signIn } from "@/api/auth.functions";
+import { BrandLockup } from "@/components/common/BrandLockup";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { APP, SESSION } from "@/config/app";
+import { SESSION } from "@/config/app";
 import { resetOnboardingSession } from "@/features/profile/onboarding";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { sessionQueryOptions } from "../queries";
@@ -119,17 +120,7 @@ export function LoginForm() {
       <ThemeToggle className="absolute top-4 right-4 sm:top-6 sm:right-6" />
 
       <div className="w-full max-w-[25rem] rounded-xl border border-border/80 bg-card p-7 sm:p-9">
-        <div className="flex items-center gap-3">
-          <img
-            src={APP.regascoMascotPath}
-            alt="Regasco"
-            className="h-11 w-auto shrink-0 object-contain"
-          />
-          <h1 className="regasco-word text-[1.75rem]">
-            {APP.name}
-            <span className="regasco-word__bar" aria-hidden="true" />
-          </h1>
-        </div>
+        <BrandLockup wordAs="h1" />
         <p className="mt-4 text-sm leading-relaxed text-foreground/70">
           Sign in with the ID number and password issued by your administrator.
         </p>

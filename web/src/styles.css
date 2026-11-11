@@ -1191,6 +1191,12 @@
     color: #4c265e;
   }
 
+  /* On dark surfaces (the sidebar) the purple loses contrast — set the word in
+     white and keep the brand-orange rule underneath. */
+  .dark .regasco-word {
+    color: #ffffff;
+  }
+
   .regasco-word__bar {
     display: block;
     width: 100%;

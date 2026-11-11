@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { BrandLockup } from "@/components/common/BrandLockup";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { useSignOutFlow } from "@/components/common/SignOutButton";
 import {
@@ -18,8 +19,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { APP } from "@/config/app";
-import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { useTheme } from "@/lib/use-theme";
 import { cn } from "@/lib/utils";
 
@@ -46,27 +45,17 @@ export function SidebarShell({ children }: { children: ReactNode }) {
 }
 
 /**
- * Mindbridge logo + the app name (plus an optional caption such as
- * "Admin Panel") over a hairline divider. `linkHome` wraps the block in a
- * link back to the portal's landing screen, mirroring the old header.
+ * The Regasco-style SwiftSlip lockup (plus an optional caption such as
+ * "Admin Panel") over a hairline divider. The same mark on every sidebar,
+ * regardless of the employee's employer. `linkHome` wraps the block in a link
+ * back to the portal's landing screen, mirroring the old header.
  */
 export function SidebarBrand({ subtitle, linkHome }: { subtitle?: string; linkHome?: boolean }) {
-  const { logoPath, isRegasco } = useEmployerLogo();
   const body = (
     <>
-      <img
-        src={logoPath}
-        alt={isRegasco ? "Regasco" : "Mindbridge"}
-        className={`w-auto object-contain ${isRegasco ? "h-8" : "h-10"}`}
-      />
-      <span
-        className="mt-1.5 block text-2xl font-semibold"
-        style={{ fontFamily: "var(--font-display)" }}
-      >
-        {APP.name}
-      </span>
+      <BrandLockup imageClassName="h-10" wordClassName="text-2xl" />
       {subtitle ? (
-        <span className="mt-0.5 block text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+        <span className="mt-2 block text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
           {subtitle}
         </span>
       ) : null}
