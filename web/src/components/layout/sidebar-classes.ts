@@ -26,10 +26,17 @@ export function sidebarRowClass({
 }
 
 /**
- * Plain icon + label row for a sidebar footer action (Switch app / Install
- * app / Sign out) — deliberately NOT a `btn btn-outline` like the old
- * sidebar used: the portal mock keeps these quiet, so both sidebars' footers
- * share this one class.
+ * Plain icon + label row for a sidebar footer action (Notifications / Switch
+ * app) — deliberately NOT a `btn btn-outline` like the old sidebar used: the
+ * portal mock keeps these quiet, so both sidebars' footers share this one
+ * class.
  */
 export const SIDEBAR_ACTION_CLASS =
   "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sm text-foreground/75 transition-colors hover:bg-card/60 hover:text-foreground";
+
+/**
+ * Quiet row highlight inside the account menu. The shared menu item uses the
+ * orange accent, which reads as a solid bar on the dark card.
+ */
+export const SIDEBAR_MENU_ITEM =
+  "rounded-lg px-2 py-2 focus:bg-muted focus:text-foreground data-[highlighted]:bg-muted data-[highlighted]:text-foreground dark:focus:bg-white/10 dark:focus:text-foreground dark:data-[highlighted]:bg-white/10 dark:data-[highlighted]:text-foreground";

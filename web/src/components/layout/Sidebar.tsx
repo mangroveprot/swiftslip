@@ -8,7 +8,6 @@ import { profileQueryOptions } from "@/features/profile/queries";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "./sidebar-classes";
 import { accountCaption, roleLabel, NAV_SECTIONS } from "./nav-items";
-import { InstallButton } from "./InstallButton";
 import {
   SidebarBrand,
   SidebarFooter,
@@ -97,7 +96,6 @@ export function Sidebar({
             Switch app
           </Link>
         ) : null}
-        <InstallButton className={SIDEBAR_ACTION_CLASS} />
       </SidebarFooter>
     </SidebarShell>
   );

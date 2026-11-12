@@ -22,6 +22,9 @@ import {
 import { useTheme } from "@/lib/use-theme";
 import { cn } from "@/lib/utils";
 
+import { InstallAppItem } from "./InstallAppItem";
+import { SIDEBAR_MENU_ITEM } from "./sidebar-classes";
+
 /**
  * Building blocks shared by the SwiftSlip portal sidebar and the Admin
  * Panel's — both should read as the same product, so the brand header, the
@@ -102,15 +105,11 @@ const THEME_LABEL = {
   system: "System",
 } as const;
 
-/** Quiet row highlight. The shared menu item uses the orange accent, which reads as a solid bar on the dark card. */
-const MENU_ITEM =
-  "rounded-lg px-2 py-2 focus:bg-muted focus:text-foreground data-[highlighted]:bg-muted data-[highlighted]:text-foreground dark:focus:bg-white/10 dark:focus:text-foreground dark:data-[highlighted]:bg-white/10 dark:data-[highlighted]:text-foreground";
-
 /**
  * Footer pinned under the nav. Utility rows come first (Notifications / Switch
- * app / Install), then the signed-in identity at the very bottom. That
- * identity is one button: it opens a solid card upward with Theme, My account
- * and Sign out.
+ * app), then the signed-in identity at the very bottom. That identity is one
+ * button: it opens a solid card upward with Theme, My account, Install app and
+ * Sign out.
  *
  * Theme lives INSIDE that card, as its first row, rather than as a footer row
  * of its own — one press cycles Light → Dark → System in place; the icon is
@@ -188,7 +187,7 @@ export function SidebarFooter({
                 select — no navigation, no nested menu. */}
             <DropdownMenuItem
               onSelect={cycle}
-              className={cn(MENU_ITEM, "flex items-center gap-2")}
+              className={cn(SIDEBAR_MENU_ITEM, "flex items-center gap-2")}
               aria-label={`Theme: ${themeLabel}. Click to change.`}
             >
               <Contrast className="size-4" aria-hidden="true" />
@@ -200,18 +199,19 @@ export function SidebarFooter({
             </DropdownMenuItem>
             {to ? (
               <DropdownMenuItem asChild>
-                <Link to={to} className={cn("flex w-full items-center gap-2", MENU_ITEM)}>
+                <Link to={to} className={cn("flex w-full items-center gap-2", SIDEBAR_MENU_ITEM)}>
                   <User className="size-4" aria-hidden="true" />
                   My account
                 </Link>
               </DropdownMenuItem>
             ) : null}
-            {/* No divider: Theme sits above My account, and Sign out closes
-                the card. */}
+            {/* No divider: Theme sits above My account, Install app is a quiet
+                utility row, and Sign out closes the card. */}
+            <InstallAppItem />
             <DropdownMenuItem
               onSelect={() => openSignOut()}
               className={cn(
-                MENU_ITEM,
+                SIDEBAR_MENU_ITEM,
                 "text-destructive focus:bg-destructive/15 focus:text-destructive data-[highlighted]:bg-destructive/15 data-[highlighted]:text-destructive dark:focus:bg-destructive/15 dark:focus:text-destructive dark:data-[highlighted]:bg-destructive/15 dark:data-[highlighted]:text-destructive",
               )}
             >

@@ -3,9 +3,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { getRouter } from "./router";
+import { registerServiceWorker } from "./lib/pwa";
 import { installPrintGuards } from "./lib/print";
 import { pruneExpiredBackups } from "./lib/signature";
 import "./styles.css";
+
+// Makes the site installable as an app and keeps its shell available offline.
+// A no-op in dev, where Vite serves unhashed files that must never be cached.
+registerServiceWorker();
 
 // Keeps Ctrl+P as clean as the Print button on every form.
 installPrintGuards();

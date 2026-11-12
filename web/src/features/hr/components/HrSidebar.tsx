@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CircleCheck, CircleX, ClipboardList, LayoutGrid } from "lucide-react";
 
-import { InstallButton } from "@/components/layout/InstallButton";
 import { SIDEBAR_ACTION_CLASS, sidebarRowClass } from "@/components/layout/sidebar-classes";
 import { accountCaption } from "@/components/layout/nav-items";
 import {
@@ -114,7 +113,6 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
             Switch app
           </Link>
         ) : null}
-        <InstallButton className={SIDEBAR_ACTION_CLASS} />
       </SidebarFooter>
     </SidebarShell>
   );
