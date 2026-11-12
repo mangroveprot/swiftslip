@@ -1,7 +1,6 @@
 import { api, documentOf } from "@/lib/api-client";
 import type {
   StorageBackend,
-  StorageCleanupResult,
   StorageOrphanDeleteResult,
   StorageOrphanPreview,
   StorageOverview,
@@ -25,18 +24,6 @@ export const getStorageOverview = async ({ refresh }: { refresh?: boolean } = {}
 /** Save the rule (which backend gets new uploads, and the overflow threshold). */
 export const saveStorageSettings = async ({ data }: { data: StorageSettings }) =>
   documentOf(await api.put<StorageSettingsDoc>("/admin/storage", data));
-
-/** Delete the unreferenced files of one backend. Permanent — confirm first. */
-export const cleanupStorageOrphans = async ({ data }: { data: { backend: StorageBackend } }) =>
-  documentOf(await api.post<StorageCleanupResult>("/admin/storage/orphans", data));
-
-/** Delete the unreferenced files of BOTH backends. Permanent — confirm first. */
-export const cleanupStorageOrphansEverywhere = async () =>
-  documentOf(
-    await api.post<{ supabase: StorageCleanupResult; b2: StorageCleanupResult }>(
-      "/admin/storage/orphans/everywhere",
-    ),
-  );
 
 /**
  * The orphan list behind the cleanup modal — read-only. Every entry says

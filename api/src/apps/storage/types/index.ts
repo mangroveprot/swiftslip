@@ -13,8 +13,3 @@ export function parseRef(ref: string): Ref {
     ? { backend: 'b2', key: ref.slice(3) }
     : { backend: 'supabase', key: ref };
 }
-
-/** Build a reference string from backend + key. */
-export function makeRef(backend: StorageBackend, key: string): string {
-  return backend === 'b2' ? `b2:${key}` : key;
-}

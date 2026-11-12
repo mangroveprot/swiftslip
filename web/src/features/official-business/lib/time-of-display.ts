@@ -32,8 +32,6 @@ import type { ObEntry } from "@swiftslip/shared/types";
 
 /** First line = time, second line = HR's signed date (empty while unsigned). */
 export type ObTimeOfDisplay = { time: string; date: string };
-export type ObReturnDisplay = ObTimeOfDisplay;
-export type ObDepartureDisplay = ObTimeOfDisplay;
 
 type HrFields = Partial<ObHrFields> | null | undefined;
 

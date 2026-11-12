@@ -46,9 +46,3 @@ export const SESSION = {
   /** How long a login lasts. */
   maxAgeSeconds: 60 * 60 * 12,
 } as const;
-
-export const BIOMETRIC_IMPORT = {
-  /** Used when GEMINI_MODEL is not set in the environment. */
-  defaultModel: "gemini-3.1-flash-lite",
-  endpoint: "https://generativelanguage.googleapis.com/v1beta/models",
-} as const;

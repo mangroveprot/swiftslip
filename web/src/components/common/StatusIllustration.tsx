@@ -14,8 +14,6 @@ import { OB_HR_STATUS_LABELS, type ObHrStatus } from "@swiftslip/shared/hr";
  * the source SVGs' bare `.ln` / `.ac` / `.d` names would collide with each
  * other the moment both illustrations appear on one page.
  */
-export type IllustratedStatus = Extract<ObHrStatus, "submitted" | "departed">;
-
 /** Anything a caller might pass; unmatched statuses simply render nothing. */
 export type StatusIllustrationStatus = ObHrStatus | "overdue";
 

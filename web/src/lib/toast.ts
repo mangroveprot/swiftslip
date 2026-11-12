@@ -26,23 +26,6 @@ export const toast = {
   dismiss: (id?: string | number) => sonnerToast.dismiss(id),
 };
 
-/** Runs an async action and reports the outcome as a toast, returning the result (or undefined on failure). */
-export async function toastAction<T>(
-  action: () => Promise<T>,
-  messages: { loading?: string; success: string; error?: string },
-): Promise<T | undefined> {
-  const id = messages.loading ? toast.loading(messages.loading) : undefined;
-  try {
-    const result = await action();
-    toast.success(messages.success, id ? { id } : undefined);
-    return result;
-  } catch (e) {
-    const text = e instanceof Error ? e.message : (messages.error ?? "Something went wrong.");
-    toast.error(text, id ? { id } : undefined);
-    return undefined;
-  }
-}
-
 /**
  * Turn a thrown value into one sentence a person can act on.
  *

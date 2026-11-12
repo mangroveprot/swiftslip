@@ -5,21 +5,6 @@ import type { DtrEntry, DtrHeader } from "@swiftslip/shared/types";
 export const SUNDAY_REMARKS = "SUNDAY";
 
 /**
- * Which day numbers of the sheet fall on a Sunday.
- *
- * The month/year pair comes from the day's REAL date, so a period that spans two
- * months (`span:25-8`) is judged on the right calendar day.
- */
-export function sundayDaysFor(header: DtrHeader, days: number[]): Set<number> {
-  const out = new Set<number>();
-  for (const day of days) {
-    const date = dateOfDay(day, header.period, header.month, header.year);
-    if (isSunday(date.day, date.month, date.year)) out.add(day);
-  }
-  return out;
-}
-
-/**
  * A row as it will print. A Sunday whose REMARKS cell is still blank shows the
  * rest-day note; anything the user typed always wins.
  *

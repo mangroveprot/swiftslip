@@ -1,5 +1,4 @@
 import { formatClock } from "@/lib/clock";
-import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { OtEntry } from "@swiftslip/shared/types";
 
 /**
@@ -7,11 +6,6 @@ import type { OtEntry } from "@swiftslip/shared/types";
  * types. These helpers are the single place that composition happens, so the
  * preview and the Word export can never drift apart.
  */
-
-/** The date half, e.g. "10/07/2026". */
-export function formatOtDate(date: string): string {
-  return date ? formatMonthDayYear(date) : "";
-}
 
 /**
  * The "Date & Time Filed" box as the sheet prints it. The editor holds the
