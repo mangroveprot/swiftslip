@@ -51,7 +51,6 @@ import {
   EMPTY_OB_HR_FIELDS,
   isObLocked,
   latestObResubmit,
-  OB_HR_STATUS_LABELS,
   needsReapprovalAfterSave,
   type ObHrFields,
   type ObHrStatus,

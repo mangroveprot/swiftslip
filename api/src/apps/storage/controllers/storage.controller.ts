@@ -3,8 +3,6 @@ import { ApiResponse, ErrorResponseType } from '../../../common/shared';
 import type { SessionUser } from '@swiftslip/shared/types';
 import type {
   StorageBackend,
-  StorageOrphanDeleteResult,
-  StorageOrphanPreview,
   StorageSettings,
 } from '@swiftslip/shared/schemas';
 import { StorageService } from '../services';

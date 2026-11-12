@@ -160,7 +160,7 @@ function departureLockCopy(status: ObHrStatus): string {
  * slip and a scaled copy of the actual form.
  */
 export function HrObDetailPage({ id }: { id: string }) {
-  const { data, isLoading, isError, error } = useQuery(hrObQueryOptions(id));
+  const { data, isError, error } = useQuery(hrObQueryOptions(id));
   const attachmentLink = useQuery({
     ...hrObAttachmentUrlQueryOptions(id),
     enabled: Boolean(data?.attachment),

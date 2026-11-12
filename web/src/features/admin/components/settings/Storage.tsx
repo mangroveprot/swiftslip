@@ -73,7 +73,7 @@ const RULES: { value: StorageRule; label: string }[] = [
  */
 export function Storage() {
   const queryClient = useQueryClient();
-  const { data: overview, isPending } = useQuery(storageOverviewQueryOptions());
+  const { data: overview } = useQuery(storageOverviewQueryOptions());
 
   const [draft, setDraft] = useState<Draft | null>(null);
   /** Which orphan list the review modal is open on: one backend, or both. */

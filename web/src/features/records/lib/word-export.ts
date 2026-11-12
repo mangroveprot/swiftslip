@@ -132,26 +132,6 @@ function overlaySignature(xml: string, lineHeightEmu: number): string {
     : withAnchor.slice(0, paraStart) + spacer + withAnchor.slice(paraStart);
 }
 
-/**
- * Add space above a paragraph, keeping whatever spacing it already declares.
- * Falls back to inserting `<w:spacing>` straight after `<w:pPr>`.
- */
-function withSpaceBefore(para: string, twips: number): string {
-  const existing = para.match(/<w:spacing\b[^>]*\/>/);
-  if (existing) {
-    // Rebuild so the old attributes (notably `w:after`) survive.
-    const carried = existing[0]
-      .replace(/^<w:spacing\b/, "")
-      .replace(/\/>$/, "")
-      .replace(/\s*w:before="[^"]*"/, "");
-    return para.replace(existing[0], `<w:spacing w:before="${twips}"${carried}/>`);
-  }
-  if (para.includes("<w:pPr>")) {
-    return para.replace("<w:pPr>", `<w:pPr><w:spacing w:before="${twips}"/>`);
-  }
-  return para.replace(/<w:p\b([^>]*)>/, `<w:p$1><w:pPr><w:spacing w:before="${twips}"/></w:pPr>`);
-}
-
 export async function downloadDtrWord({
   // `template` (title / column names / labels) lives in the tokenized template
   // itself, so the export doesn't reference it — but it's kept in the signature

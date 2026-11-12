@@ -13,7 +13,6 @@ import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
 import { useNow } from "@/lib/use-now";
-import { formatMonthDayYear } from "@swiftslip/shared/period";
 import { relativeTime } from "@swiftslip/shared/time";
 import { cosFormsQueryOptions } from "../queries";
 

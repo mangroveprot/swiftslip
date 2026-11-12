@@ -1,5 +1,4 @@
 import { BaseRepository } from '../../../core/engine';
-import { config } from '../../../core/config';
 
 /**
  * The single `storage_settings` row (id = true, enforced by the table's

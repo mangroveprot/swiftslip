@@ -45,7 +45,6 @@ import { applyImportedLog } from "../lib/biometric-import";
 import { downloadDtrWord } from "../lib/word-export";
 import { buildDraftRecordHeader, EMPTY_PROFILE } from "../lib/draft-form";
 import {
-  clearDraft,
   isDraftId,
   promoteDraft,
   promoteSignatureBackup,

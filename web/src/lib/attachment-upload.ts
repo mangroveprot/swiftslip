@@ -57,8 +57,6 @@ const IMAGE_QUALITY = 0.9;
 const SHRINKABLE_MIME = /^image\/(jpeg|png|webp|bmp)$/i;
 const SHRINKABLE_EXT = /\.(jpe?g|png|webp|bmp)$/i;
 
-const extensionOf = (name: string): string => name.split(".").pop()?.toLowerCase() ?? "";
-
 const baseName = (name: string): string => name.replace(/\.[^.]+$/, "") || "attachment";
 
 function isShrinkable(file: File): boolean {

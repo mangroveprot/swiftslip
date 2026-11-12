@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, ExternalLink, Loader2, Paperclip, Plus, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Paperclip, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { removeLoaOtherAttachment, uploadLoaOtherAttachment } from "@/api/loa.functions";

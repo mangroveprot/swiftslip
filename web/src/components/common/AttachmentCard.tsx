@@ -3,19 +3,11 @@ import { Download, ExternalLink, Loader2, Paperclip, Trash2, Upload } from "luci
 import { useState, type ReactNode } from "react";
 
 import { removeObAttachment, uploadObAttachment } from "@/api/official-business.functions";
-import { getCosAttachmentUrl, removeCosAttachment, uploadCosAttachment } from "@/api/cos.functions";
-import { getOtAttachmentUrl, removeOtAttachment, uploadOtAttachment } from "@/api/ot.functions";
+import { removeCosAttachment, uploadCosAttachment } from "@/api/cos.functions";
+import { removeOtAttachment, uploadOtAttachment } from "@/api/ot.functions";
 import { removeLoaAttachment, uploadLoaAttachment } from "@/api/loa.functions";
-import {
-  getLiqAttachmentUrl,
-  removeLiqAttachment,
-  uploadLiqAttachment,
-} from "@/api/liquidation.functions";
-import {
-  getRecordAttachmentUrl,
-  removeRecordAttachment,
-  uploadRecordAttachment,
-} from "@/api/records.functions";
+import { removeLiqAttachment, uploadLiqAttachment } from "@/api/liquidation.functions";
+import { removeRecordAttachment, uploadRecordAttachment } from "@/api/records.functions";
 import { AttachmentFileDialog } from "@/components/common/AttachmentFileDialog";
 import { AttachmentViewerDialog } from "@/components/common/AttachmentViewerDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
