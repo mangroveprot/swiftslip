@@ -7,7 +7,7 @@ import { ATTACHMENT_MAX_BYTES } from '../utils';
 /**
  * The folder every form attachment lives under.
  *
- * It used to be `ApprovalSlip` — named after the first form that ever had an
+ * It used to be `ApprovalSlip`, named after the first form that ever had an
  * attachment, long before DTR/OB/LOA/COS/OT all did. Renaming it is a three-part
  * move, never a drag-and-drop in the dashboard: `0033_rename_storage_root.sql`
  * repoints the stored paths, `scripts/rename-storage-root.ts` moves the objects,
@@ -16,7 +16,7 @@ import { ATTACHMENT_MAX_BYTES } from '../utils';
  * unowned (`ownerIdOf` below matches this name exactly).
  */
 export const STORAGE_ROOT = 'FormAttachement';
-/** Signed download links live for an hour — long enough to view or re-download. */
+/** Signed download links live for an hour, long enough to view or re-download. */
 const URL_TTL_SECONDS = 60 * 60;
 
 /** The private Supabase Storage bucket. Storage calls live only here. */
@@ -25,7 +25,7 @@ export class StorageRepository {
     return getDb().storage.from(config.storage.supabase.bucket);
   }
 
-  /** Create the bucket on first upload — private, 10 MB, any MIME type. */
+  /** Create the bucket on first upload, private, 10 MB, any MIME type. */
   async ensureBucket(): Promise<void> {
     const storage = getDb().storage;
     const { error } = await storage.getBucket(config.storage.supabase.bucket);
@@ -37,7 +37,7 @@ export class StorageRepository {
         fileSizeLimit: ATTACHMENT_MAX_BYTES,
       },
     );
-    // Someone creating it at the same moment is fine — it's there either way.
+    // Someone creating it at the same moment is fine, it's there either way.
     if (createError && !/exists|duplicate/i.test(createError.message)) {
       throw new ErrorResponse('GENERAL_ERROR', createError.message);
     }
@@ -63,7 +63,7 @@ export class StorageRepository {
   /**
    * Duplicate an object to another key. Used by the storage-root rename, which
    * copies first so the old path keeps working until the database has been
-   * repointed — a plain `move` would leave a window where every download 404s.
+   * repointed, a plain `move` would leave a window where every download 404s.
    */
   async copy(from: string, to: string): Promise<void> {
     const { error } = await this.bucket().copy(from, to);
@@ -87,7 +87,7 @@ export class StorageRepository {
 
   /**
    * Best-effort cleanup: an orphaned file is harmless, a failed delete is not.
-   * Never throws — the counts say what happened, so a caller that must report
+   * Never throws, the counts say what happened, so a caller that must report
    * the outcome (the retention cleanup) can, and the rest can ignore them.
    */
   async removeQuietly(
@@ -137,7 +137,7 @@ export class StorageRepository {
    * Every object in the bucket (or under a folder), for the storage
    * dashboard's usage numbers. `list()` only returns one level, and the
    * attachments live at `FormAttachement/<uid>/<file>`, so this walks down.
-   * Throws on a failed listing — the caller decides whether that is fatal.
+   * Throws on a failed listing, the caller decides whether that is fatal.
    * Read-only: the attachment upload/download/delete paths above are
    * unchanged by it.
    */
@@ -167,7 +167,7 @@ export class StorageRepository {
         for (const entry of data ?? []) {
           const key = path ? `${path}/${entry.name}` : entry.name;
           if (entry.id === null) {
-            // A folder — descend into it.
+            // A folder, descend into it.
             await walk(key, depth + 1);
           } else {
             objects.push({

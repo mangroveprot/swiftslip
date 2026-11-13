@@ -27,7 +27,7 @@ import { SIDEBAR_MENU_ITEM } from "./sidebar-classes";
 
 /**
  * Building blocks shared by the SwiftSlip portal sidebar and the Admin
- * Panel's — both should read as the same product, so the brand header, the
+ * Panel's, both should read as the same product, so the brand header, the
  * sectioned nav rows, the "Soon" pill and the user footer all live here
  * instead of being copied between the two.
  */
@@ -112,7 +112,7 @@ const THEME_LABEL = {
  * Sign out.
  *
  * Theme lives INSIDE that card, as its first row, rather than as a footer row
- * of its own — one press cycles Light → Dark → System in place; the icon is
+ * of its own, one press cycles Light → Dark → System in place; the icon is
  * the half-moon, the one mark for "theme", and the current preference with its
  * own state icon reads on the right.
  *
@@ -167,7 +167,7 @@ export function SidebarFooter({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              aria-label={`${name} — open account menu`}
+              aria-label={`${name}: open account menu`}
               className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1.5 text-left transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:bg-muted/60"
             >
               {identity}
@@ -184,7 +184,7 @@ export function SidebarFooter({
             className="z-[80] w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg"
           >
             {/* Theme first, then the account entries: it cycles in place on
-                select — no navigation, no nested menu. */}
+                select, no navigation, no nested menu. */}
             <DropdownMenuItem
               onSelect={cycle}
               className={cn(SIDEBAR_MENU_ITEM, "flex items-center gap-2")}

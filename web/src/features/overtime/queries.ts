@@ -25,7 +25,7 @@ export const otAttachmentUrlQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ["ot-attachment", id],
     queryFn: () => getOtAttachmentUrl({ data: { id } }),
-    // Signed links stay valid for an hour — no need to churn them every 30 s.
+    // Signed links stay valid for an hour, no need to churn them every 30 s.
     staleTime: 30 * 60 * 1000,
     retry: false,
   });

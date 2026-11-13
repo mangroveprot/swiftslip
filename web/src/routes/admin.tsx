@@ -6,7 +6,7 @@ import { loadProfileForGate, needsOnboarding } from "@/features/profile/onboardi
 import { pageTitle, seo } from "@/lib/seo";
 
 /**
- * Admin Panel — its own page with its own chrome, outside the SwiftSlip `_app`
+ * Admin Panel, its own page with its own chrome, outside the SwiftSlip `_app`
  * shell. Admins reach it from the "Where would you like to go?" chooser card;
  * the portal's sidebar no longer carries admin navigation.
  */

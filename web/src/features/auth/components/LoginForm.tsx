@@ -34,7 +34,7 @@ export function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<{ idNumber?: string; password?: string }>({});
   /** Form-level message: bad credentials or a server/session failure. */
   const [formError, setFormError] = useState("");
-  /** True when the pair was rejected — marks both fields invalid. */
+  /** True when the pair was rejected, marks both fields invalid. */
   const [rejected, setRejected] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -67,7 +67,7 @@ export function LoginForm() {
       if (!result.ok) {
         setBusy(false);
         setRejected(true);
-        // Deliberately vague — never reveal which half was wrong.
+        // Deliberately vague, never reveal which half was wrong.
         setFormError("That ID number and password don't match an account.");
         return;
       }
@@ -115,7 +115,7 @@ export function LoginForm() {
           the same theme switch the sidebar and the chooser header carry. Adding
           it is also what makes the page *follow* the choice: mounting it mounts
           `useTheme`, which repaints from the saved preference and stays
-          subscribed to the OS while on "system" — before, only the one-shot
+          subscribed to the OS while on "system", before, only the one-shot
           pre-paint script in index.html ever ran here. */}
       <ThemeToggle className="absolute top-4 right-4 sm:top-6 sm:right-6" />
 

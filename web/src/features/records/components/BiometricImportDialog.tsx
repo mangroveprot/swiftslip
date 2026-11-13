@@ -16,7 +16,7 @@ const MAX_MB = 10;
  * just press Ctrl+V (⌘V on a Mac) anywhere while this is open. Nothing is read
  * until "Read this file" is pressed, so a wrong pick costs one click.
  *
- * One file per import — a biometric log is one sheet, and a second pick
+ * One file per import, a biometric log is one sheet, and a second pick
  * replaces the first instead of queueing two reads.
  */
 export function BiometricImportDialog({
@@ -26,7 +26,7 @@ export function BiometricImportDialog({
   onImport,
 }: {
   open: boolean;
-  /** The AI read is in flight — every control is locked and labelled. */
+  /** The AI read is in flight, every control is locked and labelled. */
   busy: boolean;
   onClose: () => void;
   onImport: (file: File) => void;
@@ -36,7 +36,7 @@ export function BiometricImportDialog({
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Each open starts clean — the last import's file must not linger.
+  // Each open starts clean, the last import's file must not linger.
   useEffect(() => {
     if (!open) return;
     setFile(null);
@@ -54,7 +54,7 @@ export function BiometricImportDialog({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  /** Shared by the picker, the drop and the paste — one set of checks. */
+  /** Shared by the picker, the drop and the paste, one set of checks. */
   function accept(picked: File | null | undefined) {
     if (!picked) return;
     const isPdf = picked.type === "application/pdf" || /\.pdf$/i.test(picked.name);
@@ -70,7 +70,7 @@ export function BiometricImportDialog({
     setFile(picked);
   }
 
-  // Ctrl+V while the overlay is open — a screenshot lands as an image file on
+  // Ctrl+V while the overlay is open, a screenshot lands as an image file on
   // the clipboard. Read through a ref so the listener never goes stale.
   const acceptRef = useRef(accept);
   acceptRef.current = accept;

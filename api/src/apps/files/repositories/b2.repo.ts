@@ -24,7 +24,7 @@ const toError = (error: unknown, action: string) =>
  * the admin's rule picks B2 (see FileStorageService / StorageService.pickBackend).
  *
  * Only the backend holds the upload key. The browser uploads bytes to the API
- * (never straight to B2), and receives a short-lived presigned GET URL back —
+ * (never straight to B2), and receives a short-lived presigned GET URL back,
  * so a file stays owner-only while the bucket stays private.
  */
 export class B2Repository {
@@ -103,7 +103,7 @@ export class B2Repository {
 
   /**
    * Best-effort cleanup: an orphaned object is harmless, a failed request is
-   * not. Never throws — the counts say what happened, so the account-delete
+   * not. Never throws, the counts say what happened, so the account-delete
    * path can log a partial cleanup without failing the request.
    */
   async removeQuietly(
@@ -127,7 +127,7 @@ export class B2Repository {
 
   /**
    * Every object under a prefix (the whole bucket when the prefix is empty),
-   * for the storage dashboard's usage numbers. Throws on a failed listing —
+   * for the storage dashboard's usage numbers. Throws on a failed listing,
    * the caller decides whether that is fatal.
    */
   async list(

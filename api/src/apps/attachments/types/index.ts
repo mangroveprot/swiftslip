@@ -11,7 +11,7 @@ export type AttachmentTable =
 
 /**
  * Rows that carry the extra `other_attachments` list (the "supporting
- * documents" card). LOA, OT and DTR records have it — NOT COS or OB.
+ * documents" card). LOA, OT and DTR records have it, NOT COS or OB.
  */
 export type OtherAttachmentTable = Extract<
   AttachmentTable,

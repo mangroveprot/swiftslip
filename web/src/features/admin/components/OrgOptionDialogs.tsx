@@ -19,7 +19,7 @@ import { accessCodesQueryOptions, orgOptionsQueryOptions } from "../queries";
 
 export type OrgKind = OrgOptionKind;
 
-/** Human label per list — the dialogs read better than the raw kind. */
+/** Human label per list, the dialogs read better than the raw kind. */
 const KIND_LABELS: Record<OrgOptionKind, string> = {
   designation: "Designation",
   department: "Department",
@@ -63,7 +63,7 @@ export function OrgOptionDialogs({
   /** The department a newly added position belongs under. */
   department?: string;
   onClose: () => void;
-  /** A rename landed — hand the new name back so the field can follow it. */
+  /** A rename landed, hand the new name back so the field can follow it. */
   onRenamed: (kind: OrgKind, next: string) => void;
   onDeleted: (kind: OrgKind) => void;
   onAdded: (kind: OrgKind) => void;

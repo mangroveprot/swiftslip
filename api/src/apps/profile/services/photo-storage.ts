@@ -13,7 +13,7 @@ import FileStorageService from '../../storage/services/file-storage.service';
  *     ProfilePhoto/<user id>.<ext>             one square per person
  *
  * Routed through `FileStorageService` so the storage layer is a single
- * gateway, but the backend is hard-coded to 'supabase' — a profile picture is
+ * gateway, but the backend is hard-coded to 'supabase', a profile picture is
  * a few kilobytes that every screen needs and should never end up on B2.
  *
  * The database stores the object PATH, never a URL. Signed links expire, so a
@@ -40,7 +40,7 @@ const EXTENSIONS: Record<string, string> = {
 };
 
 /**
- * A stored value is a path unless it predates this change — rows written while
+ * A stored value is a path unless it predates this change, rows written while
  * the photo lived in the column hold a `data:` URL, and a hand-fixed row could
  * hold a full link. Those are returned untouched so no one's face disappears.
  */

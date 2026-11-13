@@ -3,7 +3,7 @@ import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { OtForm } from "@swiftslip/shared/types";
 
 /**
- * The approval-slip attachment for an Overtime form — the COS/OB card's twin:
+ * The approval-slip attachment for an Overtime form, the COS/OB card's twin:
  * an uploaded slip IS the approval, so an upload ticks both marks
  * (`attachment_approved` and the "Approved via Viber" note) and removing the
  * file clears them again. The seal follows the OB treatment: it sits on the
@@ -45,7 +45,7 @@ export function OtAttachmentCard({
         onUploaded?.();
       }}
       onRemoved={() => {
-        // The server cleared the approval along with the file — keep local state
+        // The server cleared the approval along with the file, keep local state
         // in step so the next auto-save can't resurrect it.
         if (form.attachment_approved || form.approved_via_viber) {
           setForm({ ...form, attachment_approved: false, approved_via_viber: false });

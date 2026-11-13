@@ -1,5 +1,5 @@
 /**
- * Bulk selection action bar — port of `BulkActionBar.razor`.
+ * Bulk selection action bar, port of `BulkActionBar.razor`.
  * Hidden when nothing is selected.
  */
 type BulkActionBarProps = {

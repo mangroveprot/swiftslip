@@ -1,6 +1,6 @@
 /**
  * The admin panel's audit trail: one best-effort row per notable action.
- * Writing a log must never break the action it describes — `log()` swallows
+ * Writing a log must never break the action it describes, `log()` swallows
  * every failure and only reports it to the server log.
  */
 import { BaseService } from '../../../core/engine';
@@ -83,7 +83,7 @@ class ActivityLogService extends BaseService<
   }
 
   /**
-   * Append one row. Best effort — never throws.
+   * Append one row. Best effort, never throws.
    *
    * This is also the single funnel for live updates: almost every mutation in
    * the app logs exactly one action here, so publishing from `log()` pushes a
@@ -253,7 +253,7 @@ class ActivityLogService extends BaseService<
     try {
       await this.pruneExpired();
 
-      // Commas / percent / parens are PostgREST `or=` syntax — drop them.
+      // Commas / percent / parens are PostgREST `or=` syntax, drop them.
       const term = filters.search
         .replace(/[,%()]/g, ' ')
         .replace(/\s+/g, ' ')

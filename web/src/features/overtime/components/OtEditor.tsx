@@ -62,7 +62,7 @@ type SaveStatus = "idle" | AutoSaveStatus;
 
 const DRAFT_FEATURE = "ot";
 
-/** OT lines worth persisting — a row counts only if it has any value. */
+/** OT lines worth persisting, a row counts only if it has any value. */
 function buildEntries(entries: OtEntry[]): OtEntry[] {
   return entries.filter((e) => !isBlankOtEntry(e)).map((e, idx) => ({ ...e, idx }));
 }
@@ -79,7 +79,7 @@ function writeFormCache(
 }
 
 /**
- * One editor per record — including across that record's own save. Saving a
+ * One editor per record, including across that record's own save. Saving a
  * draft swaps `$id` from `draft_…` to the row `insertDraft` just created: the
  * SAME record, so the body keeps its mount (a remount would flash the
  * skeleton over content that never changed). Any other id is a different
@@ -105,7 +105,7 @@ function OtEditorBody({
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  // A draft id means this form does not exist in the database yet — nothing was
+  // A draft id means this form does not exist in the database yet, nothing was
   // written when the user pressed "New form", and nothing will be until they enter
   // something of their own.
   const isDraft = isDraftId(id);
@@ -128,8 +128,8 @@ function OtEditorBody({
     enabled: rowId !== null && others.length > 0,
   });
 
-  // The exported PDF carries the same files the print path does — the approval
-  // attachment first, then every other attachment — after the form's own pages.
+  // The exported PDF carries the same files the print path does, the approval
+  // attachment first, then every other attachment, after the form's own pages.
   // These join the SAME signed-URL queries the cards above already resolved.
   const pdfAttachments = [
     ...usePdfAttachment("ot", rowId ?? id, data?.attachment),
@@ -187,7 +187,7 @@ function OtEditorBody({
       promoteSignatureBackup("ot", id, created);
       promoteDraft(DRAFT_FEATURE, id, created, { form: f, entries: e });
       // Mark persisted BEFORE navigate: an unmount flush must not see the draft
-      // still pending — that would insert a second, blank row.
+      // still pending, that would insert a second, blank row.
       auto.setPersisted(snapshotOf(f, e));
       // Keep this same editor mounted through the swap: the wrapper's key
       // follows this pair instead of remounting over unchanged content.
@@ -208,7 +208,7 @@ function OtEditorBody({
   async function writeSnapshot(): Promise<void> {
     const { form: f, entries: e } = latestRef.current;
     if (!f) return;
-    // insertDraft already writes content — a second save races and errors.
+    // insertDraft already writes content, a second save races and errors.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -250,7 +250,7 @@ function OtEditorBody({
     auto.setPersisted(incoming);
   }, [data, profileReady, rowId, id, auto]);
 
-  // Build a draft from the profile — in the browser, with no request. The starting
+  // Build a draft from the profile, in the browser, with no request. The starting
   // point becomes the baseline: whatever differs from it is something the user
   // actually entered, and that is what creates the form.
   useEffect(() => {
@@ -287,7 +287,7 @@ function OtEditorBody({
   }, [saveStatus]);
 
   // Leaving: flush only once a real row exists. A draft with no row stays in
-  // localStorage — flushing here would insert during StrictMode remounts.
+  // localStorage, flushing here would insert during StrictMode remounts.
   useEffect(() => {
     return () => {
       if (rowIdRef.current) auto.flush();
@@ -302,9 +302,9 @@ function OtEditorBody({
     return <FormUnavailable backTo="/overtime" label="Overtime forms" />;
   if (!form) return <OtEditorSkeleton />;
 
-  /** Explicit Save — writes now rather than waiting for the timer. */
+  /** Explicit Save, writes now rather than waiting for the timer. */
   async function persist(f: OtForm, rows: OtEntry[]) {
-    // insertDraft already writes content — don't save again on first create.
+    // insertDraft already writes content, don't save again on first create.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -486,7 +486,7 @@ function OtEditorBody({
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
-        {/* The sheet: one borderless card holding every block of the form — the
+        {/* The sheet: one borderless card holding every block of the form, the
             OB editor's left column. The scrollbar lives on the CARD, not on a
             wrapper around it: a wrapper scrolls whatever it holds, so the bar
             ran down the gutter past a gap and a second card and read as a bare
@@ -522,7 +522,7 @@ function OtEditorBody({
           </div>
         </div>
 
-        {/* THE COLUMN IS THE SCROLL AREA — the LOA treatment. Nothing inside
+        {/* THE COLUMN IS THE SCROLL AREA, the LOA treatment. Nothing inside
             it scrolls on its own: the approval card, the sheet and the
             attachments card are one long page you scroll top to bottom, so the
             form never "sinks" behind a card that ate the column's height.
@@ -546,17 +546,17 @@ function OtEditorBody({
             </button>
           </div>
           <div className="rounded-sm print:order-1 print:overflow-visible">
-            {/* The editor's rows as they stand — NOT the persisted subset — so
+            {/* The editor's rows as they stand, NOT the persisted subset, so
                 adding an OT line shows up in the sheet straight away. */}
             <OtPreview sheetId="ot-sheet" form={form} entries={entries} />
           </div>
           {/* The extra supporting documents. They used to sit at the bottom of
-              the FORM column, which is its own scroll area — so the card was
+              the FORM column, which is its own scroll area, so the card was
               always below the fold and users never learned it existed. They
               now live in the preview column and simply flow after the sheet:
               the column scrolls them into view like everything else, no cap
               and no scrollbar of their own. Screen-only, like the card always
-              was — its printable copies are mounted below. */}
+              was, its printable copies are mounted below. */}
           <div className="no-print">
             <OtOtherAttachmentsCard
               id={rowId ?? id}
@@ -569,7 +569,7 @@ function OtEditorBody({
           </div>
           {/* The printable "other attachments", after everything else on paper.
               They have to live HERE, in the column that isn't `.no-print`, and
-              not inside the card — the form column is `display: none` on paper,
+              not inside the card, the form column is `display: none` on paper,
               which would take them with it. `print:order-3` follows the sheet
               (1) and the approval slip (2). Renders nothing when no attached
               file is printable. */}

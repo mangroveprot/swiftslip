@@ -25,7 +25,7 @@ export function readFormTypes(raw: unknown): RetentionFormType[] {
   return [...new Set(known)];
 }
 
-/** A per-type count map from jsonb — unknown keys dropped, non-numbers skipped. */
+/** A per-type count map from jsonb, unknown keys dropped, non-numbers skipped. */
 export function readCountMap(
   raw: unknown,
 ): Partial<Record<RetentionFormType, number>> {
@@ -68,7 +68,7 @@ export type RuleFields = {
 };
 
 /**
- * Untouched scaffolds — a form someone opened and never filled — are the
+ * Untouched scaffolds, a form someone opened and never filled, are the
  * app's own `quiet` sweep to remove, not the cleanup's. The empty shape is
  * different per family: DTR has name/emp_no, the others name/date_filed.
  */

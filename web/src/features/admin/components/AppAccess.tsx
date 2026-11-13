@@ -75,7 +75,7 @@ function roleText(person: Person) {
 function reasonFor(person: Person, app: GrantableAppKey) {
   const outcome = outcomeOf(person, app);
   if (!outcome) return "";
-  if (outcome.admin) return "Administrator — every app is always open.";
+  if (outcome.admin) return "Administrator. Every app is always open.";
   if (outcome.byScope === "user") {
     return outcome.allowed
       ? "Allowed by a rule on this person."
@@ -146,7 +146,7 @@ export function AppAccess() {
   const data = overview.data;
   const people = data?.people ?? [];
   const selectedPerson = people.find((p) => p.id === personId) ?? people[0] ?? null;
-  // One batch for the whole roster — the faces in the list and the big one in
+  // One batch for the whole roster, the faces in the list and the big one in
   // the detail pane all come from this map, so picking a person never triggers
   // another request.
   const photos = useUserPhotos(people.map((person) => person.id));
@@ -769,7 +769,7 @@ function PersonDetail({
       {person.isAdmin ? (
         <div className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-foreground/70" aria-hidden="true" />
-          <p>Administrator — every app is always open. Admin access can&apos;t be limited here.</p>
+          <p>Administrator. Every app is always open. Admin access can&apos;t be limited here.</p>
         </div>
       ) : (
         <p className="mt-2 max-w-[38rem] text-xs leading-5 text-muted-foreground">

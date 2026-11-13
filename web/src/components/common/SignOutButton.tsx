@@ -9,7 +9,7 @@ import { ConfirmModal } from "@/components/common/ConfirmModal";
 import { resetOnboardingSession } from "@/features/profile/onboarding";
 
 /**
- * The one sign-out flow — confirmation warning + cancel queries → clear cache
+ * The one sign-out flow, confirmation warning + cancel queries → clear cache
  * → sign out → back to the login screen. Exposed as a hook because two
  * triggers render it differently: `SignOutButton` (app chooser, inventory) and
  * the sidebar identity menu (`AccountMenu`). Neither re-implements the flow.
@@ -23,7 +23,7 @@ export function useSignOutFlow({
 }: {
   /** Named in the warning ("…sign in again to access <name>"). */
   accessName?: string | undefined;
-  /** Runs right before signing out — e.g. to close an open menu. */
+  /** Runs right before signing out, e.g. to close an open menu. */
   onSignOutStart?: (() => void) | undefined;
 } = {}) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -71,18 +71,18 @@ export function useSignOutFlow({
 }
 
 /**
- * The one Sign out button — icon + the shared confirmation flow. Every surface
+ * The one Sign out button, icon + the shared confirmation flow. Every surface
  * that still needs a standalone button (app chooser, inventory sidebar) renders
  * this; the main sidebars put Sign out inside the identity menu instead.
  *
  * <SignOutButton className="btn btn-outline w-full" />
  */
 type SignOutButtonProps = {
-  /** Button classes — defaults to the plain header/footer button. */
+  /** Button classes, defaults to the plain header/footer button. */
   className?: string;
   /** Named in the warning ("…sign in again to access <name>"). */
   accessName?: string;
-  /** Runs right before signing out — e.g. to close an open menu. */
+  /** Runs right before signing out, e.g. to close an open menu. */
   onSignOutStart?: () => void;
 };
 

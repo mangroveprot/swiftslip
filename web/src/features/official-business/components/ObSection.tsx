@@ -47,7 +47,7 @@ export function ObHint({ text, id }: { text?: string | undefined; id?: string | 
 }
 
 /**
- * The red asterisk on a label that has to be filled in — the same mark the LOA
+ * The red asterisk on a label that has to be filled in, the same mark the LOA
  * sheet carries. Purely a mark: the form still saves a half-filled draft (the
  * sheet just prints what's there), so this says what the paper form needs
  * without blocking anything.
@@ -84,7 +84,7 @@ export function ObField({
   required?: boolean;
   /** The submit check found this required cell empty. */
   invalid?: boolean | undefined;
-  /** What to do about it — shown in red under the input once it is empty. */
+  /** What to do about it, shown in red under the input once it is empty. */
   hint?: string | undefined;
   onChange: (value: string) => void;
   className?: string;

@@ -1,5 +1,5 @@
 /**
- * Inventory shell — React port of `Layout/MainLayout.razor`: sidebar +
+ * Inventory shell, React port of `Layout/MainLayout.razor`: sidebar +
  * main area with the `page-enter` keyed outlet, plus the "cascading"
  * shell state (selected branch, sidebar, asset badge, add-asset requests)
  * exposed through `InventoryShellContext`.
@@ -51,7 +51,7 @@ export function InventoryLayout() {
       : "assets";
 
   // The drawer stays open after a nav tap only until the route actually
-  // changes — this also covers paths we don't drive from the sidebar
+  // changes, this also covers paths we don't drive from the sidebar
   // (back/forward, the "Add asset" jump, deep links).
   useEffect(() => {
     setSidebarOpen(false);
@@ -78,7 +78,7 @@ export function InventoryLayout() {
       branches,
       selectedBranchId,
       selectBranch: (branchId: number) => {
-        // Mirrors `SelectBranch` — same id is a no-op (Home resets filters
+        // Mirrors `SelectBranch`, same id is a no-op (Home resets filters
         // through its own effect on selectedBranchId).
         if (branchId !== selectedBranchId) setSelectedBranchId(branchId);
       },
@@ -113,7 +113,7 @@ export function InventoryLayout() {
         <InventorySidebar shell={shell} />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          {/* Phones/tablets scroll the page itself — with a fixed viewport the
+          {/* Phones/tablets scroll the page itself, with a fixed viewport the
               header + stat cards left the table with no visible rows. */}
           <main className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden md:overflow-hidden p-3 sm:p-4 md:p-6">
             <div className="page-enter flex flex-col flex-1 min-h-0" key={pathname}>

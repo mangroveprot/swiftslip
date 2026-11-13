@@ -1,6 +1,6 @@
 import { BaseRepository } from '../../../core/engine';
 
-/** `cleanup_runs` — the permanent history of what each cleanup deleted. */
+/** `cleanup_runs`, the permanent history of what each cleanup deleted. */
 export class CleanupRunsRepository extends BaseRepository<'cleanup_runs'> {
   constructor() {
     super('cleanup_runs');

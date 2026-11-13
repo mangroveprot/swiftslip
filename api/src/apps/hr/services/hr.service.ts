@@ -1,7 +1,7 @@
 /**
  * HR approval for Official Business forms.
  *
- * SCOPE — Official Business only (HR_APPROVAL_SPEC.md §1). LOA / COS / OT / DTR
+ * SCOPE, Official Business only (HR_APPROVAL_SPEC.md §1). LOA / COS / OT / DTR
  * keep their existing flows.
  *
  * The employee hands a form over with `POST /official-business/:id/submit`;
@@ -45,7 +45,7 @@ const toFailure = (error: unknown) => ({
       : new ErrorResponse('INTERNAL_SERVER_ERROR', (error as Error).message),
 });
 
-/** States that are not drafts — what the HR queue shows. */
+/** States that are not drafts, what the HR queue shows. */
 const QUEUE_STATUSES: ObHrStatus[] = [
   'submitted',
   'waiting_supervisor',
@@ -150,7 +150,7 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
   /**
    * The employee behind a form, for the detail page's profile banner: the face
    * plus the org facts the sheet has no box for (office, supervisor) and their
-   * newest OB forms — so a reviewer sees who they are reviewing, not four
+   * newest OB forms, so a reviewer sees who they are reviewing, not four
    * denormalised cells. Null when the form has no owner profile to resolve.
    */
   private async employeeProfile(
@@ -252,7 +252,7 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
     }
   }
 
-  /** Full detail for the reviewer — any owner's form, never scoped by owner. */
+  /** Full detail for the reviewer, any owner's form, never scoped by owner. */
   async get(id: string): Promise<ServiceResponse<HrObDetail>> {
     try {
       const form = await this.repository.findOne({ id });
@@ -266,7 +266,7 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
       );
       // The sheet prints names + signatures, but the row only stores ids.
       // The profile banner reads the same owner row, in one parallel call. The
-      // old rejection's reviewer is resolved from `resubmit_history` too —
+      // old rejection's reviewer is resolved from `resubmit_history` too,
       // the live columns were cleared when the form came back.
       const [signers, employee, resubmitHistory] = await Promise.all([
         resolveObSigners(form),
@@ -325,7 +325,7 @@ class HrService extends BaseService<'ob_forms', HrObRepository> {
    * `submitted → waiting_supervisor | approved`. The supervisor indicator never
    * blocks the approval itself (D3): if the supervisor has not signed yet, the
    * form parks in `waiting_supervisor` and the employee's next save (with the
-   * signature in place) moves it to `approved` — no second HR approval needed.
+   * signature in place) moves it to `approved`, no second HR approval needed.
    */
   async approve(
     actor: SessionUser,

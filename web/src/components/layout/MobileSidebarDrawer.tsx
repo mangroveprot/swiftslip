@@ -10,7 +10,7 @@ import { useEffect, type ReactNode } from "react";
  * and gives it its own close button, so the opened menu looks like the desktop
  * sidebar rather than a bar.
  *
- * The trigger is unchanged — the existing header Menu button still opens it.
+ * The trigger is unchanged, the existing header Menu button still opens it.
  * Desktop never sees the drawer: both the panel and the backdrop are
  * `md:hidden`, and the persistent left rail takes over from `md` up.
  */

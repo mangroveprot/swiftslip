@@ -68,7 +68,7 @@ type SaveStatus = "idle" | AutoSaveStatus;
 
 const DRAFT_FEATURE = "dtr";
 
-/** The daily entries worth persisting — a row counts only if it has any value. */
+/** The daily entries worth persisting, a row counts only if it has any value. */
 function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
   return Object.values(map)
     .filter((e) => e.time_in || e.time_out || e.schedule || e.remarks)
@@ -76,7 +76,7 @@ function buildEntries(map: Record<number, DtrEntry>): DtrEntry[] {
 }
 
 /** Write a save into the query cache WITHOUT dropping the `attachment` /
- *  `others` siblings — a bare `{ record, entries }` write replaces the whole
+ *  `others` siblings, a bare `{ record, entries }` write replaces the whole
  *  entry, so the files the cards render would vanish until the next refetch.
  *  When nothing is cached yet the write still has to be a complete
  *  `RecordDetail`, hence the empty `others` seed. */
@@ -91,7 +91,7 @@ function writeRecordCache(
 }
 
 /**
- * One editor instance per record — including across that record's own save.
+ * One editor instance per record, including across that record's own save.
  * Saving a draft swaps `$id` from `draft_…` to the id `insertDraft` just
  * created: that is the SAME record, so the body must keep its mount (a
  * remount would flash the skeleton and drop the field being typed in over
@@ -101,7 +101,7 @@ function writeRecordCache(
 export function RecordEditor({ id }: { id: string }) {
   const [promotion, setPromotion] = useState<{ draft: string; real: string } | null>(null);
   // While the id points at this draft's own created row, keep following the
-  // draft id — the key that has been stable since the draft was opened.
+  // draft id, the key that has been stable since the draft was opened.
   const key = promotion && promotion.real === id ? promotion.draft : id;
   return (
     <RecordEditorBody
@@ -127,7 +127,7 @@ function RecordEditorBody({
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  // A draft id means this record does not exist in the database yet — nothing was
+  // A draft id means this record does not exist in the database yet, nothing was
   // written when the user pressed "New record", and nothing will be until they
   // enter something of their own.
   const isDraft = isDraftId(id);
@@ -135,14 +135,14 @@ function RecordEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  // Fetched only once there is a real id — a draft has nothing to load, which is
+  // Fetched only once there is a real id, a draft has nothing to load, which is
   // why opening one shows the form straight away instead of a skeleton.
   const { data, error, isError } = useQuery({
     ...recordQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
 
-  // Fixed form wording — the Settings → DTR template screen is gone.
+  // Fixed form wording, the Settings → DTR template screen is gone.
   const template = DTR_TEMPLATE;
   const profileQuery = useQuery(profileQueryOptions());
   const profile = profileQuery.data ?? null;
@@ -156,8 +156,8 @@ function RecordEditorBody({
     enabled: rowId !== null && others.length > 0,
   });
 
-  // The exported PDF carries the same files the print path does — the approval
-  // attachment first, then every other attachment — after the form's own pages.
+  // The exported PDF carries the same files the print path does, the approval
+  // attachment first, then every other attachment, after the form's own pages.
   // These join the SAME signed-URL queries the cards above already resolved.
   const pdfAttachments = [
     ...usePdfAttachment("record", rowId ?? id, data?.attachment),
@@ -196,7 +196,7 @@ function RecordEditorBody({
       save: writeSnapshot,
       stageLocal: () => {
         const { header: h, rows: r } = latestRef.current;
-        // Once the row exists the backup belongs to the real id — the draft key is
+        // Once the row exists the backup belongs to the real id, the draft key is
         // a different record by then.
         if (h) writeDraft(DRAFT_FEATURE, rowIdRef.current ?? id, { header: h, entries: r });
       },
@@ -220,7 +220,7 @@ function RecordEditorBody({
       // never exists holding only the auto-fill.
       await saveRecord({ data: { id: created, header: h, entries } });
       rowIdRef.current = created;
-      // Write cache BEFORE setRowId triggers a re-render that starts the query —
+      // Write cache BEFORE setRowId triggers a re-render that starts the query,
       // without this, the query fires against empty DB state and overwrites the
       // just-saved local state with nothing.
       writeRecordCache(qc, created, { record: { ...h, id: created }, entries });
@@ -229,7 +229,7 @@ function RecordEditorBody({
       promoteSignatureBackup("dtr", id, created);
       promoteDraft(DRAFT_FEATURE, id, created, { header: h, entries: r });
       // Mark persisted BEFORE navigate: an unmount flush must not see the draft
-      // still pending — that would insert a second, blank row.
+      // still pending, that would insert a second, blank row.
       auto.setPersisted(snapshotOf(h, r));
       // Keep this same editor mounted through the swap: the wrapper's key
       // follows this pair instead of remounting over unchanged content.
@@ -253,7 +253,7 @@ function RecordEditorBody({
   async function writeSnapshot(): Promise<void> {
     const { header: h, rows: r } = latestRef.current;
     if (!h) return;
-    // insertDraft already writes content — a second save races and errors.
+    // insertDraft already writes content, a second save races and errors.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -286,7 +286,7 @@ function RecordEditorBody({
     for (const e of data.entries) map[e.day] = e;
 
     const incoming = snapshotOf(nextHeader, map);
-    // Unsaved local edits always win — a save's cache write or a background
+    // Unsaved local edits always win, a save's cache write or a background
     // refetch must never clobber what the user is currently typing.
     if (localRef.current !== null && localRef.current !== auto.persistedSnapshot()) return;
     if (localRef.current === incoming) return;
@@ -295,7 +295,7 @@ function RecordEditorBody({
     auto.setPersisted(incoming);
   }, [data, rowId, id, auto]);
 
-  // Build a draft from the profile — in the browser, with no request. The starting
+  // Build a draft from the profile, in the browser, with no request. The starting
   // point becomes the baseline: whatever differs from it is something the user
   // actually entered, and that is what creates the row.
   useEffect(() => {
@@ -315,7 +315,7 @@ function RecordEditorBody({
 
   // Keep a local backup of the signature so it survives a failed save. Derived
   // values only (not the header object), so the effect re-runs when the signature
-  // changes — and skips the pre-hydration render where header is still null.
+  // changes, and skips the pre-hydration render where header is still null.
   const sig = header?.employee_signature;
   const headerLoaded = header !== null;
   useEffect(() => {
@@ -340,7 +340,7 @@ function RecordEditorBody({
   }, [saveStatus]);
 
   // Leaving: flush only once a real row exists. A draft with no row stays in
-  // localStorage — flushing here would insert during StrictMode remounts.
+  // localStorage, flushing here would insert during StrictMode remounts.
   useEffect(() => {
     return () => {
       if (rowIdRef.current) auto.flush();
@@ -366,9 +366,9 @@ function RecordEditorBody({
   const setCell = (day: number, patch: Partial<DtrEntry>) =>
     setRows({ ...rows, [day]: { ...row(day), ...patch } });
 
-  /** Explicit Save — writes now rather than waiting for the timer. */
+  /** Explicit Save, writes now rather than waiting for the timer. */
   async function persist(h: DtrHeader, entries: DtrEntry[]) {
-    // insertDraft already writes content — don't save again on first create.
+    // insertDraft already writes content, don't save again on first create.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -485,7 +485,7 @@ function RecordEditorBody({
                 title="Upload a scanned or photographed biometric log (PDF or image) to auto-fill the days below"
                 onClick={() => setImportOpen(true)}
               >
-                {/* The mascot marks this as the AI read — the label says upload. */}
+                {/* The mascot marks this as the AI read, the label says upload. */}
                 <AiMascot size="xs" />
                 <span className="hidden sm:inline">Import from biometric record</span>
               </button>
@@ -493,7 +493,7 @@ function RecordEditorBody({
           ) : null}
           {/* The three export actions live in one dropdown, the way every other
               form editor does it. The biometric import stays outside as its own
-              button — it is a data action, not an export. */}
+              button, it is a data action, not an export. */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" className="btn btn-outline" aria-label="Export this form">
@@ -573,7 +573,7 @@ function RecordEditorBody({
       </header>
 
       <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
-        {/* THE COLUMN IS THE SCROLL AREA — the LOA treatment. Its children all
+        {/* THE COLUMN IS THE SCROLL AREA, the LOA treatment. Its children all
             sit at their natural height (`shrink-0`), so the header cards, the
             daily entries and the attachments card keep their own proportion and
             the whole column scrolls top to bottom instead of squeezing the
@@ -599,7 +599,7 @@ function RecordEditorBody({
             canEdit={canEdit}
             busy={busy}
           />
-          {/* The other documents sit at the bottom of the form — the approval
+          {/* The other documents sit at the bottom of the form, the approval
               attachment keeps the top of the preview column, exactly like LOA.
               This card is screen-only; its printable copies are mounted in the
               preview column below. */}
@@ -613,7 +613,7 @@ function RecordEditorBody({
           />
         </div>
 
-        {/* Attachment first, always — but on print it drops back below the
+        {/* Attachment first, always, but on print it drops back below the
             sheet (`print:order`) so a supporting file still follows the
             record on its own page. */}
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
@@ -658,7 +658,7 @@ function RecordEditorBody({
           </div>
           {/* The printable "other attachments", after everything else on paper.
               They have to live HERE, in the column that isn't `.no-print`, and
-              not inside the card — the form column is `display: none` on paper,
+              not inside the card, the form column is `display: none` on paper,
               which would take them with it. `print:order-3` follows the sheet
               (1) and the approval slip (2). Renders nothing when no attached
               file is printable. */}

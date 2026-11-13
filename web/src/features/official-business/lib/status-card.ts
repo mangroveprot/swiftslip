@@ -12,7 +12,7 @@ import type { ObForm } from "@swiftslip/shared/types";
 
 /**
  * The status card the two OB screens show: which state the form is in, the one
- * sentence that explains it, and the rows of facts underneath — the owner's
+ * sentence that explains it, and the rows of facts underneath, the owner's
  * reference mock, in two dialects. **`hr`** stacks label-left / value-right
  * rows (the reviewer's rail reads like a record), **`employee`** lays the same
  * facts out in columns (the employee scans one line per fact).
@@ -22,10 +22,10 @@ import type { ObForm } from "@swiftslip/shared/types";
  */
 export type ObStatusAudience = "hr" | "employee";
 
-/** The stored status plus Overdue — derived from the date, never stored. */
+/** The stored status plus Overdue, derived from the date, never stored. */
 export type ShownStatus = ObHrStatus | "overdue";
 
-/** A person the card names — the avatar is filled from their profile when one exists. */
+/** A person the card names, the avatar is filled from their profile when one exists. */
 export type ObStatusPerson = {
   name: string;
   position?: string | null;
@@ -35,13 +35,13 @@ export type ObStatusPerson = {
 export type ObStatusField = {
   label: string;
   value: string;
-  /** Small grey line under the value — the "why/when" of the value. */
+  /** Small grey line under the value, the "why/when" of the value. */
   note?: string | null;
   /** The reason row on a rejected card runs the full width of the card. */
   full?: boolean;
-  /** Avatar shown before the value — for "Rejected by Maria Santos". */
+  /** Avatar shown before the value, for "Rejected by Maria Santos". */
   valuePerson?: ObStatusPerson | null;
-  /** Avatar shown before the note — for "By Admi Nastor" on a resubmit. */
+  /** Avatar shown before the note, for "By Admi Nastor" on a resubmit. */
   notePerson?: ObStatusPerson | null;
   /** Amber emphasis for the resubmit-specific facts. */
   tone?: "default" | "warning";
@@ -91,17 +91,17 @@ function toDate(value: string | Date | null | undefined): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-/** "Nov 6, 2026" — or "" when there is nothing to show. */
+/** "Nov 6, 2026", or "" when there is nothing to show. */
 export function statusDate(value: string | Date | null | undefined): string {
   const date = toDate(value);
   if (!date) return "";
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** "Nov 6, 2026 at 8:12 AM" — the mockup's stamp. */
+/** "Nov 6, 2026 at 8:12 AM", the mockup's stamp. */
 export function statusDateTime(value: string | Date | null | undefined): string {
   const raw = value instanceof Date ? "" : (value ?? "").trim();
-  // A plain stored date (`date_filed`) has no time of its own — printing
+  // A plain stored date (`date_filed`) has no time of its own, printing
   // "12:00 AM" would invent one, so the row shows the date alone.
   if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return statusDate(value);
   const date = toDate(value);
@@ -141,7 +141,7 @@ function waiting(from: string | Date | null | undefined): string {
   return span(from, new Date()) || "—";
 }
 
-/** "1 day after it was filed" — the note under "Rejected on". */
+/** "1 day after it was filed", the note under "Rejected on". */
 function afterFiling(rejectedAt: string | null | undefined, filed: string): string {
   const to = toDate(rejectedAt);
   const from = toDate(filed);
@@ -169,7 +169,7 @@ function personFromSigner(signer: ObSigner | undefined | null): ObStatusPerson |
 }
 
 /**
- * "Was: empty" / "Was: Cebu City" — the value HR last saw for the one field
+ * "Was: empty" / "Was: Cebu City", the value HR last saw for the one field
  * the employee changed. The reference card prints one line of context under
  * "You changed"; with several changed fields the labels already fill that line,
  * so no note is added. Long values are trimmed so a paragraph of purpose text
@@ -203,7 +203,7 @@ export function hasStatusCard(doc: ObStatusDoc | undefined | null): doc is ObSta
 /**
  * Build everything the header line and the card need for one form, for one
  * audience. Every field is filled from data the API actually stores; nothing
- * is invented — where a stamp is missing the row reads "—".
+ * is invented, where a stamp is missing the row reads "—".
  */
 export function buildStatusCard(
   audience: ObStatusAudience,
@@ -225,7 +225,7 @@ export function buildStatusCard(
   const rejectPosition = signers?.rejected?.position?.trim() || "";
   const supervisor = doc.approved_by.trim();
   // Everyone the card names gets a face; the profile photo when one is on file,
-  // initials otherwise — never a bare string next to an empty circle.
+  // initials otherwise, never a bare string next to an empty circle.
   const employeePerson: ObStatusPerson | null = doc.employee_name.trim()
     ? {
         name: doc.employee_name.trim(),
@@ -329,7 +329,7 @@ export function buildStatusCard(
       // A form that has been back to HR once gets its own card. It reports only
       // the CURRENT trip: when it came back, what changed, which attempt this
       // is, and how long HR has had it. Who rejected an older version, why, and
-      // when belong to the `rejected` card alone — repeating them here made a
+      // when belong to the `rejected` card alone, repeating them here made a
       // "Waiting for HR" form read like it had just been rejected again.
       if (again && latest) {
         label = "Waiting for HR";
@@ -382,7 +382,7 @@ export function buildStatusCard(
             note: changed.length ? "Marked in the form below" : "No field values changed",
           },
           // The first filing date is what HR cares about on a form that keeps
-          // coming back — not the latest submit (the owner's layout note).
+          // coming back, not the latest submit (the owner's layout note).
           { label: "First filed on", value: dash(statusDateTime(doc.date_filed)) },
           {
             label: "Submission",
@@ -450,7 +450,7 @@ export function buildStatusCard(
     case "approved": {
       label = "Ready for departure";
       description = employee
-        ? "Approved by HR and your supervisor. Ready for departure — HR will sign you out."
+        ? "Approved by HR and your supervisor. Ready for departure. HR will sign you out."
         : "Approved by HR and the supervisor. HR signs the departure when the employee leaves.";
       fields = [
         {

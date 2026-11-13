@@ -25,7 +25,7 @@ export const OTHER_FILES_TABLES: readonly RetentionFormType[] = [
   'ot',
 ];
 
-/** What the cleanup selects of an expired row — only what the rules need. */
+/** What the cleanup selects of an expired row, only what the rules need. */
 export const SELECTS: Record<RetentionFormType, string> = {
   dtr: 'id,attachment_path,attachment_backend,other_attachments,name,emp_no',
   ob: 'id,attachment_path,attachment_backend,attachment_approved,employee_name,date_filed',
@@ -37,7 +37,7 @@ export const SELECTS: Record<RetentionFormType, string> = {
 
 /**
  * The columns the cleanup reads, as one loose shape. A row only carries the
- * ones its own table has — the predicates below always ask before reading.
+ * ones its own table has, the predicates below always ask before reading.
  */
 export type ExpiredRow = {
   id: string;

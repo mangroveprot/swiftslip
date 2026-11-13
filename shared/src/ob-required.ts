@@ -1,6 +1,6 @@
 /**
  * The fields the paper Official Business form cannot leave the employee's
- * hands without — the ones marked with a red asterisk, plus the signature.
+ * hands without, the ones marked with a red asterisk, plus the signature.
  *
  * One list for both sides of the wire: the editor blocks the button and
  * highlights the empty cells, and the API re-checks the row it is about to
@@ -9,7 +9,7 @@
  *
  * Kept in `shared` because a second copy of the list is how the highlight, the
  * inline hints and the toast would start disagreeing about what "required"
- * means. Everything here is plain data + plain string functions — no browser
+ * means. Everything here is plain data + plain string functions, no browser
  * or server code.
  */
 import type { ObEntry, ObForm } from "./types";
@@ -18,9 +18,9 @@ import type { ObEntry, ObForm } from "./types";
 export type ObRequiredField = {
   /** Form key, `entry:<idx>:<column>` for an itinerary cell, or `entries`. */
   key: string;
-  /** What the paper sheet calls it — used by the API's suggestions. */
+  /** What the paper sheet calls it, used by the API's suggestions. */
   label: string;
-  /** Short, human name for the toast sentence (no "Stop 1 —" prefixes). */
+  /** Short, human name for the toast sentence (no "Stop 1:" prefixes). */
   shortLabel: string;
   /** Plain-English instruction printed under the highlighted cell. */
   hint: string;
@@ -127,7 +127,7 @@ export function obMissingRequiredFields(form: ObForm, entries: ObEntry[]): ObReq
         missing.push({
           ...field,
           key: `entry:${entry.idx}:${field.key}`,
-          label: `Stop ${entry.idx + 1} — ${field.label}`,
+          label: `Stop ${entry.idx + 1}: ${field.label}`,
         });
       }
     }
@@ -148,7 +148,7 @@ const SHORT_BY_LABEL = new Map<string, string>([
   [NO_STOPS.label, NO_STOPS.shortLabel] as const,
 ]);
 
-/** "Date of OB and Purpose(s)", not "Date of OB, Stop 1 — Purpose(s)". */
+/** "Date of OB and Purpose(s)", not "Date of OB, Stop 1: Purpose(s)". */
 function joinNames(names: string[]): string {
   if (names.length === 0) return "the required fields";
   if (names.length === 1) return names[0] ?? "the required fields";
@@ -158,7 +158,7 @@ function joinNames(names: string[]): string {
 
 /**
  * The friendly notice for a blocked submission. The old copy read like a
- * validation log ("Stop 1 — Purpose(s), and 3 more"), so the title now says
+ * validation log ("Stop 1: Purpose(s), and 3 more"), so the title now says
  * what did NOT happen and the sentence says what to do, in the words the
  * sheet itself uses.
  */
@@ -171,7 +171,7 @@ export function obRequiredToastFromLabels(labels: string[]): {
   const names = [
     ...new Set(
       labels.map((raw) => {
-        const clean = raw.replace(/^Stop \d+\s+[—-]\s*/, "").trim();
+        const clean = raw.replace(/^Stop \d+\s*[:—-]\s*/, "").trim();
         return SHORT_BY_LABEL.get(raw) ?? SHORT_BY_LABEL.get(clean) ?? clean;
       }),
     ),

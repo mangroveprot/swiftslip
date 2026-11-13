@@ -23,11 +23,11 @@ type ObSignerRow = {
  * Resolve the four stored signer ids into the name, designation, saved
  * e-signature and profile photo the OB sheet and the status cards print.
  * `ob_forms` only keeps uuids, so the paper form needs the printed name, the
- * position line under it and the signature — they are joined here on read (one
+ * position line under it and the signature, they are joined here on read (one
  * query for all four, like the notification bell resolves its actors).
  *
  * Only signatures that actually happened are returned. A missing profile is
- * still returned with empty name/signature/position rather than dropped — the
+ * still returned with empty name/signature/position rather than dropped, the
  * box is signed, and the UI can decide how to fall back.
  */
 export async function resolveObSigners(row: ObSignerRow): Promise<ObSigners> {

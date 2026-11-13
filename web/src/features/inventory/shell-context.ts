@@ -1,5 +1,5 @@
 /**
- * Shell state shared between the inventory layout and its pages — the React
+ * Shell state shared between the inventory layout and its pages, the React
  * equivalent of `MainLayout`'s cascading members (selected branch, sidebar,
  * add-asset requests, asset count badge).
  */
@@ -14,9 +14,9 @@ export type InventoryShell = {
   /** `null` until branches load; then always the first/current branch. */
   selectedBranchId: number | null;
   selectBranch: (branchId: number) => void;
-  /** Selected branch's name — header subtitle ("All branches" fallback). */
+  /** Selected branch's name, header subtitle ("All branches" fallback). */
   branchSubtitle: string;
-  /** Sidebar "Assets" badge — set by the assets page (`SetAssetCount`). */
+  /** Sidebar "Assets" badge, set by the assets page (`SetAssetCount`). */
   assetCount: number | null;
   setAssetCount: (count: number) => void;
   activeView: InventoryView;

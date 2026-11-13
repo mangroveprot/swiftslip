@@ -100,7 +100,7 @@ class OrgOptionService {
           });
         }
       } catch (error) {
-        // Already on the list — nothing to do.
+        // Already on the list, nothing to do.
         if (!(
           error instanceof ErrorResponse && error.code === 'UNIQUE_FIELD_ERROR'
         )) {
@@ -197,8 +197,8 @@ class OrgOptionService {
   }
 
   /**
-   * Remove one option from the list. Profiles keep what they hold — the value
-   * just stops being offered — but access rules keyed on it are deleted, since
+   * Remove one option from the list. Profiles keep what they hold, the value
+   * just stops being offered, but access rules keyed on it are deleted, since
    * a rule that matches nobody is a trap. Deleting a department also deletes
    * the positions filed under it, so nothing is left pointing at a name the
    * list no longer holds.
@@ -215,7 +215,7 @@ class OrgOptionService {
           await this.departments.deleteMany({ value: input.value });
           // The department's positions go with it. Left behind they point at
           // a name the list no longer holds, so no picker would offer them
-          // again — which is how "Field Monitoring" ended up filed under the
+          // again, which is how "Field Monitoring" ended up filed under the
           // deleted "Operations" and vanished from the Field Monitoring
           // Officer picker. Profiles keep the values they hold; the positions
           // simply stop being offered, exactly as deleting one outright does.
@@ -226,7 +226,7 @@ class OrgOptionService {
             await this.positions.deleteMany({ department: input.value });
             for (const position of owned) {
               // A rule keyed on a position that no longer exists matches
-              // nobody — the same trap `remove` already clears for a
+              // nobody, the same trap `remove` already clears for a
               // position deleted on its own.
               await this.rules.deleteMany({
                 scope: 'position',

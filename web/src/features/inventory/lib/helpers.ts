@@ -1,5 +1,5 @@
 /**
- * Pure display/filter helpers for the RGC Asset Inventory — ports of the
+ * Pure display/filter helpers for the RGC Asset Inventory, ports of the
  * original C# `AssetDisplayHelpers` plus the small inline helpers that lived
  * in `Home.razor` / `AssetRow.razor`.
  */
@@ -66,7 +66,7 @@ export function compareOrdinalIgnoreCase(a: string, b: string): number {
 
 /**
  * Distinct (case-insensitive, first occurrence wins) + ordered, for the floor
- * tab strip and the drawer's floor options — mirrors
+ * tab strip and the drawer's floor options, mirrors
  * `Distinct(OrdinalIgnoreCase).OrderBy(f, OrdinalIgnoreCase)`.
  */
 export function distinctSortedFloorLabels(values: (string | null | undefined)[]): string[] {

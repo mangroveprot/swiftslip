@@ -3,7 +3,7 @@ import { AttachmentCard } from "@/components/common/AttachmentCard";
 import type { LoaForm } from "@swiftslip/shared/types";
 
 /**
- * The approval attachment for an LOA form — the OB card's behaviour in full:
+ * The approval attachment for an LOA form, the OB card's behaviour in full:
  * the uploaded file IS the approval, so an upload ticks both marks
  * (`attachment_approved` and the "Approved via Viber" note) and removing the
  * file clears them again. The seal and the "Approved" toggle live here; the
@@ -31,7 +31,7 @@ export function LoaAttachmentCard({
   const approved = form.attachment_approved;
 
   function setChecked(checked: boolean) {
-    // This tick is the approval trail: it drives both marks — the card badge
+    // This tick is the approval trail: it drives both marks, the card badge
     // and the "Approved via Viber" note on the form, list and printed sheet.
     setForm({ ...form, attachment_approved: checked, approved_via_viber: checked });
   }
@@ -41,20 +41,20 @@ export function LoaAttachmentCard({
       kind="loa"
       onEnsureRow={onEnsureRow}
       id={id}
-      // Same shell as the LOA's other boxes — the right column keeps its own
+      // Same shell as the LOA's other boxes, the right column keeps its own
       // two pieces (attachment card, then live preview), just restyled.
       cardClassName="form-fill relative shrink-0 rounded-2xl border bg-card p-4 shadow-sm"
       file={attachment}
       canEdit={canEdit}
       onUploaded={() => {
-        // An uploaded approval attachment IS the approval — tick both marks
+        // An uploaded approval attachment IS the approval, tick both marks
         // automatically so nobody confirms the same thing twice. The box stays
         // toggleable for the odd file that shouldn't count yet.
         setForm({ ...form, attachment_approved: true, approved_via_viber: true });
         onUploaded?.();
       }}
       onRemoved={() => {
-        // The server cleared the approval along with the file — keep local
+        // The server cleared the approval along with the file, keep local
         // state in step so the next auto-save can't resurrect it (or the
         // "Approved via Viber" note that now follows it).
         if (form.attachment_approved || form.approved_via_viber) {

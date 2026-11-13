@@ -11,7 +11,7 @@ import {
 } from "@/lib/attachment-upload";
 import { toast } from "@/lib/toast";
 
-/** How a picked file can be shown whole on screen — or not at all. */
+/** How a picked file can be shown whole on screen, or not at all. */
 function previewKind(file: File): "image" | "pdf" | null {
   if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return "pdf";
   // Windows sometimes reports an empty type; the extension is the fallback.
@@ -22,12 +22,12 @@ function previewKind(file: File): "image" | "pdf" | null {
 }
 
 /**
- * The one-file attachment window — where a form's approval slip (or a DTR's
+ * The one-file attachment window, where a form's approval slip (or a DTR's
  * supporting document) is picked, dropped or pasted, and nowhere else.
  *
  * Structured exactly like `BiometricImportDialog`: a drop zone until a file
  * is picked, then the file's own card with "Choose a different file". What it
- * adds is a FULL preview of the file — the whole picture scaled to fit, never
+ * adds is a FULL preview of the file, the whole picture scaled to fit, never
  * cropped and never stretched, with the window itself adapting to the
  * orientation it receives: a portrait phone shot keeps the narrow column, a
  * landscape scan opens the window wide. PDFs show their pages in the
@@ -35,7 +35,7 @@ function previewKind(file: File): "image" | "pdf" | null {
  *
  * Ctrl+V, drag-drop and the picker are read only while this window is open,
  * so a paste can never reach the page behind it (the DTR biometric import,
- * another modal — or nothing at all). One file per window: a second pick
+ * another modal, or nothing at all). One file per window: a second pick
  * replaces the first instead of queueing.
  */
 export function AttachmentFileDialog({
@@ -46,21 +46,21 @@ export function AttachmentFileDialog({
   onAttach,
 }: {
   open: boolean;
-  /** The card's own name — "Approval attachment" or "Attachment". */
+  /** The card's own name, "Approval attachment" or "Attachment". */
   title: string;
-  /** The upload is in flight — every control is locked and labelled. */
+  /** The upload is in flight, every control is locked and labelled. */
   busy: boolean;
   onClose: () => void;
   onAttach: (file: File) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  /** The picture's natural size — decides how wide the window opens. */
+  /** The picture's natural size, decides how wide the window opens. */
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Each open starts clean — the last pick must not linger.
+  // Each open starts clean, the last pick must not linger.
   useEffect(() => {
     if (!open) return;
     setFile(null);
@@ -79,7 +79,7 @@ export function AttachmentFileDialog({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  /** Shared by the picker, the drop and the paste — one set of checks. */
+  /** Shared by the picker, the drop and the paste, one set of checks. */
   function accept(picked: File | null | undefined) {
     if (!picked) return;
     if (!isAcceptedAttachment(picked)) {
@@ -94,7 +94,7 @@ export function AttachmentFileDialog({
     setNatural(null); // the next preview measures itself again
   }
 
-  // Ctrl+V while the window is open — a screenshot lands as an image file on
+  // Ctrl+V while the window is open, a screenshot lands as an image file on
   // the clipboard. Read through a ref so the listener never goes stale.
   const acceptRef = useRef(accept);
   acceptRef.current = accept;
@@ -124,7 +124,7 @@ export function AttachmentFileDialog({
   if (!open || typeof document === "undefined") return null;
 
   // Portrait pictures keep the narrow column; landscape ones open the window
-  // wide so the preview gets real width — either way nothing is cropped.
+  // wide so the preview gets real width, either way nothing is cropped.
   const wide = natural !== null && natural.w > natural.h;
 
   return createPortal(
@@ -225,7 +225,7 @@ export function AttachmentFileDialog({
                 )}
               </div>
 
-              {/* The full preview: the whole file on its paper — a picture is
+              {/* The full preview: the whole file on its paper, a picture is
                   scaled to fit (portrait stays tall, landscape opens wide) and
                   a PDF shows its pages in the browser's own viewer. */}
               {preview ? (
@@ -252,7 +252,7 @@ export function AttachmentFileDialog({
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  This file type has no on-screen preview — it is stored as-is.
+                  This file type has no on-screen preview. It is stored as-is.
                 </p>
               )}
             </>

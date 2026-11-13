@@ -35,7 +35,7 @@ class ProfileController {
     }
   }
 
-  /** `{ photo }` only — what "Use photo" and "Remove photo" send. */
+  /** `{ photo }` only, what "Use photo" and "Remove photo" send. */
   static async savePhoto(req: Request, res: Response): Promise<void> {
     try {
       const response = await ProfileService.savePhoto(

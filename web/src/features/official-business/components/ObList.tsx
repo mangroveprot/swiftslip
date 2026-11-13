@@ -45,13 +45,13 @@ type ObRow = {
   date_of_ob: string;
   /** Every To value on the itinerary, in row order. */
   destinations: string[];
-  /** Approval slip ticked — badges the card as Approved. */
+  /** Approval slip ticked, badges the card as Approved. */
   attachment_approved: boolean;
-  /** HR approval state — the status chip on the card. */
+  /** HR approval state, the status chip on the card. */
   hr_status: ObHrStatus;
   /** How often the form has gone back to HR (0037); 0 = first time through. */
   resubmit_count?: number;
-  /** The trips back to HR, oldest first — the card's line reads the latest. */
+  /** The trips back to HR, oldest first, the card's line reads the latest. */
   resubmit_history?: ObResubmitEvent[];
   /** Saved edits not yet sent to HR (migration 0039). */
   pending_changes?: boolean;
@@ -68,7 +68,7 @@ const DATE_RANGES: ReadonlyArray<{ key: DateRange; label: string }> = [
   { key: "month", label: "This month" },
 ];
 
-/** Places visible before "Show all places" — the grouped list usually fits. */
+/** Places visible before "Show all places", the grouped list usually fits. */
 const PLACE_LIMIT = 8;
 
 /* The filter mock's quiet green, kept local to this page rather than changing
@@ -470,7 +470,7 @@ function ObCard({
 
   return (
     // Folder tab, as the mock draws it: the badge is FLUSH with the card's
-    // left edge and its bottom sits exactly on the card's top border — the
+    // left edge and its bottom sits exactly on the card's top border, the
     // card's top-left corner is therefore square (`rounded-tl-none`), so the
     // badge's left border continues straight into the card's with no arc to
     // gap over. The 1px overlap just kills the seam; `relative z-10` keeps

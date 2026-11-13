@@ -16,13 +16,13 @@ import {
  * Reads the saved preference once, stays subscribed to the OS setting while
  * the preference is `system`, and writes through `setThemePreference` so
  * storage and the DOM never disagree. Every consumer gets the same answer
- * because they all read the same key — no context provider needed for
+ * because they all read the same key, no context provider needed for
  * something this small.
  *
  * The initial state is read lazily, and `applyTheme` runs in the effect
  * rather than during render: the class on <html> is already correct before
  * React mounts (see the pre-paint script in index.html), so rendering only
- * mirrors what is painted — no flash, and nothing to undo on the server side.
+ * mirrors what is painted, no flash, and nothing to undo on the server side.
  */
 export function useTheme() {
   const [preference, setPreferenceState] = useState<ThemePreference>(readThemePreference);

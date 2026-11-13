@@ -31,7 +31,7 @@ export function emptyLiqEntry(idx: number): LiqExpense {
   };
 }
 
-/** Any typed value at all — decides whether a line is in use. */
+/** Any typed value at all, decides whether a line is in use. */
 export function liqEntryHasData(entry: LiqExpense | undefined): boolean {
   if (!entry) return false;
   return (
@@ -48,7 +48,7 @@ export function lastFilledLiqLine(entries: readonly LiqExpense[]): number {
     .reduce((last, entry, i) => (liqEntryHasData(entry) ? i + 1 : last), 0);
 }
 
-/** Exactly 15 lines, in idx order — fills in whatever the API did not return. */
+/** Exactly 15 lines, in idx order, fills in whatever the API did not return. */
 export function normalizeLiqEntries(entries: readonly LiqExpense[] | undefined): LiqExpense[] {
   const byIdx = new Map((entries ?? []).map((entry) => [entry.idx, entry]));
   return Array.from({ length: LIQ_LINES }, (_, i) => byIdx.get(i + 1) ?? emptyLiqEntry(i + 1));

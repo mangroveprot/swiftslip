@@ -1,19 +1,19 @@
 /**
  * Live-update hub: one Server-Sent Events connection per open tab.
  *
- * Cost model — optimized for Supabase free tier (Nano: 60 DB connections,
+ * Cost model, optimized for Supabase free tier (Nano: 60 DB connections,
  * 250 IOPS, 500 MB) and Render free (single instance, sleeps after 15 min):
  *
  *  - The stream carries NO data, only a version number. Nothing is re-read
  *    because a tab is connected.
  *  - Writes made in THIS process publish immediately from ActivityLogService
- *    — zero DB reads, zero HTTP round-trips. This covers 100% of writes on a
+ *    zero DB reads, zero HTTP round-trips. This covers 100% of writes on a
  *    single-instance deployment (Render free runs one instance).
  *  - The shared backstop poll runs every 60 s (not 10 s) and only while at
  *    least one tab is connected. An idle app with no open tabs costs zero DB
  *    reads. It catches changes made externally (Supabase dashboard edits, or
  *    a second API instance if Render ever scales horizontally).
- *  - The backstop uses `select('id', { head: false })` + `limit(1)` — one
+ *  - The backstop uses `select('id', { head: false })` + `limit(1)`, one
  *    indexed probe on `activity_logs_created_at_idx` per minute, not per tab
  *    and not per screen. That is ~1,440 reads/day vs the old 8,640.
  *  - The browser refetches ONLY queries that are currently mounted, so a
@@ -30,7 +30,7 @@ import { UpdatesRepository } from '../repositories';
 /**
  * How often the shared "did anything change?" backstop probe runs.
  *
- * 60 s — not 10 s — because:
+ * 60 s, not 10 s, because:
  *  - On a single-instance deploy (Render free), every write goes through this
  *    process and publishes instantly. The poll is a safety net, not the
  *    primary signal.
@@ -127,7 +127,7 @@ class UpdatesService {
         }
         try {
           res.write(': ping\n\n');
-          // A successful write does NOT prove the client received it — TCP
+          // A successful write does NOT prove the client received it, TCP
           // buffering can accept the write locally while the client is gone.
           // So we track misses instead of resetting on write. The counter is
           // only reset by a real `send()` that carries a payload the client
@@ -159,7 +159,7 @@ class UpdatesService {
    * On first connect (`emit: false`): seeds the baseline with a full probe
    * (`latestChange()`) so the client doesn't get a spurious "changed" signal.
    *
-   * On every subsequent poll (`emit: true`): uses `hasChangeSince()` — a
+   * On every subsequent poll (`emit: true`): uses `hasChangeSince()`, a
    * head-only probe that returns zero response body. If anything changed,
    * we publish immediately.
    */
@@ -174,7 +174,7 @@ class UpdatesService {
         this.lastSignalTimestamp = new Date().toISOString();
         return;
       }
-      // Incremental: head-only probe — zero response body.
+      // Incremental: head-only probe, zero response body.
       const changed = await this.repository.hasChangeSince(
         this.lastSignalTimestamp,
       );

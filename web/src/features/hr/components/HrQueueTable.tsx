@@ -31,7 +31,7 @@ function actionLabel(form: HrObSummary): string {
 }
 
 /**
- * A stored `YYYY-MM-DD` reads as "Nov 10, 2026" — built from the parts, never
+ * A stored `YYYY-MM-DD` reads as "Nov 10, 2026", built from the parts, never
  * `new Date(string)`, so the day can't slip backwards in a west-of-UTC zone.
  * Anything else (a hand-typed legacy value) is shown exactly as typed.
  */
@@ -47,7 +47,7 @@ function obDateLabel(value: string): string {
 function EmployeeCell({ form }: { form: HrObSummary }) {
   return (
     <div className="flex min-w-0 items-center gap-2.5">
-      {/* The face, when the employee has one — the queue reads as people, not
+      {/* The face, when the employee has one, the queue reads as people, not
           rows. Falls back to initials, never an empty circle. */}
       <ProfileAvatar
         photo={form.employee_photo ?? undefined}
@@ -102,7 +102,7 @@ function DestinationCell({ form }: { form: HrObSummary }) {
 
 /**
  * The line under the destination. While the employee is out it speaks in
- * return dates — "Due back today", then "Due back Nov 4 · 1 day overdue" once
+ * return dates, "Due back today", then "Due back Nov 4 · 1 day overdue" once
  * the date has passed (the queue's one warning-toned line). Otherwise it is
  * the OB date as typed, or "No OB date".
  */
@@ -118,11 +118,11 @@ function dueBackLabel(form: HrObSummary, state: ObReturnState): string {
 
 /**
  * The status cell: a marker plus a plain white label, never a tinted chip.
- * `StatusBadge` owns the marker now — the two illustrated statuses draw their
+ * `StatusBadge` owns the marker now, the two illustrated statuses draw their
  * 20px icon, "Waiting for Supervisor" gets the pulsing hairline ring, and the
  * rest keep their dots. That same badge is used on the HR detail rail and the
  * employee status card, so the whole app shows one status vocabulary. Overdue
- * is not a stored status — it is a signed-out form past its date.
+ * is not a stored status, it is a signed-out form past its date.
  */
 function StatusCell({ form }: { form: HrObSummary }) {
   // Overriding the badge's tinted ink keeps the queue legible on the dark card
@@ -137,7 +137,7 @@ function StatusCell({ form }: { form: HrObSummary }) {
   );
 
   // A form that has been back to HR says so as a line of text under the status,
-  // not a pill — the reference's queue reads like a record, not a stack of chips.
+  // not a pill, the reference's queue reads like a record, not a stack of chips.
   const resubmitLine = obResubmitLine(form.resubmit_count, form.resubmit_history);
   if (!resubmitLine) return badge;
 
@@ -192,7 +192,7 @@ function ActionCell({ form }: { form: HrObSummary }) {
 
 /**
  * The action's ink in the dark reference's palette: green for anything HR can
- * act on, plain grey when there is nothing to do yet. No border, no pill — the
+ * act on, plain grey when there is nothing to do yet. No border, no pill, the
  * chevron travels with the verb, so the column reads as links, not alarms.
  */
 function actionInk(actionable: boolean): string {
@@ -203,7 +203,7 @@ function actionInk(actionable: boolean): string {
 /**
  * The HR queue as a list, in the reference's shape: a dot-and-label status,
  * employee, destination, supervisor, when it was updated and the one plain
- * action link — on a table for wide screens and stacked rows on phones, both
+ * action link, on a table for wide screens and stacked rows on phones, both
  * on SwiftSlip's own card surface. A row opens its detail.
  */
 export function QueueTable({ rows }: { rows: HrObSummary[] }) {
@@ -264,7 +264,7 @@ export function QueueTable({ rows }: { rows: HrObSummary[] }) {
         </div>
       </div>
 
-      {/* Phones: the same row, stacked — no sideways scrolling to reach a row. */}
+      {/* Phones: the same row, stacked, no sideways scrolling to reach a row. */}
       <div className="overflow-hidden rounded-xl border bg-card md:hidden">
         {rows.map((form) => (
           <div

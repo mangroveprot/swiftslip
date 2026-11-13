@@ -26,7 +26,7 @@ export const signOut = async () => {
 
 /**
  * Who is signed in right now? `null` when nobody is. Carries the resolved app
- * grants (UI only — the API enforces access on every route).
+ * grants (UI only, the API enforces access on every route).
  */
 export const getSession = async (): Promise<SessionDocument | null> =>
   (await api.get<SessionDocument>("/auth/session")).document ?? null;

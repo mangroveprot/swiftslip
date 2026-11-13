@@ -7,7 +7,7 @@ export type Role = "admin" | "user";
 export type SessionUser = { id: string; role: Role; label: string; idNumber: string };
 
 /**
- * A person's profile photo by account id — what `GET /api/users/photos`
+ * A person's profile photo by account id, what `GET /api/users/photos`
  * answers with. Only people who actually set one are returned, so a missing id
  * means "no photo, draw initials" rather than an error.
  */
@@ -70,22 +70,22 @@ export type RuleScope = (typeof RULE_SCOPES)[number];
 export type EmployeeProfile = {
   emp_no: string;
   full_name: string;
-  /** The job title (e.g. "IT Support") — stored on `profiles.designation`. */
+  /** The job title (e.g. "IT Support"), stored on `profiles.designation`. */
   designation: string;
-  /** The office / branch the employee works at — `profiles.area`. */
+  /** The office / branch the employee works at, `profiles.area`. */
   area: string;
   /**
-   * The department the position belongs to (e.g. "Information Technology") —
+   * The department the position belongs to (e.g. "Information Technology"),
    * `profiles.department`. Auto-derived from the position when picked from the
    * fixed list, editable on its own so an off-list position can still name one.
    */
   department: string;
-  /** The company the employee works for — `profiles.employer` (0 = Regasco, 1 = Mindbridge). */
+  /** The company the employee works for, `profiles.employer` (0 = Regasco, 1 = Mindbridge). */
   employer: Employer;
-  /** Data URL (PNG) of the saved signature — auto-filled into new forms. */
+  /** Data URL (PNG) of the saved signature, auto-filled into new forms. */
   signature: string;
   /**
-   * The profile photo, as a URL the browser can load — a short-lived signed
+   * The profile photo, as a URL the browser can load, a short-lived signed
    * link into object storage (`ProfilePhoto/<id>.<ext>` in the private
    * `swiftslip` bucket), minted on every read because links expire. The column
    * itself stores the object path, never this string.
@@ -96,7 +96,7 @@ export type EmployeeProfile = {
    */
   photo: string;
   /**
-   * Supervisor / Department Head — auto-filled into a new form's approver field
+   * Supervisor / Department Head, auto-filled into a new form's approver field
    * (`certified_by` on a DTR record, `approved_by` on the OB / LOA / COS / OT
    * forms). Forms keep their own editable copy; this is only the auto-fill source.
    */
@@ -139,7 +139,7 @@ export type DtrTemplate = {
 export type ObForm = {
   id_number: string;
   employee_name: string;
-  /** The template's "Department / Location" box — department, then office. */
+  /** The template's "Department / Location" box, department, then office. */
   department: string;
   position: string;
   /** Free-text / date string as typed (e.g. "2026-09-26"). */
@@ -166,11 +166,11 @@ export type ObEntry = {
   time_return: string;
 };
 
-/** Leave of Absence (LOA) form — mirrors public/loa_form_template.docx. */
+/** Leave of Absence (LOA) form, mirrors public/loa_form_template.docx. */
 export type LoaForm = {
   id_number: string;
   employee_name: string;
-  /** The template's "Department/Location" box — department, then office. */
+  /** The template's "Department/Location" box, department, then office. */
   department: string;
   position: string;
   /** Free-text / date string as typed (e.g. "2026-09-26"). */
@@ -178,13 +178,13 @@ export type LoaForm = {
   /** Inclusive dates, YYYY-MM-DD as typed ("" while unset). */
   date_from: string;
   date_to: string;
-  /** Free text, prefilled by the From/To calculation — may hold "4 hours". */
+  /** Free text, prefilled by the From/To calculation, may hold "4 hours". */
   days_applied: string;
   /** One of the template's boxes, e.g. "Sick Leave"; "" while unset. */
   leave_type: string;
   /** The text on the "Others: ____" line when leave_type is "Others". */
   leave_type_other: string;
-  /** "" | "with_pay" | "without_pay" — the ( ) w/ PAY boxes. */
+  /** "" | "with_pay" | "without_pay", the ( ) w/ PAY boxes. */
   pay_status: string;
   /** The REASONS / REMARKS body. */
   reasons: string;
@@ -200,7 +200,7 @@ export type LoaForm = {
   attachment_approved: boolean;
 };
 
-/** Statement of Liquidation (LIQ) header — mirrors the GN 238 sheet. */
+/** Statement of Liquidation (LIQ) header, mirrors the GN 238 sheet. */
 export type LiqForm = {
   /** DEPARTMENT box. */
   department: string;
@@ -214,13 +214,13 @@ export type LiqForm = {
   trip_to: string;
   /** PURPOSE box. */
   purpose: string;
-  /** "PESOS" | "DOLLARS" — the two currency boxes. */
+  /** "PESOS" | "DOLLARS", the two currency boxes. */
   currency: string;
   /** The name printed under PREPARED BY. */
   prepared_by: string;
   /** The name printed under APPROVED BY. */
   approved_by: string;
-  /** Data URL (PNG) of the saved signature — printed above PREPARED BY. */
+  /** Data URL (PNG) of the saved signature, printed above PREPARED BY. */
   employee_signature: string;
   /** The uploaded approval slip has been approved (the "Approved via Viber" note). */
   attachment_approved: boolean;
@@ -246,7 +246,7 @@ export type LiqExpense = {
  * The two object stores a file can physically live on.
  *
  * It lives here rather than in `schemas.ts` because `OtherFile` needs it and
- * `schemas.ts` imports this file — a type must never depend on its importer.
+ * `schemas.ts` imports this file, a type must never depend on its importer.
  * `schemas.ts` re-exports it, so every existing `@swiftslip/shared/schemas`
  * import keeps working.
  */
@@ -259,7 +259,7 @@ export type OtherFile = {
   path: string;
   name: string;
   /**
-   * Which backend holds the file. Absent means 'supabase' — every file stored
+   * Which backend holds the file. Absent means 'supabase', every file stored
    * before migration 0031 lives in Supabase Storage.
    */
   backend?: StorageBackend;
@@ -268,7 +268,7 @@ export type OtherFile = {
 /** Kept for the LOA card, which had this name first. Same shape. */
 export type LoaOtherFile = OtherFile;
 
-/** Change of Schedule (COS) form — mirrors public/cos_template.docx. */
+/** Change of Schedule (COS) form, mirrors public/cos_template.docx. */
 export type CosForm = {
   id_number: string;
   employee_name: string;
@@ -277,7 +277,7 @@ export type CosForm = {
   position: string;
   /** Free-text / date string as typed (e.g. "2026-10-06"). */
   date_filed: string;
-  /** "" | "shift" | "rest_day" — the two boxes under "Change of Work Schedule". */
+  /** "" | "shift" | "rest_day", the two boxes under "Change of Work Schedule". */
   change_type: string;
   /** Data URL (PNG) of the employee signature drawing or upload. */
   employee_signature: string;
@@ -310,7 +310,7 @@ export type CosSchedule = {
   to_end: string;
 };
 
-/** One OT line on an Overtime form — the template repeats its value row. */
+/** One OT line on an Overtime form, the template repeats its value row. */
 export type OtEntry = {
   /** Row order, 0-based. */
   idx: number;
@@ -322,17 +322,17 @@ export type OtEntry = {
   /** The hours actually worked, "HH:MM". */
   actual_from: string;
   actual_to: string;
-  /** Typed by the employee — the sheet asks for it, it is not derived. */
+  /** Typed by the employee, the sheet asks for it, it is not derived. */
   total_hours: string;
   /** The "For HR use only" column. */
   validation: string;
 };
 
-/** Overtime (OT) form — mirrors public/ot_template.docx. */
+/** Overtime (OT) form, mirrors public/ot_template.docx. */
 export type OtForm = {
   id_number: string;
   employee_name: string;
-  /** The template's "Department/Location" box — department, then office. */
+  /** The template's "Department/Location" box, department, then office. */
   department: string;
   position: string;
   /** Date & Time Filed, free text as typed. */

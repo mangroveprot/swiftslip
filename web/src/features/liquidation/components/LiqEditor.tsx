@@ -67,7 +67,7 @@ function writeFormCache(
   qc.setQueryData(liqFormQueryOptions(id).queryKey, (prev) => (prev ? { ...prev, ...next } : next));
 }
 
-/** One editor per record — including across that record's own draft→row save. */
+/** One editor per record, including across that record's own draft→row save. */
 export function LiqEditor({ id }: { id: string }) {
   const [promotion, setPromotion] = useState<{ draft: string; real: string } | null>(null);
   const key = promotion && promotion.real === id ? promotion.draft : id;
@@ -215,7 +215,7 @@ function LiqEditorBody({
     auto.setPersisted(incoming);
   }, [data, profileReady, profile?.signature, rowId, id, auto]);
 
-  // Build a draft from the profile — in the browser, with no request.
+  // Build a draft from the profile, in the browser, with no request.
   useEffect(() => {
     if (!isDraft || !profileReady || form) return;
     const freshForm = buildDraftLiqForm(profile ?? undefined);

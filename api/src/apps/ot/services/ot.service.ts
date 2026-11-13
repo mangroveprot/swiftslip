@@ -64,7 +64,7 @@ class OtService extends BaseService<'ot_forms', OtFormRepository> {
           sort: { idx: 'asc' },
         },
       );
-      // The additional supporting files travel as a plain list — pulled out
+      // The additional supporting files travel as a plain list, pulled out
       // of the row so `form` remains an exact OtForm.
       const { other_attachments, ...rest } = row;
       return {

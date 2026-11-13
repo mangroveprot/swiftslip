@@ -10,7 +10,7 @@ import { OB_HR_STATUS_LABELS, type ObHrStatus } from "@swiftslip/shared/hr";
  *
  * The artwork is inline SVG (not `<img>`) so it inherits the app's theme
  * tokens: a reviewer who forces light mode on a dark OS still gets light ink.
- * All of the drawing's CSS lives in `styles.css` under the `si-` prefix —
+ * All of the drawing's CSS lives in `styles.css` under the `si-` prefix,
  * the source SVGs' bare `.ln` / `.ac` / `.d` names would collide with each
  * other the moment both illustrations appear on one page.
  */
@@ -20,7 +20,7 @@ export type StatusIllustrationStatus = ObHrStatus | "overdue";
 /**
  * On-screen stroke weight, in CSS px. The two drawings have very different
  * viewBox widths (60 vs 180), so a fixed user-unit stroke would make the
- * clipboard ~3× heavier than the briefcase — and both would get thinner every
+ * clipboard ~3× heavier than the briefcase, and both would get thinner every
  * time the icon shrank. Converting this constant into viewBox units per
  * instance keeps one delicate hairline at any size.
  */
@@ -52,7 +52,7 @@ export type StatusIllustrationProps = {
   /** Layout utilities only (margin, responsive hiding). Ink comes from tokens. */
   className?: string | undefined;
   /**
-   * Loop the draw-in animation. `false` leaves the finished drawing still —
+   * Loop the draw-in animation. `false` leaves the finished drawing still,
    * for dense lists, print, or anywhere the motion would compete with text.
    * Applies to the compact icons too: they keep the same choreography, just
    * on a square grid with a gentler lift.
@@ -65,7 +65,7 @@ export type StatusIllustrationProps = {
   /**
    * Icon-scale rendering: a square, animated drawing centred on the label.
    * On OB drops the tall "hand lifting a briefcase off the ground" scene and
-   * draws just the briefcase and its handle — at 20px the lift frame otherwise
+   * draws just the briefcase and its handle, at 20px the lift frame otherwise
    * parks the bag up near the top of its box with the ground line stranded
    * below, which reads as an off-centre icon. The lift is replaced by a small
    * bob so the icon stays animated without leaving its square.
@@ -116,7 +116,7 @@ function ArtSvg({
   );
 }
 
-/** Clipboard being reviewed — "Waiting for HR" (`submitted`). */
+/** Clipboard being reviewed, "Waiting for HR" (`submitted`). */
 export function WaitingForHrIllustration({
   size = 20,
   animated = true,
@@ -137,7 +137,7 @@ export function WaitingForHrIllustration({
 
   // Square, centred: board 8..52 and clip 13..47 both straddle (30,30). The
   // `si-wfhr-d*` classes reuse the large scene's exact 5s draw-in loop, so the
-  // small icon is just as animated — transform origins are re-centred in CSS.
+  // small icon is just as animated, transform origins are re-centred in CSS.
   if (compact) {
     return (
       <ArtSvg {...frame} viewWidth={COMPACT_BOX} viewHeight={COMPACT_BOX} viewBox="0 0 60 60">
@@ -193,7 +193,7 @@ export function WaitingForHrIllustration({
   );
 }
 
-/** Hand lifting a briefcase — "On OB" (`departed`). */
+/** Hand lifting a briefcase, "On OB" (`departed`). */
 export function OnObIllustration({
   size = 20,
   animated = true,

@@ -33,12 +33,12 @@ import {
 import { FORM_TYPE_LABELS } from "./form-types";
 import { RetentionConfirmDialog } from "./RetentionConfirmDialog";
 
-/** The editable shape on screen — `days` stays a string while typing. */
+/** The editable shape on screen, `days` stays a string while typing. */
 type Draft = { enabled: boolean; days: string; formTypes: RetentionFormType[] };
 
 /**
  * The day counts offered as one-click chips beside the free-text field. The
- * field is the real control — the period is the office's call, so these are
+ * field is the real control, the period is the office's call, so these are
  * only the usual answers, and the smallest is a single week.
  */
 const DAY_PRESETS: { days: number; label: string }[] = [
@@ -55,7 +55,7 @@ const HINT = "text-sm text-muted-foreground";
 const LINK =
   "text-sm font-medium underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground";
 
-/** Identity of a rule, ignoring key order — used to detect unsaved changes. */
+/** Identity of a rule, ignoring key order, used to detect unsaved changes. */
 const keyOf = (rule: { enabled: boolean; days: number; formTypes: readonly RetentionFormType[] }) =>
   JSON.stringify({
     enabled: rule.enabled,
@@ -78,7 +78,7 @@ function joinNames(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-/** "1 day" / "3 days" — the period is a free number now, so it can be one. */
+/** "1 day" / "3 days", the period is a free number now, so it can be one. */
 const dayLabel = (days: number) => `${days} day${days === 1 ? "" : "s"}`;
 
 /**
@@ -88,7 +88,7 @@ const dayLabel = (days: number) => `${days} day${days === 1 ? "" : "s"}`;
  * divided summary columns, then the rule on the left and the form types on
  * the right, then preview/run beside the last run's history.
  *
- * Three moves, in the order the safety demands them: (1) set the rule — it
+ * Three moves, in the order the safety demands them: (1) set the rule, it
  * saves itself a moment after the last change, (2) preview what it would
  * delete, counts only, nothing touched, (3) run, behind a confirm dialog that
  * repeats those counts. Run stays locked until a preview has been taken for
@@ -216,13 +216,13 @@ export function DataRetention() {
         : dirty
           ? "Waiting for your changes to save."
           : nothingToDelete
-            ? "Nothing to delete — the preview found no finished forms."
+            ? "Nothing to delete. The preview found no finished forms."
             : !previewMatchesSaved
               ? "Run a preview before cleaning up."
               : "Deletes exactly what the preview showed.";
 
   // The third summary column is the "what still has to happen" line. With no
-  // type ticked nothing can ever be deleted — not even previewed — so that
+  // type ticked nothing can ever be deleted, not even previewed, so that
   // comes first: it is the reason the form lists show no deletion warnings.
   const status = dirty
     ? { tone: "warn" as const, text: saveMutation.isPending ? "Saving…" : "Unsaved changes" }
@@ -244,7 +244,7 @@ export function DataRetention() {
         <div className="min-w-0">
           <PageTitle as="h2">Data retention</PageTitle>
           <p className="mt-2 max-w-[42rem] text-sm leading-6 text-muted-foreground">
-            Choose how long forms are kept. Nothing is ever deleted on its own — only when an admin
+            Choose how long forms are kept. Nothing is ever deleted on its own, only when an admin
             previews, then presses Run cleanup.
           </p>
         </div>
@@ -327,7 +327,7 @@ export function DataRetention() {
               <p className="text-sm font-medium">Delete old forms when a cleanup runs</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 While off, nothing is ever deleted no matter the settings below. Nothing is deleted
-                on a timer either — only when an admin runs a cleanup.
+                on a timer either, only when an admin runs a cleanup.
               </p>
             </div>
             <Switch
@@ -381,7 +381,7 @@ export function DataRetention() {
             </div>
             {daysValid ? null : (
               <p className="mt-2 text-xs font-medium text-destructive">
-                Enter a whole number of days — at least {dayLabel(RETENTION_MIN_DAYS)}.
+                Enter a whole number of days, at least {dayLabel(RETENTION_MIN_DAYS)}.
               </p>
             )}
           </div>
@@ -389,7 +389,7 @@ export function DataRetention() {
           <p className="mt-5 border-l-2 border-dashboard-accent pl-3 text-sm leading-6">
             {chosenNames.length === 0 ? (
               <span className="text-muted-foreground">
-                No form types are ticked — nothing will be deleted.
+                No form types are ticked. Nothing will be deleted.
               </span>
             ) : (
               <>
@@ -475,7 +475,7 @@ export function DataRetention() {
             Preview and run
           </h3>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            A preview only counts — it never deletes. The run then removes exactly what the preview
+            A preview only counts. It never deletes. The run then removes exactly what the preview
             showed, oldest first.
           </p>
 
@@ -504,7 +504,7 @@ export function DataRetention() {
             <div className="mt-4 rounded-lg border border-dashboard-accent/25 bg-dashboard-soft/70 p-3.5 text-sm">
               {previewed.doc.totalForms === 0 ? (
                 <p>
-                  Nothing to delete — no finished forms older than {dayLabel(previewed.doc.days)} in
+                  Nothing to delete: no finished forms older than {dayLabel(previewed.doc.days)} in
                   the chosen types.
                 </p>
               ) : (
@@ -521,7 +521,7 @@ export function DataRetention() {
                       )
                       .map((entry) => (
                         <li key={entry.type}>
-                          {FORM_TYPE_LABELS[entry.type]} — {entry.forms} form
+                          {FORM_TYPE_LABELS[entry.type]}: {entry.forms} form
                           {entry.forms === 1 ? "" : "s"}, {entry.files} file
                           {entry.files === 1 ? "" : "s"}
                         </li>
@@ -574,7 +574,7 @@ export function DataRetention() {
                   <span className="font-medium" title={new Date(lastRun.ranAt).toLocaleString()}>
                     {relativeTime(lastRun.ranAt)}
                   </span>{" "}
-                  by {lastRun.ranByName || lastRun.ranByNumber || "an administrator"} —{" "}
+                  by {lastRun.ranByName || lastRun.ranByNumber || "an administrator"},{" "}
                   {sumCounts(lastRun.formsDeleted)} form(s) and {sumCounts(lastRun.filesDeleted)}{" "}
                   file(s) deleted.
                 </span>
@@ -586,7 +586,7 @@ export function DataRetention() {
                 >
                   {lastRun.status.replace(/_/g, " ")}
                 </span>
-                . Kept in the permanent run history — the activity log only keeps 30 days.
+                . Kept in the permanent run history, the activity log only keeps 30 days.
               </p>
             </>
           ) : (
@@ -652,7 +652,7 @@ function SummaryColumn({
   );
 }
 
-/** The thin meter beside each form type — green when it is in scope. */
+/** The thin meter beside each form type, green when it is in scope. */
 function TypeBar({ value, max, muted }: { value: number; max: number; muted: boolean }) {
   const width = max > 0 ? Math.round((value / max) * 100) : 0;
   return (

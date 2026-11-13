@@ -150,7 +150,7 @@ export function daysForPeriod(period: Period, month: number, year: number): numb
 }
 
 /**
- * How a stored `YYYY-MM-DD` date reads on screen: `10/03/2026` — slashes,
+ * How a stored `YYYY-MM-DD` date reads on screen: `10/03/2026`, slashes,
  * month and day always two digits. `2026-10-03` is the storage/`<input
  * type="date">` format, never what a finished form should print.
  *

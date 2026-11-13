@@ -99,8 +99,8 @@ export const lastCleanupRunQueryOptions = () =>
 /**
  * What each form type holds past the keep period, for the by-type bars.
  *
- * It is the same read-only `POST /preview` the Preview button calls — posting
- * a draft so the counts follow the days on screen without saving them — and
+ * It is the same read-only `POST /preview` the Preview button calls, posting
+ * a draft so the counts follow the days on screen without saving them, and
  * it changes nothing. Kept separate from the button so opening the page shows
  * the piles immediately, while "Preview" still has to be pressed deliberately
  * before the cleanup unlocks.

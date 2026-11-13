@@ -1,5 +1,5 @@
 /**
- * Asset table row — port of `AssetRow.razor` (minus the offline-sync
+ * Asset table row, port of `AssetRow.razor` (minus the offline-sync
  * `RemoteHighlight` flash classes, which were dropped with sync).
  */
 import { memo } from "react";

@@ -46,7 +46,7 @@ export function RecordsList() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
 
-  // A draft exists only in the browser, so there is nothing here to filter out —
+  // A draft exists only in the browser, so there is nothing here to filter out,
   // the list shows exactly the records that are in the database.
   const visible = records ?? [];
 
@@ -221,7 +221,7 @@ function RecordCard({
   );
 }
 
-/** Lightweight placeholder standing in for the DTR sheet — no per-record fetch. */
+/** Lightweight placeholder standing in for the DTR sheet, no per-record fetch. */
 function RecordThumbnail({ status, hasName }: { status: Status; hasName: boolean }) {
   const tinted = (status === "active" || status === "closing") && hasName;
   return (

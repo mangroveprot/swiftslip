@@ -2,9 +2,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Stand-in for the OB editor while its row loads: the same shell the real form
- * paints — back link and title over Export/Save, the borderless sheet on the
+ * paints, back link and title over Export/Save, the borderless sheet on the
  * left (identity block, dates row, itinerary, signature) and the attachment,
- * approval tick and preview paper on the right — at the same column widths, so
+ * approval tick and preview paper on the right, at the same column widths, so
  * nothing moves when the data lands.
  */
 export function ObEditorSkeleton() {
@@ -23,7 +23,7 @@ export function ObEditorSkeleton() {
 
       <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         <div className="@container min-h-0 rounded-xl bg-card p-5 sm:p-6 lg:overflow-y-auto lg:p-8">
-          {/* Identity block — four values across, as the sheet lays them out. */}
+          {/* Identity block, four values across, as the sheet lays them out. */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-5 @xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="min-w-0 space-y-2">

@@ -67,7 +67,7 @@ export function ProfileForm() {
   const qc = useQueryClient();
   const { data } = useQuery(profileQueryOptions());
   // Live org lists from `org_designations` / `org_departments` /
-  // `org_positions` — the ONLY source for the pickers. Until the query
+  // `org_positions`, the ONLY source for the pickers. Until the query
   // resolves they are empty on purpose: a built-in fallback list kept
   // offering values the tables no longer hold (deleted IT positions turning
   // up under Field Monitoring), so there is nothing to fall back to now.
@@ -76,7 +76,7 @@ export function ProfileForm() {
   const baseDepartments = orgLists?.departments ?? [];
   const [form, setForm] = useState<EmployeeProfile>(empty);
   // The last-saved profile (or whatever the server returned). Compared with
-  // `form` to decide whether Save profile can do anything — leaving the button
+  // `form` to decide whether Save profile can do anything, leaving the button
   // active on a no-op save re-submits the row and flashes a "Profile saved"
   // toast the user did nothing to earn.
   const [original, setOriginal] = useState<EmployeeProfile>(empty);
@@ -101,7 +101,7 @@ export function ProfileForm() {
   // fits the chosen department, otherwise it is treated as blank. Deriving it
   // (instead of destructively clearing `form.designation` when the department
   // changes) means a Department change that the user reverts leaves the profile
-  // byte-identical to the original — so Save stays off, which it wouldn't if the
+  // byte-identical to the original, so Save stays off, which it wouldn't if the
   // wipe had permanently dropped the position.
   const effectiveDesignation = (p: EmployeeProfile) => {
     const list = positionsUnder(p.department, orgLists);
@@ -119,7 +119,7 @@ export function ProfileForm() {
     form.supervisor !== original.supervisor;
 
   // Designation, Department and Position are pickers rather than FIELDS entries,
-  // so they are counted separately — otherwise the bar could read 100% with the
+  // so they are counted separately, otherwise the bar could read 100% with the
   // Position sitting on an unanswered "Others…".
   const completeness = useMemo(() => {
     const filled = FIELDS.filter((f) => form[f.key].trim().length > 0).length;
@@ -132,7 +132,7 @@ export function ProfileForm() {
 
   // The department picker must be able to SHOW the department the picked
   // position implies, even when it isn't on the shared list yet (an older
-  // position whose department was never added) — otherwise a perfectly
+  // position whose department was never added), otherwise a perfectly
   // correct value would report as "Others" and open the text box over it.
   const impliedDepartment = departmentForPosition(form.designation, orgLists);
   const departmentOptions =
@@ -177,7 +177,7 @@ export function ProfileForm() {
   async function onPickPhoto(file: File | undefined) {
     if (!file) return;
     if (file.size > MAX_PHOTO_BYTES) {
-      toast.error(`That photo is over ${MAX_PHOTO_MB} MB — pick a smaller one.`);
+      toast.error(`That photo is over ${MAX_PHOTO_MB} MB. Pick a smaller one.`);
       return;
     }
     const source = await readPhotoFile(file);
@@ -193,7 +193,7 @@ export function ProfileForm() {
    * The photo saves itself.
    *
    * "Use photo" and "Remove photo" both land here and hit the photo-only
-   * endpoint, so the page never asks for a second Save just to keep a face —
+   * endpoint, so the page never asks for a second Save just to keep a face,
    * and because only `photo` is written, a half-typed field elsewhere on the
    * form is not committed along with it. The form is updated optimistically so
    * the circle changes the instant the cropper closes, and rolled back if the
@@ -212,7 +212,7 @@ export function ProfileForm() {
       // `original` follows, so the photo alone never leaves the form dirty.
       setOriginal((current) => ({ ...current, photo: saved.photo }));
       await qc.invalidateQueries({ queryKey: profileQueryOptions().queryKey });
-      // The admin lists cache photos by account id — refresh them so the new
+      // The admin lists cache photos by account id, refresh them so the new
       // face appears beside this person's name straight away.
       await qc.invalidateQueries({ queryKey: ["user-photos"] });
       toast.success(photo ? "Photo updated" : "Photo removed");
@@ -255,7 +255,7 @@ export function ProfileForm() {
         <div className="flex items-start gap-4">
           {/*
             The Edit pill hangs off the bottom edge of the circle, so the
-            wrapper reserves that height itself — the card's padding alone
+            wrapper reserves that height itself, the card's padding alone
             would leave the pill floating inside the avatar instead of
             straddling its edge the way the reference shows.
           */}
@@ -302,7 +302,7 @@ export function ProfileForm() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Opened by the menu item above — a hidden input is the only way
+            {/* Opened by the menu item above, a hidden input is the only way
                 to reach the OS picker without a second visible control. */}
             <input
               ref={fileRef}
@@ -402,7 +402,7 @@ export function ProfileForm() {
                   designation: normalizePosition(v),
                 };
                 // The department follows the position only when the current
-                // one can't hold it — a department the person just picked by
+                // one can't hold it, a department the person just picked by
                 // hand must stay picked. Otherwise choosing a position under
                 // "IT DEP" silently rewrote the department back to
                 // "Information Technology".

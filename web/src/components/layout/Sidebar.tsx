@@ -38,7 +38,7 @@ export function Sidebar({
   const { data: profile } = useQuery(profileQueryOptions());
   const caption = accountCaption(profile?.employer, profile?.designation);
   const sublabel = label && label !== caption ? caption : undefined;
-  // The profile photo, if one has been set — one cached entry shared by every
+  // The profile photo, if one has been set, one cached entry shared by every
   // screen that shows a face. The footer falls back to initials while it
   // loads, so this never blocks paint.
   const photo = useProfilePhoto();

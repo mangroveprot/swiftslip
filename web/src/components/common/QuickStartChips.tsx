@@ -5,7 +5,7 @@
 export type QuickStartOption = {
   /** What the chip reads. */
   label: string;
-  /** Message sent when clicked — defaults to the label. */
+  /** Message sent when clicked, defaults to the label. */
   prompt?: string;
   /** The chip opens the attachment picker instead of sending text. */
   attach?: boolean;
@@ -13,7 +13,7 @@ export type QuickStartOption = {
 
 /**
  * The "QUICK START" row below the greeting: one click kicks off the most
- * common ways to start filling this form — a canned prompt or the file
+ * common ways to start filling this form, a canned prompt or the file
  * picker for a photo/PDF of the supporting document.
  */
 export function QuickStartChips({

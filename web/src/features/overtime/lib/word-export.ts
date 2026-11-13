@@ -8,7 +8,7 @@ import type { OtEntry, OtForm } from "@swiftslip/shared/types";
 import { formatOtDateFiled, formatOtHours } from "./ot-line";
 
 // The export fills a tokenized copy of the company's real Word form
-// (public/ot_template.docx — tokenized by scripts/ot-template-tokenize.mjs) so
+// (public/ot_template.docx, tokenized by scripts/ot-template-tokenize.mjs) so
 // the output matches the template's exact layout/styling instead of being
 // rebuilt in code. Tokens: {id_number} {employee_name} {department}
 // {position} {date_filed}, the OT table loop {#entries}{date_of_ot}
@@ -52,7 +52,7 @@ export async function downloadOtWord({
     department: form.department ?? "",
     position: form.position ?? "",
     date_filed: formatOtDateFiled(form.date_filed ?? ""),
-    // One entry per OT line — the template repeats its value row over this list.
+    // One entry per OT line, the template repeats its value row over this list.
     entries: entries.length
       ? entries.map((e) => ({
           date_of_ot: formatMonthDayYear(e.date_of_ot),

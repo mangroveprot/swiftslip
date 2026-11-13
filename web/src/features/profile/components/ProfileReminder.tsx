@@ -5,7 +5,7 @@ import { profileGaps } from "../onboarding";
 import { profileQueryOptions } from "../queries";
 
 /**
- * Stays on every employee page until the name and signature are on file —
+ * Stays on every employee page until the name and signature are on file,
  * those are the two that print on a form. Work details have their own count
  * in the sidebar.
  */

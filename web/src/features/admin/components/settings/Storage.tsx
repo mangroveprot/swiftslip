@@ -25,13 +25,13 @@ import { UsageDonut } from "./UsageDonut";
 
 /** The rule as it travels over the wire; `rule` is one of the three choices. */
 type StorageRule = StorageSettings["rule"];
-/** The editable shape on screen — the threshold stays a string while typing. */
+/** The editable shape on screen, the threshold stays a string while typing. */
 type Draft = { rule: StorageRule; minFull: string };
 
 /**
  * The switch point as the admin types it: percent FULL, the way the sentence
- * reads ("switch at 90% full"). The API stores the complement — `minFreePercent`,
- * 1–50 in `shared` — so 50–99 % full is the same range, 100 − each bound.
+ * reads ("switch at 90% full"). The API stores the complement, `minFreePercent`,
+ * 1–50 in `shared`, so 50–99 % full is the same range, 100 − each bound.
  */
 const SWITCH_AT_MIN = 50;
 const SWITCH_AT_MAX = 99;
@@ -62,12 +62,12 @@ const RULES: { value: StorageRule; label: string }[] = [
  *
  * Both storage backends on one page: how much each holds, what of it is real
  * documents versus orphans, and the one rule that decides where the NEXT file
- * goes. The rule only ever moves new uploads — nothing already stored is
- * migrated — so the page can be changed without a migration job behind it.
+ * goes. The rule only ever moves new uploads, nothing already stored is
+ * migrated, so the page can be changed without a migration job behind it.
  *
  * Cleanup is the only destructive move, so it happens inside the orphan
- * review modal: the admin sees the actual file list — per backend, with the
- * reason, age and size — unticks what to keep, and only then deletes. The
+ * review modal: the admin sees the actual file list, per backend, with the
+ * reason, age and size, unticks what to keep, and only then deletes. The
  * API re-checks every key at delete time, so confirming is safe by
  * construction.
  */
@@ -145,7 +145,7 @@ export function Storage() {
       : draft.rule === "b2-only"
         ? b2.connected
           ? "Every new file goes to Backblaze B2."
-          : "Backblaze B2 is not connected — uploads will fail until it is."
+          : "Backblaze B2 is not connected. Uploads will fail until it is."
         : switchPercent !== null
           ? `Switch to Backblaze B2 at ${switchPercent}% full.`
           : "Enter a valid switch point first.";
@@ -158,7 +158,7 @@ export function Storage() {
   const saveDisabled = !dirty || !minFullValid || saveMutation.isPending;
 
   /**
-   * The sentence under the choice pills — what actually happens next, in the
+   * The sentence under the choice pills, what actually happens next, in the
    * admin's words. Storage names carry the weight; a disconnected B2 says so
    * instead of quietly promising a switch that would fail.
    */
@@ -185,7 +185,7 @@ export function Storage() {
         {!b2.connected ? (
           <span className="text-logo">
             {" "}
-            Backblaze B2 is not connected — uploads will fail until it is.
+            Backblaze B2 is not connected. Uploads will fail until it is.
           </span>
         ) : null}
       </>
@@ -196,7 +196,7 @@ export function Storage() {
         {!b2.connected ? (
           <span className="text-logo">
             {" "}
-            Backblaze B2 is not connected — uploads will fail until it is.
+            Backblaze B2 is not connected. Uploads will fail until it is.
           </span>
         ) : null}
       </>
@@ -208,7 +208,7 @@ export function Storage() {
     );
   const lastChanged =
     settings.updatedAt.startsWith("1970") || !settings.updatedAt
-      ? "No rule saved yet — the default is in use."
+      ? "No rule saved yet. The default is in use."
       : `Last changed ${formatDate(new Date(settings.updatedAt))}${
           settings.updatedByName ? ` by ${settings.updatedByName}` : ""
         }.`;
@@ -438,7 +438,7 @@ function SummaryColumn({
   label: string;
   value: React.ReactNode;
   note: string;
-  /** Orange dot before the note — the "there is something there" flag. */
+  /** Orange dot before the note, the "there is something there" flag. */
   noteDot?: boolean;
   valueClassName?: string;
   children?: React.ReactNode;
@@ -514,7 +514,7 @@ function BackendCard({
       </p>
 
       {/* Stacked on phones (the donut sits above the legend), side by side
-          from sm up — the row overflows a 360px screen otherwise. */}
+          from sm up, the row overflows a 360px screen otherwise. */}
       <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:gap-5">
         <UsageDonut usage={usage} />
         <ul className="w-full min-w-0 flex-1 space-y-1.5 text-sm">
@@ -576,7 +576,7 @@ function BackendCard({
 }
 
 /**
- * The ruler under the switch input: one track is the backend's whole limit —
+ * The ruler under the switch input: one track is the backend's whole limit,
  * green with what is stored now, hatched from the switch point on as the zone
  * where Backblaze B2 takes over, with the point itself marked and labelled in
  * bytes so "90% full" reads as "900 MB of 1 GB".

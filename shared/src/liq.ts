@@ -1,5 +1,5 @@
 /**
- * Statement of Liquidation maths — shared by the API (list totals) and the
+ * Statement of Liquidation maths, shared by the API (list totals) and the
  * sheet (grand total, balance, amount in words) so the two can never disagree.
  *
  * Amounts are stored as the text the user typed (the paper sheet shows
@@ -97,8 +97,8 @@ function parseLiqDate(value: string): Date | null {
  * A date on the sheet, in the paper form's own spelling: `d-MMM-yy`
  * ("11-Nov-26") for DATE PREPARED, `mm/dd/yy` ("11/10/26") for an expense line.
  *
- * Accepts what the boxes actually hold — an ISO date from the date picker, the
- * profile default, `m/d/yy`, `m/d/yyyy` or `d-Mon-yy` — and returns the input
+ * Accepts what the boxes actually hold, an ISO date from the date picker, the
+ * profile default, `m/d/yy`, `m/d/yyyy` or `d-Mon-yy`, and returns the input
  * untouched when it is not a date, so free text is never mangled on its way to
  * paper.
  */

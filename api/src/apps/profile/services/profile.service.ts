@@ -156,7 +156,7 @@ class ProfileService extends BaseService<'profiles', ProfileRepository> {
           'access_code_id',
         );
       } catch (error) {
-        // The row still points at the old photo (or nothing) — drop the object
+        // The row still points at the old photo (or nothing), drop the object
         // we just wrote rather than leave it unreferenced.
         if (previous !== path) await removePhoto(path);
         throw error;

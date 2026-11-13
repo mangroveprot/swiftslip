@@ -45,7 +45,7 @@ export function roleLabel(role: Role | undefined) {
 }
 
 /**
- * The caption under the name in a sidebar footer — **Employer - Position**
+ * The caption under the name in a sidebar footer, **Employer - Position**
  * ("Mindbridge - IT Support"), falling back to whichever half is known when the
  * profile is still loading or has no position yet, so the line never ends on a
  * dangling dash. The employer replaces the old role caption: the sidebar says

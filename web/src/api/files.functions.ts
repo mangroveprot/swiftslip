@@ -6,7 +6,7 @@ import type { fileKeyQuery, fileUploadInput } from "@swiftslip/shared/schemas";
 
 /**
  * The optional B2 file store for future features. The existing form
- * attachments keep using their own `/…/attachment` endpoints — nothing here
+ * attachments keep using their own `/…/attachment` endpoints, nothing here
  * replaces them, and nothing calls this yet.
  *
  *   const { key } = await uploadFile({ data: { filename, contentType, base64 } });

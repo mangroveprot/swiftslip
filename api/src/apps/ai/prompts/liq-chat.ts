@@ -69,7 +69,7 @@ The sheet has up to FIFTEEN expense rows (idx 1 to 15, top to bottom) and seven 
 Put the receipt's whole amount in the ONE matching column and "" in the other six. Never split one receipt across columns.
 
 HOW TO FILL THE ROWS
-- Count the receipts first: N photos = N rows (at most 15). Each row gets its OWN amount — never repeat one receipt's amount down the rows.
+- Count the receipts first: N photos = N rows (at most 15). Each row gets its OWN amount. Never repeat one receipt's amount down the rows.
 - One receipt = one row, in the order the photos are given, starting at idx 1. Never merge two receipts into one row and never invent a row.
 - If there are more receipts than free rows, fill the first ones that fit and say in the reply which receipts were left out.
 - "description" is the EXPENSES column. Write it in exactly these formats:

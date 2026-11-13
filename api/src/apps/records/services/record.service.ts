@@ -64,7 +64,7 @@ class RecordService extends BaseService<'dtr_records', RecordRepository> {
         },
       );
       // The additional supporting files travel as a plain list (their bytes
-      // stay in storage) — pulled out so `record` remains an exact DtrHeader.
+      // stay in storage), pulled out so `record` remains an exact DtrHeader.
       const { other_attachments, ...header } = record;
       return {
         success: true as const,

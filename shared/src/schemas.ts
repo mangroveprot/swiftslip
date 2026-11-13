@@ -53,7 +53,7 @@ export const idInput = z.object({ id });
  */
 export const deleteRowInput = idInput.extend({ quiet: z.boolean().optional() });
 
-/** `DELETE /<form>/:id?quiet=true` — the same flag, as a query string. */
+/** `DELETE /<form>/:id?quiet=true`, the same flag, as a query string. */
 export const deleteRowQuery = z.object({
   quiet: z
     .enum(["true", "false", "1", "0"])
@@ -169,18 +169,18 @@ export const saveObFormInput = z.object({
 });
 
 /**
- * `POST /ob/:id/submit` — the employee hands the form to HR. No body: the id
+ * `POST /ob/:id/submit`, the employee hands the form to HR. No body: the id
  * comes from the URL and the state transition is the whole request.
  */
 export const submitObInput = idInput;
 
-/** `POST /hr/ob/:id/reject` — HR bounces it back. The reason is required. */
+/** `POST /hr/ob/:id/reject`, HR bounces it back. The reason is required. */
 export const rejectObInput = z.object({
   reason: z.string().trim().min(1, "Tell the employee why this was rejected.").max(1000),
 });
 
 /**
- * `POST /hr/ob/:id/sign-departure` — HR signs the employee out. `residence`
+ * `POST /hr/ob/:id/sign-departure`, HR signs the employee out. `residence`
  * and `destination` come from the mockup's departure card; the itinerary's
  * first line is only a default the HR reviewer can overwrite.
  */
@@ -191,7 +191,7 @@ export const signDepartureInput = z.object({
   destination: z.string().trim().max(300).default(""),
 });
 
-/** `POST /hr/ob/:id/sign-arrival` — HR signs the employee back in. */
+/** `POST /hr/ob/:id/sign-arrival`, HR signs the employee back in. */
 export const signArrivalInput = z.object({
   date: z.string().trim().min(1, "Date is required.").max(60),
   time: z.string().trim().min(1, "Time is required.").max(60),
@@ -266,7 +266,7 @@ export const liqExpenseSchema = z.object({
 export const saveLiqFormInput = z.object({
   id,
   form: liqFormSchema,
-  /** One entry per expense line — the child rows behind the form. */
+  /** One entry per expense line, the child rows behind the form. */
   entries: z.array(liqExpenseSchema).max(50),
 });
 
@@ -289,7 +289,7 @@ export const liqChatImageSchema = z.object({
 export const liqChatInput = z.object({
   // Transcript so far (oldest first). The assistant answers the last user turn.
   messages: z.array(liqChatMessageSchema).min(1).max(40),
-  // The form exactly as it stands — the assistant patches it, never resets it.
+  // The form exactly as it stands, the assistant patches it, never resets it.
   form: liqFormSchema,
   // The expense lines as they stand, so a correction ("change the 159 to 160")
   // lands on the right row instead of starting over.
@@ -356,7 +356,7 @@ export const cosFormSchema = z.object({
   plant_location: z.string(),
   position: z.string(),
   date_filed: z.string(),
-  /** "" | "shift" | "rest_day" — the Change of Work Schedule boxes. */
+  /** "" | "shift" | "rest_day", the Change of Work Schedule boxes. */
   change_type: z.string(),
   employee_signature: z.string().default(""),
   reasons: z.string(),
@@ -383,7 +383,7 @@ export const cosScheduleSchema = z.object({
 export const saveCosFormInput = z.object({
   id,
   form: cosFormSchema,
-  /** One entry per schedule line — the child rows behind the form. */
+  /** One entry per schedule line, the child rows behind the form. */
   schedules: z.array(cosScheduleSchema).max(50),
 });
 
@@ -405,7 +405,7 @@ export const cosChatMessageSchema = z.object({
 export const cosChatInput = z.object({
   // Transcript so far (oldest first). The assistant answers the last user turn.
   messages: z.array(cosChatMessageSchema).min(1).max(40),
-  // The form exactly as it stands — the assistant patches it, never resets it.
+  // The form exactly as it stands, the assistant patches it, never resets it.
   form: cosFormSchema,
   schedules: z.array(cosScheduleSchema).max(50),
   // The user's local date (YYYY-MM-DD) so "today" / "tomorrow" resolve correctly.
@@ -479,7 +479,7 @@ export const otFormSchema = z.object({
 export const saveOtFormInput = z.object({
   id,
   form: otFormSchema,
-  /** One entry per OT line — the child rows behind the form. */
+  /** One entry per OT line, the child rows behind the form. */
   entries: z.array(otEntrySchema).max(50),
 });
 
@@ -525,7 +525,7 @@ export type OtChatReply = {
 /**
  * A supporting document uploaded for a record (the OB approval slip or a DTR
  * attachment). The file travels as raw base64 (same pattern as the biometric
- * import); the server enforces the 10 MB cap itself — the client check is only
+ * import); the server enforces the 10 MB cap itself, the client check is only
  * for a friendlier, faster error.
  */
 export const attachmentUploadInput = z.object({
@@ -535,7 +535,7 @@ export const attachmentUploadInput = z.object({
   base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
 });
 
-/** `DELETE …/other-attachments?path=` — which additional file to drop. */
+/** `DELETE …/other-attachments?path=`, which additional file to drop. */
 export const attachmentPathQuery = z.object({
   path: z.string().min(1).max(400),
 });
@@ -560,13 +560,13 @@ export const fileUploadInput = z.object({
   entityId: z.string().min(1).max(100).optional(),
 });
 
-/** `GET /files/url?key=` / `DELETE /files?key=` — which stored object. */
+/** `GET /files/url?key=` / `DELETE /files?key=`, which stored object. */
 export const fileKeyQuery = z.object({
   key: z.string().min(1).max(400),
 });
 
 /**
- * `GET /files/attachment?url=` — the short-lived signed link the browser
+ * `GET /files/attachment?url=`, the short-lived signed link the browser
  * already holds for a form attachment. The API re-checks the host and the
  * owner folder before relaying the bytes back on the app's own origin.
  */
@@ -576,25 +576,25 @@ export const attachmentProxyQuery = z.object({
 
 export const upsertCodeInput = z.object({
   id: id.optional(),
-  /** The account's unique sign-in ID — required, and unique across accounts. */
+  /** The account's unique sign-in ID, required, and unique across accounts. */
   idNumber: z.string().trim().min(1, "ID number is required.").max(64),
   role: roleSchema,
   // Optional when editing (blank = keep the current password). Required when
-  // creating a new one — that and the length check happen in the service so
+  // creating a new one, that and the length check happen in the service so
   // the user gets a friendly message either way. The length floor itself is
   // `PASSWORD_MIN_LENGTH`, deliberately short: an admin resetting a password
   // types a PIN, not a passphrase.
   password: z.string().optional(),
   // The employee's Designation (office/branch), Department and Position (job
   // title). Stored on the profile (columns `area` / `department` /
-  // `designation` — see Task 1), NOT on the account row, because they are org
+  // `designation`, see Task 1), NOT on the account row, because they are org
   // data the employee also edits under "My Account" and the forms already
   // auto-fill from there. Blank or omitted leaves the stored value untouched,
   // the same "blank = keep" rule the password uses.
   designation: z.string().trim().max(200).optional(),
   department: z.string().trim().max(200).optional(),
   position: z.string().trim().max(200).optional(),
-  // The company the employee works for — `profiles.employer`. Stored as a
+  // The company the employee works for, `profiles.employer`. Stored as a
   // smallint code: 0 = Regasco, 1 = Mindbridge. Omitted leaves the stored value
   // untouched, like the other profile fields.
   employer: z.union([z.literal(0), z.literal(1)]).optional(),
@@ -649,7 +649,7 @@ export const obChatMessageSchema = z.object({
 export const obChatInput = z.object({
   // Transcript so far (oldest first). The assistant answers the last user turn.
   messages: z.array(obChatMessageSchema).min(1).max(40),
-  // The form exactly as it stands — the assistant patches it, never resets it.
+  // The form exactly as it stands, the assistant patches it, never resets it.
   form: obFormSchema,
   entries: z.array(obEntrySchema).max(50),
   // The user's local date (YYYY-MM-DD) so "today" / "tomorrow" resolve correctly.
@@ -703,7 +703,7 @@ export const loaChatMessageSchema = z.object({
 export const loaChatInput = z.object({
   // Transcript so far (oldest first). The assistant answers the last user turn.
   messages: z.array(loaChatMessageSchema).min(1).max(40),
-  // The form exactly as it stands — the assistant patches it, never resets it.
+  // The form exactly as it stands, the assistant patches it, never resets it.
   form: loaFormSchema,
   // The user's local date (YYYY-MM-DD) so "today" / "tomorrow" resolve correctly.
   today: z.string().max(40).optional(),
@@ -751,19 +751,19 @@ export const employeeProfileSchema = z.object({
    * WebP at roughly 15 KB (≈ 20 000 base64 chars), so anything near this
    * ceiling came from something other than this form.
    */
-  photo: z.string().max(600_000, "That photo is too large — try a smaller one.").default(""),
+  photo: z.string().max(600_000, "That photo is too large. Try a smaller one.").default(""),
   supervisor: z.string().default(""),
 });
 
 /**
- * The photo on its own — `PUT /api/profile/me/photo`.
+ * The photo on its own, `PUT /api/profile/me/photo`.
  *
  * The profile page saves this the moment the user picks "Use photo", so it
  * must not travel with the rest of the form: saving the whole profile there
  * would silently commit whatever else they were half-way through typing.
  */
 export const profilePhotoInput = z.object({
-  photo: z.string().max(600_000, "That photo is too large — try a smaller one.").default(""),
+  photo: z.string().max(600_000, "That photo is too large. Try a smaller one.").default(""),
 });
 
 // ── Accounts (admin) ─────────────────────────────────────────────────────────
@@ -774,13 +774,13 @@ export const createUserInput = upsertCodeInput.omit({ id: true });
 export const updateUserInput = createUserInput;
 
 /**
- * `GET /api/users/photos?ids=a,b,c` — the batch every admin list uses to draw a
+ * `GET /api/users/photos?ids=a,b,c`, the batch every admin list uses to draw a
  * face beside a name (activity logs, app access, dashboard feeds).
  *
  * One comma-separated string rather than repeated params: the lists build it
  * from the ids they are already rendering, and the service caps how many ids it
  * will answer for so a hand-crafted URL can't ask for the whole company's
- * photos in one go. Empty is legal and returns nothing — a feed made only of
+ * photos in one go. Empty is legal and returns nothing, a feed made only of
  * deleted accounts still asks.
  */
 export const userPhotosInput = z.object({
@@ -790,7 +790,7 @@ export const userPhotosInput = z.object({
 // ── App access rules (admin) ─────────────────────────────────────────────────
 
 /**
- * `POST /notifications/read` — clears the caller's unread badge. No body: the
+ * `POST /notifications/read`, clears the caller's unread badge. No body: the
  * recipient is always the signed-in account, never a passed-in id.
  */
 export const markNotificationsReadInput = z.object({});
@@ -858,7 +858,7 @@ export const retentionFormTypeSchema = z.enum(RETENTION_FORM_TYPES);
 
 /**
  * The floor is 1 day, not a policy number: the office decides its own period
- * (7 days, 90, a year — their call). Zero or less is refused because it would
+ * (7 days, 90, a year, their call). Zero or less is refused because it would
  * mean "everything older than right now", which is never what anyone means.
  */
 export const RETENTION_MIN_DAYS = 1;
@@ -875,9 +875,9 @@ export const retentionSettingsInput = z.object({
     .int("Enter a whole number of days.")
     .min(
       RETENTION_MIN_DAYS,
-      `Keep forms for at least ${RETENTION_MIN_DAYS} day — the period is yours to choose.`,
+      `Keep forms for at least ${RETENTION_MIN_DAYS} day. The period is yours to choose.`,
     )
-    .max(3650, "That is more than 10 years — pick a smaller number."),
+    .max(3650, "That is more than 10 years. Pick a smaller number."),
   formTypes: z.array(retentionFormTypeSchema).max(RETENTION_FORM_TYPES.length),
 });
 
@@ -899,12 +899,12 @@ export type RetentionSettingsDoc = RetentionSettings & {
 /** What one form type would lose, and what the whole preview adds up to. */
 export type RetentionPreview = {
   days: number;
-  /** ISO timestamp — everything created before this is in scope. */
+  /** ISO timestamp, everything created before this is in scope. */
   cutoff: string;
   /** The ticked types. Only these are counted into the two totals below. */
   chosen: RetentionFormType[];
   /**
-   * Every type, ticked or not — the page shows each one's count so an admin
+   * Every type, ticked or not, the page shows each one's count so an admin
    * can see what a type holds before ticking it. Untick a type and its forms
    * simply drop out of the totals.
    */
@@ -914,7 +914,7 @@ export type RetentionPreview = {
 };
 
 /**
- * One row of `cleanup_runs` — the permanent history of what a run deleted
+ * One row of `cleanup_runs`, the permanent history of what a run deleted
  * (the activity log only keeps 30 days). Per-type counts are sparse: a type
  * with no deletions has no key.
  */
@@ -936,7 +936,7 @@ export type CleanupRunSummary = {
 export const STORAGE_RULES = ["supabase-first", "b2-only", "supabase-only"] as const;
 export const storageRuleSchema = z.enum(STORAGE_RULES);
 
-/** The two possible backends. Re-exported from `types.ts` — see the note there. */
+/** The two possible backends. Re-exported from `types.ts`, see the note there. */
 export { STORAGE_BACKENDS };
 export const storageBackendSchema = z.enum(STORAGE_BACKENDS);
 
@@ -964,7 +964,7 @@ export type { StorageBackend };
 export type StorageReference = {
   /** 'supabase' or 'b2'. */
   backend: StorageBackend;
-  /** The key/path — without a `b2:` prefix for B2 files. */
+  /** The key/path, without a `b2:` prefix for B2 files. */
   key: string;
 };
 

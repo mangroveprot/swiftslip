@@ -11,7 +11,7 @@ import type {
 /** Admin-panel dashboard: totals and latest activity across the whole app. */
 export const getAdminStatsFn = async () => documentOf(await api.get<AdminStats>("/admin/stats"));
 
-/** One filtered page of the audit trail — administrators only. */
+/** One filtered page of the audit trail, administrators only. */
 export const listActivityLogsFn = async ({
   data,
 }: {

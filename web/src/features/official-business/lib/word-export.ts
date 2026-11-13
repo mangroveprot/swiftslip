@@ -30,7 +30,7 @@ import type { ObEntry, ObForm } from "@swiftslip/shared/types";
 const TEMPLATE_URL = "/ob_form_template.docx";
 
 /**
- * Largest size each signature box gives its image (pixels) — the same caps the
+ * Largest size each signature box gives its image (pixels), the same caps the
  * on-screen preview uses, so the Word file and the sheet look alike.
  */
 const IMAGE_MAX = new Map<string, [number, number]>([
@@ -87,7 +87,7 @@ export async function downloadObWord({
   const exit = resolveExitSignoff(hr, signers);
 
   // docxtemplater's image module sizes images synchronously during render, so
-  // every signature is measured up front — one map keyed by token name.
+  // every signature is measured up front, one map keyed by token name.
   const sources = {
     employee_signature: form.employee_signature ?? "",
     hr_signature: exit.verified?.signature ?? "",
@@ -139,7 +139,7 @@ export async function downloadObWord({
       }))
     : [{ from_place: "", to_place: "", purpose: "", time_departure: "", time_return: "" }];
 
-  // An unsigned box prints nothing at all — never a half-filled line.
+  // An unsigned box prints nothing at all, never a half-filled line.
   const departure = exit.departure;
   const arrival = exit.arrival;
 
@@ -158,7 +158,7 @@ export async function downloadObWord({
     hr_signature: toBase64(sources.hr_signature),
     hr_name: exit.verified?.name ?? "",
     hr_position: exit.verified?.position ?? "",
-    // Exit clearance — the return leg swaps the route, as on the paper form.
+    // Exit clearance, the return leg swaps the route, as on the paper form.
     departure_residence: departure.signed ? (details.residence ?? "") : "",
     departure_destination: departure.signed ? (details.destination ?? "") : "",
     departure_signature: toBase64(sources.departure_signature),

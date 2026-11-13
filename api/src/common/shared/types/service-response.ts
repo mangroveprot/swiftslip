@@ -2,7 +2,7 @@ import type { ErrorResponse } from '../utils/error';
 
 /**
  * What every service method returns. `success` is a literal, so checking it
- * narrows the type — no `as SuccessResponseType<...>` casts needed:
+ * narrows the type, no `as SuccessResponseType<...>` casts needed:
  *
  *   const res = await UserService.findOne({ id });
  *   if (!res.success) throw res;      // res is ErrorResponseType here

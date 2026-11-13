@@ -13,7 +13,7 @@ import type { DtrEntry, DtrHeader, DtrTemplate } from "@swiftslip/shared/types";
 import { withRestDayRemarks } from "./rest-day";
 
 // The export fills a tokenized copy of the company's real Word form
-// (public/dtr_template.docx — tokenized by scripts/dtr-template-tokenize.mjs) so
+// (public/dtr_template.docx, tokenized by scripts/dtr-template-tokenize.mjs) so
 // the output matches the template's exact layout/styling instead of being
 // rebuilt in code. Tokens: {emp_no} {name} {designation} {area} {month} {year},
 // the daily-entries table loop {#entries}{date}{time_in}{time_out}
@@ -22,10 +22,10 @@ import { withRestDayRemarks } from "./rest-day";
 //
 // After docxtemplater renders, a post-process converts the inline signature
 // drawing to a floating/anchored drawing (wp:anchor with wrapNone) so the
-// signature strokes overlay the printed name — matching the on-screen preview.
+// signature strokes overlay the printed name, matching the on-screen preview.
 const TEMPLATE_URL = "/dtr_template.docx";
 
-/** EMU per twip — page geometry in the template is measured in twips. */
+/** EMU per twip, page geometry in the template is measured in twips. */
 const EMU_PER_TWIP = 635;
 /** EMU per point. */
 const EMU_PER_PT = 12700;
@@ -51,7 +51,7 @@ function templateLineHeightEmu(zip: PizZip): number {
 
 /**
  * Turn the inline signature drawing into a floating one so the signature strokes
- * land over the printed name — image in front, text showing through its
+ * land over the printed name, image in front, text showing through its
  * transparent background, which is what the on-screen preview does.
  *
  * Two things matter here, and both are easy to get wrong:
@@ -62,7 +62,7 @@ function templateLineHeightEmu(zip: PizZip): number {
  *    makes Word reject the file with a repair prompt, so the anchor is rebuilt
  *    from the original parts instead of patched in place.
  *  - **The geometry is measured, not assumed.** The name is centred in the text
- *    column, so the image has to be centred on that same column — which means
+ *    column, so the image has to be centred on that same column, which means
  *    deriving the centre from the page's margins and the paragraph's right
  *    indent rather than hardcoding the numbers the current template happens to
  *    use. Vertically the image's bottom is aligned with the bottom of the text
@@ -134,7 +134,7 @@ function overlaySignature(xml: string, lineHeightEmu: number): string {
 
 export async function downloadDtrWord({
   // `template` (title / column names / labels) lives in the tokenized template
-  // itself, so the export doesn't reference it — but it's kept in the signature
+  // itself, so the export doesn't reference it, but it's kept in the signature
   // so callers don't have to change.
   template: _template,
   header,
@@ -153,11 +153,11 @@ export async function downloadDtrWord({
   const content = await res.arrayBuffer();
 
   // Saved signatures are opaque scans, so the paper has to come off before the
-  // image can sit over the printed name — Word has no multiply blend to hide it.
+  // image can sit over the printed name, Word has no multiply blend to hide it.
   const rawSig = header.employee_signature ?? "";
   const sigB64 = rawSig ? toBase64(await signatureWithoutPaper(rawSig)) : "";
   // When there's no signature the image module still expects valid bytes and a
-  // positive size — handing it an empty string throws "image not found". A
+  // positive size, handing it an empty string throws "image not found". A
   // 1×1 transparent PNG occupies no visible space and keeps the printed-name
   // line landing directly on the signature rule below.
   const TRANSPARENT_PX =
@@ -184,7 +184,7 @@ export async function downloadDtrWord({
     area: header.area ?? "",
     month: formatPeriodDateRange(header.period, header.month, header.year),
     year: String(header.year ?? ""),
-    // One entry per day — the template repeats its value row over this list.
+    // One entry per day, the template repeats its value row over this list.
     entries: days.length
       ? days.map((d) => {
           const e = withRestDayRemarks(entryFor(d), d, header);

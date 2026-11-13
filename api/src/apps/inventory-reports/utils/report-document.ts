@@ -1,5 +1,5 @@
 /**
- * Inventory report document builder — a faithful port of the original
+ * Inventory report document builder, a faithful port of the original
  * `InventoryReportService.BuildDocumentAsync` (C# / EF Core).
  *
  * Pure: rows in, document out. The query lives in the repository, so this file
@@ -20,7 +20,7 @@ export function buildReportDocumentFromRows(
   branchName: string,
   rows: ReportAssetSource[],
 ): InventoryReportDocument {
-  // EF: OrderBy(FloorLabel).ThenBy(CubicleSeat).ThenBy(ItemId) — done in JS so the
+  // EF: OrderBy(FloorLabel).ThenBy(CubicleSeat).ThenBy(ItemId), done in JS so the
   // comparison stays culture-primary instead of Postgres collation. NULL cubicles
   // sort LAST, the way Postgres evaluates `ASC` (golden.xlsx proves it: the eight
   // null-cubicle assets close each floor sheet).

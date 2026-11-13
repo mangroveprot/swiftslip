@@ -25,7 +25,7 @@ const EnvSchema = z.object({
     .default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
   // How many reverse proxies sit in front of the API (0 = none). Needed so
-  // `req.ip` is the visitor, not the proxy — it feeds the sign-in throttle.
+  // `req.ip` is the visitor, not the proxy, it feeds the sign-in throttle.
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   // Folder holding the built web app (web/dist). When set (and it contains an
   // index.html) the API also serves the website, so one service does both.
@@ -53,7 +53,7 @@ const EnvSchema = z.object({
   GEMINI_API_KEY: z.string().min(1).optional(),
   GEMINI_MODEL: z.string().min(1).default('gemini-3.1-flash-lite'),
 
-  // RGC asset inventory — a SEPARATE Postgres database from SwiftSlip's
+  // RGC asset inventory, a SEPARATE Postgres database from SwiftSlip's
   // Supabase. Unset = the inventory endpoints answer "not configured" (503).
   RGC_INVENTORY_DATABASE_URL: z
     .string()
@@ -66,7 +66,7 @@ const EnvSchema = z.object({
     )
     .optional(),
 
-  // Backblaze B2 (S3 API) — an OPTIONAL second storage backend for new
+  // Backblaze B2 (S3 API), an OPTIONAL second storage backend for new
   // features, beside the Supabase Storage attachments (which keep working
   // exactly as before). Unset = the /files endpoints answer "not configured"
   // (503). See STORAGE_GUIDE.md.

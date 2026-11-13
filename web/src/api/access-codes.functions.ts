@@ -10,7 +10,7 @@ export const listCodes = async () => documentsOf(await api.get<AccountListItem>(
 /**
  * Profile photos for a batch of account ids, as `{ id, photo }` pairs.
  *
- * Ids without a photo are simply absent from the answer — the caller draws
+ * Ids without a photo are simply absent from the answer, the caller draws
  * initials for those, so an empty list is the normal case for a new company,
  * not an error.
  */

@@ -4,13 +4,13 @@ import type { SessionUser } from '@swiftslip/shared/types';
 import { UpdatesService } from '../services';
 
 /**
- * GET /api/updates/stream — the one long-lived request each signed-in tab
+ * GET /api/updates/stream, the one long-lived request each signed-in tab
  * holds open. `authenticate` runs once on connect (one DB read), not every few
  * seconds like the old 30 s poll did.
  *
  * Deliberate exception to the JSON envelope rule: this is a byte stream, and
  * its frames carry only `{ "v": <number> }`. No form data ever travels over
- * it, so a session that is revoked mid-stream cannot leak anything — the tab
+ * it, so a session that is revoked mid-stream cannot leak anything, the tab
  * just gets a stale "something changed" hint until it reconnects.
  */
 class UpdatesController {

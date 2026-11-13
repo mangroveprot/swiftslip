@@ -72,7 +72,7 @@ type StepKey = (typeof STEPS)[number]["key"];
  * Dark mode flips --success to cream (the button fill), so a done pill would
  * render white there. It borrows dashboard-accent, the dark theme's one green
  * that keeps its hue, and --muted sinks into the near-black card, so a pending
- * step used to disappear — white fills it back in. primary-foreground is warm
+ * step used to disappear, white fills it back in. primary-foreground is warm
  * ink on dark, which is what reads inside that white pill.
  */
 const STEP_DONE_TONE =
@@ -827,7 +827,7 @@ export function HrObDetailPage({ id }: { id: string }) {
       <PreviewLightbox
         open={previewOpen}
         onOpenChange={setPreviewOpen}
-        title="Official Business Form — full view"
+        title="Official Business Form: full view"
       >
         <ObPreview
           form={form}
@@ -908,7 +908,7 @@ function ReviewField({
   label: string;
   value: string;
   change?: ObResubmitChange | undefined;
-  /** Second line under the value — a TIME OF cell's signed HR date. */
+  /** Second line under the value, a TIME OF cell's signed HR date. */
   subValue?: string | undefined;
 }) {
   return (
@@ -944,8 +944,8 @@ function ReadOnlyFact({ label, value }: { label: string; value: string }) {
 /**
  * The signed half of an Exit clearance leg, matching the owner's paper-form
  * reference: a plain read-only label/value row (no underlines, no boxes), then
- * the signer block — the saved e-signature image on top when one is on file, the
- * full printed name beneath it, and the position/designation at the bottom —
+ * the signer block, the saved e-signature image on top when one is on file, the
+ * full printed name beneath it, and the position/designation at the bottom,
  * with the green double-outlined "Departure / Arrival signed" stamp kept close
  * beside it (the owner asked to pull the far-right stamp in) rather than pushed
  * to the card edge.

@@ -16,10 +16,10 @@ const SHEET_FONT = 'Calibri, Carlito, "Segoe UI", Arial, sans-serif';
  * Layout metrics for the sheet, kept in one place so the numbers are easy to
  * compare against the form they replicate:
  *
- * - `GAP` — space between the stacked blocks above the signature
- * - `CELL_H` / `LOG_ROW_H` / `LOG_HEAD_H` — the field row heights
- * - `SIGN_MARGIN` / `CERT_MARGIN` — the signature block's spacing
- * - the three `COLS_*` groups — the column proportions of each table
+ * - `GAP`, space between the stacked blocks above the signature
+ * - `CELL_H` / `LOG_ROW_H` / `LOG_HEAD_H`, the field row heights
+ * - `SIGN_MARGIN` / `CERT_MARGIN`, the signature block's spacing
+ * - the three `COLS_*` groups, the column proportions of each table
  */
 const GAP = "mb-[0.18in]";
 const CELL_H = "h-[0.3in]";
@@ -102,7 +102,7 @@ export function DtrPreview({
   header: DtrHeader;
   days: number[];
   entryFor: (day: number) => DtrEntry;
-  /** DOM id for the sheet — only the inline editor copy carries one, so the
+  /** DOM id for the sheet, only the inline editor copy carries one, so the
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
 }) {
@@ -257,7 +257,7 @@ function HeaderRow({
   value: string;
   /** How many columns the label covers. */
   labelSpan: number;
-  /** How many the value covers — the rest of the row. */
+  /** How many the value covers, the rest of the row. */
   valueSpan: number;
   /** EMP NO. leaves the far-right cell blank (borderless). */
   filler?: boolean;

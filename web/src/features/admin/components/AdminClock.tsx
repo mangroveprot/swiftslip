@@ -7,7 +7,7 @@ import { formatDate, formatTime } from "@swiftslip/shared/time";
  *
  * It lives in its own component so the once-a-second state update re-renders
  * only the clock, never the panels beside it. `null` until mount because the
- * value is local time — rendering it during the first paint would hydrate
+ * value is local time, rendering it during the first paint would hydrate
  * against a different string.
  */
 export function AdminClock() {

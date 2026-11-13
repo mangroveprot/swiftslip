@@ -79,7 +79,7 @@ import { ObStatusCard } from "./ObStatusCard";
 type SaveStatus = "idle" | AutoSaveStatus;
 type PendingAction = "save" | "submit" | "cancel" | "download";
 
-/** The rows that will actually be saved — blank rows never reach the database. */
+/** The rows that will actually be saved, blank rows never reach the database. */
 function hasAnyValue(row: ObEntry): boolean {
   return Boolean(
     row.from_place || row.to_place || row.purpose || row.time_departure || row.time_return,
@@ -93,7 +93,7 @@ const NO_HINTS: Readonly<Record<string, string>> = {};
 
 const DRAFT_FEATURE = "ob";
 
-/** Itinerary rows worth persisting — a row counts only if it has any value. */
+/** Itinerary rows worth persisting, a row counts only if it has any value. */
 function buildRows(rows: ObEntry[]): ObEntry[] {
   return rows
     .filter((r) => r.from_place || r.to_place || r.purpose || r.time_departure || r.time_return)
@@ -103,7 +103,7 @@ function buildRows(rows: ObEntry[]): ObEntry[] {
 /** Write a save into the query cache WITHOUT dropping the `attachment` sibling
  *  or the HR columns (`hr_status`, reject reason, sign-off fields). A bare
  *  `{ form, entries }` write replaces the whole entry, so the file the card
- *  renders would vanish until the next refetch — and the employee's editor
+ *  renders would vanish until the next refetch, and the employee's editor
  *  would briefly look editable again because the HR state was gone. */
 function writeFormCache(
   qc: QueryClient,
@@ -139,7 +139,7 @@ const CLEARED_SIGNOFFS = {
 } satisfies Partial<ObHrFields>;
 
 /**
- * One editor per record — including across that record's own save. Saving a
+ * One editor per record, including across that record's own save. Saving a
  * draft swaps `$id` from `draft_…` to the row `insertDraft` just created: the
  * SAME record, so the body keeps its mount (a remount would flash the
  * skeleton over content that never changed). Any other id is a different
@@ -166,7 +166,7 @@ function ObEditorBody({
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  // A draft id means this form does not exist in the database yet — nothing was
+  // A draft id means this form does not exist in the database yet, nothing was
   // written when the user pressed "New form", and nothing will be until they enter
   // something of their own.
   const isDraft = isDraftId(id);
@@ -193,7 +193,7 @@ function ObEditorBody({
   // Only a resubmission that came from an approved version can be withdrawn:
   // the API kept that version in `previous_content` for exactly this, and tags
   // the event with `from_status`. Events written before migration 0039 have no
-  // such data, so the API would refuse — never offer the button for them.
+  // such data, so the API would refuse, never offer the button for them.
   const latestResubmit = latestObResubmit(data?.form.resubmit_history);
   const canCancelResubmit =
     hrStatus === "submitted" &&
@@ -233,7 +233,7 @@ function ObEditorBody({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [previewOpen, setPreviewOpen] = useState(false);
   // The red marks appear only after the first Submit/Resubmit attempt, then
-  // disappear as the employee fills each cell — never on a quiet draft.
+  // disappear as the employee fills each cell, never on a quiet draft.
   const [showRequired, setShowRequired] = useState(false);
   const missingRequired = useMemo(
     () => (form ? obMissingRequiredFields(form, rows.filter(hasAnyValue)) : []),
@@ -301,7 +301,7 @@ function ObEditorBody({
       setRowId(created);
       promoteDraft(DRAFT_FEATURE, id, created, { form: f, entries: r });
       // Mark persisted BEFORE navigate: an unmount flush must not see the draft
-      // still pending — that would insert a second, blank row.
+      // still pending, that would insert a second, blank row.
       auto.setPersisted(snapshotOf(f, r));
       // Keep this same editor mounted through the swap: the wrapper's key
       // follows this pair instead of remounting over unchanged content.
@@ -322,7 +322,7 @@ function ObEditorBody({
   async function writeSnapshot(): Promise<void> {
     const { form: f, rows: r } = latestRef.current;
     if (!f) return;
-    // insertDraft already writes content — a second save races and errors.
+    // insertDraft already writes content, a second save races and errors.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -375,7 +375,7 @@ function ObEditorBody({
     if (data) setPendingChanges(Boolean(data.pending_changes));
   }, [data]);
 
-  // Build a draft from the profile — in the browser, with no request. The starting
+  // Build a draft from the profile, in the browser, with no request. The starting
   // point becomes the baseline: whatever differs from it is something the user
   // actually entered, and that is what creates the form.
   useEffect(() => {
@@ -390,7 +390,7 @@ function ObEditorBody({
 
   // Keep a local backup of the signature so it survives a failed save. Derived
   // values only (not the form object), so the effect re-runs when the signature
-  // changes — and skips the pre-hydration render where form is still null.
+  // changes, and skips the pre-hydration render where form is still null.
   const sig = form?.employee_signature;
   const formLoaded = form !== null;
   const sigBackupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -398,7 +398,7 @@ function ObEditorBody({
     if (!formLoaded) return;
     if (sigBackupTimeoutRef.current) clearTimeout(sigBackupTimeoutRef.current);
     sigBackupTimeoutRef.current = setTimeout(() => {
-      // A save may have landed during the debounce window — nothing to back up.
+      // A save may have landed during the debounce window, nothing to back up.
       if (sig === savedSigRef.current) return;
       void saveSignatureBackup("ob", rowId ?? id, sig);
     }, 500);
@@ -424,7 +424,7 @@ function ObEditorBody({
   }, [saveStatus]);
 
   // Leaving: flush only once a real row exists. A draft with no row stays in
-  // localStorage — flushing here would insert during StrictMode remounts.
+  // localStorage, flushing here would insert during StrictMode remounts.
   useEffect(() => {
     return () => {
       if (rowIdRef.current) auto.flush();
@@ -460,7 +460,7 @@ function ObEditorBody({
     f: ObForm,
     entries: ObEntry[],
   ): Promise<{ hr_status: ObHrStatus; pending_changes: boolean } | undefined> {
-    // insertDraft already writes content — don't save again on first create.
+    // insertDraft already writes content, don't save again on first create.
     if (!rowIdRef.current) {
       await insertDraft();
       return undefined;
@@ -517,7 +517,7 @@ function ObEditorBody({
 
   /**
    * Bring the first empty cell into view. The toast says "they are marked in
-   * the form" — on a long sheet that is only useful if the page actually shows
+   * the form", on a long sheet that is only useful if the page actually shows
    * one of those marks. The rAF waits for the red marks to paint.
    */
   function revealFirstMissing() {
@@ -541,7 +541,7 @@ function ObEditorBody({
     if (missing.length) {
       setShowRequired(true);
       const notice = obRequiredToast(missing);
-      // The app's own toast — sonner's built-in title + description, no custom
+      // The app's own toast, sonner's built-in title + description, no custom
       // notification component, no raw validation copy.
       toast.error(notice.title, { description: notice.description });
       revealFirstMissing();
@@ -555,7 +555,7 @@ function ObEditorBody({
     try {
       const saved = await persist(form, buildRows(rows));
       // A post-approval form goes back only with a draft. If the employee
-      // reverted their edit, the save already dropped it — there is nothing to
+      // reverted their edit, the save already dropped it, there is nothing to
       // resubmit, and the API would refuse an empty one.
       if (postApprovalStatus && saved && !saved.pending_changes) {
         setSaveStatus("idle");
@@ -642,7 +642,7 @@ function ObEditorBody({
     setPending("download");
     const toastId = toast.loading("Preparing Word file…");
     try {
-      // docxtemplater + pizzip are only needed when exporting (~330 kB) — keeping
+      // docxtemplater + pizzip are only needed when exporting (~330 kB), keeping
       // them out of the route chunk makes opening this form much faster.
       const { downloadObWord } = await import("../lib/word-export");
       await downloadObWord({
@@ -664,7 +664,7 @@ function ObEditorBody({
     }
   }
 
-  // Always at the top of the preview column — the upload prompt and an already
+  // Always at the top of the preview column, the upload prompt and an already
   // attached slip both belong where you look first. Print order is handled by
   // `print:order` on the wrapper below, so the slip still follows the form.
   const attachmentCard = (
@@ -792,7 +792,7 @@ function ObEditorBody({
 
       <div className="grid gap-6 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
         {/* The form column. The status card is its own card sitting ABOVE the
-            form — never inside the form card, and it is the only status line
+            form, never inside the form card, and it is the only status line
             on this page. The whole page scrolls (like the HR form detail), so
             neither this column nor the form card clips its content. */}
         <div className="no-print flex flex-col gap-5">
@@ -906,7 +906,7 @@ function ObEditorBody({
             </button>
           </div>
           <div className="rounded-sm print:order-1 print:overflow-visible">
-            {/* Clicking the sheet itself opens the full view — the same action
+            {/* Clicking the sheet itself opens the full view, the same action
                 as the small icon above, without hunting for it. Same wrapper
                 the HR detail page already uses; it prints as-is (no ring, no
                 cursor) so the paper output is unchanged. */}

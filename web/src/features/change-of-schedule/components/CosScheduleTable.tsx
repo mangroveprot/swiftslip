@@ -13,7 +13,7 @@ const EMPTY_ROW: Omit<CosSchedule, "idx"> = {
 };
 
 /**
- * The SCHEDULE block, one row per effectivity date — the COS twin of the OB
+ * The SCHEDULE block, one row per effectivity date, the COS twin of the OB
  * itinerary table. A change of schedule can cover more than one date, so the
  * rows are a list rather than three fixed fields.
  */
@@ -105,7 +105,7 @@ export function CosScheduleTable({
                   />
                 </label>
                 {/* Each SCHEDULE side is the date it changes from/to plus that
-                    shift's hours — the sheet prints them as one line. */}
+                    shift's hours, the sheet prints them as one line. */}
                 <ScheduleSide
                   label="Schedule: From"
                   index={i}
@@ -152,7 +152,7 @@ function ScheduleSide({
 }: {
   label: string;
   index: number;
-  /** Which half of the line this is — the stored column names are prefixed. */
+  /** Which half of the line this is, the stored column names are prefixed. */
   side: "from" | "to";
   date: string;
   start: string;

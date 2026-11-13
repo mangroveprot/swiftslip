@@ -2,7 +2,7 @@ import { APP } from "@/config/app";
 
 export const pageTitle = (title: string) => `${title} | ${APP.name}`;
 
-/** Absolute URL of the shared preview image — crawlers reject relative paths. */
+/** Absolute URL of the shared preview image, crawlers reject relative paths. */
 export const ogImage = `${APP.siteUrl}${APP.logoPath}`;
 
 /** Standard <head> meta for a route. Replaces the copy-pasted meta blocks. */

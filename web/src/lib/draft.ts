@@ -1,5 +1,5 @@
 /**
- * Client-side drafts — a new form that does not exist in the database yet.
+ * Client-side drafts, a new form that does not exist in the database yet.
  *
  * Pressing "New form" mints a draft id and navigates to it straight away, so the
  * editor opens with no network round-trip and no skeleton. Nothing is written
@@ -9,13 +9,13 @@
  *
  * Until then the draft lives only here, in localStorage, so a refresh or a closed
  * tab does not throw away what was typed. A draft that never got real content is
- * simply removed — there is no server-side row to clean up, which is the whole
+ * simply removed, there is no server-side row to clean up, which is the whole
  * point of the design.
  */
 
 import { backupKey, readSignatureBackup, safeRemoveItem, safeSetItem } from "./signature";
 
-/** Marks an id as client-side only. Never sent to the server — it is not a UUID. */
+/** Marks an id as client-side only. Never sent to the server, it is not a UUID. */
 const DRAFT_MARK = "draft_";
 
 const STORAGE_PREFIX = "swiftslip-draft:";
@@ -64,7 +64,7 @@ function readRaw<T>(feature: string, id: string): StoredDraft<T> | null {
 }
 
 /**
- * The stored draft for this id, or null when there is none — which means the URL
+ * The stored draft for this id, or null when there is none, which means the URL
  * was bookmarked or shared mid-draft and does not identify any real form.
  */
 export function readDraft<T>(feature: string, id: string): T | null {
@@ -78,7 +78,7 @@ export function writeDraft<T>(feature: string, id: string, data: T): void {
     const payload: StoredDraft<T> = { at: Date.now(), data };
     window.localStorage.setItem(storageKey(feature, id), JSON.stringify(payload));
   } catch {
-    // See readDraft — a missing backup is not worth interrupting the user over.
+    // See readDraft, a missing backup is not worth interrupting the user over.
   }
 }
 

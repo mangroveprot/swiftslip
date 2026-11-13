@@ -7,11 +7,11 @@ import { toast } from "./toast";
  *
  * Chromium fires `beforeinstallprompt` once per page load, some time after the
  * service worker is in control. The event must be stored and replayed from a
- * click, so it lives at module scope — a listener mounted with React could
+ * click, so it lives at module scope, a listener mounted with React could
  * easily miss it (and StrictMode would mount it twice).
  */
 
-/** Chrome/Edge's deferred install prompt — not part of the TS DOM lib. */
+/** Chrome/Edge's deferred install prompt, not part of the TS DOM lib. */
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -107,7 +107,7 @@ export function useInstallPrompt() {
   return { ...snapshot, promptInstall };
 }
 
-/** iPhone / iPad detection — iOS has no install prompt, only Share → Add to Home Screen. */
+/** iPhone / iPad detection, iOS has no install prompt, only Share → Add to Home Screen. */
 export function isAppleMobile() {
   if (typeof navigator === "undefined") return false;
   return (
@@ -123,7 +123,7 @@ export function isAppleMobile() {
 export function showInstallHelp() {
   toast.info(
     import.meta.env.DEV
-      ? "Install prompts only appear in a production build — run “npm run build” then “npm run preview” to try it."
+      ? "Install prompts only appear in a production build. Run “npm run build” then “npm run preview” to try it."
       : isAppleMobile()
         ? "On iPhone or iPad: tap Share, then “Add to Home Screen”."
         : "Open your browser menu and choose “Install app” or “Add to Home screen”.",
@@ -131,7 +131,7 @@ export function showInstallHelp() {
   );
 }
 
-/** Registers the PWA service worker. Production only — dev HMR must not be cached. */
+/** Registers the PWA service worker. Production only, dev HMR must not be cached. */
 export function registerServiceWorker() {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
   if (!import.meta.env.PROD) return;

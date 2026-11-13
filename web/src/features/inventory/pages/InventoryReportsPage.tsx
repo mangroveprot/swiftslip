@@ -1,5 +1,5 @@
 /**
- * Reports page — port of `Pages/Reports.razor`: branch report preview with
+ * Reports page, port of `Pages/Reports.razor`: branch report preview with
  * Excel-style floor-sheet tabs and the Download Excel action.
  *
  * The Excel download builds the workbook client-side from the same
@@ -219,7 +219,7 @@ export function InventoryReportsPage() {
                       </table>
                     </div>
 
-                    {/* Totals footer of the same printed sheet — stays on paper too. */}
+                    {/* Totals footer of the same printed sheet, stays on paper too. */}
                     <div className="px-4 py-4 border-t border-slate-100 space-y-1 bg-white text-slate-700">
                       <p className="text-xs font-semibold text-slate-700">TOTAL OF:</p>
                       {sheet.totals.length === 0 ? (

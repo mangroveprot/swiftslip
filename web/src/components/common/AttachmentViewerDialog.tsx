@@ -5,14 +5,14 @@ import { createPortal } from "react-dom";
 import { downloadFromUrl, IMAGE_RE } from "@/lib/attachment-file";
 
 /**
- * Read-only viewer for a file that is **already uploaded** — the modal that
+ * Read-only viewer for a file that is **already uploaded**, the modal that
  * replaces opening the signed link in a new browser tab. The whole window is
  * the file: a picture shows on the form's own paper (scaled to fit, never
  * cropped), a PDF shows its pages in the browser's own viewer (the same
  * embedding the print path uses) and anything that cannot render on screen
  * (docx, xlsx, …) says so and offers the download instead.
  *
- * Escape and a click on the backdrop both close it — the same contract as the
+ * Escape and a click on the backdrop both close it, the same contract as the
  * upload window (`AttachmentFileDialog`), which is the only other thing this
  * card opens. Nothing here uploads, replaces or removes: the file stays put.
  */
@@ -24,14 +24,14 @@ export function AttachmentViewerDialog({
   onClose,
 }: {
   open: boolean;
-  /** The card's own name — "Approval attachment" or "Attachment". */
+  /** The card's own name, "Approval attachment" or "Attachment". */
   title: string;
   fileName: string;
   /** This row's signed link (1 hour). The window refuses to open without one. */
   url: string | null;
   onClose: () => void;
 }) {
-  // Escape closes the window — there is no upload in flight to protect here.
+  // Escape closes the window, there is no upload in flight to protect here.
   useEffect(() => {
     if (!open) return;
     function onKey(event: KeyboardEvent) {
@@ -93,7 +93,7 @@ export function AttachmentViewerDialog({
           </div>
         </header>
 
-        {/* The file on the form's own paper — a scan read the way it will be
+        {/* The file on the form's own paper, a scan read the way it will be
             filed, in either theme. */}
         <div className="min-h-0 flex-1 overflow-auto bg-paper p-4 text-ink">
           {isImage ? (

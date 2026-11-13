@@ -25,7 +25,7 @@ export const loaAttachmentUrlQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ["loa-attachment", id],
     queryFn: () => getLoaAttachmentUrl({ data: { id } }),
-    // Signed links stay valid for an hour — no need to churn them every 30 s.
+    // Signed links stay valid for an hour, no need to churn them every 30 s.
     staleTime: 30 * 60 * 1000,
     retry: false,
   });

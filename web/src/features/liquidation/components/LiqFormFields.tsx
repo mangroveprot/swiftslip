@@ -28,14 +28,14 @@ const AMOUNT_LABELS: Record<LiqAmountKey, string> = {
   other_expenses: "Other business",
 };
 
-/** The column a row's amount sits in — the first one holding a value. */
+/** The column a row's amount sits in, the first one holding a value. */
 function amountKeyOf(entry: LiqExpense): LiqAmountKey | null {
   return LIQ_AMOUNT_KEYS.find((key) => entry[key].trim() !== "") ?? null;
 }
 
 /**
  * Write `amount` into one column and clear the other six. A line is one
- * receipt, and a receipt belongs to one column — the same shape the assistant
+ * receipt, and a receipt belongs to one column, the same shape the assistant
  * fills when it reads a photo.
  */
 function withAmount(entry: LiqExpense, key: LiqAmountKey, amount: string): LiqExpense {
@@ -88,7 +88,7 @@ export function LiqFormFields({
   /** Remove one visible row; the editor closes the gap and blanks the last. */
   onDeleteLine: (index: number) => void;
   canEdit: boolean;
-  /** Destinations already used on the employee's OB forms — the trip is the same. */
+  /** Destinations already used on the employee's OB forms, the trip is the same. */
   tripOptions: string[];
 }) {
   const needs = REQUIRED_BOXES.filter((box) => !box.filled(form));
@@ -230,7 +230,7 @@ export function LiqFormFields({
           <div>
             <p className="lbl">Expense lines</p>
             <p className="text-xs text-muted-foreground">
-              Add a line per receipt. Type the amount, then choose the column it belongs to — the
+              Add a line per receipt. Type the amount, then choose the column it belongs to, the
               assistant fills a line the same way when it reads a photo. Up to {LIQ_LINES} lines.
             </p>
           </div>

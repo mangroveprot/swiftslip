@@ -5,7 +5,7 @@ import type { DtrTemplate } from "./types";
  *
  * This used to live in the `dtr_template` table (a single row, id = 1) and was
  * editable from Settings → DTR template. That screen and the table are gone, so
- * the values are fixed in code now — the DTR form, its live preview and its Word
+ * the values are fixed in code now, the DTR form, its live preview and its Word
  * export all read this one object.
  *
  * These are the defaults the table shipped with (see

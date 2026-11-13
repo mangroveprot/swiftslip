@@ -7,8 +7,8 @@ import { formatTime12h } from "@swiftslip/shared/time";
  * What the paper form's exit-clearance rows and "VERIFIED BY: HRD" cell print,
  * resolved from the HR-owned columns plus the signer profiles.
  *
- * One helper feeds both places that draw the sheet — the on-screen preview
- * (`ObPreview`) and the Word download — so the two can never disagree about
+ * One helper feeds both places that draw the sheet, the on-screen preview
+ * (`ObPreview`) and the Word download, so the two can never disagree about
  * whether a box counts as signed or what format its date reads. A box fills
  * only when its own `_at` timestamp exists: an unsigned step must never look
  * signed, even if a signer id is already stored.
@@ -23,7 +23,7 @@ export function stampDate(iso: string | null | undefined): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/** Local clock part of an ISO timestamp — see `stampDate` for why it exists. */
+/** Local clock part of an ISO timestamp, see `stampDate` for why it exists. */
 export function stampTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const date = new Date(iso);
@@ -37,7 +37,7 @@ export type ExitLeg = {
   signed: boolean;
   /**
    * The same two values split apart, because the signature cell prints them in
-   * the other order — time first, then date — beside the guard's signature,
+   * the other order, time first, then date, beside the guard's signature,
    * exactly like the paper form.
    */
   time: string;
@@ -46,7 +46,7 @@ export type ExitLeg = {
 };
 
 export type ExitSignoff = {
-  /** The HRD box — only set once HR has actually approved. */
+  /** The HRD box, only set once HR has actually approved. */
   verified?: ObSigner | undefined;
   departure: ExitLeg;
   arrival: ExitLeg;

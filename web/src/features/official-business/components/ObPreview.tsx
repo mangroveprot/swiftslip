@@ -28,7 +28,7 @@ export function ObPreview({
 }: {
   form: ObForm;
   rows: ObEntry[];
-  /** DOM id for the sheet — only the inline editor copy carries one, so the
+  /** DOM id for the sheet, only the inline editor copy carries one, so the
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
   /**
@@ -68,7 +68,7 @@ export function ObPreview({
       className="print-sheet mx-auto w-full bg-paper px-6 pb-6 pt-1 text-[13px] leading-tight text-ink shadow-sm ring-1 ring-border"
       style={{ fontFamily: 'Calibri, "Segoe UI", Candara, Arial, sans-serif' }}
     >
-      {/* Title — centered logo above a centered, heavy title. The logo is sized
+      {/* Title, centered logo above a centered, heavy title. The logo is sized
           as a % of the sheet width (not fixed px) so it keeps the same proportion
           on screen and in print, where .print-sheet stretches to full A4 width. */}
       <div className="mb-2 flex flex-col items-center justify-center gap-0">
@@ -88,7 +88,7 @@ export function ObPreview({
         </h1>
       </div>
 
-      {/* BOX 1 — identity grid (its own bordered box) */}
+      {/* BOX 1, identity grid (its own bordered box) */}
       <table className="w-full table-fixed border-collapse border-[2.5px] border-ink">
         <colgroup>
           <col style={{ width: "21%" }} />
@@ -115,9 +115,9 @@ export function ObPreview({
 
       <div className="h-2.5" />
 
-      {/* BOX 2 — itinerary (its own bordered box) */}
+      {/* BOX 2, itinerary (its own bordered box) */}
       <table className="w-full table-fixed border-collapse border-[2.5px] border-ink text-center">
-        {/* The two time columns are the narrowest ones — they get 15% each (was
+        {/* The two time columns are the narrowest ones, they get 15% each (was
             12.5%) so "DEPARTURE"/"RETURN" never spill over their borders in the
             on-screen preview and visually merge. */}
         <colgroup>
@@ -192,7 +192,7 @@ export function ObPreview({
 
       <div className="h-2.5" />
 
-      {/* BOX 3 — signatures + note (its own bordered box) */}
+      {/* BOX 3, signatures + note (its own bordered box) */}
       <div className="border-[2.5px] border-ink">
         <table className="w-full table-fixed border-collapse">
           <colgroup>
@@ -207,7 +207,7 @@ export function ObPreview({
                 <p className="text-left text-[14px] font-bold">&nbsp;</p>
                 <div className="flex h-12 flex-col items-center justify-end gap-0.5 pb-0.5">
                   {/* The cell is narrower than 11rem at preview width, so the
-                      drawing is capped at the cell's own width as well —
+                      drawing is capped at the cell's own width as well,
                       without the min() it spills over the "Approved by" cell
                       beside it. */}
                   {form.employee_signature ? (
@@ -296,7 +296,7 @@ export function ObPreview({
 
       <div className="h-2.5" />
 
-      {/* BOX 4 — exit clearance (its own bordered box; underlines only, no cell grid) */}
+      {/* BOX 4, exit clearance (its own bordered box; underlines only, no cell grid) */}
       <div className="border-[2.5px] border-ink">
         <div
           className="border-b border-ink py-0.5 text-center text-[13px] font-bold"
@@ -411,7 +411,7 @@ function TimeOfCell({ display }: { display: ObTimeOfDisplay }) {
  *    the way the residence/destination boxes beside it do (an earlier version
  *    centred it in a 40px box, which left it floating in the middle).
  * 2. Time and date travel **together** as one group, so a narrow preview column
- *    drops the pair to the second line instead of splitting them — and only
+ *    drops the pair to the second line instead of splitting them, and only
  *    splits them further if the group itself cannot fit.
  * 3. Nothing can spill over the cell's right border: every piece is unbreakable
  *    on its own and the pieces wrap instead of overflowing (that spill is what

@@ -4,7 +4,7 @@
  * Two jobs, both browser-only (`Image`, `atob`, `localStorage`) so they belong in
  * client code and not in `@swiftslip/shared`:
  *
- *  1. measuring and sizing the signature for the Word exports — the Official
+ *  1. measuring and sizing the signature for the Word exports, the Official
  *     Business and Leave of Absence forms fill the same kind of tokenized
  *     template and therefore share one maximum size; tidying a freshly drawn or
  *     uploaded signature into that same consistent shape;
@@ -27,14 +27,14 @@ const SIG_STORE_MAX_H = 120;
 /** Luma (0-255) at or above this counts as paper, not ink. */
 const SIG_INK_LUMA = 200;
 
-/** Never blow a small image up further than this — past it only blur grows. */
+/** Never blow a small image up further than this, past it only blur grows. */
 const SIG_MAX_UPSCALE = 2;
 
 /**
  * Tidy a signature picture into a consistent shape.
  *
- * An upload arrives at whatever size the picture happened to be — a phone photo
- * is thousands of pixels wide, a cropped scan is tiny — and a drawn signature is
+ * An upload arrives at whatever size the picture happened to be, a phone photo
+ * is thousands of pixels wide, a cropped scan is tiny, and a drawn signature is
  * a wide canvas that is mostly empty paper. Dropped into a form unchanged, the
  * same signature looks huge on one record and nearly invisible on the next.
  *
@@ -43,7 +43,7 @@ const SIG_MAX_UPSCALE = 2;
  * the same size on every form, whatever was uploaded.
  *
  * Transparency is preserved, so a cut-out scan stays a cut-out. The paper itself
- * is left alone — the previews hide it with `mix-blend-multiply` and the Word
+ * is left alone, the previews hide it with `mix-blend-multiply` and the Word
  * export strips it with `signatureWithoutPaper`.
  */
 export async function normalizeSignature(dataUrl: string): Promise<string> {
@@ -118,11 +118,11 @@ export async function normalizeSignature(dataUrl: string): Promise<string> {
  * Strip the paper out of a signature so it can be laid over other content.
  *
  * A saved signature is a scan: overwhelmingly opaque white with no alpha channel
- * at all (measured on a real one — 97% pure white, every pixel alpha 255). On
+ * at all (measured on a real one, 97% pure white, every pixel alpha 255). On
  * screen the preview hides that with `mix-blend-multiply`, which makes white
  * multiply away to nothing and leaves only the ink. A picture inside a Word
  * document has no blend mode, so the same image drops an opaque white box over
- * whatever it is placed on — in the DTR export that meant burying the printed
+ * whatever it is placed on, in the DTR export that meant burying the printed
  * name under the signature.
  *
  * Turning luminance into alpha reproduces what multiply was doing: ink stays
@@ -149,7 +149,7 @@ export async function signatureWithoutPaper(dataUrl: string): Promise<string> {
 
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
     for (let i = 0; i < data.length; i += 4) {
-      // Rec. 601 luma — the same weighting the eye uses, so pale strokes fade
+      // Rec. 601 luma, the same weighting the eye uses, so pale strokes fade
       // out evenly rather than leaving a grey box.
       const luma = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
       const opaque = Math.round(255 - luma);
@@ -159,7 +159,7 @@ export async function signatureWithoutPaper(dataUrl: string): Promise<string> {
     ctx.putImageData(new ImageData(data, canvas.width, canvas.height), 0, 0);
     return canvas.toDataURL("image/png");
   } catch {
-    // A tainted canvas or an unexpected failure must not lose the signature —
+    // A tainted canvas or an unexpected failure must not lose the signature,
     // the caller gets the original image instead.
     return dataUrl;
   }
@@ -229,7 +229,7 @@ export function safeRemoveItem(key: string): void {
   try {
     window.localStorage.removeItem(key);
   } catch {
-    // Ignore — the entry will age out eventually anyway.
+    // Ignore, the entry will age out eventually anyway.
   }
 }
 
@@ -313,7 +313,7 @@ export function readSignatureBackup(prefix: string, id: string): string {
     const parsed: unknown = JSON.parse(raw);
     if (isStoredBackup(parsed)) return parsed.data;
   } catch {
-    // Corrupt entry — drop it so it does not keep returning garbage.
+    // Corrupt entry, drop it so it does not keep returning garbage.
   }
   safeRemoveItem(backupKey(prefix, id));
   return "";
@@ -366,7 +366,7 @@ function signatureKeys(pattern: RegExp): string[] {
       if (key && pattern.test(key)) keys.push(key);
     }
   } catch {
-    // Storage unreadable (private mode / blocked) — nothing to prune.
+    // Storage unreadable (private mode / blocked), nothing to prune.
   }
   return keys;
 }
@@ -395,7 +395,7 @@ export function pruneExpiredBackups(): void {
       const parsed: unknown = JSON.parse(raw);
       if (isStoredBackup(parsed) && now - parsed.savedAt < SIG_BACKUP_MAX_AGE_MS) continue;
     } catch {
-      // Corrupt — drop below.
+      // Corrupt, drop below.
     }
     safeRemoveItem(key);
   }

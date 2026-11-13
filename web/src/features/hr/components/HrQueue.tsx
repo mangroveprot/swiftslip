@@ -33,7 +33,7 @@ const STATUS_ORDER: ObHrStatus[] = [
  * The tabs above the list, each with the count it filters to. `All` is the
  * whole review queue (everything the sidebar's Review queue row counts). The
  * signed-out forms split into `On OB` and `Overdue`, so the two counts add up
- * to what left instead of one nesting inside the other — Overdue is derived
+ * to what left instead of one nesting inside the other, Overdue is derived
  * (`obReturnState`), never a stored status.
  */
 const STATUS_TABS: Array<{
@@ -85,7 +85,7 @@ function matchesObDate(form: HrObSummary, filter: string): boolean {
   const value = form.date_of_ob.trim();
   if (filter === "none") return !value;
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  // A hand-typed date can't be bucketed — it only shows under "OB date".
+  // A hand-typed date can't be bucketed, it only shows under "OB date".
   if (!iso) return false;
 
   const date = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
@@ -103,7 +103,7 @@ function matchesObDate(form: HrObSummary, filter: string): boolean {
 
 /**
  * The rows each view holds. The review queue is everything HR still has a
- * say in — Completed and Rejected have their own sidebar views, the way
+ * say in, Completed and Rejected have their own sidebar views, the way
  * Completed already had.
  */
 function inBucket(form: HrObSummary, view: HrView): boolean {
@@ -127,7 +127,7 @@ function distinctOptions(values: string[], placeholder: string, current: string)
   ];
 }
 
-/** 1 2 3 … 9 10 — the page strip around the current page, never a wall of numbers. */
+/** 1 2 3 … 9 10, the page strip around the current page, never a wall of numbers. */
 function pageNumbers(current: number, count: number): Array<number | "gap"> {
   if (count <= 7) return Array.from({ length: count }, (_, index) => index + 1);
   const wanted = [...new Set([1, count, current - 1, current, current + 1])]
@@ -148,7 +148,7 @@ function pageNumbers(current: number, count: number): Array<number | "gap"> {
  * The HR queue as a list, in the reference's shape: status tabs with counts,
  * an overdue notice above a search-and-filter toolbar, then the rows and a
  * footer that reads "Showing 4 of 4" while everything fits on one page.
- * Everything sits on SwiftSlip's own surfaces and palette — only the layout is
+ * Everything sits on SwiftSlip's own surfaces and palette, only the layout is
  * the reference's, and the reference's red alert is the app's amber warning.
  *
  * Completed and Rejected are the same screen with `?view=completed` /
@@ -219,7 +219,7 @@ export function HrQueue() {
   const bucket = useMemo(() => forms.filter((form) => inBucket(form, view)), [forms, view]);
 
   /**
-   * The queue's overdue rows — the banner's whole reason to exist. Read from
+   * The queue's overdue rows, the banner's whole reason to exist. Read from
    * the bucket rather than the filtered list, so narrowing the search can
    * never hide an employee who is still out.
    */
@@ -338,7 +338,7 @@ export function HrQueue() {
           return (
             // A filter, not a destination: buttons keep `aria-pressed` honest
             // (every Link to /hr would be "current" at once), and the one that
-            // matters — Completed — stays a link because it changes the URL.
+            // matters, Completed, stays a link because it changes the URL.
             <button
               key={tab.key}
               type="button"
@@ -379,8 +379,8 @@ export function HrQueue() {
         </Link>
       </nav>
 
-      {/* Someone is out past their date: one calm line in the warning tone —
-          the reference's red banner read as an alarm, this reads as a to-do —
+      {/* Someone is out past their date: one calm line in the warning tone,
+          the reference's red banner read as an alarm, this reads as a to-do,
           with a quiet link to the rows it is about. */}
       {overdueNotice ? (
         <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-3">
@@ -398,7 +398,7 @@ export function HrQueue() {
         </div>
       ) : null}
 
-      {/* Search and the three filters — the toolbar above the list. */}
+      {/* Search and the three filters, the toolbar above the list. */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div className="relative flex h-9 w-full items-center gap-2 rounded-md border border-border bg-card px-3 transition-colors focus-within:border-primary sm:w-80">
           <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />

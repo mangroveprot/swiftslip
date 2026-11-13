@@ -21,13 +21,13 @@ type ObStatusProps = {
   audience: ObStatusAudience;
   className?: string;
   /**
-   * A note shown inside the card, under a divider — the editor's re-approval
+   * A note shown inside the card, under a divider, the editor's re-approval
    * hint. It lives here so the note always travels with the facts it explains,
    * wherever the card is placed.
    */
   hint?: ReactNode | undefined;
   /**
-   * Buttons that act on this state — "Resubmit to HR" on a draft, "Cancel" on a
+   * Buttons that act on this state, "Resubmit to HR" on a draft, "Cancel" on a
    * resubmission. Rendered in their own row so they are never nested in the
    * note's paragraph.
    */
@@ -35,7 +35,7 @@ type ObStatusProps = {
 };
 
 /**
- * `● Waiting for HR · Resubmitted Nov 7, 2026 · Admi Nastor · admin` — the
+ * `● Waiting for HR · Resubmitted Nov 7, 2026 · Admi Nastor · admin`, the
  * compact line under the page title. The HR desk shows the amber resubmit
  * date here; the employee line does not, because that screen's card already
  * leads with the same date. On a resubmit the trailing summary stays hidden
@@ -140,7 +140,7 @@ function FieldNote({ field, align = "start" }: { field: ObStatusField; align?: "
 }
 
 /**
- * The status card itself — the mockup's one card for the form's current state.
+ * The status card itself, the mockup's one card for the form's current state.
  *
  * The **employee** card puts the label and the sentence on one line and lays
  * the facts out in columns (scanned, not read). The **HR** card stacks the

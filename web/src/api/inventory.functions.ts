@@ -67,7 +67,7 @@ async function asMutationResult(run: () => Promise<unknown>): Promise<OptionMuta
   }
 }
 
-/** Settings `+ Add` — resolves to a warning/error result instead of throwing so the page can toast. */
+/** Settings `+ Add`, resolves to a warning/error result instead of throwing so the page can toast. */
 export const createOption = ({ data }: { data: z.input<typeof createOptionInput> }) =>
   asMutationResult(() => api.post("/inventory/options", data));
 

@@ -1,5 +1,5 @@
 /**
- * Home header — port of `Layout/TopBar.razor` (title + branch subtitle,
+ * Home header, port of `Layout/TopBar.razor` (title + branch subtitle,
  * ticking clock, floor tab strip). The original also wrapped the offline
  * sync badge here; offline sync was dropped for the web port.
  */

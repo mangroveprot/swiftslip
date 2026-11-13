@@ -15,7 +15,7 @@ export type { StatusBadgeVariant, StatusTone } from "@/components/common/status-
 /**
  * Text colours for the filled/tinted chips. `info`, `brand` and `danger` follow
  * the owner's table example: white on solid steel blue, dark brown on pale
- * amber, brick red on white — no faded tints.
+ * amber, brick red on white, no faded tints.
  */
 const TONE_TEXT: Record<StatusTone, string> = {
   neutral: "text-muted-foreground",
@@ -33,7 +33,7 @@ const TONE_TEXT: Record<StatusTone, string> = {
  * info is a solid steel-blue block (no tint), brand a pale amber with a tan
  * border, danger an outline on white with a salmon border. `warning` has no
  * example row, so it takes the palette's solid amber (distinct from brand's
- * pale amber) instead of a faded tint — nothing here stays translucent.
+ * pale amber) instead of a faded tint, nothing here stays translucent.
  * `text-*` in a surface overrides `TONE_TEXT` (tailwind-merge keeps the last
  * one), which is how warning keeps its amber text in the `plain` variant.
  */
@@ -53,7 +53,7 @@ const TONE_SOFT: Record<StatusTone, string> = {
  * mock: steel blue / dark amber / forest green) rather than the darker
  * Tailwind 800/900 shades, so the solid chips (including the OB list's folder
  * tabs) carry the same weight as the design. The card box itself is neutral
- * grey — see `CARD_BORDER` in `ObList.tsx`.
+ * grey, see `CARD_BORDER` in `ObList.tsx`.
  */
 const TONE_SOLID: Record<StatusTone, string> = {
   neutral: "border-slate-600 bg-slate-600 text-white",
@@ -96,7 +96,7 @@ const DOT_BG: Record<StatusTone, string> = {
 /**
  * Text colours beside that dot. `TONE_TEXT` is the base, except `info`: its
  * white exists for the solid steel-blue chip, which would be invisible on the
- * card here — the dot takes the same steel blue as its chip border instead.
+ * card here, the dot takes the same steel blue as its chip border instead.
  */
 const DOT_TEXT: Record<StatusTone, string> = {
   ...TONE_TEXT,
@@ -149,14 +149,14 @@ export function StatusBadge({
   // A preset may ask for a hollow ring instead of a filled dot (the HR queue's
   // pending "Waiting for Supervisor" mark). Only the `dot` variant draws one.
   // The ring class is merged last, so it can also shrink below the default
-  // `size-2` dot and carry its own pulse — intentional, not a specificity bug.
+  // `size-2` dot and carry its own pulse, intentional, not a specificity bug.
   const dotClass =
     resolvedVariant === "dot" ? (preset?.dotRing ?? preset?.dot ?? DOT_BG[resolvedTone]) : null;
   // One place owns status artwork: any `dot` badge for these two statuses gets
   // the small illustration instead of a plain dot. Callers (HR queue, HR rail
   // card, employee status card) therefore cannot disagree about which statuses
   // have drawings. Everything else keeps its dot / pulsing hollow ring.
-  // `compact` draws a square, animated icon centred on the label — the full
+  // `compact` draws a square, animated icon centred on the label, the full
   // scenes are too tall to sit on a line of text at 20px.
   const dotArt =
     resolvedVariant === "dot" && (status === "submitted" || status === "departed") ? (

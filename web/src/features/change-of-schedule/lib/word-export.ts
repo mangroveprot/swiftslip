@@ -7,7 +7,7 @@ import type { CosForm, CosSchedule } from "@swiftslip/shared/types";
 import { formatScheduleLine } from "./schedule-line";
 
 // The export fills a tokenized copy of the company's real Word form
-// (public/cos_template.docx — tokenized by scripts/cos-template-tokenize.mjs) so
+// (public/cos_template.docx, tokenized by scripts/cos-template-tokenize.mjs) so
 // the output matches the template's exact layout/styling instead of being
 // rebuilt in code. Tokens: {id_number} {employee_name} {date_filed}
 // {plant_location} {position} {chk_shift} {chk_rest_day} {effectivity_date}
@@ -15,7 +15,7 @@ import { formatScheduleLine } from "./schedule-line";
 // {processed_by}, and the inline signature image {%employee_signature}.
 const TEMPLATE_URL = "/cos_template.docx";
 
-/** The template's own box glyphs — a ticked box is the filled variant. */
+/** The template's own box glyphs, a ticked box is the filled variant. */
 const BOX_ON = "☒";
 const BOX_OFF = "☐";
 
@@ -54,10 +54,10 @@ export async function downloadCosWord({
     date_filed: formatMonthDayYear(form.date_filed),
     plant_location: form.plant_location ?? "",
     position: form.position ?? "",
-    // Exactly one box gets the filled glyph — the form's single choice.
+    // Exactly one box gets the filled glyph, the form's single choice.
     chk_shift: form.change_type === "shift" ? BOX_ON : BOX_OFF,
     chk_rest_day: form.change_type === "rest_day" ? BOX_ON : BOX_OFF,
-    // One entry per schedule line — the template repeats its schedule row over
+    // One entry per schedule line, the template repeats its schedule row over
     // this list. Always at least one (possibly blank) entry so the block keeps
     // its value row.
     schedules: rows.length

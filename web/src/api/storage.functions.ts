@@ -26,7 +26,7 @@ export const saveStorageSettings = async ({ data }: { data: StorageSettings }) =
   documentOf(await api.put<StorageSettingsDoc>("/admin/storage", data));
 
 /**
- * The orphan list behind the cleanup modal — read-only. Every entry says
+ * The orphan list behind the cleanup modal, read-only. Every entry says
  * which backend holds it, why it is orphaned, when it was last touched and
  * how big it is; nothing is deleted here.
  */

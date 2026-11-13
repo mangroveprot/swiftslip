@@ -38,7 +38,7 @@ function Req() {
  * lists the empty ones so the red asterisks say something actionable instead of
  * just decorating: click a name and the caret lands in that box.
  *
- * "Number of Days Applied" and "To report back for work on" are left out — they
+ * "Number of Days Applied" and "To report back for work on" are left out, they
  * are computed from the dates, so they're filled (or listed) through the range.
  */
 const REQUIRED_BOXES: { label: string; id: string; filled: (form: LoaForm) => boolean }[] = [
@@ -119,7 +119,7 @@ export function LoaFormFields({
   /** Profile signature, offered in the signature dialog as a one-click re-use. */
   savedSignature?: string | undefined;
 }) {
-  // Both dates present and From after To — the preview keeps showing what is
+  // Both dates present and From after To, the preview keeps showing what is
   // typed (no silent swap); the fields just refuse to compute from the bad range.
   const rangeInvalid = Boolean(form.date_from && form.date_to && form.date_from > form.date_to);
   const needs = REQUIRED_BOXES.filter((box) => !box.filled(form));
@@ -129,12 +129,12 @@ export function LoaFormFields({
    * A date edit re-derives the computed prefill: Number of Days Applied
    * (inclusive, Sundays out) and the report-back day. An inverted range keeps
    * the previous values (with the warning below); a half-cleared range clears
-   * them — they had no anchor left.
+   * them, they had no anchor left.
    *
    * Filling in the first date of a range that has no end date yet treats it as
    * a same-day leave, so the day count and the return date settle immediately
    * instead of staying blank until a second date is typed. Clearing the end
-   * date afterwards still leaves it empty — only a fresh first date does this.
+   * date afterwards still leaves it empty, only a fresh first date does this.
    */
   function updateDates(patch: Partial<Pick<LoaForm, "date_from" | "date_to">>) {
     const next = { ...form, ...patch };
@@ -144,7 +144,7 @@ export function LoaFormFields({
 
   return (
     <section className="form-fill @container shrink-0 rounded-xl bg-card p-5 sm:p-6 lg:p-8">
-      {/* Title row — every box on this form carries one, in the same style the
+      {/* Title row, every box on this form carries one, in the same style the
           other cards on the page use, so the form reads as a labelled box
           rather than a bare field grid. The right half is the form's status:
           which boxes are still empty, or that none are. */}
@@ -190,7 +190,7 @@ export function LoaFormFields({
           ))}
         </p>
       ) : null}
-      {/* The identity row leads the sheet — the paper form's header boxes, drawn
+      {/* The identity row leads the sheet, the paper form's header boxes, drawn
           the way the OB sheet draws them: label over an underline input, four
           across once this sheet is wide enough. They stay editable (LOA's
           behaviour is untouched); this is the row an employee corrects when the
@@ -286,7 +286,7 @@ export function LoaFormFields({
             ) : null}
           </label>
 
-          {/* ( ) w/ PAY  ( ) w/o PAY — single choice. */}
+          {/* ( ) w/ PAY  ( ) w/o PAY, single choice. */}
           <fieldset id="loa-pay">
             <legend className="lbl">
               Pay
@@ -336,7 +336,7 @@ export function LoaFormFields({
             onChange={(v) => setForm({ ...form, approved_by: v })}
           />
 
-          {/* KINDLY MARK APPROPRIATE BOX — single choice. It sits under the rows of
+          {/* KINDLY MARK APPROPRIATE BOX, single choice. It sits under the rows of
             boxes so all seven options fit on one line wherever there's width. */}
           <fieldset id="loa-leave_type" className="@min-[26rem]:col-span-2 @min-[44rem]:col-span-4">
             <legend className="lbl">
@@ -372,7 +372,7 @@ export function LoaFormFields({
           </fieldset>
 
           {/* Approval lives on the approval attachment, OB-style (upload ticks
-            it, removal clears it) — the form carries no widget for it. */}
+            it, removal clears it), the form carries no widget for it. */}
           <ReasonField
             value={form.reasons}
             disabled={!canEdit}
@@ -417,7 +417,7 @@ function Field({
   invalid?: boolean;
   /** Where the heading line's "still needed" links jump to. */
   id?: string;
-  /** Extra classes on the wrapping label — the grid spans ride on it. */
+  /** Extra classes on the wrapping label, the grid spans ride on it. */
   className?: string;
   type?: string;
   onChange: (v: string) => void;
@@ -446,7 +446,7 @@ function Field({
  * One identity box at the top of the sheet: the paper form's header values as
  * a label over an underline input, the way the OB sheet draws them. The id is
  * what the "Still needed" line jumps to, and the red mark says the sheet can't
- * do without it — the input itself is ordinary, editable text.
+ * do without it, the input itself is ordinary, editable text.
  */
 function Identity({
   label,

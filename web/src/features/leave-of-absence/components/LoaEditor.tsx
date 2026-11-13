@@ -71,7 +71,7 @@ function writeFormCache(qc: QueryClient, id: string, next: { form: LoaForm & { i
 }
 
 /**
- * One editor per record — including across that record's own save. Saving a
+ * One editor per record, including across that record's own save. Saving a
  * draft swaps `$id` from `draft_…` to the row `insertDraft` just created: the
  * SAME record, so the body keeps its mount (a remount would flash the
  * skeleton over content that never changed). Any other id is a different
@@ -97,7 +97,7 @@ function LoaEditorBody({
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  // A draft id means this form does not exist in the database yet — nothing was
+  // A draft id means this form does not exist in the database yet, nothing was
   // written when the user pressed "New form", and nothing will be until they enter
   // something of their own.
   const isDraft = isDraftId(id);
@@ -120,8 +120,8 @@ function LoaEditorBody({
     enabled: rowId !== null && others.length > 0,
   });
 
-  // The exported PDF carries the same files the print path does — the approval
-  // attachment first, then every other attachment — after the form's own pages.
+  // The exported PDF carries the same files the print path does, the approval
+  // attachment first, then every other attachment, after the form's own pages.
   // These join the SAME signed-URL queries the cards above already resolved.
   const pdfAttachments = [
     ...usePdfAttachment("loa", rowId ?? id, data?.attachment),
@@ -184,7 +184,7 @@ function LoaEditorBody({
       promoteSignatureBackup("loa", id, created);
       promoteDraft(DRAFT_FEATURE, id, created, { form: f });
       // Mark persisted BEFORE navigate: an unmount flush must not see the draft
-      // still pending — that would insert a second, blank row.
+      // still pending, that would insert a second, blank row.
       auto.setPersisted(snapshotOf(f));
       // Keep this same editor mounted through the swap: the wrapper's key
       // follows this pair instead of remounting over unchanged content.
@@ -205,7 +205,7 @@ function LoaEditorBody({
   async function writeSnapshot(): Promise<void> {
     const { form: f } = latestRef.current;
     if (!f) return;
-    // insertDraft already writes content — a second save races and errors.
+    // insertDraft already writes content, a second save races and errors.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -249,7 +249,7 @@ function LoaEditorBody({
     auto.setPersisted(incoming);
   }, [data, profileReady, rowId, id, auto]);
 
-  // Build a draft from the profile — in the browser, with no request. The starting
+  // Build a draft from the profile, in the browser, with no request. The starting
   // point becomes the baseline: whatever differs from it is something the user
   // actually entered, and that is what creates the form.
   useEffect(() => {
@@ -263,7 +263,7 @@ function LoaEditorBody({
 
   // Keep a local backup of the signature so it survives a failed save. Derived
   // values only (not the form object), so the effect re-runs when the signature
-  // changes — and skips the pre-hydration render where form is still null.
+  // changes, and skips the pre-hydration render where form is still null.
   const sig = form?.employee_signature;
   const formLoaded = form !== null;
   useEffect(() => {
@@ -300,7 +300,7 @@ function LoaEditorBody({
     if (!box || !sheet) return;
     const measure = () => {
       const scale = Math.min(1, box.clientWidth / LOA_SHEET_WIDTH);
-      // offsetHeight ignores the transform — the natural, unscaled height.
+      // offsetHeight ignores the transform, the natural, unscaled height.
       const height = Math.round(sheet.offsetHeight * scale);
       setFit((prev) => (prev.scale === scale && prev.height === height ? prev : { scale, height }));
     };
@@ -312,7 +312,7 @@ function LoaEditorBody({
   }, [formLoaded]);
 
   // Leaving: flush only once a real row exists. A draft with no row stays in
-  // localStorage — flushing here would insert during StrictMode remounts.
+  // localStorage, flushing here would insert during StrictMode remounts.
   useEffect(() => {
     return () => {
       if (rowIdRef.current) auto.flush();
@@ -327,9 +327,9 @@ function LoaEditorBody({
     return <FormUnavailable backTo="/leave-of-absence" label="Leave of Absence forms" />;
   if (!form) return <LoaEditorSkeleton />;
 
-  /** Explicit Save — writes now rather than waiting for the timer. */
+  /** Explicit Save, writes now rather than waiting for the timer. */
   async function persist(f: LoaForm) {
-    // insertDraft already writes content — don't save again on first create.
+    // insertDraft already writes content, don't save again on first create.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -349,7 +349,7 @@ function LoaEditorBody({
   // The assistant replies with a partial patch; merge it into whatever is on
   // screen so it never clobbers something typed a moment ago. When the patch
   // moves the inclusive dates, the derived fields (days applied, report-back
-  // date) are recalculated deterministically here — the model doesn't count
+  // date) are recalculated deterministically here, the model doesn't count
   // Sundays, the app does. From here everything flows through the ordinary
   // auto-save path like any other edit.
   function applyAssistantPatch(patch: Partial<LoaForm>) {
@@ -384,7 +384,7 @@ function LoaEditorBody({
     setBusy(true);
     const toastId = toast.loading("Preparing Word file…");
     try {
-      // docxtemplater + pizzip are only needed when exporting (~330 kB) — keeping
+      // docxtemplater + pizzip are only needed when exporting (~330 kB), keeping
       // them out of the route chunk makes opening this form much faster.
       const { downloadLoaWord } = await import("../lib/word-export");
       await downloadLoaWord({
@@ -505,7 +505,7 @@ function LoaEditorBody({
       </header>
       {/* `minmax(0,1fr)` on the base (single) column too, not just at lg: the
           preview column holds the A4 sheet at its true 794px width, and an
-          implicit `auto` track sizes to its content's minimum — the track (and
+          implicit `auto` track sizes to its content's minimum, the track (and
           with it the fit box) would become 794px wide on a phone, so the
           fit-to-width measure above would read 794/794, keep the scale at 1
           and clip the sheet instead of shrinking it. Declared `minmax(0,…)`
@@ -519,7 +519,7 @@ function LoaEditorBody({
             canEdit={canEdit}
             savedSignature={profile?.signature}
           />
-          {/* The other documents sit at the bottom of the form — the approval
+          {/* The other documents sit at the bottom of the form, the approval
               attachment keeps the top of the preview column. This card is
               screen-only; its printable copies are mounted in the preview
               column below. */}
@@ -533,8 +533,8 @@ function LoaEditorBody({
           />
         </div>
 
-        {/* The approval attachment leads the preview column — like OB, the
-            uploaded file IS the approval — but on print it drops back below
+        {/* The approval attachment leads the preview column, like OB, the
+            uploaded file IS the approval, but on print it drops back below
             the sheet (`print:order`) so the file still follows the form on
             its own page. */}
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
@@ -566,7 +566,7 @@ function LoaEditorBody({
           </div>
           {/* The sheet keeps its true A4 width (794px outer, the template's own
               margins as padding / 738px content) so text wraps exactly like the
-              Word template — and the column scales that whole page down to fit
+              Word template, and the column scales that whole page down to fit
               instead of making you drag sideways. `.loa-fitbox` /
               `.loa-fitsheet` (styles.css) drop the scale again for print. */}
           <div
@@ -589,7 +589,7 @@ function LoaEditorBody({
           </div>
           {/* The printable "other attachments", after everything else on paper.
               They have to live HERE, in the column that isn't `.no-print`, and
-              not inside the card — the form column is `display: none` on paper,
+              not inside the card, the form column is `display: none` on paper,
               which would take them with it. `print:order-3` follows the sheet
               (1) and the approval slip (2). Renders nothing when no attached
               file is printable. */}

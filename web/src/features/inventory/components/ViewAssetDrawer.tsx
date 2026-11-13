@@ -1,5 +1,5 @@
 /**
- * Asset view/edit/add drawer — port of `ViewAssetDrawer.razor`.
+ * Asset view/edit/add drawer, port of `ViewAssetDrawer.razor`.
  *
  * Tap-to-activate inline editors, the header quick-edit pills, the
  * "new option" inline creation flow, and the desktop-kit section all
@@ -42,7 +42,7 @@ type ViewAssetDrawerProps = {
   onClose: () => void;
   onSave: (req: AssetSaveRequest) => void | Promise<void>;
   onDelete: (asset: InventoryAsset) => void;
-  /** Quick-create flows — return the new row's id (C# returned the entity). */
+  /** Quick-create flows, return the new row's id (C# returned the entity). */
   createBranch: (name: string) => Promise<number>;
   createDepartment: (name: string) => Promise<number>;
   createStatus: (name: string) => Promise<number>;
@@ -274,7 +274,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
     wasOpenRef.current = isOpen;
   }, [isOpen, asset, mode, isAddMode, loadForm]);
 
-  // Mirrors `OnAfterRenderAsync` — focus whatever editor just activated.
+  // Mirrors `OnAfterRenderAsync`, focus whatever editor just activated.
   useEffect(() => {
     if (pendingFocus == null) return;
     focusRef.current?.focus();

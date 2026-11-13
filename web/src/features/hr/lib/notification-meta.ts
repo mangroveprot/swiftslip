@@ -12,8 +12,8 @@ import {
  * How a notification row looks at a glance: the icon in the leading circle
  * and the tone of that circle, keyed by `notifications.kind`.
  *
- * The kinds are the flow itself — submitted → approved / rejected → resubmitted
- * → departure signed — so the icon carries the outcome before the title is
+ * The kinds are the flow itself, submitted → approved / rejected → resubmitted
+ * → departure signed, so the icon carries the outcome before the title is
  * read. Tones reuse existing tokens only (`primary`, `success`, `destructive`,
  * the logo orange) so both themes stay correct without new colour values.
  * An unknown kind falls back to the bell rather than an empty circle.

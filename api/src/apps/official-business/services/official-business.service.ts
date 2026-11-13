@@ -127,7 +127,7 @@ class OfficialBusinessService extends BaseService<
   }
 
   /**
-   * The itinerary as the submit check reads it — every persisted stop, in
+   * The itinerary as the submit check reads it, every persisted stop, in
    * order, with the three cells the sheet marks required.
    */
   private async readEntries(id: string): Promise<ObEntry[]> {
@@ -294,7 +294,7 @@ class OfficialBusinessService extends BaseService<
   > {
     try {
       const ownerId = user.id;
-      // Only the state that is actually in HR's queue is locked (D6) — check
+      // Only the state that is actually in HR's queue is locked (D6), check
       // before writing, not after, so an auto-save cannot overwrite it. An
       // approved / departed / completed form is editable again; a content edit
       // on one of those is held as a draft and never touches the version HR
@@ -399,7 +399,7 @@ class OfficialBusinessService extends BaseService<
         };
       }
 
-      // draft / rejected — HR has not approved this content yet (or has just
+      // draft / rejected, HR has not approved this content yet (or has just
       // rejected it), so the ordinary save writes the live row.
       const updated = await this.repository.update(
         { id, owner_id: ownerId },
@@ -719,7 +719,7 @@ class OfficialBusinessService extends BaseService<
     quiet = false,
   ): Promise<ServiceResponse<never>> {
     try {
-      // Any owner may delete their own form in any state — including a
+      // Any owner may delete their own form in any state, including a
       // completed one. HR cannot delete: the HR module has no delete route and
       // every query here is scoped to `owner_id`.
       const removed = await this.repository.delete({

@@ -26,7 +26,7 @@ export function DailyEntriesTable({
     <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
       {/* Natural height, like LOA's field cards: the column scrolls (see
           RecordEditor) rather than this card being squeezed. `flex-1` used to
-          live here — with the attachments card added it was the only flexible
+          live here, with the attachments card added it was the only flexible
           child, so it shrank to make room instead of keeping its proportion. */}
       <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
         <h2 className="text-sm font-semibold">Daily entries</h2>

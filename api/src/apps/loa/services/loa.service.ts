@@ -54,7 +54,7 @@ class LoaService extends BaseService<'loa_forms', LoaFormRepository> {
       const row = await this.repository.findOne({ id, owner_id: ownerId });
       if (!row) throw new ErrorResponse('NOT_FOUND_ERROR', 'Form not found.');
       // The additional supporting files travel as a plain list (their bytes
-      // stay in storage) — pulled out so `form` remains an exact LoaForm.
+      // stay in storage), pulled out so `form` remains an exact LoaForm.
       const { other_attachments, ...form } = row;
       return {
         success: true as const,

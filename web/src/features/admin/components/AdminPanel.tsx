@@ -45,7 +45,7 @@ type Section = "dashboard" | "users" | "access" | "logs" | "retention" | "storag
 
 /**
  * A nav row. `id` is the section it opens; a parent row (one with `children`)
- * or a "Soon" row has none — neither is selectable, only real children are.
+ * or a "Soon" row has none, neither is selectable, only real children are.
  */
 type AdminItem = {
   id: Section | null;
@@ -78,14 +78,14 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
 ];
 
 /**
- * The Admin Panel as its own page with its own chrome — reached from the
+ * The Admin Panel as its own page with its own chrome, reached from the
  * "Where would you like to go?" chooser, outside the SwiftSlip `_app` shell so
  * the portal's sidebar no longer carries admin navigation. The sidebar below
  * reuses the SwiftSlip sidebar's look (glass panel, same nav/button styles).
  */
 export function AdminPanel() {
   const { data: session } = useQuery(sessionQueryOptions());
-  // The same photo the portal's sidebar shows — one cache entry, so moving
+  // The same photo the portal's sidebar shows, one cache entry, so moving
   // between the panel and the app never re-fetches it.
   const photo = useProfilePhoto();
   // Position and employer for the footer caption ("Mindbridge - IT Support"),
@@ -171,7 +171,7 @@ export function AdminPanel() {
   );
 }
 
-/** The panel's own nav — a copy of the SwiftSlip sidebar's structure and styles. */
+/** The panel's own nav, a copy of the SwiftSlip sidebar's structure and styles. */
 function AdminSidebar({
   section,
   onSelect,
@@ -216,7 +216,7 @@ function AdminSidebar({
       <SidebarFooter
         name={label || "Administrator"}
         photo={photo}
-        // "Employer - Position" under the name — the same caption every sidebar
+        // "Employer - Position" under the name, the same caption every sidebar
         // uses, falling back to whichever half is known.
         sublabel={accountCaption(employer, position)}
         // The identity block is the way into My Account (there is no Account
@@ -273,7 +273,7 @@ function isActiveSection(item: AdminItem, section: Section): boolean {
 }
 
 /**
- * A parent row ("Settings ▾") — not selectable itself. It opens on click and
+ * A parent row ("Settings ▾"), not selectable itself. It opens on click and
  * opens by itself when one of its children is the current section, so a deep
  * link into Data retention never hides it. It takes the SAME active ink as a
  * child while one of those children is current, so the group never reads grey

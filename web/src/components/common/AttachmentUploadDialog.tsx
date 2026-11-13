@@ -21,7 +21,7 @@ import { toast } from "@/lib/toast";
 
 /** One file in the queue and where it has got to. */
 type Job = {
-  /** Stable key — the same file picked twice is still two rows. */
+  /** Stable key, the same file picked twice is still two rows. */
   key: string;
   file: File;
   status: "ready" | "uploading" | "done" | "failed";
@@ -49,8 +49,8 @@ function isAccepted(file: File): boolean {
  *
  * The plain file picker made every upload a single surprise: one dialog, one
  * file, no idea what was picked until it was already on the server. This window
- * shows the queue first — pick, drop or paste several files, see each one's size,
- * drop the ones you changed your mind about — and only sends them when
+ * shows the queue first, pick, drop or paste several files, see each one's size,
+ * drop the ones you changed your mind about, and only sends them when
  * "Upload" is pressed. Files go one at a time so each request stays inside the
  * server's single-file limit, and a row turns green as its own file lands.
  */
@@ -63,7 +63,7 @@ export function AttachmentUploadDialog({
   onUploaded,
 }: {
   open: boolean;
-  /** Headline of the window — the card's own name ("Other attachments"). */
+  /** Headline of the window, the card's own name ("Other attachments"). */
   title: string;
   /** How many more files this form can take right now. */
   remaining: number;
@@ -81,7 +81,7 @@ export function AttachmentUploadDialog({
   const stateRef = useRef({ open, busy, jobs });
   stateRef.current = { open, busy, jobs };
 
-  // Every open starts empty — last batch must not linger.
+  // Every open starts empty, last batch must not linger.
   useEffect(() => {
     if (!open) return;
     setJobs([]);
@@ -93,7 +93,7 @@ export function AttachmentUploadDialog({
   const readyCount = pending.length;
   const seats = Math.max(0, remaining);
 
-  /** Shared by the picker, the drop and the paste — one set of checks. */
+  /** Shared by the picker, the drop and the paste, one set of checks. */
   function add(files: File[]) {
     if (!files.length) return;
     const { busy: locked, jobs: current } = stateRef.current;
@@ -151,7 +151,7 @@ export function AttachmentUploadDialog({
     ]);
   }
 
-  // Ctrl+V while the window is open — a screenshot lands as an image file.
+  // Ctrl+V while the window is open, a screenshot lands as an image file.
   useEffect(() => {
     if (!open) return;
     function onPaste(event: ClipboardEvent) {
@@ -161,7 +161,7 @@ export function AttachmentUploadDialog({
         .filter((file): file is File => file !== null);
       if (!files.length) return;
       event.preventDefault();
-      // A pasted screenshot has no name — give it one that says what it is.
+      // A pasted screenshot has no name, give it one that says what it is.
       add(
         files.map((file) =>
           file.name && file.name !== "image.png"
@@ -221,7 +221,7 @@ export function AttachmentUploadDialog({
       onUploaded?.();
       toast.success(stored === 1 ? "Attachment added" : `${stored} attachments added`);
     }
-    // Everything landed — nothing left to look at, so the window closes itself.
+    // Everything landed, nothing left to look at, so the window closes itself.
     const failedLeft = stateRef.current.jobs.some((row) => row.status === "failed");
     if (!failedLeft) onClose();
   }
@@ -256,7 +256,7 @@ export function AttachmentUploadDialog({
               Upload files
             </h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {title} — {seats} more file{seats === 1 ? "" : "s"} can be added to this form.
+              {title}: {seats} more file{seats === 1 ? "" : "s"} can be added to this form.
             </p>
           </div>
           <button

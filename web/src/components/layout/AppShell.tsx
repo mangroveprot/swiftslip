@@ -13,7 +13,7 @@ export function AppShell({ session, children }: { session: SessionUser; children
   const { logoPath, isRegasco } = useEmployerLogo();
   // Re-key the content area per page (the deepest matched route) so each tab
   // switch replays a smooth fade/rise instead of hard-cutting to the new page.
-  // Saving a draft only swaps the `$id` param — same route, so the key holds
+  // Saving a draft only swaps the `$id` param, same route, so the key holds
   // and the editor keeps its mount instead of flashing like a reload.
   const page = useRouterState({
     // `routeId` is the route's static id (`/_app/records/$id`), unlike `id`,

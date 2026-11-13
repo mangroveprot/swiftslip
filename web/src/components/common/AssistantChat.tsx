@@ -23,7 +23,7 @@ export type AssistantMessage = {
   fileNames?: string[];
   /** The assistant changed the form on this turn. */
   updated?: boolean;
-  /** The turn failed — render the bubble in the destructive style. */
+  /** The turn failed, render the bubble in the destructive style. */
   error?: boolean;
   /** Wall-clock time the turn was recorded, e.g. "1:11 PM". */
   time?: string;
@@ -35,7 +35,7 @@ export type AssistantSubmit = {
   messages: { role: "user" | "assistant"; text: string }[];
   /** Base64 payload of the first attachment (`images[0] ?? null`). */
   image: { mimeType: string; base64: string } | null;
-  /** Every attachment on this turn, in pick order — at most `maxAttachments`. */
+  /** Every attachment on this turn, in pick order, at most `maxAttachments`. */
   images: { mimeType: string; base64: string }[];
   /** The user's local day (YYYY-MM-DD), so "today"/"tomorrow" resolve correctly. */
   today: string;
@@ -62,7 +62,7 @@ const MAX_TURNS = 20;
  * pinned to the bottom-right corner opens a chat window on top of the page
  * instead of squeezing the layout, so the live preview keeps its full height.
  *
- * The window is the same shell in all four forms — orange header with an
+ * The window is the same shell in all four forms, orange header with an
  * "Online" status, a "Today" divider, white bordered bubbles with the assistant
  * name and time under each reply, the QUICK START chips, and a pill composer
  * with the brand-orange send button. Only the copy (title, greeting, starters,
@@ -74,7 +74,7 @@ const MAX_TURNS = 20;
  * component only owns presentation and the chat's own state.
  *
  * A turn normally carries one photo or PDF, but some forms come back with
- * several at once — a trip's receipts, say — so `maxAttachments` widens the
+ * several at once, a trip's receipts, say, so `maxAttachments` widens the
  * composer to a small list (10 MB each). `compressImages` downscales every
  * picture before it is base64-encoded, which is what lets five receipts fit in
  * a single request; a PDF always travels byte for byte.
@@ -117,7 +117,7 @@ export function AssistantChat({
   launcherLabel: string;
   /** Accessible name for the open launcher. */
   launcherOpenLabel: string;
-  /** Most files one turn may carry — the default keeps a single attachment. */
+  /** Most files one turn may carry, the default keeps a single attachment. */
   maxAttachments?: number;
   /** Downscale pictures before encoding them (several receipts in one request). */
   compressImages?: boolean;
@@ -144,7 +144,7 @@ export function AssistantChat({
     try {
       if (localStorage.getItem(storageKey) === "1") setOpen(true);
     } catch {
-      /* private mode — just start collapsed */
+      /* private mode, just start collapsed */
     }
   }, [storageKey]);
 
@@ -422,7 +422,7 @@ export function AssistantChat({
                 onChange={(e) => setInput(e.target.value)}
                 onPaste={(e) => {
                   // A screenshot pasted straight into the composer is an
-                  // attachment, not text — queue it like a picked file.
+                  // attachment, not text, queue it like a picked file.
                   const files = Array.from(e.clipboardData.files);
                   if (files.length === 0) return;
                   e.preventDefault();
@@ -541,7 +541,7 @@ function Bubble({
   );
 }
 
-/** Three bouncing dots — the assistant is composing a reply. */
+/** Three bouncing dots, the assistant is composing a reply. */
 function TypingBubble() {
   return (
     <div className="flex items-end gap-2" role="status" aria-label="The assistant is replying">

@@ -45,7 +45,7 @@ export const hrObAttachmentUrlQueryOptions = (id: string) =>
     queryFn: () => getHrObAttachmentUrl({ data: { id } }),
     // B2 signs for five minutes (Supabase for an hour), so keep the link fresh
     // while the reviewer has the detail open instead of reusing a stale one.
-    // This is a signed-URL TTL refresh, not a data-change poll — the stream
+    // This is a signed-URL TTL refresh, not a data-change poll, the stream
     // deliberately skips `*-attachment` keys.
     staleTime: 2 * 60 * 1000,
     refetchInterval: 2 * 60 * 1000,

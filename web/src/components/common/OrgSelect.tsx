@@ -6,7 +6,7 @@ import { OTHERS, needsSpecification, optionFor } from "@swiftslip/shared/org";
 /**
  * Admin-only list maintenance, handed to the picker so each row can carry its
  * own rename / delete button and the panel can offer "Add". Left undefined for
- * staff — the lists are maintained by administrators.
+ * staff, the lists are maintained by administrators.
  */
 export type OrgSelectActions = {
   onAdd: () => void;
@@ -40,7 +40,7 @@ function fitText(value: string): string {
  *    admin needs a rename / delete button ON each row (see `actions`), and a
  *    native option is one line of plain text and cannot hold one.
  *
- * There is no "Others…" row wherever there is an Add row — an admin types a
+ * There is no "Others…" row wherever there is an Add row, an admin types a
  * brand-new value straight onto the list, storing it rather than leaving a
  * one-off nobody else will ever see. Elsewhere (My Account) Others stays as
  * the escape hatch, and never carries buttons.
@@ -75,7 +75,7 @@ export function OrgSelect({
    * False for staff: the list is maintained by administrators, and a free-text
    * box here would let anyone quietly create a Department or Position that no
    * access rule will ever match. Their own stored value still shows even when
-   * it is off-list — it resolves to OTHERS, which reveals the text box so
+   * it is off-list, it resolves to OTHERS, which reveals the text box so
    * nobody is locked out of seeing or clearing it.
    */
   allowOthers?: boolean;
@@ -88,7 +88,7 @@ export function OrgSelect({
   onChange: (next: string) => void;
   /**
    * Reports "Others is selected but nothing has been typed". Only this
-   * component knows that — an empty `value` is indistinguishable from unset —
+   * component knows that, an empty `value` is indistinguishable from unset,
    * so the form relies on this to refuse an unsafe save.
    */
   onValidityChange?: (invalid: boolean) => void;
@@ -109,13 +109,13 @@ export function OrgSelect({
   const options = !allowOthers && offList ? [...list, trimmed] : [...list];
 
   // When Others isn't on offer the off-list value IS one of the rows, so it
-  // must resolve to itself rather than to OTHERS — otherwise the picker would
+  // must resolve to itself rather than to OTHERS, otherwise the picker would
   // hold a value with no matching row and render blank.
   const listed = !allowOthers && offList ? trimmed : optionFor(list, value);
   const [picked, setPicked] = useState(listed);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  // Whether "Others…" was actually chosen in this visit — NOT whether the
+  // Whether "Others…" was actually chosen in this visit, NOT whether the
   // stored value happens to be off-list. A value nobody here invented (an older
   // spelling, or a department / position an admin has since renamed) must show
   // as one plain field, or every such profile grows a second input under the
@@ -123,7 +123,7 @@ export function OrgSelect({
   const [chosen, setChosen] = useState(false);
   const customOpen = picked === OTHERS && chosen;
   // Only an open, still-empty Others box is a problem. An off-list value that
-  // predates the list is not — refusing to save it would lock the person out of
+  // predates the list is not, refusing to save it would lock the person out of
   // saving anything else on the same form.
   const invalid = customOpen && needsSpecification(picked, value);
   /** What the closed control shows; an off-list value shows itself. */
@@ -134,7 +134,7 @@ export function OrgSelect({
   }, [invalid, onValidityChange]);
 
   // Adopt whatever the parent says, so a value arriving after mount (the
-  // profile query resolving) lands in the picker — including an unlisted one,
+  // profile query resolving) lands in the picker, including an unlisted one,
   // which has to open the Others box or the value looks lost.
   //
   // The one thing it must NOT do is snap a real row into place while the
@@ -146,7 +146,7 @@ export function OrgSelect({
   }, [listed, customOpen]);
 
   // Close on a click outside. `pointerdown` (rather than `click`) so the row's
-  // own handler still runs — the panel would otherwise swallow the click that
+  // own handler still runs, the panel would otherwise swallow the click that
   // was meant to pick the row.
   useEffect(() => {
     if (!open) return;
@@ -157,7 +157,7 @@ export function OrgSelect({
     return () => document.removeEventListener("pointerdown", onDown);
   }, [open]);
 
-  // Escape closes THIS panel, never the dialog around it — losing everything
+  // Escape closes THIS panel, never the dialog around it, losing everything
   // else the admin had typed because they wanted to shut a dropdown would be
   // its own bug.
   useEffect(() => {
@@ -173,10 +173,10 @@ export function OrgSelect({
 
   function pick(next: string) {
     setPicked(next);
-    // Only choosing Others opens the text box — picking a real row closes it.
+    // Only choosing Others opens the text box, picking a real row closes it.
     setChosen(next === OTHERS);
     // Others starts blank rather than keeping the old value, so an empty box
-    // is unambiguous ("not set yet") — and the sentinel itself never reaches
+    // is unambiguous ("not set yet"), and the sentinel itself never reaches
     // the parent as a value.
     onChange(next === OTHERS ? "" : next);
     setOpen(false);
@@ -271,7 +271,7 @@ export function OrgSelect({
             {options.map((option) => row(option, option))}
             {/* The Others escape only appears where there is no Add row (My
                 Account), so a sentinel value can never carry the maintenance
-                buttons — its "__others__" key exists in no list table, and a
+                buttons, its "__others__" key exists in no list table, and a
                 delete against it would report success having removed nothing. */}
             {allowOthers && !actions ? row(OTHERS, "Others…") : null}
             {actions ? (
@@ -307,7 +307,7 @@ export function OrgSelect({
             className="inp min-h-11 mt-2"
             value={value}
             placeholder={placeholder}
-            aria-label={`${label} — other`}
+            aria-label={`${label}: other`}
             aria-invalid={invalid}
             onChange={(e) => onChange(e.target.value)}
           />

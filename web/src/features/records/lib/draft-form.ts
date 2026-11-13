@@ -30,7 +30,7 @@ export function buildDraftRecordHeader(profile: EmployeeProfile): DtrHeader {
   return {
     emp_no: profile.emp_no,
     name: profile.full_name,
-    // DESIGNATION row stays the Position — the job title from the profile.
+    // DESIGNATION row stays the Position, the job title from the profile.
     designation: profile.designation,
     // AREA row is the department/office pair, same as the other sheets'
     // "Department / Location" box. The office alone left half the row empty.

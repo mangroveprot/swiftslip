@@ -7,7 +7,7 @@ const DAY_MS = 86_400_000;
 /**
  * How long before a form becomes eligible the list starts warning about it.
  * The reminder is a courtesy, not a rule: nothing here changes what a cleanup
- * deletes — it only mirrors the decision so the owner is never surprised.
+ * deletes, it only mirrors the decision so the owner is never surprised.
  */
 export const REMINDER_DAYS = 7;
 
@@ -41,7 +41,7 @@ export function daysUntilDeletion(
 }
 
 /**
- * Days left for the badge on a form row — or null when this row is not one a
+ * Days left for the badge on a form row, or null when this row is not one a
  * cleanup would take: the type is unticked, the form is still a draft, it is
  * waiting for an approval slip, or it is further out than the warning window.
  */

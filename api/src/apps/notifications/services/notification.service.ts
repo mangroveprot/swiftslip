@@ -3,7 +3,7 @@
  *
  * A notification belongs to ONE recipient. The API is the only reader/writer
  * (the service-role key bypasses RLS), so every query here is scoped to the
- * signed-in account — never to an id a caller passed in.
+ * signed-in account, never to an id a caller passed in.
  *
  * Writing a notification is best effort, like the activity log: a bell event
  * must never break the action that produced it.
@@ -26,7 +26,7 @@ export type NotifyInput = {
   kind: ObNotificationKind;
   title: string;
   body: string;
-  /** Relative path inside this app — `/hr/ob/<id>` or `/official-business/<id>`. */
+  /** Relative path inside this app, `/hr/ob/<id>` or `/official-business/<id>`. */
   link: string;
 };
 
@@ -59,7 +59,7 @@ class NotificationService extends BaseService<
    *
    * `actor_name`, `actor_position` and `actor_photo` are resolved here (one
    * extra read for the small set of actors in the list) because the table only
-   * stores the actor id — the bell shows a face and a title, not an id.
+   * stores the actor id, the bell shows a face and a title, not an id.
    */
   async list(
     recipientId: string,
@@ -160,7 +160,7 @@ class NotificationService extends BaseService<
       // The activity log that accompanies the action publishes its signal
       // BEFORE this row exists, so a bell in another tab can refetch a
       // millisecond too early and miss the notification. Push it again now
-      // that it is written — one targeted ping per recipient.
+      // that it is written, one targeted ping per recipient.
       for (const recipientId of recipients) {
         UpdatesService.publish({ audience: recipientId });
       }

@@ -24,7 +24,7 @@ export function SignatureField({
 }: {
   value: string;
   disabled: boolean;
-  /** Puts the red required mark after the label — LOA's form asks for it. */
+  /** Puts the red required mark after the label, LOA's form asks for it. */
   required?: boolean;
   /** The submit check found the signature empty. */
   invalid?: boolean | undefined;
@@ -32,7 +32,7 @@ export function SignatureField({
   hint?: string | undefined;
   /**
    * Signature saved on the profile (My Account). It's offered under the field as
-   * a clickable picture of itself — a third text button next to Draw/Upload was
+   * a clickable picture of itself, a third text button next to Draw/Upload was
    * impossible to tell apart from them. My Account never passes it: there it *is*
    * the source, so re-applying it would be a no-op.
    */
@@ -40,7 +40,7 @@ export function SignatureField({
   onChange: (dataUrl: string) => void;
   /**
    * `ob` keeps the same label row and clickable preview button as every other
-   * form, but drops the extra top divider — the OB sheet already draws one.
+   * form, but drops the extra top divider, the OB sheet already draws one.
    */
   variant?: "default" | "ob";
   /**
@@ -48,7 +48,7 @@ export function SignatureField({
    *
    * `fit` hugs the signature itself, so a small squiggle doesn't put a full-width
    * white bar across a dark form (a signature is ink on paper, so the paper has
-   * to stay — it is the only thing that makes black ink visible on a dark page).
+   * to stay, it is the only thing that makes black ink visible on a dark page).
    * `full` keeps the wide strip; only My Account asks for it, where the field is
    * the thing being authored and the empty state matters more than the flash.
    */
@@ -133,7 +133,7 @@ export function SignatureField({
       {/* The profile's signature as a picture you click to apply it. Showing the
           actual image (instead of a third "Saved" button next to Draw/Upload) is
           what makes it obvious this is a different signature, and where it comes
-          from. Hidden once the form already uses it — there'd be nothing to do. */}
+          from. Hidden once the form already uses it, there'd be nothing to do. */}
       {savedSignature && savedSignature !== value ? (
         <button
           type="button"
@@ -224,7 +224,7 @@ function SignaturePad({
 
     const frame = requestAnimationFrame(paint);
     return () => cancelAnimationFrame(frame);
-    // Only reset the canvas when opening draw mode — not on every stroke commit.
+    // Only reset the canvas when opening draw mode, not on every stroke commit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 

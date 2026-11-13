@@ -43,7 +43,7 @@ class FileController {
   }
 
   /**
-   * Raw bytes for one owned attachment — a file stream, not the JSON envelope.
+   * Raw bytes for one owned attachment, a file stream, not the JSON envelope.
    * Kept same-origin so the browser can read it without CORS, and never cached
    * because the underlying signed link is short-lived.
    */

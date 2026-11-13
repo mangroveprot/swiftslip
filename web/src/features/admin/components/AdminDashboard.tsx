@@ -549,7 +549,7 @@ function activitySecondary(
 type FeedRow = {
   id: string;
   action: string;
-  /** The account behind the action — what the avatar beside the name resolves. */
+  /** The account behind the action, what the avatar beside the name resolves. */
   actor_id: string | null;
   actor_name: string | null;
   actor_number: string | null;
@@ -743,7 +743,7 @@ function LatestActivityPanel({
 }) {
   const { data, isLoading, isError, error } = useQuery(activityFeedQueryOptions("activity"));
   const rows = (data ?? []).slice(0, 6);
-  // Faces for the six names below — one batch, shared with the logs page's
+  // Faces for the six names below, one batch, shared with the logs page's
   // cache entry whenever the same people appear.
   const photos = useUserPhotos(rows.map((row) => row.actor_id));
 
@@ -842,7 +842,7 @@ function SecurityPanel({
     [data, security?.newIpKeys],
   );
   // Failed attempts carry an ID number, not a person, so only the successful
-  // rows resolve to a face — the avatar is drawn inside that branch.
+  // rows resolve to a face, the avatar is drawn inside that branch.
   const photos = useUserPhotos(items.map((item) => item.latest.actor_id));
   const latest = security?.latest ?? null;
   const signinsToday = security?.signinsToday ?? 0;

@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { InventoryReportsPage } from "@/features/inventory/pages/InventoryReportsPage";
 import { pageTitle, seo } from "@/lib/seo";
 
-/** `/rgc-asset-inventory/reports` — report preview + Excel export. */
+/** `/rgc-asset-inventory/reports`, report preview + Excel export. */
 export const Route = createFileRoute("/rgc-asset-inventory/reports")({
   head: () =>
     seo({

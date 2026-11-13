@@ -1,5 +1,5 @@
 /**
- * RGC Asset Inventory — this module's OWN model.
+ * RGC Asset Inventory, this module's OWN model.
  *
  * These types and validators describe the separate RGC inventory database
  * (branches / assets / lookup tables) reached through `RGC_INVENTORY_DATABASE_URL`
@@ -20,7 +20,7 @@ export type InventoryBranch = {
   branch_code: string;
   branch_name: string;
   status_indicator: boolean | null;
-  /** `timestamp without time zone` serialised as text — UTC wall-clock. */
+  /** `timestamp without time zone` serialised as text, UTC wall-clock. */
   created_at: string | null;
 };
 
@@ -125,7 +125,7 @@ export type CreatedOption = {
 
 /**
  * Settings mutations don't throw for *expected* failures (duplicate name, option
- * still in use) — they return one of these so the page can toast at the right level,
+ * still in use), they return one of these so the page can toast at the right level,
  * mirroring the original `ShowToast(..., Warning)` vs `Error` distinction.
  */
 export type OptionMutationResult =
@@ -142,7 +142,7 @@ export const optionKindSchema = z.enum([
 ]);
 export type OptionKind = z.infer<typeof optionKindSchema>;
 
-/** Port of C# `AssetSaveRequest` — the flat shape the drawer emits on save. */
+/** Port of C# `AssetSaveRequest`, the flat shape the drawer emits on save. */
 export const assetSaveInput = z.object({
   /** `null` means "insert a new asset"; otherwise the `asset_id` being edited. */
   assetId: z.number().int().positive().nullable(),
@@ -150,7 +150,7 @@ export const assetSaveInput = z.object({
   typeId: z.number().int().positive(),
   branchId: z.number().int().positive(),
   locationId: z.number().int().positive().nullable(),
-  /** e.g. "1st", "2nd" — from `assets.floor_label`. */
+  /** e.g. "1st", "2nd", from `assets.floor_label`. */
   floorLabel: z.string().max(20).nullable(),
   cubicleSeat: z.string().max(50).nullable(),
   assignedTo: z.string().max(150).nullable(),
@@ -190,12 +190,12 @@ export const deleteOptionInput = z.object({
   id: z.number().int().positive(),
 });
 
-/** `:id` in a URL is text — coerce it to the numeric key the RGC tables use. */
+/** `:id` in a URL is text, coerce it to the numeric key the RGC tables use. */
 export const inventoryIdParam = z.object({
   id: z.coerce.number().int().positive(),
 });
 
-/** `DELETE /inventory/options?kind=&id=` — `deleteOptionInput` as a query string. */
+/** `DELETE /inventory/options?kind=&id=`, `deleteOptionInput` as a query string. */
 export const deleteOptionQuery = z.object({
   kind: optionKindSchema,
   id: z.coerce.number().int().positive(),
@@ -210,7 +210,7 @@ export const reportBranchInput = z.object({
   branchId: z.number().int().positive(),
 });
 
-/** Who downloaded a report — the Excel file itself is built client-side. */
+/** Who downloaded a report, the Excel file itself is built client-side. */
 export const reportDownloadInput = z.object({
   branchName: z.string().trim().max(120),
 });
@@ -243,7 +243,7 @@ export type ReportFloorSheet = {
   totals: string[];
 };
 
-/** Full branch report — preview and Excel export build from the same document. */
+/** Full branch report, preview and Excel export build from the same document. */
 export type InventoryReportDocument = {
   branchName: string;
   sheets: ReportFloorSheet[];

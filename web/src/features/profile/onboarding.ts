@@ -30,7 +30,7 @@ const STEP_PREFIX = "swiftslip.onboarding.step:";
 const seenKey = (userId: string) => `${SEEN_PREFIX}${userId}`;
 const stepKey = (userId: string) => `${STEP_PREFIX}${userId}`;
 
-/** Collect first, then remove — mutating Storage while indexing it skips keys. */
+/** Collect first, then remove, mutating Storage while indexing it skips keys. */
 function removePrefixed(storage: Storage, prefix: string): void {
   const keys: string[] = [];
   for (let i = 0; i < storage.length; i++) {
@@ -89,7 +89,7 @@ export function markOnboardingSeen(userId: string): void {
   try {
     window.localStorage.setItem(seenKey(userId), "1");
   } catch {
-    // Same as above — leaving the welcome still navigates.
+    // Same as above, leaving the welcome still navigates.
   }
 }
 
@@ -128,7 +128,7 @@ export function clearOnboardingStep(userId: string): void {
  *
  * Clearing every user's keys (rather than just the incoming one) also stops a
  * stale flag from a previous account deciding whether this login sees the
- * welcome. Storage failures are ignored — the gate falls back to its profile
+ * welcome. Storage failures are ignored, the gate falls back to its profile
  * check either way.
  */
 export function resetOnboardingSession(): void {
@@ -140,7 +140,7 @@ export function resetOnboardingSession(): void {
   try {
     removePrefixed(window.sessionStorage, STEP_PREFIX);
   } catch {
-    // Same as above — a refresh just starts at the first unfinished step.
+    // Same as above, a refresh just starts at the first unfinished step.
   }
 }
 
@@ -154,7 +154,7 @@ export function needsOnboarding(
   profile: EmployeeProfile | null | undefined,
 ): boolean {
   if (hasSeenOnboarding(userId)) return false;
-  // Any missing part — name, work details or signature — prompts the welcome.
+  // Any missing part, name, work details or signature, prompts the welcome.
   // Checking only the name meant a user who saved it but skipped the rest
   // never saw the welcome again.
   if (gapCount(profileGaps(profile)) > 0) return true;

@@ -1,7 +1,7 @@
 import { ConfirmModal } from "@/components/common/ConfirmModal";
 
 /**
- * Delete confirmation modal — port of `DeleteConfirmModal.razor`
+ * Delete confirmation modal, port of `DeleteConfirmModal.razor`
  * (single vs bulk copy). Thin wrapper over the shared `ConfirmModal` so the
  * asset-delete warning and the sign-out warning are the exact same look.
  */

@@ -48,8 +48,8 @@ const empty: EmployeeProfile = {
 };
 
 /**
- * Welcome for an unfinished profile. Three steps, each skippable. Leaving it —
- * Finish or Skip through to the end — hands off to the app chooser, which shows
+ * Welcome for an unfinished profile. Three steps, each skippable. Leaving it,
+ * Finish or Skip through to the end, hands off to the app chooser, which shows
  * the picker when several apps are granted or opens the only one straight away.
  * Nothing here blocks the app; whatever was left blank stays as a reminder
  * until My account is filled, and the next sign-in offers the welcome again.
@@ -63,7 +63,7 @@ export function OnboardingFlow({ session }: { session: SessionUser }) {
   const [step, setStep] = useState<OnboardingStep>(() => {
     // A refresh keeps the exact step; a new sign-in cleared it (see
     // resetOnboardingSession). Starting over, open on the first part still
-    // missing — a returning user may already have a name or work details and
+    // missing, a returning user may already have a name or work details and
     // should not be asked to type them again.
     const remembered = readOnboardingStep(session.id);
     if (remembered) return remembered;
@@ -123,7 +123,7 @@ export function OnboardingFlow({ session }: { session: SessionUser }) {
   async function onPickPhoto(file: File | undefined) {
     if (!file) return;
     if (file.size > MAX_PHOTO_BYTES) {
-      toast.error(`That photo is over ${MAX_PHOTO_MB} MB — pick a smaller one.`);
+      toast.error(`That photo is over ${MAX_PHOTO_MB} MB. Pick a smaller one.`);
       return;
     }
     const source = await readPhotoFile(file);

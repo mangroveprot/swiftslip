@@ -1,5 +1,5 @@
 /**
- * Password hashing — PBKDF2-HMAC-SHA-256.
+ * Password hashing, PBKDF2-HMAC-SHA-256.
  *
  * Stored format:  `pbkdf2_sha256$<iterations>$<salt base64>$<hash base64>`
  *

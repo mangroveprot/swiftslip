@@ -2,7 +2,7 @@ import { APP } from "@/config/app";
 import { cn } from "@/lib/utils";
 
 /**
- * The Regasco-style SwiftSlip lockup — the Regasco mascot beside the app name
+ * The Regasco-style SwiftSlip lockup, the Regasco mascot beside the app name
  * set in Montserrat 800 with the brand-orange rule underneath (see
  * `.regasco-word` in `styles.css`).
  *
@@ -18,11 +18,11 @@ export function BrandLockup({
 }: {
   /** Wrapper overrides (spacing, alignment). */
   className?: string;
-  /** Mascot size overrides — defaults to `h-11`. */
+  /** Mascot size overrides, defaults to `h-11`. */
   imageClassName?: string;
-  /** Word size overrides — defaults to `text-[1.75rem]`. */
+  /** Word size overrides, defaults to `text-[1.75rem]`. */
   wordClassName?: string;
-  /** Element for the app name — `h1` on the sign-in page, `span` elsewhere. */
+  /** Element for the app name, `h1` on the sign-in page, `span` elsewhere. */
   wordAs?: "span" | "h1";
 }) {
   return (

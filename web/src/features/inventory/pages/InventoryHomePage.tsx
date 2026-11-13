@@ -1,5 +1,5 @@
 /**
- * Assets page — port of `Pages/Home.razor`.
+ * Assets page, port of `Pages/Home.razor`.
  *
  * All filtering is client-side over the one `getInventoryData` payload,
  * exactly like the original's in-memory LINQ over `assetItems`. Offline
@@ -89,7 +89,7 @@ export function InventoryHomePage() {
     [assets, shell.selectedBranchId],
   );
 
-  /** All floor labels keyed by branch — drives the drawer's floor dropdown. */
+  /** All floor labels keyed by branch, drives the drawer's floor dropdown. */
   const floorsByBranchId = useMemo(() => {
     const grouped = new Map<number, string[]>();
     for (const asset of assets) {

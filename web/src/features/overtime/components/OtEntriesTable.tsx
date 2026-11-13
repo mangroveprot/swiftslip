@@ -13,7 +13,7 @@ const EMPTY_ENTRY: Omit<OtEntry, "idx"> = {
 };
 
 /**
- * The OT table, one row per date — the twin of the OB itinerary and the COS
+ * The OT table, one row per date, the twin of the OB itinerary and the COS
  * schedule block. The template repeats its value row, so the entries are a list.
  */
 export function OtEntriesTable({
@@ -163,7 +163,7 @@ function TimePair({
 }: {
   label: string;
   index: number;
-  /** Which side this is — the stored column names are prefixed. */
+  /** Which side this is, the stored column names are prefixed. */
   prefix: "regular" | "actual";
   from: string;
   to: string;

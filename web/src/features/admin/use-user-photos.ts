@@ -12,7 +12,7 @@ import { getUserPhotos } from "@/api/access-codes.functions";
  * cache entry, and switching tabs (or opening a log page you just left) costs
  * nothing while it is fresh.
  *
- * A missing id is normal — that person has no photo — so callers hand the
+ * A missing id is normal, that person has no photo, so callers hand the
  * result straight to `<ProfileAvatar>`, which falls back to initials.
  */
 export function useUserPhotos(ids: Array<string | null | undefined>): Record<string, string> {

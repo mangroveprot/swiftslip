@@ -5,8 +5,8 @@
  * The API stores a content snapshot on every submit (`ob_forms.submit_snapshot`,
  * migration 0038). On a resubmit it diffs the new content against it and writes
  * the result into `resubmit_history`, so both screens can say "You changed:
- * Purpose, Destination" and the HR sheet can mark the exact boxes — including
- * the old value ("Was: …") — without keeping a full version history.
+ * Purpose, Destination" and the HR sheet can mark the exact boxes, including
+ * the old value ("Was: …"), without keeping a full version history.
  *
  * `key` is the same vocabulary `ob-required.ts` uses for a cell:
  * a form field name, or `entry:<idx>:<column>` for one itinerary cell.
@@ -27,7 +27,7 @@ const FORM_FIELDS = [
 
 type SnapshotFormKey = (typeof FORM_FIELDS)[number]["key"];
 
-/** The itinerary cells compared on a resubmit — the boxes HR actually reads. */
+/** The itinerary cells compared on a resubmit, the boxes HR actually reads. */
 const ENTRY_FIELDS = [
   { key: "from_place", label: "From" },
   { key: "to_place", label: "Destination" },

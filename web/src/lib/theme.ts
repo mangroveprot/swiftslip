@@ -1,5 +1,5 @@
 /**
- * Light / dark / system theme — remembered per browser, never on the account.
+ * Light / dark / system theme, remembered per browser, never on the account.
  *
  * The choice lives in `localStorage` under `swiftslip-theme`. It is a display
  * preference about *this* device, not data the server has any use for, so it
@@ -7,7 +7,7 @@
  * does not belong in a Supabase row (the same account is opened on a bright
  * office PC and a dim phone, and each should be able to differ).
  *
- * `index.html` runs the same logic inline before first paint — see the small
+ * `index.html` runs the same logic inline before first paint, see the small
  * script in its <head>. That copy is what stops a reload flashing white; this
  * module takes over once React is mounted. Keep the two in step: same key,
  * same attribute, same `system` default.

@@ -4,7 +4,7 @@ import { useEmployerLogo } from "@/features/profile/use-employer-logo";
 import { formatOtDateFiled, formatOtHours } from "../lib/ot-line";
 
 // Matches public/ot_template.docx: 65%-gray header fill, black bold text, and
-// FOUR separate bordered boxes stacked with gaps — the same construction the OB
+// FOUR separate bordered boxes stacked with gaps, the same construction the OB
 // preview uses (see ObPreview.tsx), so every form in the app reads alike.
 const HEADER_FILL = "#a6a6a6";
 const MIN_ROWS = 1;
@@ -16,7 +16,7 @@ export function OtPreview({
 }: {
   form: OtForm;
   entries: OtEntry[];
-  /** DOM id for the sheet — only the inline editor copy carries one, so the
+  /** DOM id for the sheet, only the inline editor copy carries one, so the
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
 }) {
@@ -30,7 +30,7 @@ export function OtPreview({
       className="print-sheet mx-auto w-full bg-paper px-6 pb-6 pt-1 text-[13px] leading-tight text-ink shadow-sm ring-1 ring-border"
       style={{ fontFamily: 'Calibri, "Segoe UI", Candara, Arial, sans-serif' }}
     >
-      {/* Title — centered logo above a centered, heavy title. The logo is sized
+      {/* Title, centered logo above a centered, heavy title. The logo is sized
           as a % of the sheet width (not fixed px) so it keeps the same proportion
           on screen and in print, where .print-sheet stretches to full A4 width. */}
       <div className="mb-2 flex flex-col items-center justify-center gap-0">
@@ -50,7 +50,7 @@ export function OtPreview({
         </h1>
       </div>
 
-      {/* BOX 1 — identity grid. Its own bordered box.
+      {/* BOX 1, identity grid. Its own bordered box.
           The template merges this 9-column Word grid down to three logical
           columns (4540 / 656 / 5514 twips ≈ 40 / 6 / 49 %), so ID Number and
           Department/Location share the wide left column, Employee Name and
@@ -89,10 +89,10 @@ export function OtPreview({
 
       <div className="h-2.5" />
 
-      {/* BOX 2 — OT hours, one row per date. Its own bordered box.
+      {/* BOX 2, OT hours, one row per date. Its own bordered box.
           Six value columns: REGULAR SHIFT SCHEDULE is ONE column (the template
           merges it across both header rows) while ACTUAL OT HOURS splits into
-          FROM and TO — hence six cells, not seven.
+          FROM and TO, hence six cells, not seven.
           The widths follow the template's own rules (98.9 / 175.6 / 71.7 /
           27.1 / 44.2 / 98.9 px of 714), tightened a little at the two ends so
           the two-word headers fit without spilling: at the template's literal
@@ -135,7 +135,7 @@ export function OtPreview({
               <td className="h-7 border border-ink px-1 py-0.5">
                 {row ? formatMonthDayYear(row.date_of_ot) : null}
               </td>
-              {/* One column — the shift hours read as a single range. */}
+              {/* One column, the shift hours read as a single range. */}
               <td className="border border-ink px-1 py-0.5">
                 {row ? formatOtHours(row.regular_from, row.regular_to) : null}
               </td>
@@ -154,7 +154,7 @@ export function OtPreview({
 
       <div className="h-2.5" />
 
-      {/* BOX 3 — reason. Its own bordered box. The template puts the label and
+      {/* BOX 3, reason. Its own bordered box. The template puts the label and
           the reason in the one tall cell, with the reason centred on a line of
           its own. */}
       <div className="border-[2.5px] border-ink px-3 pb-6 pt-1">
@@ -164,7 +164,7 @@ export function OtPreview({
 
       <div className="h-2.5" />
 
-      {/* BOX 4 — signatories. Its own bordered box: a thin label row over a tall
+      {/* BOX 4, signatories. Its own bordered box: a thin label row over a tall
           names row, with a rule between them (as the template draws it). */}
       <div className="border-[2.5px] border-ink">
         <table className="w-full table-fixed border-collapse">
@@ -231,7 +231,7 @@ export function OtPreview({
 
 /**
  * One labelled cell of the OT identity grid: the label in bold, the value in
- * regular weight beneath it — the same arrangement `HeaderField` gives the OB
+ * regular weight beneath it, the same arrangement `HeaderField` gives the OB
  * preview. `highlight` paints the label yellow (the template's "Date & Time
  * Filed"), which needs `print-color-adjust` to survive the print pipeline.
  */

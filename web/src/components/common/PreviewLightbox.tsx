@@ -10,7 +10,7 @@ import { Minus, Plus, RotateCcw, X } from "lucide-react";
 
 import { Dialog, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog";
 
-/** Natural width of the sheet inside the viewer — its A4 print width (210mm − margins). */
+/** Natural width of the sheet inside the viewer, its A4 print width (210mm − margins). */
 const SHEET_WIDTH = 688;
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 5;
@@ -32,7 +32,7 @@ function clamp(v: number, min: number, max: number): number {
  * same actions. Escape or the X closes it. Opening it shows the whole form at
  * a glance instead of scrolling the narrow preview column.
  *
- * <PreviewLightbox open={open} onOpenChange={setOpen} title="… — full view">
+ * <PreviewLightbox open={open} onOpenChange={setOpen} title="…, full view">
  *   <ObPreview form={form} rows={rows} />
  * </PreviewLightbox>
  */
@@ -46,7 +46,7 @@ export function PreviewLightbox({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  /** Outer width of the sheet wrapper — defaults to the A4 print width (688).
+  /** Outer width of the sheet wrapper, defaults to the A4 print width (688).
    *  A sheet with its own fixed width (LOA = 794: an A4-wide page replica with
    *  the template's margins as padding, 738px content) passes its own so
    *  fit() measures right. */
@@ -57,7 +57,7 @@ export function PreviewLightbox({
   const contentRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<View>({ scale: 1, x: 0, y: 0 });
   const fitScaleRef = useRef(1);
-  // Once the user zooms or drags, stop auto-fitting — a late-loading image or
+  // Once the user zooms or drags, stop auto-fitting, a late-loading image or
   // window resize must not yank the view out from under them.
   const touchedRef = useRef(false);
   const dragRef = useRef<{ id: number; x: number; y: number } | null>(null);
@@ -120,7 +120,7 @@ export function PreviewLightbox({
     return () => cancelAnimationFrame(raf);
   }, [open, apply, fit]);
 
-  // Wheel/pinch zoom — attached natively so preventDefault works (React's root
+  // Wheel/pinch zoom, attached natively so preventDefault works (React's root
   // wheel listener is passive).
   useEffect(() => {
     const vp = viewportRef.current;
@@ -188,7 +188,7 @@ export function PreviewLightbox({
     const cy = e.clientY - rect.top;
     const { scale } = viewRef.current;
     if (Math.abs(scale - fitScaleRef.current) < 0.01) {
-      // Currently fitted — jump to 100% centred on the pointer…
+      // Currently fitted, jump to 100% centred on the pointer…
       touchedRef.current = true;
       zoomAt(1 / scale, cx, cy);
     } else {

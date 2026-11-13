@@ -13,7 +13,7 @@ import {
 import type { DtrHeader, DtrTemplate, Period } from "@swiftslip/shared/types";
 
 /**
- * The red asterisk on a label that has to be filled in — the same mark the LOA
+ * The red asterisk on a label that has to be filled in, the same mark the LOA
  * and OB sheets carry. Purely a mark: the record still saves a half-filled
  * draft (the sheet just prints what's there), so this says what the paper form
  * needs without blocking anything.
@@ -44,14 +44,14 @@ export function RecordHeaderFields({
 
   return (
     <section className="form-fill @container shrink-0 rounded-xl bg-card p-5 sm:p-6 lg:p-8">
-      {/* Title row — every card on this page carries one, in the same style the
+      {/* Title row, every card on this page carries one, in the same style the
           other cards use, so the form reads as a labelled box rather than a
           bare field grid. */}
       <div className="mb-2.5">
         <p className="lbl">Record details</p>
       </div>
 
-      {/* The identity row leads the sheet — the paper form's header boxes,
+      {/* The identity row leads the sheet, the paper form's header boxes,
           drawn the way the OB and LOA sheets draw them: label over an underline
           input, four across once this sheet is wide enough. The column count
           follows THIS sheet's container rather than the window's, the way LOA's
@@ -167,7 +167,7 @@ export function RecordHeaderFields({
 /**
  * One identity value at the top of the sheet: the paper form's header box as a
  * label over an underline input, the way the OB and LOA sheets draw them. The
- * red mark says the sheet can't do without it — the input itself is ordinary,
+ * red mark says the sheet can't do without it, the input itself is ordinary,
  * editable text.
  */
 function Identity({
@@ -203,7 +203,7 @@ function Identity({
 }
 
 /**
- * A label above a filled input — the field style the OB sheet uses: no border,
+ * A label above a filled input, the field style the OB sheet uses: no border,
  * a warm --muted fill, and a quiet focus ring.
  */
 function Field({

@@ -30,7 +30,7 @@ function NavCount({ value }: { value: number }) {
 
 /**
  * The HR app's sidebar (D1). It reuses the same brand, nav rows, footer and
- * surface as the main SwiftSlip shell. Reviewers get the HR queue — the
+ * surface as the main SwiftSlip shell. Reviewers get the HR queue, the
  * Records & Forms list stays out of the approval desk, and the account lives
  * in the footer: the profile block at the bottom opens My account / Sign out
  * (no "Account" nav row), captioned **Role - Position**.
@@ -46,7 +46,7 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
   });
   const { data: session } = useQuery(sessionQueryOptions());
   const { data: queue } = useQuery(hrQueueQueryOptions());
-  // Same cached profile the My Account page edits — position for the caption.
+  // Same cached profile the My Account page edits, position for the caption.
   const { data: profile } = useQuery(profileQueryOptions());
   const photo = useProfilePhoto();
   const apps = session?.apps;

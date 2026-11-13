@@ -1,13 +1,13 @@
 /**
  * Three-tier auto-save.
  *
- * Typing must not turn into a request per keystroke — the server is the expensive,
+ * Typing must not turn into a request per keystroke, the server is the expensive,
  * rate-limited tier, so it is the one that gets rationed:
  *
- *  1. **Local state** — free, every keystroke, handled by React.
- *  2. **localStorage** — cheap. Written once typing settles, so a refresh or a
+ *  1. **Local state**, free, every keystroke, handled by React.
+ *  2. **localStorage**, cheap. Written once typing settles, so a refresh or a
  *     closed tab cannot lose more than the last moment of work.
- *  3. **The API** — the costly one. Written when the form has been quiet for
+ *  3. **The API**, the costly one. Written when the form has been quiet for
  *     `quietMs`, but never more often than `minGapMs`, and never left waiting
  *     longer than `maxWaitMs` while someone keeps typing.
  *
@@ -29,7 +29,7 @@ export type SaveStatus = "saving" | "saved" | "error";
 export type AutoSave = {
   /** Re-arm after a content change. Cheap and synchronous; call it freely. */
   arm: (snapshot: string) => void;
-  /** Persist anything outstanding right now — leaving the page, or Save. */
+  /** Persist anything outstanding right now, leaving the page, or Save. */
   flush: () => void;
   /**
    * Declare a snapshot already written by other means, so it is not written
@@ -37,7 +37,7 @@ export type AutoSave = {
    * itself, and the change controller then treats that as the new baseline.
    */
   setPersisted: (snapshot: string) => void;
-  /** What's currently known to be in the database — "" when nothing is. */
+  /** What's currently known to be in the database, "" when nothing is. */
   persistedSnapshot: () => string;
   /**
    * The pristine auto-filled state a draft started from. Recorded once, and used
@@ -53,7 +53,7 @@ export function createAutoSave(opts: {
   /** The snapshot already in the database, so untouched content never saves. */
   initial: string;
   save: (snapshot: string) => Promise<void>;
-  /** Tier 2 — usually writes the form to localStorage. */
+  /** Tier 2, usually writes the form to localStorage. */
   stageLocal?: (snapshot: string) => void;
   onStatus?: (status: SaveStatus) => void;
 }): AutoSave {
@@ -62,7 +62,7 @@ export function createAutoSave(opts: {
   let persisted = opts.initial;
   let baseline: string | null = null;
   let pending: string | null = null;
-  /** When the current unsaved streak began — anchors the max-wait cap. */
+  /** When the current unsaved streak began, anchors the max-wait cap. */
   let dirtySince = 0;
   let lastApiAt = 0;
   let quietTimer: ReturnType<typeof setTimeout> | null = null;
@@ -99,7 +99,7 @@ export function createAutoSave(opts: {
 
   function arm(snapshot: string) {
     if (snapshot === persisted) {
-      // Back in sync with the database — nothing left to do.
+      // Back in sync with the database, nothing left to do.
       pending = null;
       dirtySince = 0;
       clearTimers();
@@ -111,13 +111,13 @@ export function createAutoSave(opts: {
     if (!dirtySince) dirtySince = now;
     clearTimers();
 
-    // Tier 2 — local only, so it fires on every settled pause.
+    // Tier 2, local only, so it fires on every settled pause.
     quietTimer = setTimeout(() => {
       quietTimer = null;
       stageLocal?.(snapshot);
     }, QUIET_MS);
 
-    // Tier 3 — the API, once quiet and once the previous write is old enough.
+    // Tier 3, the API, once quiet and once the previous write is old enough.
     const quietUntil = now + QUIET_MS;
     const gapUntil = lastApiAt + MIN_GAP_MS;
     const capAt = dirtySince + MAX_WAIT_MS;
@@ -162,7 +162,7 @@ export function createAutoSave(opts: {
 
   function belowBaseline(snapshot: string) {
     // No baseline yet (still waiting on the profile) means nothing is real content
-    // yet — never insert on a guess.
+    // yet, never insert on a guess.
     return baseline !== null && snapshot !== baseline;
   }
 

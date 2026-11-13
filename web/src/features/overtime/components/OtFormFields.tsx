@@ -85,7 +85,7 @@ export function OtFormFields({
 }
 
 /**
- * The lower half of the OT sheet — the reason and the three sign-off boxes
+ * The lower half of the OT sheet, the reason and the three sign-off boxes
  * the paper form prints under it. The editor puts the entries block between
  * this and the header block, then the employee signature below it.
  */

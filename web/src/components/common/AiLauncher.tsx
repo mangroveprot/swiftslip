@@ -15,7 +15,7 @@ const FIRST_HINT_DELAY = 1200;
     flag on purpose: nothing is written to the browser, so the hints are back on
     the very next reload, on every screen size. The earlier version saved a
     timestamp in localStorage, and one press of the X then silenced the bubble
-    on every form — including on a phone, where it looked like the hints simply
+    on every form, including on a phone, where it looked like the hints simply
     did not exist. A dismissal now only lasts while that page stays open. */
 let dismissedForPageLoad = false;
 
@@ -84,7 +84,7 @@ export function AiLauncher({
     // carrying `ai-bubble-pop`, and the animation plays from its own `from`
     // state. The old two-step dance needed a `requestAnimationFrame` between
     // the two, and a frame that never arrives (a background tab) left the
-    // bubble mounted at the vanish animation's final opacity of 0 — invisible,
+    // bubble mounted at the vanish animation's final opacity of 0, invisible,
     // on every form, with nothing on screen to explain why.
     const appear = window.setTimeout(() => {
       setLive(true);
@@ -96,7 +96,7 @@ export function AiLauncher({
       clearInterval(rotate);
     };
     // `hint` is a module-level constant in each caller, so the length is a
-    // stable dependency — depending on the array itself would re-run this on
+    // stable dependency, depending on the array itself would re-run this on
     // every render.
   }, [open, dismissed, hint.length]);
 
@@ -156,7 +156,7 @@ export function AiLauncher({
         title={open ? "Hide the assistant" : `${label}: fill this form by chatting`}
         className="relative flex size-14 items-center justify-center rounded-full bg-linear-to-br from-regasco-light via-regasco to-regasco-deep ring-2 ring-white/80 transition-transform duration-200 hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-regasco active:scale-95 [filter:drop-shadow(0_10px_12px_rgb(0_0_0_/_0.18))]"
       >
-        {/* Breathing halo — decoration, sits under the mascot. Wide enough to
+        {/* Breathing halo, decoration, sits under the mascot. Wide enough to
             read past the orange badge on a pale page. Only while closed; once
             the window is open the tail below does the pointing instead. */}
         <span
@@ -167,7 +167,7 @@ export function AiLauncher({
             !open && "ai-halo-pulse",
           )}
         />
-        {/* The mascot stays put in both states — swapping it for a chevron
+        {/* The mascot stays put in both states, swapping it for a chevron
             made the button stop looking like the assistant while it was the
             one thing actually open. */}
         <AiMascot size="xl" float className="relative" />

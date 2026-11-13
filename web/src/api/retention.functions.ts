@@ -26,7 +26,7 @@ export const previewRetentionCleanup = async ({
   data?: { settings?: RetentionSettings };
 } = {}) => documentOf(await api.post<RetentionPreview>("/admin/retention/preview", data ?? {}));
 
-/** Run the cleanup with the SAVED settings. Permanent — always confirm first. */
+/** Run the cleanup with the SAVED settings. Permanent, always confirm first. */
 export const runRetentionCleanup = async () =>
   documentOf(await api.post<CleanupRunSummary>("/admin/retention/run"));
 

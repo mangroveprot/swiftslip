@@ -27,7 +27,7 @@ type ApprovalStampProps = {
   /** Preset size. `xs` for a dense list card, `sm` for a list row, `md` for
    *  a card header, `lg` for a full-sheet mark. */
   size?: keyof typeof SIZES;
-  /** Layout classes only — the seal keeps its own ink and proportions. */
+  /** Layout classes only, the seal keeps its own ink and proportions. */
   className?: string;
 };
 

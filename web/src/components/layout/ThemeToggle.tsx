@@ -18,7 +18,7 @@ const LABELS: Record<ThemePreference, { label: string; hint: string }> = {
  * more clicks than the button itself, and the icon always shows the state in
  * effect (a sun, a moon, or a monitor for "follow the system").
  *
- * The choice is remembered in this browser only — see `lib/theme.ts`.
+ * The choice is remembered in this browser only, see `lib/theme.ts`.
  */
 export function ThemeToggle({ className }: { className?: string }) {
   const { preference, cycle } = useTheme();
@@ -37,7 +37,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       // Screen readers hear the state and the next stop; sighted users get the
       // same thing as a tooltip.
       aria-label={`Theme: ${label}. ${hint}.`}
-      title={`Theme: ${label} — ${hint}`}
+      title={`Theme: ${label}. ${hint}.`}
     >
       <Icon className="size-4" aria-hidden="true" />
     </button>

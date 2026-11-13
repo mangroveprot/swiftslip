@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { initialsOf } from "@/lib/photo";
 
 /**
- * A person's face — the photo when there is one, their initials when not.
+ * A person's face, the photo when there is one, their initials when not.
  *
  * One component for both places it appears (the profile card and the sidebar
  * footer) so the two can never disagree about the fallback or the crop. The

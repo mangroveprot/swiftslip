@@ -33,8 +33,8 @@ const toFailure = (error: unknown) => ({
 
 /**
  * Documents attached to a form or DTR record. Unlike the other services this
- * one is not bound to a single table — every method takes the `target` the
- * route was mounted on — so it holds one repository per table instead of
+ * one is not bound to a single table, every method takes the `target` the
+ * route was mounted on, so it holds one repository per table instead of
  * extending `BaseService`.
  *
  * All storage calls go through the unified `FileStorageService` so the admin's

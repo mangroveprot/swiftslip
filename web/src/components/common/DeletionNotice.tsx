@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
  * "This form is about to go" badge for a form card.
  *
  * `days` comes from the API (`deletes_in_days`) and is only present when a
- * retention cleanup would take the form within the next week — or already
+ * retention cleanup would take the form within the next week, or already
  * would, on the next run. It is a warning, not a promise: nothing is deleted
  * until an admin previews and runs a cleanup, so the wording stays vague about
  * the moment and precise about the fact.

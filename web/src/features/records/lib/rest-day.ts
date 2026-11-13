@@ -8,8 +8,8 @@ export const SUNDAY_REMARKS = "SUNDAY";
  * A row as it will print. A Sunday whose REMARKS cell is still blank shows the
  * rest-day note; anything the user typed always wins.
  *
- * This is applied when the sheet is rendered — nothing is written to the saved
- * record — so a typed remark is never overwritten and the note can never be
+ * This is applied when the sheet is rendered, nothing is written to the saved
+ * record, so a typed remark is never overwritten and the note can never be
  * saved by accident as if the user had entered it.
  */
 export function withRestDayRemarks(entry: DtrEntry, day: number, header: DtrHeader): DtrEntry {

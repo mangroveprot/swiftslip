@@ -1,7 +1,7 @@
 /**
  * Live updates over ONE Server-Sent Events stream per signed-in tab.
  *
- * The server pushes only `{ v: number }` — "something in the database changed".
+ * The server pushes only `{ v: number }`, "something in the database changed".
  * On that hint we invalidate every query that is actually on screen, so an HR
  * reviewer sees an employee's submitted form without pressing refresh, and the
  * employee sees HR's approval / sign-off without pressing refresh. A quiet
@@ -10,7 +10,7 @@
  * Why this is cheap on Supabase's free tier:
  *  - no polling per screen and no polling per tab;
  *  - one shared, head-only signal probe every 60 s on the server (zero response
- *    body — just a Content-Range header), and none at all when no tab is open;
+ *    body, just a Content-Range header), and none at all when no tab is open;
  *  - invalidateQueries with `refetchType: "active"` refetches only mounted
  *    queries. Exploding activity (submit writes an audit row + notifications)
  *    is coalesced by the debounce + version-gate below.
@@ -68,7 +68,7 @@ export function LiveUpdates() {
         const elapsed = now - lastRefreshAt;
         if (elapsed < MIN_REFRESH_MS) {
           // Reschedule for the remainder of the throttle window so we don't
-          // drop the signal — just delay it.
+          // drop the signal, just delay it.
           debounceTimer = window.setTimeout(() => {
             lastRefreshAt = Date.now();
             void qc.invalidateQueries({
@@ -115,7 +115,7 @@ export function LiveUpdates() {
           if (v <= lastVersion) return;
           lastVersion = v;
         } catch {
-          // Malformed payload — refresh anyway, it's safer.
+          // Malformed payload, refresh anyway, it's safer.
         }
         refresh();
       });
@@ -126,7 +126,7 @@ export function LiveUpdates() {
           const payload = JSON.parse(e.data) as { v?: number };
           lastVersion = payload.v ?? 0;
         } catch {
-          // Ignore — we'll just be conservative and refresh on next signal.
+          // Ignore, we'll just be conservative and refresh on next signal.
         }
       });
       source.onerror = () => {

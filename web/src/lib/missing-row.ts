@@ -7,7 +7,7 @@
  * rather than a `404` status, so the status code never reaches the client.
  *
  * Anything that is not a missing row (a network blip, say) must not be
- * mislabelled as a deletion — callers leave those on the loading skeleton,
+ * mislabelled as a deletion, callers leave those on the loading skeleton,
  * where React Query can still retry.
  */
 export function isMissingRow(error: unknown): boolean {

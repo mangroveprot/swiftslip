@@ -51,7 +51,7 @@ export function formDepartment(profile: EmployeeProfile): string {
  * `department` is the whole "Department / Location" box, not just the
  * department: the sheet gives that box one cell for both facts, so it is
  * pre-filled as "IT DEP/RGC Dipolog Sat Office" instead of leaving the office
- * half blank. It stays a single editable field — the printed form has no second
+ * half blank. It stays a single editable field, the printed form has no second
  * cell to put the office in.
  */
 export function draftIdentity(profile: EmployeeProfile): {

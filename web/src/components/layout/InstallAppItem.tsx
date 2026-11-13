@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { SIDEBAR_MENU_ITEM } from "./sidebar-classes";
 
 /**
- * The account menu's "Install app" row — the one entry point for adding
+ * The account menu's "Install app" row, the one entry point for adding
  * SwiftSlip to a desktop or home screen.
  *
  * It stays visible on browsers that never offer the install prompt (Safari /

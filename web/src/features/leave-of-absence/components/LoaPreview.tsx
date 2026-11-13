@@ -16,7 +16,7 @@ const HEADER_FILL = "#7f7f7f";
 const VIBER_BLUE = "#4472C4";
 const CELL_PAD_X = "7.2px";
 
-/** Sheet outer width — an exact A4 page replica: 794px (210mm at 96dpi) with
+/** Sheet outer width, an exact A4 page replica: 794px (210mm at 96dpi) with
  *  the template's own page margins as padding (36px left / 20px right per
  *  sectPr pgMar), leaving the same 738px of content so line breaks match the
  *  Word template. Every container (inline preview column, full-view lightbox)
@@ -42,12 +42,12 @@ const PT = {
  *  `lib/word-export.ts`, and that difference is the point. Word reflows onto a
  *  second page happily; this preview has to stay on ONE A4 sheet. A table
  *  cell's `height` is only a MINIMUM, so a long entry grows the row instead of
- *  clipping it — which silently pushed EMPLOYEE'S LEAVE RECORD onto page 2 with
+ *  clipping it, which silently pushed EMPLOYEE'S LEAVE RECORD onto page 2 with
  *  nothing visibly broken on screen.
  *
  *  Measured against the named `@page loa` box (1046px tall) with an empty
  *  sheet at 1012px, i.e. 34px of headroom for the remarks box. A 582-char
- *  entry measures 1115px at 12pt, 1074 at 10pt, 1048 at 9pt and 1039 at 8pt —
+ *  entry measures 1115px at 12pt, 1074 at 10pt, 1048 at 9pt and 1039 at 8pt,
  *  so the ceilings below are that 34px divided by the measured height-per-char
  *  at each size, with a little slack. Re-measure if the template's row heights
  *  or the page margins in styles.css ever change.
@@ -101,9 +101,9 @@ type Cell = {
   span: number;
   /** Exact tcBorders spec, e.g. "t18|l8|b8|r18" or "NONE". */
   b?: string;
-  /** tcPr vAlign — defaults to center (91 of the template's cells). */
+  /** tcPr vAlign, defaults to center (91 of the template's cells). */
   v?: "top" | "center" | "bottom";
-  /** tcPr vMerge — one cell across several rows, so its content centres over
+  /** tcPr vMerge, one cell across several rows, so its content centres over
    *  the whole merged box instead of the first row alone. */
   rowSpan?: number;
   /** #fill for the gray section bars. */
@@ -141,7 +141,7 @@ function Row({ cells, h, fill }: { cells: Cell[]; h?: number; fill?: string }) {
 /** Empty fill-in line on the "Others:" row (verbatim from the template). */
 const OTHERS_LINE = "_________________________________________";
 
-/** Second-line indent for the typed Others text — 15 Calibri-bold spaces
+/** Second-line indent for the typed Others text, 15 Calibri-bold spaces
  *  match the width of the "Others: " prefix (48.5px), so the text starts
  *  under the line instead of in front of it. */
 const OTHERS_TEXT_INDENT = " ".repeat(15);
@@ -151,7 +151,7 @@ export function LoaPreview({
   sheetId,
 }: {
   form: LoaForm;
-  /** DOM id for the sheet — only the inline editor copy carries one, so the
+  /** DOM id for the sheet, only the inline editor copy carries one, so the
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
 }) {
@@ -160,13 +160,13 @@ export function LoaPreview({
   const withPay = form.pay_status === "with_pay" ? "✓" : " ";
   const withoutPay = form.pay_status === "without_pay" ? "✓" : " ";
   // The typed Others answer sits ON TOP (indented to where the fill line
-  // starts), with "Others:" and the line — plus the two pay boxes, spaced off
-  // the line — underneath it. It only appears while Others is the chosen type;
+  // starts), with "Others:" and the line, plus the two pay boxes, spaced off
+  // the line, underneath it. It only appears while Others is the chosen type;
   // switching away keeps the draft in the form but out of the sheet/export.
   const typedOthers =
     form.leave_type === "Others" && form.leave_type_other ? form.leave_type_other.trim() : "";
   // A pasted entry almost always ends in a newline, and that renders as a
-  // BLANK line inside the box — a line of dead space at the bottom of the
+  // BLANK line inside the box, a line of dead space at the bottom of the
   // remarks, which is exactly where the sheet runs out of room and spills.
   // Trim it (and measure the shrink against the trimmed length) so the box
   // hugs the text the user actually wrote.
@@ -187,7 +187,7 @@ export function LoaPreview({
         lineHeight: 1.22,
       }}
     >
-      {/* Page header — mirrors header1.xml: logo (271px ≈ 36.7% of the 738px
+      {/* Page header, mirrors header1.xml: logo (271px ≈ 36.7% of the 738px
           content width), ~16px gap, then the 10pt address and phone lines
           (phone icon inline, ~40px before the number, as Word's tab renders). */}
       <div className="flex flex-col items-center text-center">
@@ -213,7 +213,7 @@ export function LoaPreview({
         </p>
         <p style={{ fontSize: PT.h10, position: "relative" }}>
           {/* Template centers the number on the content box and floats the icon
-              133px left of center (Word anchor), so keep the icon out of flow —
+              133px left of center (Word anchor), so keep the icon out of flow,
               an inline icon would drag the centered text to the right. */}
           <img
             src="/loa_phone.jpg"
@@ -224,7 +224,7 @@ export function LoaPreview({
         </p>
       </div>
 
-      {/* Title — Eras Demi ITC bold 14pt, centered; the gap covers the
+      {/* Title, Eras Demi ITC bold 14pt, centered; the gap covers the
           template's empty 12pt paragraph between the header and the title. */}
       <h1
         className="mt-[16px] text-center"
@@ -237,7 +237,7 @@ export function LoaPreview({
         APPLICATION FOR LEAVE OF ABSENCE (LOA) FORM
       </h1>
 
-      {/* Instructions — label bold, body regular (the template's runs carry no
+      {/* Instructions, label bold, body regular (the template's runs carry no
           <w:b/>), indented 90 twips (6px) left / 360 twips (24px) right, body
           justified with the template's first-line tab (a default 0.5" tab stop
           = 48px from the margin = 42px inside the paragraph box). */}
@@ -250,7 +250,7 @@ export function LoaPreview({
         </p>
       </div>
 
-      {/* The main table — cell-for-cell from the template's document.xml. */}
+      {/* The main table, cell-for-cell from the template's document.xml. */}
       <table
         className="w-full"
         style={{ borderCollapse: "collapse", tableLayout: "fixed", marginTop: 31 }}
@@ -261,7 +261,7 @@ export function LoaPreview({
           ))}
         </colgroup>
         <tbody>
-          {/* Identity box — labels row, values row (signature cell), then the
+          {/* Identity box, labels row, values row (signature cell), then the
               date / position / days labels and the FROM–TO bands. */}
           <Row
             cells={[
@@ -332,7 +332,7 @@ export function LoaPreview({
               },
             ]}
           />
-          {/* Date Filed / Position / Number of Days — like the template: the
+          {/* Date Filed / Position / Number of Days, like the template: the
               vertical rules stay (they ARE the column borders), but the value
               and the band beneath it are one vertically-merged cell, so the
               horizontal between them must go. That keeps a signature drawn
@@ -375,7 +375,7 @@ export function LoaPreview({
               {
                 span: 3,
                 // vMerge: these three span the blank row under them too, so the
-                // fill sits in the middle of the merged box — never at the top.
+                // fill sits in the middle of the merged box, never at the top.
                 rowSpan: 2,
                 b: "t8|l18|b18|r8",
                 cls: "text-center",
@@ -435,7 +435,7 @@ export function LoaPreview({
               },
             ]}
           />
-          {/* Closing band of the box (8pt, top+bottom only — no verticals). */}
+          {/* Closing band of the box (8pt, top+bottom only, no verticals). */}
           <Row
             h={240}
             cells={[
@@ -446,7 +446,7 @@ export function LoaPreview({
             ]}
           />
 
-          {/* KINDLY MARK APPROPRIATE BOX — gray bar (thin bottom, sz6). */}
+          {/* KINDLY MARK APPROPRIATE BOX, gray bar (thin bottom, sz6). */}
           <Row
             h={350}
             fill={HEADER_FILL}
@@ -578,7 +578,7 @@ export function LoaPreview({
               { span: 4, b: "r18", style: { fontSize: PT.h3 }, content: "" },
             ]}
           />
-          {/* Others line + the two pay boxes — bottom-aligned like Word. */}
+          {/* Others line + the two pay boxes, bottom-aligned like Word. */}
           <Row
             h={350}
             cells={[
@@ -602,7 +602,7 @@ export function LoaPreview({
                 //
                 // The .docx can't follow this far: Word's proportional leading
                 // overlaps the two lines somewhere below ~170 (240ths of a single
-                // line), so the export stops at 190 — see OTHERS_PARA_ID in
+                // line), so the export stops at 190, see OTHERS_PARA_ID in
                 // lib/word-export.ts.
                 style: {
                   fontWeight: 700,
@@ -633,7 +633,7 @@ export function LoaPreview({
             cells={[{ span: 21, b: "t18|b18", style: { fontSize: PT.h3 }, content: "" }]}
           />
 
-          {/* REASONS / REMARKS — gray bar (left-aligned after 54 spaces, as in
+          {/* REASONS / REMARKS, gray bar (left-aligned after 54 spaces, as in
               the template), then remarks left / report-back box right. */}
           <Row
             h={235}
@@ -695,7 +695,7 @@ export function LoaPreview({
               },
             ]}
           />
-          {/* Bottom band — left cell closes with left+bottom only, right cell
+          {/* Bottom band, left cell closes with left+bottom only, right cell
               keeps a thin (sz6) bottom; no vertical between them (template).
               At the template's 765 twips this is 51px of blank padding under
               the remarks, which is where a long entry runs out of page and
@@ -712,7 +712,7 @@ export function LoaPreview({
             ]}
           />
 
-          {/* Sick-leave note — gray bar with the two template paragraphs. */}
+          {/* Sick-leave note, gray bar with the two template paragraphs. */}
           <Row
             h={190}
             fill={HEADER_FILL}
@@ -743,7 +743,7 @@ export function LoaPreview({
             cells={[{ span: 21, b: "t18|b18", style: { fontSize: PT.h3 }, content: "" }]}
           />
 
-          {/* Approved by / Noted By / Received by — three tall bordered boxes,
+          {/* Approved by / Noted By / Received by, three tall bordered boxes,
               TOP-aligned like the template. Only the approver carries a token;
               the other two print empty for handwriting. */}
           <Row
@@ -789,7 +789,7 @@ export function LoaPreview({
             ]}
           />
 
-          {/* EMPLOYEE'S LEAVE RECORD — gray bar + the credits table (blank in
+          {/* EMPLOYEE'S LEAVE RECORD, gray bar + the credits table (blank in
               v1). EARNED/BALANCE/Verified keep the template's open gaps: no
               bottom border under the header, no top border on the row below. */}
           <Row

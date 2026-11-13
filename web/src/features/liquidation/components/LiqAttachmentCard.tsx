@@ -5,7 +5,7 @@ import type { LiqForm } from "@swiftslip/shared/types";
 /**
  * The approval-slip attachment for a Statement of Liquidation: the shared
  * upload/view/remove card, the approval seal and the single "Approved" tick.
- * Uploading a slip IS the approval — it ticks itself and turns on the sheet's
+ * Uploading a slip IS the approval, it ticks itself and turns on the sheet's
  * blue "Approved via Viber" note, exactly like the OB form.
  */
 export function LiqAttachmentCard({

@@ -11,7 +11,7 @@ import { APP_HOME, isExternalApp, type AppKey, type InternalAppKey } from "@swif
  * Sits outside `_app` so it renders without the sidebar shell.
  *
  * With one app granted there is nothing to choose, so the user is sent straight
- * there instead — which is the common case for staff now that access is a
+ * there instead, which is the common case for staff now that access is a
  * grant rather than a role. An app on another host has no route here, so it is
  * always shown in the chooser and opened by the card's own link.
  *

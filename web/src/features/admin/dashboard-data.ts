@@ -135,7 +135,7 @@ export function chartSeries(
   });
 }
 
-/** "+4", "−2", or "No change" — the delta beside a form type. */
+/** "+4", "−2", or "No change", the delta beside a form type. */
 export function deltaLabel(delta: number) {
   if (delta === 0) return "No change";
   return `${delta > 0 ? "+" : "−"}${Math.abs(delta)}`;

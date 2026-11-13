@@ -1,21 +1,21 @@
 /**
  * Shared behaviour for the Designation / Department / Position pickers.
  *
- * SCOPE — SwiftSlip's own profiles ONLY. The RGC Asset Inventory is a separate
+ * SCOPE, SwiftSlip's own profiles ONLY. The RGC Asset Inventory is a separate
  * database (`RGC_INVENTORY_DATABASE_URL`) with its own idea of branches and
  * floors; its values are deliberately NOT pulled in here, or this list would
  * drift toward designations nobody has ever used in SwiftSlip. Inventories that
  * need one can still be typed under "Others", and the App Access screen can
  * still create a rule for any value.
  *
- * The CHOICES live in the database — `org_designations`, `org_departments` and
- * `org_positions` (migrations 0024 / 0025) — and reach the pickers as an
+ * The CHOICES live in the database, `org_designations`, `org_departments` and
+ * `org_positions` (migrations 0024 / 0025), and reach the pickers as an
  * `OrgLists`. Nothing here hard-codes a Designation / Department / Position any
  * more: a value an administrator deleted stays deleted instead of coming back
  * from a constant, which is how "IT Support" and "IT Programmer" kept appearing
  * under a Field Monitoring department that had never held them. Adding a value
  * is a row, not a code change. (The employer list below is the one deliberate
- * exception — it is a fixed company choice, not an editable org list.)
+ * exception, it is a fixed company choice, not an editable org list.)
  *
  * The columns are still free text on `profiles.area` / `profiles.designation`;
  * the lists exist so people stop inventing spellings, and "Others" exists so a
@@ -46,7 +46,7 @@ export type Employer = (typeof EMPLOYERS)[number]["value"];
 /** The default the database column uses (and the fallback for an unknown code). */
 export const DEFAULT_EMPLOYER: Employer = 1;
 
-/** The labels in picker order — what the frontend offers and prints. */
+/** The labels in picker order, what the frontend offers and prints. */
 export const EMPLOYER_LABELS = EMPLOYERS.map((employer) => employer.label);
 
 /**
@@ -75,7 +75,7 @@ export function employerCode(label: string | null | undefined): Employer {
 
 /** The admin-editable lists behind the pickers (migrations 0024 / 0025):
  *  designations, departments, and every position with the department it sits
- *  under — read from `org_designations` / `org_departments` / `org_positions`,
+ *  under, read from `org_designations` / `org_departments` / `org_positions`,
  *  the only place the choices themselves live. */
 export type OrgLists = {
   designations: string[];
@@ -123,7 +123,7 @@ export function normalizePosition(value: string): string {
  * The profile stores its own department (migration 0023); this is the
  * fallback for rows that haven't been backfilled yet and the source for
  * auto-filling a fresh pick. Looked up in canonical form, so a legacy spelling
- * on an old profile still resolves — and only against the live table, so a
+ * on an old profile still resolves, and only against the live table, so a
  * department an admin added, renamed, or moved a position into is what the
  * pickers show and what the position implies. There is no constant left to
  * fall back on: a value deleted from the table must not reappear here either.
@@ -137,7 +137,7 @@ export function departmentForPosition(position: string, lists?: OrgLists): strin
 /**
  * The value the OB / OT / LOA sheets print in their single "Department /
  * Location" box: the department, then the employee's Designation (the office /
- * branch), joined by the slash the box is named with — "IT DEP/RGC Dipolog Sat
+ * branch), joined by the slash the box is named with, "IT DEP/RGC Dipolog Sat
  * Office".
  *
  * The office is not a department, which is why it is appended here rather than
@@ -151,7 +151,7 @@ export function departmentWithLocation(department: string, office: string): stri
 }
 
 /**
- * The positions offered under a department — straight from `org_positions`,
+ * The positions offered under a department, straight from `org_positions`,
  * so the picker offers exactly what an administrator filed there and nothing
  * else.
  *
@@ -159,7 +159,7 @@ export function departmentWithLocation(department: string, office: string): stri
  *   pick one and let the department follow (the "e.g. IT Support" placeholder
  *   is for exactly that state).
  * - A department chosen: only the positions filed under it. A department with
- *   none — one just added, or one whose positions were deleted — offers an
+ *   none, one just added, or one whose positions were deleted, offers an
  *   empty list rather than every other department's, which is how "IT
  *   Support" and "IT Programmer" kept turning up under Field Monitoring.
  * - Lists not loaded yet: empty too, never a set of hard-coded values the
@@ -192,7 +192,7 @@ export function optionFor(list: readonly string[], value: string): string {
  * knows, which is why it reports this upwards.
  *
  * Without the check, choosing Others and hitting Save sends an empty value and
- * quietly erases whatever the field held — the exact loss the picker exists to
+ * quietly erases whatever the field held, the exact loss the picker exists to
  * prevent.
  */
 export function needsSpecification(selected: string, value: string): boolean {

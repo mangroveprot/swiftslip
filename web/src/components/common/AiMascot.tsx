@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** The mascot file that ships in `public/` — one image for every AI surface. */
+/** The mascot file that ships in `public/`, one image for every AI surface. */
 export const AI_MASCOT_SRC = "/regasco_ai_mascot.webp";
 
 const SIZES = {
@@ -15,7 +15,7 @@ const SIZES = {
  * The artwork already has a real alpha channel (the decorative circuit lines
  * and sparkles float on transparency), but they run off all four edges, so the
  * mascot itself only fills the middle ~70% of the frame. Each size therefore
- * zooms before the circular crop — without it the mascot shrinks into a disc
+ * zooms before the circular crop, without it the mascot shrinks into a disc
  * with stray line stubs at the rim.
  *
  * No background fill: the PNG is transparent, so any fill behind it paints a

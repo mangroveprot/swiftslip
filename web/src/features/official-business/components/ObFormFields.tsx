@@ -7,8 +7,8 @@ import { ObField, ObHint, Req } from "./ObSection";
 
 /**
  * The top of the OB sheet: the employee identity block and the three dated /
- * approval fields. All four identity values — ID number, name, department and
- * position — are editable: the profile only seeds a new form, and an employee
+ * approval fields. All four identity values, ID number, name, department and
+ * position, are editable: the profile only seeds a new form, and an employee
  * correcting a stale ID or a moved office must be able to fix it on the sheet.
  */
 export function ObFormFields({
@@ -130,7 +130,7 @@ function Identity({
   required?: boolean;
   /** The submit check found this required cell empty. */
   invalid?: boolean | undefined;
-  /** What to do about it — shown in red under the input once it is empty. */
+  /** What to do about it, shown in red under the input once it is empty. */
   hint?: string | undefined;
   onChange: (value: string) => void;
 }) {

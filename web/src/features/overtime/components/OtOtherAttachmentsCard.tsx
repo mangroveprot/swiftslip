@@ -22,13 +22,13 @@ const MAX_FILES = 8;
 /**
  * The OT form's extra supporting documents (the signed OT slip, a photo of the
  * time log, …): up to 8 files of 10 MB each, optional for approval. Same
- * behaviour and layout as `LoaOtherAttachmentsCard` — unlike the single
+ * behaviour and layout as `LoaOtherAttachmentsCard`, unlike the single
  * approval attachment above it, this card never carries approval.
  * Uploads run one request per file so every body stays at the single-file
  * 10 MB limit, and go through `AttachmentUploadDialog` so a batch can be
  * queued, checked and pasted in one go.
  *
- * This is the on-screen manager ONLY — it stores, lists and removes files and
+ * This is the on-screen manager ONLY, it stores, lists and removes files and
  * never prints. The printable copies are a separate element the editor mounts
  * in the preview column (`OtherAttachmentsPrint`), because this card sits in the
  * form column, which is `.no-print`: `display: none !important` on paper would
@@ -47,7 +47,7 @@ export function OtOtherAttachmentsCard({
   others: OtherFile[];
   /** Resolves a real row id, creating the draft's row when there is none yet. */
   onEnsureRow?: (() => Promise<string>) | undefined;
-  /** Called the moment the first file lands — a stored file is content, so the
+  /** Called the moment the first file lands, a stored file is content, so the
    *  form must be kept (never scaffold-discarded) from then on. */
   onUploaded?: (() => void) | undefined;
 }) {
@@ -55,7 +55,7 @@ export function OtOtherAttachmentsCard({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState<OtherFile | null>(null);
-  /** The file open in the modal viewer — this card never opens a new tab. */
+  /** The file open in the modal viewer, this card never opens a new tab. */
   const [viewing, setViewing] = useState<{ file: OtherFile; url: string } | null>(null);
   const { data: urls, isLoading: signing } = useQuery({
     ...otOtherUrlsQueryOptions(id),
@@ -66,7 +66,7 @@ export function OtOtherAttachmentsCard({
     await Promise.all([
       qc.invalidateQueries({ queryKey: otFormQueryOptions(target).queryKey }),
       qc.invalidateQueries({ queryKey: otOtherUrlsQueryOptions(target).queryKey }),
-      // The list shows name + "Updated" time — mark stale without re-fetching now.
+      // The list shows name + "Updated" time, mark stale without re-fetching now.
       qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey, refetchType: "none" }),
     ]);
   }
@@ -136,7 +136,7 @@ export function OtOtherAttachmentsCard({
               // Previewed exactly like the approval attachment: an image shows
               // inline under its name and opens the modal viewer on click, and
               // so does the open button. Nothing opens in a new browser tab.
-              // No print variants — this card is screen-only.
+              // No print variants, this card is screen-only.
               const isImage = IMAGE_RE.test(file.name);
               return (
                 <li key={file.path} className="flex items-center gap-2 rounded-lg border px-3 py-2">
@@ -212,7 +212,7 @@ export function OtOtherAttachmentsCard({
           >
             <Plus className="size-4" aria-hidden="true" />
             {others.length >= MAX_FILES
-              ? `All ${MAX_FILES} files added — remove one to add another`
+              ? `All ${MAX_FILES} files added. Remove one to add another`
               : `Add files: PDF, image… (up to ${MAX_FILES}, ${MAX_ATTACHMENT_MB} MB each)`}
           </button>
         ) : others.length ? null : (
@@ -229,7 +229,7 @@ export function OtOtherAttachmentsCard({
         onUploaded={onUploaded}
       />
 
-      {/* The viewer: one file at a time, read on screen — never a new tab. */}
+      {/* The viewer: one file at a time, read on screen, never a new tab. */}
       <AttachmentViewerDialog
         open={Boolean(viewing)}
         title="Other attachments"

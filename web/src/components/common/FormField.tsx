@@ -7,7 +7,7 @@ import { useState, type Ref } from "react";
  * It is the SAME field as the org pickers (`OrgSelect`): the small sentence
  * case `.lbl` label, the app's `.inp` box at the shared 44px height, the 1px
  * frame that darkens on focus with no glow, and one quiet line underneath.
- * The account-dialog spec asked for exactly that — before it, this label was
+ * The account-dialog spec asked for exactly that, before it, this label was
  * upper-case and the box was a different height and fill from the pickers
  * right below it.
  *
@@ -32,7 +32,7 @@ export function TextField({
   type?: "text" | "password";
   placeholder?: string;
   autoComplete?: string;
-  /** One line of red under the field — the field itself takes the red frame. */
+  /** One line of red under the field, the field itself takes the red frame. */
   error?: string | undefined;
   /** One quiet line under the field (password rules, "leave blank to keep…"). */
   hint?: string | undefined;
@@ -73,7 +73,7 @@ export function TextField({
           </button>
         ) : null}
       </span>
-      {/* Red line when the field is refused; the quiet rule otherwise — never
+      {/* Red line when the field is refused; the quiet rule otherwise, never
           both, or a rejected ID would read as though its helper also failed. */}
       {error ? (
         <span className="mt-1 block text-xs text-destructive">{error}</span>

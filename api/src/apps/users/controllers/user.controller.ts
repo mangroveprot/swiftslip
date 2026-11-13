@@ -17,7 +17,7 @@ class UserController {
     }
   }
 
-  /** `?ids=a,b,c` — the batch of profile photos the admin lists render. */
+  /** `?ids=a,b,c`, the batch of profile photos the admin lists render. */
   static async photos(req: Request, res: Response): Promise<void> {
     try {
       const ids = String(req.query.ids ?? '')

@@ -1,10 +1,10 @@
 /**
- * Settings page — port of `Pages/Settings.razor`: five `OptionManager`
+ * Settings page, port of `Pages/Settings.razor`: five `OptionManager`
  * cards (branches, departments, statuses, conditions, asset types) wired
  * to the option server functions.
  *
  * Expected failures (duplicate name, option still in use) arrive as
- * `{ ok: false, level, message }` and toast at warning/error level —
+ * `{ ok: false, level, message }` and toast at warning/error level,
  * mirroring the original's `ShowToast(..., Warning)` vs `Error` split.
  */
 import { useCallback, useEffect, useState } from "react";

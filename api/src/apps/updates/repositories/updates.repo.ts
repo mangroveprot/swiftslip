@@ -8,7 +8,7 @@
  * Optimization for Supabase free tier (Nano: 60 connections, 250 IOPS):
  * Instead of fetching the newest row's `id` (full HTTP response body + JSON
  * parse), we filter on `created_at > lastKnown` with `head: true`. PostgREST
- * translates `head: true` to a `SELECT count(*)` or exists probe — the response
+ * translates `head: true` to a `SELECT count(*)` or exists probe, the response
  * has NO body, only a `Content-Range` header. This is the lightest possible
  * HTTP round-trip: no JSON payload, minimal wire bytes, one indexed scan.
  *
@@ -31,7 +31,7 @@ export type ChangeSignal = {
 export class UpdatesRepository {
   /**
    * Seed probe: returns the newest row's id. Called once on connect to
-   * establish a baseline. Uses a full (but tiny) select — one row, one column.
+   * establish a baseline. Uses a full (but tiny) select, one row, one column.
    */
   async latestChange(): Promise<ChangeSignal | null> {
     const { data, error } = await getDb()
@@ -47,7 +47,7 @@ export class UpdatesRepository {
 
   /**
    * Incremental probe: returns true if any audit row exists newer than
-   * `afterIso`. Uses `head: true` so PostgREST sends NO response body —
+   * `afterIso`. Uses `head: true` so PostgREST sends NO response body,
    * just a `Content-Range` header. This is the lightest possible check:
    * one indexed scan, zero payload bytes on the wire.
    *

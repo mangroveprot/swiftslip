@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 /**
- * Reusable "are you sure?" dialog. Controlled — the caller owns `open` state
+ * Reusable "are you sure?" dialog. Controlled, the caller owns `open` state
  * and does the actual delete/action inside `onConfirm`.
  *
  * <ConfirmDialog

@@ -49,7 +49,7 @@ export const removeOtAttachment = async ({ data }: { data: z.input<typeof idInpu
   return { ok: true as const, ...removed };
 };
 
-/** One more supporting file — up to 8, 10 MB each. */
+/** One more supporting file, up to 8, 10 MB each. */
 export const uploadOtOtherAttachment = async ({
   data,
 }: {

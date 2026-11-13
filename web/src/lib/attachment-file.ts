@@ -4,7 +4,7 @@
  */
 import { apiStreamUrl } from "@/lib/api-client";
 
-/** What Chromium and friends can show inline — and therefore what can print. */
+/** What Chromium and friends can show inline, and therefore what can print. */
 export const IMAGE_RE = /\.(png|jpe?g|webp|gif|bmp)$/i;
 const PDF_RE = /\.pdf$/i;
 
@@ -16,7 +16,7 @@ export function isPrintableFile(name: string): boolean {
 /**
  * Turn a storage link into a same-origin one that `fetch` can actually read.
  *
- * A signed link is fine for `<img>` / `<iframe>` — the browser shows it without
+ * A signed link is fine for `<img>` / `<iframe>`, the browser shows it without
  * needing CORS. Reading the *bytes* is different: Backblaze B2 presigned URLs
  * answer `Access-Control-Allow-Origin: null`, so `fetch()` is blocked (and in
  * production the CSP `connect-src` list does not include B2 either). The API
@@ -24,7 +24,7 @@ export function isPrintableFile(name: string): boolean {
  * the bytes back from `/api/files/attachment`.
  */
 export function attachmentBytesUrl(url: string): string {
-  // Already same-origin, or an in-memory object/data URL — nothing to relay.
+  // Already same-origin, or an in-memory object/data URL, nothing to relay.
   if (/^(?:data|blob):/i.test(url) || url.startsWith("/")) return url;
   return apiStreamUrl(`/files/attachment?url=${encodeURIComponent(url)}`);
 }
@@ -46,7 +46,7 @@ export function fetchAttachmentBytes(url: string): Promise<Response> {
  *
  * A bare `<a download>` is not enough: these links point at private storage, so
  * `download` is ignored cross-origin and the browser navigates to the file
- * instead of saving it. Fetching the bytes first and saving the blob works —
+ * instead of saving it. Fetching the bytes first and saving the blob works,
  * through our own origin, so no CORS header is required.
  */
 export async function downloadFromUrl(url: string, fileName: string): Promise<void> {

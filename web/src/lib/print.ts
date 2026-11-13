@@ -3,7 +3,7 @@
  *
  * Every editor's Print button used to call `window.print()` directly. Their
  * Export menu is a Radix dropdown, which is portaled to `<body>` and then runs
- * a ~150 ms fade/zoom-out before it is removed — so the browser dialog often
+ * a ~150 ms fade/zoom-out before it is removed, so the browser dialog often
  * opened while the menu was still on screen, and the menu landed in the
  * snapshot. On a phone, where the menu covers most of the form, that meant a
  * printed sheet with "Save as PDF / Print / Download Word" written across it.
@@ -57,7 +57,7 @@ export function closeFloatingLayers(): void {
  * Print the sheet: close every floating layer, wait two frames so the browser
  * has painted the page without them, then open the dialog.
  *
- * Two frames matter — one frame only guarantees the DOM changed, not that the
+ * Two frames matter, one frame only guarantees the DOM changed, not that the
  * faded-out menu is gone from the painted page the snapshot is taken from.
  */
 export function printSheet(): void {

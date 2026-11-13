@@ -1,11 +1,11 @@
 /**
- * The HR approval workflow for Official Business forms — statuses, labels and
+ * The HR approval workflow for Official Business forms, statuses, labels and
  * the derived facts both the employee UI and the HR review queue need.
  *
  * Kept in `shared` because the API enforces the state machine and the web UI
  * renders it; a second copy of the status list is how the two drift apart.
  *
- * SCOPE — Official Business only (see HR_APPROVAL_SPEC.md §1). The other four
+ * SCOPE, Official Business only (see HR_APPROVAL_SPEC.md §1). The other four
  * form flows are untouched.
  */
 import type { ObEntry, ObForm } from "./types";
@@ -26,7 +26,7 @@ export const OB_HR_STATUSES = [
 
 export type ObHrStatus = (typeof OB_HR_STATUSES)[number];
 
-/** Plain-English label for each state — the badge text everywhere. */
+/** Plain-English label for each state, the badge text everywhere. */
 export const OB_HR_STATUS_LABELS: Record<ObHrStatus, string> = {
   draft: "Draft",
   submitted: "Waiting for HR",
@@ -38,7 +38,7 @@ export const OB_HR_STATUS_LABELS: Record<ObHrStatus, string> = {
 };
 
 /**
- * One field the employee changed before a resubmit — keyed the same way the
+ * One field the employee changed before a resubmit, keyed the same way the
  * required-field list keys a cell (`entry:<idx>:<column>`), so the HR sheet can
  * put a "Changed / Was: …" note under exactly that box.
  */
@@ -76,8 +76,8 @@ export type ObResubmitHrSnapshot = {
 
 /**
  * One trip back to HR (migration 0037): the form has been through the queue
- * before and is in it again. `how` says why it came back — `rejected` is a
- * resubmit after HR bounced it, `edited` is content changed after approval —
+ * before and is in it again. `how` says why it came back, `rejected` is a
+ * resubmit after HR bounced it, `edited` is content changed after approval,
  * and `reason` keeps HR's rejection text the resubmit answers (the live
  * `hr_reject_reason` column is cleared on the next submit, so without this the
  * history would lose what was actually fixed).
@@ -116,7 +116,7 @@ export type ObResubmitEvent = {
 };
 
 /**
- * One complete version of the employee-written content — the header fields and
+ * One complete version of the employee-written content, the header fields and
  * the itinerary rows. Stored whole on `ob_forms.pending_content` while a
  * post-approval edit waits as a draft, and on `previous_content` while a
  * resubmission sits in HR's queue so it can be withdrawn (migration 0039).
@@ -154,7 +154,7 @@ export function latestObResubmit(
   return history && history.length ? (history[history.length - 1] ?? null) : null;
 }
 
-/** "1st", "2nd", "3rd", "4th", "11th", "21st" — for "9th submission". */
+/** "1st", "2nd", "3rd", "4th", "11th", "21st", for "9th submission". */
 export function ordinal(value: number): string {
   const n = Math.max(1, Math.trunc(value));
   const mod100 = n % 100;
@@ -212,7 +212,7 @@ export type ObHrFields = {
   submitted_at: string | null;
   /** How many times the form has gone back to HR for review (migration 0037). */
   resubmit_count: number;
-  /** The trips themselves, oldest first — the history both screens show. */
+  /** The trips themselves, oldest first, the history both screens show. */
   resubmit_history: ObResubmitEvent[];
   /**
    * The content HR last reviewed (migration 0038). The API writes it on every
@@ -242,7 +242,7 @@ export type ObHrFields = {
   arrival_signed_at: string | null;
 };
 
-/** Defaults for a fresh draft — mirrors the migration's column defaults. */
+/** Defaults for a fresh draft, mirrors the migration's column defaults. */
 export const EMPTY_OB_HR_FIELDS: ObHrFields = {
   hr_status: "draft",
   submitted_at: null,
@@ -269,8 +269,8 @@ export const EMPTY_OB_HR_FIELDS: ObHrFields = {
 
 /**
  * True when the employee must not edit the form any more: it is sitting in HR's
- * review queue. Everything else — including an already approved, departed or
- * completed form — stays editable. An edit to one of those is held as a draft
+ * review queue. Everything else, including an already approved, departed or
+ * completed form, stays editable. An edit to one of those is held as a draft
  * (see `needsReapprovalAfterSave`) until the employee explicitly resubmits.
  */
 export function isObLocked(status: ObHrStatus): boolean {
@@ -282,7 +282,7 @@ export function isObLocked(status: ObHrStatus): boolean {
  * review. The API no longer sends it back automatically: the edit is stored as
  * an unsent draft and HR keeps seeing the approved version until the employee
  * presses "Resubmit to HR". `waiting_supervisor` is handled alongside these
- * three because HR approved that content too — only the supervisor half is
+ * three because HR approved that content too, only the supervisor half is
  * still missing.
  */
 export function needsReapprovalAfterSave(status: ObHrStatus): boolean {
@@ -304,7 +304,7 @@ export function obSupervisorDone(
 /**
  * The supervisor indicator, derived from the two existing fields rather than
  * a new one: `approved_by` filled in AND the approval slip ticked. Shows
- * "waiting" on its own and never blocks HR's approval or departure (D3) — HR
+ * "waiting" on its own and never blocks HR's approval or departure (D3), HR
  * can approve and sign out a form whose supervisor has not signed off yet; the
  * form then waits in `waiting_supervisor`, and completion stays blocked until
  * the signature arrives.
@@ -320,7 +320,7 @@ export function obSupervisorState(form: Pick<ObForm, "approved_by" | "attachment
 }
 
 /**
- * A stored `YYYY-MM-DD` as a local Date built from its parts — never
+ * A stored `YYYY-MM-DD` as a local Date built from its parts, never
  * `new Date(string)`, which reads ISO strings as UTC and can push the day
  * backwards in a west-of-UTC zone. Anything else (empty, or a hand-typed
  * legacy value) is null: it cannot be late against a date we can't read.
@@ -341,7 +341,7 @@ function startOfToday(): Date {
 export type ObReturnState = {
   /** The OB date as a local Date, when it is a plain `YYYY-MM-DD`. */
   due: Date | null;
-  /** Departure signed and no arrival signed yet — the employee is out. */
+  /** Departure signed and no arrival signed yet, the employee is out. */
   out: boolean;
   /** Out, past the OB date, nothing signed on arrival: the queue's Overdue. */
   overdue: boolean;
@@ -358,7 +358,7 @@ export type ObReturnState = {
  * that is left to check is whether `date_of_ob` has passed. The queue's
  * Overdue tab, banner and "due back" lines all read from this one function.
  *
- * `date_of_ob` is the date the form is due back — the reference's "Due back".
+ * `date_of_ob` is the date the form is due back, the reference's "Due back".
  */
 export function obReturnState(form: { hr_status: ObHrStatus; date_of_ob: string }): ObReturnState {
   const due = parseObDate(form.date_of_ob);

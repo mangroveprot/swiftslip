@@ -5,7 +5,7 @@ export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
 /**
  * Accepted uploads. The browser-declared MIME type is only a claim, so every
  * entry also checks the file's first bytes: nothing is stored as a PDF unless
- * it actually starts with `%PDF-`. The list is deliberately narrow — HTML, SVG,
+ * it actually starts with `%PDF-`. The list is deliberately narrow, HTML, SVG,
  * scripts and archives are refused because a signed URL would serve them.
  */
 function startsWith(
@@ -81,7 +81,7 @@ function uploadType(declared: string, filename: string): string {
 /**
  * Types to try, declared type first. Windows sometimes reports an Office file
  * as `application/msword` even when the bytes are a `.docx` ZIP, so the
- * extension is kept as a second opinion — the signature still has to agree
+ * extension is kept as a second opinion, the signature still has to agree
  * with whichever type is finally stored.
  */
 function candidateTypes(declared: string, filename: string): string[] {

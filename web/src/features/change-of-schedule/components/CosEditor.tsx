@@ -60,7 +60,7 @@ type SaveStatus = "idle" | AutoSaveStatus;
 
 const DRAFT_FEATURE = "cos";
 
-/** Schedule lines worth persisting — a row counts only if it has any value. */
+/** Schedule lines worth persisting, a row counts only if it has any value. */
 function buildRows(rows: CosSchedule[]): CosSchedule[] {
   return rows.filter((r) => !isBlankSchedule(r)).map((r, idx) => ({ ...r, idx }));
 }
@@ -75,7 +75,7 @@ function writeFormCache(
 }
 
 /**
- * One editor per record — including across that record's own save. Saving a
+ * One editor per record, including across that record's own save. Saving a
  * draft swaps `$id` from `draft_…` to the row `insertDraft` just created: the
  * SAME record, so the body keeps its mount (a remount would flash the
  * skeleton over content that never changed). Any other id is a different
@@ -101,7 +101,7 @@ function CosEditorBody({
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  // A draft id means this form does not exist in the database yet — nothing was
+  // A draft id means this form does not exist in the database yet, nothing was
   // written when the user pressed "New form", and nothing will be until they
   // enter something of their own.
   const isDraft = isDraftId(id);
@@ -170,7 +170,7 @@ function CosEditorBody({
       promoteSignatureBackup("cos", id, created);
       promoteDraft(DRAFT_FEATURE, id, created, { form: f, schedules: r });
       // Mark persisted BEFORE navigate: an unmount flush must not see the draft
-      // still pending — that would insert a second, blank row.
+      // still pending, that would insert a second, blank row.
       auto.setPersisted(snapshotOf(f, r));
       // Keep this same editor mounted through the swap: the wrapper's key
       // follows this pair instead of remounting over unchanged content.
@@ -191,7 +191,7 @@ function CosEditorBody({
   async function writeSnapshot(): Promise<void> {
     const { form: f, rows: r } = latestRef.current;
     if (!f) return;
-    // insertDraft already writes content — a second save races and errors.
+    // insertDraft already writes content, a second save races and errors.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -234,7 +234,7 @@ function CosEditorBody({
     auto.setPersisted(incoming);
   }, [data, profileReady, rowId, id, auto]);
 
-  // Build a draft from the profile — in the browser, with no request. The starting
+  // Build a draft from the profile, in the browser, with no request. The starting
   // point becomes the baseline: whatever differs from it is something the user
   // actually entered, and that is what creates the form.
   useEffect(() => {
@@ -249,7 +249,7 @@ function CosEditorBody({
 
   // Keep a local backup of the signature so it survives a failed save. Derived
   // values only (not the form object), so the effect re-runs when the signature
-  // changes — and skips the pre-hydration render where form is still null.
+  // changes, and skips the pre-hydration render where form is still null.
   const sig = form?.employee_signature;
   const formLoaded = form !== null;
   useEffect(() => {
@@ -274,7 +274,7 @@ function CosEditorBody({
   }, [saveStatus]);
 
   // Leaving: flush only once a real row exists. A draft with no row stays in
-  // localStorage — flushing here would insert during StrictMode remounts.
+  // localStorage, flushing here would insert during StrictMode remounts.
   useEffect(() => {
     return () => {
       if (rowIdRef.current) auto.flush();
@@ -289,9 +289,9 @@ function CosEditorBody({
     return <FormUnavailable backTo="/change-of-schedule" label="Change of Schedule forms" />;
   if (!form) return <CosEditorSkeleton />;
 
-  /** Explicit Save — writes now rather than waiting for the timer. */
+  /** Explicit Save, writes now rather than waiting for the timer. */
   async function persist(f: CosForm, schedules: CosSchedule[]) {
-    // insertDraft already writes content — don't save again on first create.
+    // insertDraft already writes content, don't save again on first create.
     if (!rowIdRef.current) {
       await insertDraft();
       return;
@@ -340,7 +340,7 @@ function CosEditorBody({
     setBusy(true);
     const toastId = toast.loading("Preparing Word file…");
     try {
-      // docxtemplater + pizzip are only needed when exporting (~330 kB) — keeping
+      // docxtemplater + pizzip are only needed when exporting (~330 kB), keeping
       // them out of the route chunk makes opening this form much faster.
       const { downloadCosWord } = await import("../lib/word-export");
       await downloadCosWord({
@@ -356,7 +356,7 @@ function CosEditorBody({
     }
   }
 
-  // Always at the top of the preview column — the upload prompt and an already
+  // Always at the top of the preview column, the upload prompt and an already
   // attached slip both belong where you look first.
   const attachmentCard = (
     <CosAttachmentCard
@@ -477,7 +477,7 @@ function CosEditorBody({
       </header>
 
       <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
-        {/* The sheet: one borderless card holding every block of the form — the
+        {/* The sheet: one borderless card holding every block of the form, the
             OB editor's left column. `form-fill` is what keeps the filled inputs
             the COS cards always had; `@container` is what the blocks inside
             measure their columns against. The rules between blocks are the
@@ -503,7 +503,7 @@ function CosEditorBody({
           </div>
         </div>
 
-        {/* Attachment first, always — but on print it drops back below the
+        {/* Attachment first, always, but on print it drops back below the
             sheet (`print:order`) so a slip still follows the form on its own
             page. */}
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
@@ -523,7 +523,7 @@ function CosEditorBody({
             </button>
           </div>
           <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
-            {/* The editor's rows as they stand — NOT the persisted subset — so
+            {/* The editor's rows as they stand, NOT the persisted subset, so
                 adding a schedule line shows up in the sheet straight away. */}
             <CosPreview sheetId="cos-sheet" form={form} schedules={rows} />
           </div>

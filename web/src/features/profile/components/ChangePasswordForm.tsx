@@ -91,7 +91,7 @@ export function ChangePasswordForm() {
   );
 }
 
-/** A quick, local-only heuristic — no data leaves the browser until submit. */
+/** A quick, local-only heuristic, no data leaves the browser until submit. */
 function passwordStrength(password: string): { percent: number; label: string; color: string } {
   if (!password) return { percent: 0, label: "", color: "" };
   let score = 0;

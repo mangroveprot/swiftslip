@@ -1,5 +1,5 @@
 /**
- * Lookup-option editor card — port of `OptionManager.razor`
+ * Lookup-option editor card, port of `OptionManager.razor`
  * (inline add row, inline rename, usage counts, delete confirm that is
  * disabled while an option is still referenced by assets).
  */

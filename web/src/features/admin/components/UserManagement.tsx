@@ -43,13 +43,13 @@ type Account = {
   id: string;
   /** The employee's real full name, joined in from their profile ("" when unset). */
   full_name: string;
-  /** Profile `area` — the office/branch, shown as Designation. */
+  /** Profile `area`, the office/branch, shown as Designation. */
   designation: string;
-  /** Profile `department` — the org unit the position belongs to. */
+  /** Profile `department`, the org unit the position belongs to. */
   department: string;
-  /** Profile `designation` — the job title. */
+  /** Profile `designation`, the job title. */
   position: string;
-  /** Profile `employer` — the company the employee works for (0 = Regasco, 1 = Mindbridge). */
+  /** Profile `employer`, the company the employee works for (0 = Regasco, 1 = Mindbridge). */
   employer: Employer;
   id_number: string;
   role: Role;
@@ -81,7 +81,7 @@ const ACCESS_LEVELS: Array<{ value: Role; label: string; blurb: string }> = [
 /**
  * The department a row shows: the one stored on the profile, or the one its
  * position implies for rows that were never backfilled / predate migration
- * 0023 — resolved against the live `org_positions` rows, never a built-in
+ * 0023, resolved against the live `org_positions` rows, never a built-in
  * copy. The office branch is never a department, so `designation` is not used.
  */
 function displayDepartment(a: Account, lists?: OrgLists) {
@@ -116,9 +116,9 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
  *
  * The org columns read the way a form does: Designation is the office the
  * account works at, and the Position it holds sits under a Department (IT
- * Support and IT Programmer under Information Technology) — both stored on the
+ * Support and IT Programmer under Information Technology), both stored on the
  * profile, where a position implies its department until one is set. The Name
- * column shows the employee's real full name from their profile — the
+ * column shows the employee's real full name from their profile, the
  * free-text sidebar label is no longer edited here. (Same server functions as
  * the old "Access passwords" list.)
  */
@@ -129,7 +129,7 @@ export function UserManagement() {
   // The same org tables the pickers read, so a row whose department is blank
   // can still show the department its position is filed under.
   const { data: orgLists } = useQuery(orgOptionsQueryOptions());
-  // Faces for the roster — same shared batch cache the other admin lists use,
+  // Faces for the roster, same shared batch cache the other admin lists use,
   // so opening User management after App access costs no extra request.
   const photos = useUserPhotos((accounts ?? []).map((account) => account.id));
   const [search, setSearch] = useState("");
@@ -189,7 +189,7 @@ export function UserManagement() {
     }
   }
 
-  /** The tab counts — the header no longer repeats them in separate cards. */
+  /** The tab counts, the header no longer repeats them in separate cards. */
   const counts: Record<Filter, number> = {
     all: totals.accounts,
     admin: totals.admins,
@@ -295,7 +295,7 @@ export function UserManagement() {
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {all.length
-                ? `Nothing matches “${search.trim()}”. Try a different keyword — or switch the filter.`
+                ? `Nothing matches “${search.trim()}”. Try a different keyword, or switch the filter.`
                 : "Create one above to get started."}
             </p>
           </div>
@@ -590,7 +590,7 @@ export function UserManagement() {
   );
 }
 
-/** Create ("new") and edit share one dialog — same fields, same labels, same
+/** Create ("new") and edit share one dialog, same fields, same labels, same
  *  44px boxes and the same custom pickers, different wording underneath:
  *  "Create account" / "Save changes", a required password against one that may
  *  stay blank, and the ID number that only Create can be refused on (the red
@@ -648,7 +648,7 @@ function AccountDialog({
     setEmployer(isNew ? 1 : (account?.employer ?? 1));
   }
 
-  // The Position picker only offers what fits under the chosen Department —
+  // The Position picker only offers what fits under the chosen Department,
   // a Position lives under exactly one Department, so the pair is the unit.
   // Both lists come straight from the editable org options table (no built-in
   // fallback copy), so a renamed item shows up here without a code change and
@@ -668,7 +668,7 @@ function AccountDialog({
       : baseDepartments;
 
   /**
-   * Return to the ID box with the caret at the END and nothing selected — the
+   * Return to the ID box with the caret at the END and nothing selected, the
    * spec's "the text is not selected, the cursor sits at the end". Programmed
    * focus is the only place that needs saying out loud: left to the browser it
    * can arrive as a full-width highlight, which is what made the old dialog
@@ -721,14 +721,14 @@ function AccountDialog({
           idNumber: idNumber.trim(),
           role,
           // Create: the password is the account's first one (required above).
-          // Edit: blank = keep the existing password — only rehash when given.
+          // Edit: blank = keep the existing password, only rehash when given.
           // No label is sent either way: the service keeps the sidebar label
           // as-is (the real name comes from the employee's profile).
           password: password || undefined,
           // Blank leaves the employee's own value alone rather than clearing it,
           // so an admin who only meant to change the role can't wipe the
           // designation the employee typed under "My Account". The employee can
-          // still change these themselves — the profile is shared.
+          // still change these themselves, the profile is shared.
           ...(designation.trim() ? { designation: designation.trim() } : {}),
           ...(department.trim() ? { department: department.trim() } : {}),
           ...(position.trim() ? { position: position.trim() } : {}),
@@ -759,7 +759,7 @@ function AccountDialog({
     <>
       <Dialog open={editing !== null} onOpenChange={(open) => !open && !busy && onClose()}>
         <DialogContent
-          // Radix already traps Tab inside the dialog and closes it on Esc —
+          // Radix already traps Tab inside the dialog and closes it on Esc,
           // what it does NOT get right is where the caret starts: it would put
           // it on the X in the corner. The dialog opens on its first field, so
           // the ID number can be typed straight away.
@@ -796,7 +796,7 @@ function AccountDialog({
               />
 
               {/* Access level is two radios, each carrying the line that says
-                  what it can do — the select it replaces made nobody guess
+                  what it can do, the select it replaces made nobody guess
                   what "Administrator" meant. Native inputs, so the arrow keys
                   move between the two exactly as a radio group should. */}
               <fieldset>
@@ -852,7 +852,7 @@ function AccountDialog({
                   emptyLabel="Select a department"
                   onChange={(v) => {
                     setDepartment(v);
-                    // A Position lives under exactly one Department — if the one
+                    // A Position lives under exactly one Department, if the one
                     // already picked doesn't belong here, clear it rather than save
                     // an impossible pair.
                     if (position && !positionsUnder(v, orgLists).includes(position))
@@ -880,7 +880,7 @@ function AccountDialog({
                   const next = normalizePosition(v);
                   setPosition(next);
                   // The department follows the position only when the current one
-                  // can't hold it — a department the admin just picked by hand
+                  // can't hold it, a department the admin just picked by hand
                   // must stay picked, or choosing a position under "IT DEP"
                   // silently rewrote the department back to "Information
                   // Technology".
@@ -972,7 +972,7 @@ function AccountDialog({
           else setPosition(next);
         }}
         onDeleted={(kind) => {
-          // The value is gone from the list, so drop it from the form too —
+          // The value is gone from the list, so drop it from the form too,
           // otherwise saving would put the deleted name straight back on the
           // profile. A deleted department takes its positions' pairing with it.
           if (kind === "designation") {

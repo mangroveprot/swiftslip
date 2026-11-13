@@ -42,7 +42,7 @@ export function OtList() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
 
-  // A draft lives only in the browser, so there is nothing here to filter out —
+  // A draft lives only in the browser, so there is nothing here to filter out,
   // the list shows exactly the forms that are in the database.
   const visible = forms ?? [];
 
@@ -178,7 +178,7 @@ function OtCard({
 
       {/* Approved forms get the seal, laid over the card's quiet bottom-right
           corner so it never sits on the department/date lines. Unapproved
-          forms show nothing at all — same rule as the DTR and OB lists. The
+          forms show nothing at all, same rule as the DTR and OB lists. The
           min-height holds that corner open even when a record has fewer rows. */}
       {f.attachment_approved ? (
         <ApprovedStamp

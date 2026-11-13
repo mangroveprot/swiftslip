@@ -25,7 +25,7 @@ const EXTENSIONS: Record<string, string> = {
 
 /**
  * A fresh bucket-root key: `{uuid}.{ext}` (STORAGE_GUIDE.md §4). The client's
- * filename never becomes the key — the database row keeps it as
+ * filename never becomes the key, the database row keeps it as
  * `original_name`, for display only.
  */
 export function storageKey(contentType: string, originalName: string): string {

@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { Loader2 } from "lucide-react";
 
 /**
- * Plain confirmation modal — the inventory "Delete assets?" warning look
+ * Plain confirmation modal, the inventory "Delete assets?" warning look
  * (dimmed overlay, centered card, Cancel + red confirm), shared so the
  * sign-out warning is literally the same component: same classes, same
  * layout, same way of showing.
@@ -21,7 +21,7 @@ type ConfirmModalProps = {
   onCancel: () => void;
   /**
    * While the confirm action is in flight, the confirm button shows a spinner
-   * and is disabled, and Cancel is disabled too — so the user can't dismiss a
+   * and is disabled, and Cancel is disabled too, so the user can't dismiss a
    * slow request and keep poking at the app behind it (e.g. a laggy sign-out).
    */
   busy?: boolean;

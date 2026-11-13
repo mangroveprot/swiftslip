@@ -80,7 +80,7 @@
   --muted-foreground: oklch(0.52 0.02 250);
   --accent: oklch(0.62 0.13 45);
   --accent-foreground: oklch(0.99 0.005 85);
-  /* Same hue as --primary (250, the "New record" button navy) — for the active nav item. */
+  /* Same hue as --primary (250, the "New record" button navy), for the active nav item. */
   --accent-tint: oklch(0.91 0.025 250);
   --accent-tint-foreground: oklch(0.24 0.02 250);
   --destructive: oklch(0.52 0.19 27);
@@ -112,7 +112,7 @@
      white for the mobile header bars, which are top bars rather than side
      panels and look odd carrying a vertical sweep.
      One mint hue with a ~2-stop value shift (house style: one hue, low chroma),
-     vertical — it picks up the mint end of --app-gradient so the panel still
+     vertical, it picks up the mint end of --app-gradient so the panel still
      separates from the page behind it without becoming a second gradient. */
   --sidebar-surface: linear-gradient(
     180deg,
@@ -120,7 +120,7 @@
     oklch(0.963 0.013 163) 100%
   );
   /* Mint → cream sweep. The peach/salmon end (hue 45 and 35) was cut on
-     2026-10-14 — that orange corner read as AI-generated chrome. */
+     2026-10-14, that orange corner read as AI-generated chrome. */
   --app-gradient: linear-gradient(
     135deg,
     oklch(0.9 0.06 175) 0%,
@@ -133,7 +133,7 @@
 /* ── Dark theme ───────────────────────────────────────────────────────────
    Opt-in and remembered per browser (localStorage key `swiftslip-theme`),
    never on the account. The `dark` class is set on <html> by the pre-paint
-   script in index.html — so a reload never flashes white — and kept in step
+   script in index.html, so a reload never flashes white, and kept in step
    after that by `lib/theme.ts`.
    Only token values change here. Every component already paints from these
    tokens, so light mode is untouched and nothing needs duplicating. Three
@@ -205,7 +205,7 @@
   /* --paper / --ink are deliberately NOT overridden: they paint the printable
      sheets (DTR, LOA, OB, OT previews and their skeletons) and the record
      thumbnails. A form has to look on screen the way it will look on paper, so
-     the sheet stays white with dark ink in both themes — the same rule the
+     the sheet stays white with dark ink in both themes, the same rule the
      inventory report preview follows. */
   --glass: oklch(0.22 0.004 250);
   /* Same one-hue sweep as light mode, dropped to a dark value shift so the
@@ -286,8 +286,8 @@
 @utility inp {
   display: block;
   width: 100%;
-  /* 44px: the one field height. Every ordinary input — dialog, settings,
-     picker — is the same box, so nothing in a form looks like a control from
+  /* 44px: the one field height. Every ordinary input, dialog, settings,
+     picker, is the same box, so nothing in a form looks like a control from
      a different form. The filled form editors opt out below. */
   min-height: 2.75rem;
   border: 1px solid var(--color-border);
@@ -310,7 +310,7 @@
 
 /* ── Motion ───────────────────────────────────────────────────────────────
    Small, consistent ease-in-out transitions so every interactive element
-   feels smooth — hovers, focus rings, presses, colour changes. All animation
+   feels smooth, hovers, focus rings, presses, colour changes. All animation
    is switched off automatically when the user prefers reduced motion; the
    hover/focus *states* below still apply, they just won't animate. */
 @media (prefers-reduced-motion: no-preference) {
@@ -345,7 +345,7 @@
 }
 
 /* ── Zoom cards ─────────────────────────────────────────────────────────
-   Big "pick a screen" cards (the /choose picker) lift and zoom on hover —
+   Big "pick a screen" cards (the /choose picker) lift and zoom on hover,
    slower and roomier than the 0.12s default above, so choosing feels
    deliberate rather than twitchy. Unlayered on purpose: the `a` rule above
    is unlayered too, so only a plain class like this can override it (a
@@ -380,8 +380,8 @@
   cursor: not-allowed;
 }
 
-/* Focus is ONE rule, everywhere: the 1px frame goes to the ink colour — near
-   black on the light theme, near white on the dark one — and nothing else
+/* Focus is ONE rule, everywhere: the 1px frame goes to the ink colour, near
+   black on the light theme, near white on the dark one, and nothing else
    moves. The old3px halo is gone on purpose: the account-dialog spec asks for
    "a 1px border, no glow", and a glowing field read as a different control
    from the rest of the form. */
@@ -409,7 +409,7 @@
    The three form editors lay their fields out as labelled boxes: white
    rounded cards, each opening with a title row and holding its own group of
    fields. Inside those cards the inputs drop their outline for the filled
-   field of that layout — the smooth look the LOA form introduced, now shared
+   field of that layout, the smooth look the LOA form introduced, now shared
    by OB and the DTR so all three read the same. Font sizes and weights are
    deliberately untouched: `.inp` and `.lbl` still decide those. */
 .form-fill .inp {
@@ -449,7 +449,7 @@
 }
 
 /* Tailwind's preflight makes every `img` display:block, and a block element is
-   not centred by `text-align` — without this the logo sits hard left. */
+   not centred by `text-align`, without this the logo sits hard left. */
 .cos-sheet .logo img {
   display: block;
   margin: 0 auto;
@@ -495,7 +495,7 @@
 .cos-sheet .info .label {
   display: block;
   margin-bottom: 3px;
-  /* A step under the 13px body — the OB preview does the same for its tight
+  /* A step under the 13px body, the OB preview does the same for its tight
      cells (`DEPARTURE` / `RETURN`). At 13px the three info labels are wider
      than their column in the narrow preview column, and "Plant/Location:" has
      no space in it, so it overflows instead of wrapping. */
@@ -713,7 +713,7 @@
 
 /* One grid for the three lower boxes. Every horizontal rule therefore runs
    from edge to edge, and the section separators are ordinary cells in the same
-   rows — so no white gap can open between advances, approvals and accounting. */
+   rows, so no white gap can open between advances, approvals and accounting. */
 .liq-sheet .liq-bottom td {
   border: 1.5px solid #000;
   padding: 0 2px;
@@ -776,7 +776,7 @@
   white-space: nowrap;
 }
 
-/* The cell rules above are `td`-qualified, so these must be too — otherwise
+/* The cell rules above are `td`-qualified, so these must be too, otherwise
    `.liq-bottom td`'s 8px wins and the names print small. */
 .liq-sheet .liq-bottom td.lb-name {
   font-size: 15px;
@@ -896,7 +896,7 @@
   }
 
   /* Toasts are overlay UI and must never print. Hiding Sonner's section also
-     removes the only box that follows the named-page LOA sheet — leaving it
+     removes the only box that follows the named-page LOA sheet, leaving it
      makes Chromium close the `loa` page group and emit an empty trailing
      page under the default @page. */
   [data-sonner-toaster] {
@@ -904,7 +904,7 @@
   }
 
   /* Floating layers portal straight to <body>, so they sit OUTSIDE every
-     `.no-print` subtree. A dropdown still open — or caught mid exit-animation —
+     `.no-print` subtree. A dropdown still open, or caught mid exit-animation,
      when Print is chosen therefore used to land in the snapshot, most visibly
      on phones and narrow windows where the export menu covers the sheet.
      Matched by attribute rather than by position so every module's menu is
@@ -980,7 +980,7 @@
   }
 
   /* Chromium re-opens the default @page group the moment any default-group
-     content follows a named-page element — even an empty box — which used to
+     content follows a named-page element, even an empty box, which used to
      emit a blank trailing page. Binding the whole body to the `loa` group
      while the sheet prints means no default-group page is ever opened. */
   body:has(.loa-print-sheet) {
@@ -991,7 +991,7 @@
     size: A4 portrait;
     /* Horizontal margins are an exact copy of the template's pgMar (right 296 /
        bottom 360 / left 540 twips) so the 738px content box lands at [36..774].
-       The TOP margin is deliberately NOT 1808 twips — the template keeps its
+       The TOP margin is deliberately NOT 1808 twips, the template keeps its
        logo / address / phone in a Word header (positioned inside the top
        margin), but the browser preview renders them as inline content. 13.8mm
        (~782 twips) plus the inline margins places the table body at the same
@@ -1054,7 +1054,7 @@
 }
 
 /* ==========================================================================
-   RGC ASSET INVENTORY — ported from the source Razor app's
+   RGC ASSET INVENTORY, ported from the source Razor app's
    `asset_inventory/RGCDIPOLOG_INVENTORY.Shared/Styles/tailwind.css` (Tailwind 3)
    into this app's Tailwind 4 stylesheet.
    • Scoped to the `.rgc-inventory` root / inventory-specific class names so
@@ -1062,12 +1062,12 @@
    • v3 → v4 renames applied for pixel parity: shadow-sm → shadow-xs,
      bg-gradient-* → bg-linear-*.
    • Dropped: offline-sync classes (asset-row-remote-flash) and Blazor's
-     #blazor-error-ui — offline sync was intentionally not ported.
+     #blazor-error-ui, offline sync was intentionally not ported.
    • Image URLs point at /inventory/* (files copied to `public/inventory`).
    ========================================================================== */
 
 @theme {
-  /* Brand palette — from the source `tailwind.config.js`. */
+  /* Brand palette, from the source `tailwind.config.js`. */
   --color-brand: #2563eb;
   --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
@@ -1131,7 +1131,7 @@
     @apply bg-white/20 text-white;
   }
 
-  /* Brand wordmark — blue + white outline; REGASCO sets width, subtitle fits to it. */
+  /* Brand wordmark, blue + white outline; REGASCO sets width, subtitle fits to it. */
   .regasco-mark {
     @apply inline-flex flex-col items-stretch leading-none min-w-0;
     width: max-content;
@@ -1177,7 +1177,7 @@
     paint-order: stroke fill;
   }
 
-  /* SwiftSlip wordmark in the Regasco house style — Montserrat 800 in the
+  /* SwiftSlip wordmark in the Regasco house style, Montserrat 800 in the
      wordmark purple (#4c265e, sampled from regasco_wordmark.webp) with the
      brand-orange rule underneath, the way the REGASCO logo is set. Used beside
      the Regasco mascot on the sign-in page and the app-chooser header. */
@@ -1191,7 +1191,7 @@
     color: #4c265e;
   }
 
-  /* On dark surfaces (the sidebar) the purple loses contrast — set the word in
+  /* On dark surfaces (the sidebar) the purple loses contrast, set the word in
      white and keep the brand-orange rule underneath. */
   .dark .regasco-word {
     color: #ffffff;
@@ -1206,7 +1206,7 @@
     border-radius: 1px;
   }
 
-  /* Sidebar brand strip — brand orange + halftone; wave cutout reveals sidebar photo */
+  /* Sidebar brand strip, brand orange + halftone; wave cutout reveals sidebar photo */
   .regasco-header {
     @apply relative shrink-0;
     background-color: #f25a0b;
@@ -1254,7 +1254,7 @@
     );
   }
 
-  /* Assets page metric cards — idle plain; active shows full ring in accent color */
+  /* Assets page metric cards, idle plain; active shows full ring in accent color */
   .stat-card {
     @apply relative overflow-hidden rounded-xl border border-border bg-card p-4
            shadow-xs appearance-none cursor-pointer transition-shadow;
@@ -1320,7 +1320,7 @@
     @apply ring-2 ring-rose-400;
   }
 
-  /* Active filter “lens” — appears only while the inventory view is constrained */
+  /* Active filter “lens”, appears only while the inventory view is constrained */
   .filter-lens {
     @apply relative overflow-hidden rounded-lg border border-border bg-card shadow-xs;
     animation: filter-lens-in 220ms ease-out;
@@ -1344,7 +1344,7 @@
 
   /* Expanding halo drawn by a pseudo-element so the loop animates transform/
      opacity on the compositor. The old box-shadow animation repaints the dot
-     on the main thread every frame while a filter chip is open — the only
+     on the main thread every frame while a filter chip is open, the only
      always-on work during scrolling. Same colour, same 0→8px growth
      (scale 2.6 = (5px + 8px) / 5px), same easing, same visual result. */
   .filter-lens__pulse::after {
@@ -1413,7 +1413,7 @@
     }
   }
 
-  /* Enterprise asset inventory table — fills remaining height; rows scroll inside */
+  /* Enterprise asset inventory table, fills remaining height; rows scroll inside */
   .asset-table {
     @apply flex flex-col min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xs;
   }
@@ -1467,7 +1467,7 @@
   .asset-table__row {
     @apply border-b border-border transition-colors;
     /* Rows outside the scroll viewport are skipped for style/layout/paint
-       entirely — typically only ~8 of the up-to-33 rows are on screen, so this
+       entirely, typically only ~8 of the up-to-33 rows are on screen, so this
        is the biggest per-frame saving while scrolling. `auto 45px` keeps the
        scrollbar stable: Chrome remembers each row's real height (44.5–45px)
        after first render and uses the placeholder only before that. */
@@ -1478,7 +1478,7 @@
   .asset-row-fade-in-right {
     /* `backwards` instead of `both`: the keyframes end on the natural state
        (opacity 1 / translateX 0), so nothing is visually "filled" after the
-       animation finishes — and Chrome can release the composited layer the
+       animation finishes, and Chrome can release the composited layer the
        transform animation would otherwise keep pinned, which removed a
        per-frame layer rebuild while scrolling. */
     animation: asset-row-fade-in-right 0.2s ease-out backwards;
@@ -1528,7 +1528,7 @@
   .asset-table__actions {
     /* No box-shadow here: the old `-8px 0 12px -10px` "pinned column" shadow
        painted a gray smudge over the Condition column, because this cell is a
-       plain (non-sticky) <td> — nothing ever scrolls underneath it. */
+       plain (non-sticky) <td>, nothing ever scrolls underneath it. */
     @apply bg-card;
   }
 
@@ -1561,7 +1561,7 @@
            shadow-xs transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40;
   }
 
-  /* Sidebar shell — photo is the stage; controls stay quiet on top */
+  /* Sidebar shell, photo is the stage; controls stay quiet on top */
   .app-sidebar {
     @apply relative overflow-hidden;
     background-color: #f25a0b;
@@ -1754,7 +1754,7 @@
 
 /* --- Small screens: scroll the page, don't squeeze the table --------------
    Below `md` the header + stat cards + search ate the whole viewport, so the
-   table body was left ~0 rows tall — and with `table-fixed` the five
+   table body was left ~0 rows tall, and with `table-fixed` the five
    percentage columns collapsed into unreadable slivers. Under `md` the table
    now sizes to its content (the page scrolls instead, see `<main>` in
    InventoryLayout), its columns keep a readable floor via `min-w-…`, and the
@@ -1774,7 +1774,7 @@
 }
 
 /* Horizontal chip/tab strips scroll by swipe/drag, so the scrollbar only adds
-   a grey bar under them — the half-visible last tab is the affordance. */
+   a grey bar under them, the half-visible last tab is the affordance. */
 .no-scrollbar {
   scrollbar-width: none;
 }
@@ -1857,7 +1857,7 @@
   animation: page-enter 0.28s ease-out;
 }
 
-/* Kill the OS black focus ring on the drawer's white header inputs — force white. */
+/* Kill the OS black focus ring on the drawer's white header inputs, force white. */
 .header-pill-select,
 .header-pill-select:focus,
 .header-pill-select:focus-visible,
@@ -2065,7 +2065,7 @@
   }
 }
 
-/* Leaving is quicker and flatter than arriving — no bounce on the way out. */
+/* Leaving is quicker and flatter than arriving, no bounce on the way out. */
 @keyframes ai-bubble-vanish {
   from {
     opacity: 1;
@@ -2105,7 +2105,7 @@
   }
 }
 
-/* The bubble tail is a CSS triangle — a zero-size box with two transparent
+/* The bubble tail is a CSS triangle, a zero-size box with two transparent
    borders and one coloured border. Scaling it needs no rotation: a zero-size
    element's transform-origin *is* the point where it meets the bubble, so it
    grows out of the join rather than spinning. */
@@ -2160,7 +2160,7 @@
 }
 
 .ai-tail-pop {
-  /* `transform-origin` is irrelevant for a zero-size triangle — its own
+  /* `transform-origin` is irrelevant for a zero-size triangle, its own
      origin is the apex where it meets the bubble. */
   animation: ai-tail-pop 0.3s cubic-bezier(0.22, 1.2, 0.36, 1) both;
 }
@@ -2194,13 +2194,13 @@
   }
 }
 
-/* Circular approval seal — Approved (green) / Not Approved (red).
+/* Circular approval seal, Approved (green) / Not Approved (red).
    Drawn as inline SVG in ApprovedStamp.tsx; `--seal-size` comes from the
    size preset there, so the whole mark scales without losing proportions. */
 .approval-seal {
   --ink: #3b9f4f;
   /* The seal carries its own paper. A stamp is ink on a sheet, so the disc
-     under it is white in BOTH themes — a card-coloured middle on the dark
+     under it is white in BOTH themes, a card-coloured middle on the dark
      theme read as a dark hole punched through the mark. */
   --seal-paper: #fff;
   /* What shows through the ring's cut-outs and the banner's letters. It is the
@@ -2300,7 +2300,7 @@
    Two drawn loops for the OB statuses that need a picture: `submitted`
    ("Waiting for HR", a clipboard filling in) and `departed` ("On OB", a hand
    lifting a briefcase). Rendered inline by StatusIllustration.tsx so the ink
-   follows the app's theme tokens instead of the OS media query — a reviewer
+   follows the app's theme tokens instead of the OS media query, a reviewer
    who forces light mode on a dark OS still gets light ink.
 
    Every class and keyframe is prefixed `si-`. The source SVGs used bare
@@ -2311,7 +2311,7 @@
 .si-art {
   --si-line: var(--icon-line, var(--foreground));
   --si-accent: var(--icon-accent, var(--logo-mark));
-  /* The On OB ground line keeps the artwork's own blue-grey — it reads as a
+  /* The On OB ground line keeps the artwork's own blue-grey, it reads as a
      shadow, not as text, so it should not follow --muted-foreground. */
   --si-ground: var(--icon-ground, #7e83b5);
   display: block;
@@ -2366,7 +2366,7 @@
   stroke-dashoffset: 1;
 }
 
-/* Waiting for HR — one 5s loop: the clipboard outline draws, two checklist
+/* Waiting for HR, one 5s loop: the clipboard outline draws, two checklist
    lines write in, a check pops with a small wiggle, then everything erases. */
 .si-anim .si-wfhr-d1 {
   animation: si-wfhr-draw-1 5s infinite;
@@ -2489,7 +2489,7 @@
   }
 }
 
-/* On OB — one 6s loop: the case draws in, a hand reaches down, grips, lifts
+/* On OB, one 6s loop: the case draws in, a hand reaches down, grips, lifts
    with a gentle swing, sets it back, then the lines erase. */
 .si-anim .si-onob-draw {
   animation: si-onob-draw 6s infinite;

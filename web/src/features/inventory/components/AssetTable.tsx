@@ -1,5 +1,5 @@
 /**
- * Searchable/type-filtered asset table — port of `AssetTable.razor`.
+ * Searchable/type-filtered asset table, port of `AssetTable.razor`.
  * The tbody keeps a stable identity (the original's `RowsEpoch` remount is
  * dropped) so filtering reconciles rows by `asset_id` instead of remounting
  * them; newly mounted rows still fade in. The search box holds an instant

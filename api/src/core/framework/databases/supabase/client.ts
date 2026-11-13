@@ -1,8 +1,8 @@
 /**
- * Supabase admin client (service role — bypasses RLS).
+ * Supabase admin client (service role, bypasses RLS).
  *
  * SECURITY: server-only. Nothing outside the API may hold this key. Every
- * query must therefore scope itself to the signed-in user (e.g. `owner_id`) —
+ * query must therefore scope itself to the signed-in user (e.g. `owner_id`),
  * the database will not do it for you.
  */
 import { createClient } from '@supabase/supabase-js';

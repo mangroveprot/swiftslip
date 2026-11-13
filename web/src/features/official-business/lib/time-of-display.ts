@@ -2,7 +2,7 @@
  * What the two "TIME OF" columns on an Official Business form print.
  *
  * The employee's typed itinerary time is always the first line. DEPARTURE
- * prints a time only — never a date: the Date of OB is already in the header
+ * prints a time only, never a date: the Date of OB is already in the header
  * and the exit-clearance box prints the signed departure date.
  *
  * RETURN prints a second line with HR's signed `arrival_date` only when that
@@ -20,8 +20,8 @@
  * The form's Overdue badge is a separate, unchanged rule: derived from the
  * Date of OB having passed, which is correct even before any return exists.
  *
- * One module feeds all three places that draw the sheet — the on-screen /
- * print / Save-as-PDF preview, the HR review rows and the Word download — so
+ * One module feeds all three places that draw the sheet, the on-screen /
+ * print / Save-as-PDF preview, the HR review rows and the Word download, so
  * the two columns can never disagree with each other or across outputs.
  */
 import { resolveExitSignoff, stampTime } from "@/features/official-business/lib/exit-signoff";
@@ -51,7 +51,7 @@ export function obDepartureRowIndex(rows: readonly ObEntry[]): number {
  * Which itinerary row carries THE return. The HR sign-off prefill already
  * treats the last stop with a return time as the real one. If the employee
  * left every RETURN blank, fall back to the last stop so a signed arrival
- * still has somewhere to print — the cell is empty otherwise.
+ * still has somewhere to print, the cell is empty otherwise.
  */
 export function obReturnRowIndex(rows: readonly ObEntry[]): number {
   for (let i = rows.length - 1; i >= 0; i--) {

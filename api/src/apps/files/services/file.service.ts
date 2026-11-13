@@ -42,7 +42,7 @@ class FileService extends BaseService<'files', FileRepository> {
     let key = '';
     try {
       // Decodes the bytes, confirms the real type from them, and refuses a
-      // misleading filename — the exact gate the attachments use.
+      // misleading filename, the exact gate the attachments use.
       const { buffer, contentType, name } = readUpload(input);
       if (!config.storage.allowedMime.includes(contentType)) {
         throw new ErrorResponse(
@@ -112,7 +112,7 @@ class FileService extends BaseService<'files', FileRepository> {
    *
    * Supabase signed links send `Access-Control-Allow-Origin: *`, but Backblaze
    * B2 presigned links send `null`. A browser can still *show* a B2 file in an
-   * `<img>`/`<iframe>`, yet `fetch()` of those bytes is blocked — which is why
+   * `<img>`/`<iframe>`, yet `fetch()` of those bytes is blocked, which is why
    * "Save as PDF" used to report that attachments could not be added, and the
    * Download button failed too. The browser already holds a short-lived link
    * minted by this API; the server (which has no CORS) reads the bytes and
@@ -121,8 +121,8 @@ class FileService extends BaseService<'files', FileRepository> {
    * This is deliberately not a general-purpose proxy: only HTTPS links to our
    * two configured storage hosts, only keys under `FormAttachement/`, and only
    * links carrying a storage signature are accepted. Access control lives at
-   * the moment the link is minted — the employee endpoints resolve an
-   * owner-scoped row, and the HR endpoint sits behind `requireApp('hr')` — so a
+   * the moment the link is minted, the employee endpoints resolve an
+   * owner-scoped row, and the HR endpoint sits behind `requireApp('hr')`, so a
    * caller can only present a link this API already gave them.
    */
   async attachmentBytes(
@@ -200,7 +200,7 @@ class FileService extends BaseService<'files', FileRepository> {
 
   /**
    * For the account-deletion path: drop every stored object and its row.
-   * Best effort like the Supabase folder cleanup — failures are logged, never
+   * Best effort like the Supabase folder cleanup, failures are logged, never
    * thrown, because the account is already gone when this runs.
    */
   async removeUserFiles(userId: string): Promise<void> {

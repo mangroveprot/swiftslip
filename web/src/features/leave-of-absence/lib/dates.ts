@@ -3,7 +3,7 @@
  *
  * - "Number of Days Applied" counts the days from `from` to `to` INCLUSIVE,
  *   minus every Sunday (Saturdays and holidays count). A single day counts as
- *   1 — unless it is a Sunday, which counts as 0.
+ *   1, unless it is a Sunday, which counts as 0.
  * - "To report back for work on" is the day after `to`, pushed to Monday when
  *   that lands on a Sunday.
  * - Both are prefills only: the fields stay free text and editable, so a
@@ -58,7 +58,7 @@ export function computeReportBack(to: string): string {
  * both dates present and ordered → recompute `days_applied` and
  * `report_back_date` (overwriting whatever was there, manual edits included);
  * an inverted range keeps the previous values (the form shows a warning
- * instead of silently swapping); a half-cleared range clears both — they had
+ * instead of silently swapping); a half-cleared range clears both, they had
  * no anchor left. Any other change is returned untouched.
  */
 export function recomputeDerived(form: LoaForm): LoaForm {

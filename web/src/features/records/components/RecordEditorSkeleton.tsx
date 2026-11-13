@@ -6,8 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
  * Every other form editor has its own skeleton; this one used to share the old
  * generic `EditorSkeleton`, which still drew the pre-card-stack page (a small
  * toolbar, one 6-field card, one 8-row card and a narrow strip of lines on the
- * right). The real DTR now has three stacked cards in the form column — record
- * details, the daily-entries table, other attachments — and an attachment card,
+ * right). The real DTR now has three stacked cards in the form column, record
+ * details, the daily-entries table, other attachments, and an attachment card,
  * a "Live preview" row and the A4 sheet in the preview column.
  *
  * This mirrors that structure, the editor's own padding and its exact column
@@ -30,11 +30,11 @@ export function RecordEditorSkeleton() {
         </div>
       </div>
 
-      {/* The editor's own grid — 26rem / 30rem preview, gap-4, not gap-6. */}
+      {/* The editor's own grid, 26rem / 30rem preview, gap-4, not gap-6. */}
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
         {/* FORM COLUMN: three cards at their natural height, the column scrolls. */}
         <div className="flex min-h-0 flex-col gap-3 lg:overflow-auto">
-          {/* 1 — Record details: borderless sheet, identity, period, signature. */}
+          {/* 1, Record details: borderless sheet, identity, period, signature. */}
           <section className="form-fill @container shrink-0 rounded-xl bg-card p-5 sm:p-6 lg:p-8">
             <Skeleton className="h-3.5 w-28" />
 
@@ -68,7 +68,7 @@ export function RecordEditorSkeleton() {
             </div>
           </section>
 
-          {/* 2 — Daily entries: heading + Clear, then a five-column input grid. */}
+          {/* 2, Daily entries: heading + Clear, then a five-column input grid. */}
           <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
             <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
               <Skeleton className="h-4 w-28" />
@@ -92,7 +92,7 @@ export function RecordEditorSkeleton() {
             ))}
           </section>
 
-          {/* 3 — Other attachments: label + count, then the full-width Add row. */}
+          {/* 3, Other attachments: label + count, then the full-width Add row. */}
           <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Skeleton className="h-3.5 w-32" />

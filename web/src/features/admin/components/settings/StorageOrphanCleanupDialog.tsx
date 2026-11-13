@@ -26,14 +26,14 @@ const COLLAPSED_ROWS = 5;
 
 const idOf = (file: OrphanedFile) => `${file.backend}:${file.key}`;
 
-/** "Sep 12" — the list's date column; the full date rides in the tooltip. */
+/** "Sep 12", the list's date column; the full date rides in the tooltip. */
 const shortDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
 
-/** The file's name — the last path segment of its storage key. */
+/** The file's name, the last path segment of its storage key. */
 const baseName = (key: string) => key.split("/").pop() || key;
 
-/** "10 minutes" / "24 hours" — the grace window, in the unit that reads best. */
+/** "10 minutes" / "24 hours", the grace window, in the unit that reads best. */
 function graceLabel(seconds: number): string {
   if (seconds < 90) return plural(seconds, "second");
   if (seconds < 5400) return plural(Math.round(seconds / 60), "minute");
@@ -47,7 +47,7 @@ const BACKEND_LABEL: Record<StorageBackend, string> = {
 
 /**
  * The tick itself: the success green rather than the navy primary, so a ticked
- * row reads as "this one goes" at a glance. Theme-aware — dark mode's cream
+ * row reads as "this one goes" at a glance. Theme-aware, dark mode's cream
  * fill arrives with its own ink.
  */
 const TICK =
@@ -57,8 +57,8 @@ const TICK =
  * Settings → Storage → "Clean up orphaned files".
  *
  * The review-before-delete window behind both cleanup buttons. It lists
- * every file no form points to — per backend, with the reason, age and size
- * — lets the admin untick anything to keep, and deletes only what is still
+ * every file no form points to, per backend, with the reason, age and size
+ * lets the admin untick anything to keep, and deletes only what is still
  * ticked. The API re-checks each key at delete time, so a stale list (a file
  * that gained a form since the preview, say) can never take a live file.
  *
@@ -76,7 +76,7 @@ export function StorageOrphanCleanupDialog({
   open: boolean;
   /** Which backend's orphans to show: one of them, or both. */
   scope: StorageBackend | "everywhere";
-  /** The page's live usage — feeds the "full → full" arrows on the cards. */
+  /** The page's live usage, feeds the "full → full" arrows on the cards. */
   supabase: StorageBackendUsage;
   b2: StorageBackendUsage;
   onOpenChange: (open: boolean) => void;
@@ -94,7 +94,7 @@ export function StorageOrphanCleanupDialog({
   const [tab, setTab] = useState<StorageBackend | "all">("all");
   const [showAll, setShowAll] = useState(false);
 
-  // Each fresh preview starts with everything ticked — the modal is "delete
+  // Each fresh preview starts with everything ticked, the modal is "delete
   // what you don't need", so the default is all of it. Keyed on `open` and
   // `scope`, not just the data's identity: reopening on already-cached data
   // (same object, so the effect would not re-run) must re-tick from scratch.
@@ -167,7 +167,7 @@ export function StorageOrphanCleanupDialog({
       const failed = results.reduce((sum, r) => sum + r.failed, 0);
       toast.success(
         `Removed ${plural(removed, "orphaned file")} (${formatBytes(bytes)}).` +
-          (failed > 0 ? ` ${formatCount(failed)} could not be deleted — try again later.` : ""),
+          (failed > 0 ? ` ${formatCount(failed)} could not be deleted. Try again later.` : ""),
       );
       void queryClient.invalidateQueries({ queryKey: ["storage-overview"] });
       void queryClient.invalidateQueries({ queryKey: ["storage-orphans-preview"] });
@@ -288,11 +288,11 @@ export function StorageOrphanCleanupDialog({
           </p>
         ) : files.length === 0 ? (
           <p className="rounded-lg border border-border px-3.5 py-4 text-sm text-muted-foreground">
-            Nothing to clean up — every stored file is linked to a form.
+            Nothing to clean up. Every stored file is linked to a form.
           </p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-border">
-            {/* Column heads — hidden on phones, where rows stack instead. */}
+            {/* Column heads, hidden on phones, where rows stack instead. */}
             <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3 py-2.5 text-xs font-medium text-muted-foreground sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,6rem)_minmax(0,11.5rem)_3.25rem_3.5rem]">
               <span aria-hidden="true" />
               <span>File</span>
@@ -422,7 +422,7 @@ function SummaryCard({
   title: string;
   /** Orphaned files currently in the list for this backend. */
   files: number;
-  /** Bytes ticked for deletion on this backend — drives the arrow below. */
+  /** Bytes ticked for deletion on this backend, drives the arrow below. */
   selectedBytes: number;
 }) {
   const usedPercent =

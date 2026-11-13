@@ -17,7 +17,7 @@ export const MAX_ATTACHMENT_MB = 10;
 export const MAX_ATTACHMENT_BYTES = MAX_ATTACHMENT_MB * 1024 * 1024;
 
 /**
- * What the picker offers — mirrors the server's accepted list. `accept` is only
+ * What the picker offers, mirrors the server's accepted list. `accept` is only
  * a hint for the file dialog; the upload itself is checked again on both sides.
  */
 export const ATTACHMENT_ACCEPT =
@@ -28,7 +28,7 @@ export const ATTACHMENT_ACCEPT =
  * The type gate used before a file is queued for upload: PDF, pictures, plain
  * text and Office documents, matching the accepted list above. A file whose
  * type the browser knows is judged by it; Windows often leaves the type empty,
- * so the extension is the fallback. The server still checks the real bytes —
+ * so the extension is the fallback. The server still checks the real bytes,
  * this is the first pass, not the last word.
  */
 export function isAcceptedAttachment(file: File): boolean {
@@ -44,13 +44,13 @@ export function isAcceptedAttachment(file: File): boolean {
   return /\.(pdf|png|jpe?g|gif|webp|bmp|txt|docx?|xlsx?|pptx?)$/i.test(file.name);
 }
 
-/** Pictures smaller than this are already cheap to upload — leave them alone. */
+/** Pictures smaller than this are already cheap to upload, leave them alone. */
 const SHRINK_UNDER_BYTES = 400 * 1024;
 
 /** Longest edge kept after re-encoding: still sharp printed at A4 width. */
 const IMAGE_MAX_EDGE = 2200;
 
-/** Re-encode quality — high enough that small print stays readable. */
+/** Re-encode quality, high enough that small print stays readable. */
 const IMAGE_QUALITY = 0.9;
 
 /** Types we can decode and draw onto a canvas. */
@@ -105,7 +105,7 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) 
  *
  * A large picture is scaled so its longest edge is `IMAGE_MAX_EDGE` and encoded
  * as WebP (JPEG when the browser can't produce WebP). If that does not make it
- * smaller — a flat screenshot can re-encode bigger — the original wins. Any
+ * smaller, a flat screenshot can re-encode bigger, the original wins. Any
  * failure returns the original too: a broken canvas must never cost the user
  * their attachment.
  */
@@ -156,7 +156,7 @@ export async function prepareAttachment(file: File): Promise<File> {
   }
 }
 
-/** "2.4 MB" / "840 KB" — short enough for a row of a list. */
+/** "2.4 MB" / "840 KB", short enough for a row of a list. */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;

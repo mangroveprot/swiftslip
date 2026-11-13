@@ -6,7 +6,7 @@ import { loadProfileForGate, needsOnboarding } from "@/features/profile/onboardi
 import { pageTitle, seo } from "@/lib/seo";
 
 /**
- * The HR app — its own shell, outside `_app` on purpose (D1). The guard is UX;
+ * The HR app, its own shell, outside `_app` on purpose (D1). The guard is UX;
  * every HR endpoint re-checks with `requireApp('hr')` on the server.
  */
 export const Route = createFileRoute("/hr")({

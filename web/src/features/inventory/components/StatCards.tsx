@@ -1,5 +1,5 @@
 /**
- * Stat cards — port of `StatCards.razor`. Each card doubles as a status
+ * Stat cards, port of `StatCards.razor`. Each card doubles as a status
  * filter toggle ("total" resets to all).
  */
 type StatFilterKey = "all" | "inuse" | "available" | "unassigned";

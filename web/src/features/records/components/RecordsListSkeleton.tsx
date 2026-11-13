@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * Open / Delete pair beside the name, a period line, an "Updated …" line and
  * the little DTR sheet thumbnail on the right. Matching those fixed blocks keeps
  * the grid from reshuffling when the records arrive. Conditional extras (the
- * deletion notice and the APPROVED seal) are deliberately left out — they add
+ * deletion notice and the APPROVED seal) are deliberately left out, they add
  * no height and only appear on some records.
  */
 export function RecordsListSkeleton({ count = 6 }: { count?: number }) {

@@ -2,11 +2,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Stand-in for the OT editor while its row loads: the same shell the real form
- * paints — back link and title over Export/Save, the borderless sheet on the
+ * paints, back link and title over Export/Save, the borderless sheet on the
  * left (identity row, the date box, the Overtime block, reason, the three
  * sign-off boxes and the signature) with the scrollbar on the card itself, and
  * the attachment, preview label, A4 paper and supporting-files card on the
- * right — at the editor's own column widths, so nothing shifts when the data
+ * right, at the editor's own column widths, so nothing shifts when the data
  * lands.
  */
 export function OtEditorSkeleton() {
@@ -25,7 +25,7 @@ export function OtEditorSkeleton() {
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,34rem)]">
         <div className="no-print form-fill @container min-h-0 rounded-l-xl bg-card p-5 sm:p-6 lg:overflow-y-auto lg:p-8">
-          {/* Identity row — four values across, as the sheet lays them out. */}
+          {/* Identity row, four values across, as the sheet lays them out. */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-5 @xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="min-w-0 space-y-2">

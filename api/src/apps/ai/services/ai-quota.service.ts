@@ -8,7 +8,7 @@ import { ActivityLogRepository } from '../../activity-log/repositories';
  *
  * There is no counter table: every successful AI call writes one `ai.request`
  * row, and the quota is a count over the last 24 hours. That keeps the limit
- * shared across processes and restarts — an in-memory counter would reset on
+ * shared across processes and restarts, an in-memory counter would reset on
  * every deploy.
  */
 const WINDOW_MS = 24 * 60 * 60 * 1000;

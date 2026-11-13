@@ -69,7 +69,7 @@ export class StorageService {
     };
   }
 
-  /** `GET /` — the overview the Storage page renders. */
+  /** `GET /`, the overview the Storage page renders. */
   async getOverview(force = false): Promise<ServiceResponse<StorageOverview>> {
     try {
       // Cache hit?
@@ -84,7 +84,7 @@ export class StorageService {
       const settings = await this.readSettings();
       const { main, other } = await this.refRepo.read();
 
-      // Lookups keyed `backend:key` — an object only matches a reference on
+      // Lookups keyed `backend:key`, an object only matches a reference on
       // the same backend it physically sits on.
       const mainSet = new Set(main.map((r) => `${r.backend}:${r.key}`));
       const otherSet = new Set(other.map((r) => `${r.backend}:${r.key}`));
@@ -176,7 +176,7 @@ export class StorageService {
         otherBytes += obj.size;
         otherFiles += 1;
       } else {
-        // Unreferenced — but an upload that has not recorded its row yet must
+        // Unreferenced, but an upload that has not recorded its row yet must
         // not be counted (or deleted) as an orphan, so fresh objects count as
         // "other" until the grace period passes.
         const fresh =
@@ -291,7 +291,7 @@ export class StorageService {
     return freePercent < settings.minFreePercent ? 'b2' : 'supabase';
   }
 
-  /** `PUT /` — save the rule and log the change. */
+  /** `PUT /`, save the rule and log the change. */
   async saveSettings(
     actor: SessionUser,
     input: StorageSettings,
@@ -344,7 +344,7 @@ export class StorageService {
     }
   }
 
-  /** `POST /orphans` — clean one backend; returns how much went and what stayed. */
+  /** `POST /orphans`, clean one backend; returns how much went and what stayed. */
   async cleanupOrphans(
     actor: SessionUser,
     backend: StorageBackend,
@@ -408,7 +408,7 @@ export class StorageService {
     }
   }
 
-  /** `POST /orphans/everywhere` — both backends (the page's "clean up everywhere"). */
+  /** `POST /orphans/everywhere`, both backends (the page's "clean up everywhere"). */
   async cleanupOrphansEveryone(actor: SessionUser): Promise<
     ServiceResponse<{
       supabase: StorageCleanupResult;
@@ -440,7 +440,7 @@ export class StorageService {
   }
 
   /**
-   * `GET /orphans/preview` — the list behind the cleanup modal. Read-only:
+   * `GET /orphans/preview`, the list behind the cleanup modal. Read-only:
    * same orphan rule as `cleanupOrphans` (unreferenced AND past the grace
    * period), but nothing is deleted and every file carries the facts the
    * admin reviews: which backend holds it, why it counts as orphaned, when
@@ -463,7 +463,7 @@ export class StorageService {
         backends.map((b) => this.fileStorage.list(b)),
       );
 
-      // Every unreferenced, past-grace object, oldest first — the cleanup
+      // Every unreferenced, past-grace object, oldest first, the cleanup
       // deletes oldest-last, so the list reads as "what has been rotting".
       const orphans: { obj: StoredObject; backend: StorageBackend }[] = [];
       backends.forEach((b, index) => {
@@ -485,8 +485,8 @@ export class StorageService {
 
       // "Why it's orphaned": keys are `FormAttachement/<user id>/<row id>-…`, so
       // a missing owner reads as an account deletion and a present one as a
-      // deleted (or replaced) form. Anything else — e.g. the B2 `/files`
-      // store, whose keys are bare uuids — simply has no record pointing at it.
+      // deleted (or replaced) form. Anything else, e.g. the B2 `/files`
+      // store, whose keys are bare uuids, simply has no record pointing at it.
       const ownerIds = [
         ...new Set(
           orphans
@@ -528,7 +528,7 @@ export class StorageService {
   }
 
   /**
-   * `POST /orphans/delete` — the modal's "Delete N files". The file list is
+   * `POST /orphans/delete`, the modal's "Delete N files". The file list is
    * re-checked server-side before anything is removed: an object that has
    * gained a form reference since the preview (or is inside the grace
    * window) is skipped, so ticking a stale row can never take a live file.

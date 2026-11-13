@@ -1,5 +1,5 @@
 /**
- * Inventory sidebar — port of `Layout/Sidebar.razor` (regasco header strip,
+ * Inventory sidebar, port of `Layout/Sidebar.razor` (regasco header strip,
  * branch dropdown, Add asset, nav items + assets badge, footer).
  * Offline-sync bits from the original are intentionally absent.
  */

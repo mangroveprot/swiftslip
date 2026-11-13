@@ -36,7 +36,7 @@ export const deleteLiqForm = async ({ data }: { data: z.input<typeof deleteRowIn
 export const chatLiqAssistant = async ({ data }: { data: z.input<typeof liqChatInput> }) =>
   documentOf(await api.post<LiqChatReply>("/ai/liq/chat", data));
 
-/** Upload the approval slip — the file that turns on "Approved via Viber". */
+/** Upload the approval slip, the file that turns on "Approved via Viber". */
 export const uploadLiqAttachment = async ({
   data,
 }: {

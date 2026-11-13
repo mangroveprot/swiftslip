@@ -20,7 +20,7 @@ import {
 } from "@/lib/photo";
 
 /**
- * "Adjust your photo" — the crop step between picking a file and saving it.
+ * "Adjust your photo", the crop step between picking a file and saving it.
  *
  * The circle is drawn with a real canvas fed by the same `drawPhoto` the
  * export uses, so the framing on screen is the framing that gets saved; a CSS
@@ -45,8 +45,8 @@ export function PhotoCropDialog({
   /**
    * The canvas lives in state, not a ref, because Radix mounts the dialog's
    * content a commit later than the `open` prop flips. With a plain ref the
-   * first paint ran against `null`, found nothing to draw, and — with
-   * `[source, zoom, offset]` unchanged — never ran again: the circle stayed
+   * first paint ran against `null`, found nothing to draw, and, with
+   * `[source, zoom, offset]` unchanged, never ran again: the circle stayed
    * empty until the user happened to drag or zoom, which is exactly the bug
    * this fixes. A callback ref re-runs the effect the moment the element
    * exists, whenever that turns out to be.
@@ -68,7 +68,7 @@ export function PhotoCropDialog({
     dragRef.current = null;
   }, [open, source]);
 
-  // Paint the preview. Redrawn on every drag frame and zoom tick — a 240 px
+  // Paint the preview. Redrawn on every drag frame and zoom tick, a 240 px
   // canvas is cheap enough that throttling would only add lag.
   useLayoutEffect(() => {
     if (!canvas || !source) return;
@@ -123,7 +123,7 @@ export function PhotoCropDialog({
     }
   };
 
-  /** The short side is the limiting one — it says how much there is to zoom into. */
+  /** The short side is the limiting one, it says how much there is to zoom into. */
   const canCrop = source !== null;
 
   return (

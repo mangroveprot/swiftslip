@@ -37,7 +37,7 @@ export type ActivityAction =
 
 export type ActivityEntry = {
   action: ActivityAction;
-  /** Who did it — absent on rejected sign-in attempts (nobody was verified). */
+  /** Who did it, absent on rejected sign-in attempts (nobody was verified). */
   actorId?: string;
   actorName?: string;
   actorNumber?: string;

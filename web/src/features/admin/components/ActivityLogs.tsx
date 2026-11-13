@@ -546,7 +546,7 @@ function EntryRow({ row, photo }: { row: LogRow; photo?: string | undefined }) {
         The face hangs to the LEFT of the text block rather than sitting inline
         in the first line. Inline, only the sentence starting with the name got
         indented and the secondary line under it did not, so the two never
-        shared a left edge — the misalignment this replaces.
+        shared a left edge, the misalignment this replaces.
       */}
       <div className="flex items-start gap-2">
         <ProfileAvatar photo={photo} name={actorName(row)} size={20} className="mt-px" />
@@ -849,7 +849,7 @@ export function ActivityLogs({
         </div>
       ) : (
         // key replays the enter animation whenever the visible set of logs
-        // changes — switching a filter tab, the date range, or a page. Matches
+        // changes, switching a filter tab, the date range, or a page. Matches
         // the AppAccess detail pane and Inventory route transitions.
         <div
           key={`${filter}:${range}:${page}`}

@@ -28,7 +28,7 @@ export type ObStatusMeta = {
    * The HR queue reference marks a pending "Waiting for Supervisor" with an
    * outlined ring so it reads differently from the filled "On OB" dot. It is a
    * hairline (1px, not 2px), smaller than the filled dot, and pulses once per
-   * couple of seconds — see `.status-ring-pulse` in styles.css.
+   * couple of seconds, see `.status-ring-pulse` in styles.css.
    */
   dotRing?: string;
   /** Default surface for this status. Omitted means `soft`. */
@@ -39,7 +39,7 @@ export type ObStatusMeta = {
  * The one place that describes an OB status: tone, icon and dot. Labels live
  * beside it in `@swiftslip/shared/hr`. Add a status here and every badge,
  * header, card and queue that renders it stays in sync. The employee list card
- * deliberately does NOT take a colour from here — its box stays neutral grey
+ * deliberately does NOT take a colour from here, its box stays neutral grey
  * and only the folder-tab badge carries the status colour.
  */
 export const OB_STATUS_META: Record<ObHrStatus, ObStatusMeta> = {

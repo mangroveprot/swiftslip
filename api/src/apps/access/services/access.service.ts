@@ -263,13 +263,13 @@ class AccessService extends BaseService<
   /**
    * Everyone and every effective access, plus the explicit rules and each
    * app's starting point. The EFFECTIVE answer is computed here by the same
-   * `resolveAccess` the guards use — the browser never re-derives precedence.
+   * `resolveAccess` the guards use, the browser never re-derives precedence.
    */
   async overview(): Promise<ServiceResponse<AccessOverview>> {
     try {
       const [accounts, profileRows, rules, positions] = await Promise.all([
         this.users.findAll(),
-        // Names and org fields only — `*` would pull every base64 photo and
+        // Names and org fields only, `*` would pull every base64 photo and
         // signature on each load of App access, and nothing here reads them.
         this.profiles.findAll(
           {},

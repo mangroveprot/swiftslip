@@ -1,5 +1,5 @@
 /**
- * Floor tab strip inside the header — port of `LocationFilterRow.razor`.
+ * Floor tab strip inside the header, port of `LocationFilterRow.razor`.
  * Active state is a soft underline only; the filter lens shows the full story.
  */
 import { formatFloorDisplay } from "../lib/helpers";

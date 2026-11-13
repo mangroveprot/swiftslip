@@ -37,11 +37,11 @@ export function PlaceChips({
   /** Put on the inline input so a form's "still needed" link can focus it. */
   id?: string;
   value: string;
-  /** Places already used elsewhere — the suggestion list. */
+  /** Places already used elsewhere, the suggestion list. */
   options: string[];
   disabled: boolean;
   invalid?: boolean | undefined;
-  /** What to do about the empty field — shown in red under the chips. */
+  /** What to do about the empty field, shown in red under the chips. */
   hint?: string | undefined;
   ariaLabel?: string;
   placeholder?: string;
@@ -99,7 +99,7 @@ export function PlaceChips({
         <div
           className={cn(
             // Same as `.form-fill .inp`: no border at rest, a black one while it
-            // has focus — the chip box must not look like a different control.
+            // has focus, the chip box must not look like a different control.
             "flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-transparent bg-muted px-2 py-1.5 focus-within:border-foreground",
             invalid && "border-destructive",
           )}

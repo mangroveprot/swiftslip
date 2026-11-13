@@ -2,10 +2,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Stand-in for the LOA editor while its row loads: the same shell the real
- * form paints — back link and title over Export/Save, the borderless sheet on
+ * form paints, back link and title over Export/Save, the borderless sheet on
  * the left (status line, identity row, the field grid, signature) with the
  * supporting-files card under it, and the attachment, preview label and A4
- * paper on the right — at the editor's own column widths, so nothing moves
+ * paper on the right, at the editor's own column widths, so nothing moves
  * when the data lands.
  */
 export function LoaEditorSkeleton() {
@@ -32,7 +32,7 @@ export function LoaEditorSkeleton() {
             </div>
             <Skeleton className="mb-3 h-4 w-full" />
 
-            {/* Identity row — four values across, as the sheet lays them out. */}
+            {/* Identity row, four values across, as the sheet lays them out. */}
             <div className="grid grid-cols-2 gap-x-6 gap-y-5 @xl:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="min-w-0 space-y-2">

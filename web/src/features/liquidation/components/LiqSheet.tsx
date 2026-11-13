@@ -3,7 +3,7 @@ import type { LiqExpense, LiqForm } from "@swiftslip/shared/types";
 
 import { lastFilledLiqLine, LIQ_LINES, LIQ_MIN_LINES } from "../lib/draft-form";
 
-/** The sheet's authored width — a 23-column table, like the paper form. */
+/** The sheet's authored width, a 23-column table, like the paper form. */
 export const LIQ_SHEET_WIDTH = 1204;
 
 /** The white gutter the preview/print wrapper keeps around the 1204px sheet. */
@@ -48,7 +48,7 @@ function tripFontSize(text: string) {
  * The sheet is print/read-only: the editor's card is where values are typed, so
  * the same inputs never exist twice. Every computed box (line totals, column
  * totals, grand total, amount in words, balance) runs through `@swiftslip/shared/liq`
- * — the API's list totals use the same maths.
+ * the API's list totals use the same maths.
  *
  * The blank paper form has four expense rows. The sheet prints at least those
  * four and grows a row for every line in use, up to the 15 the child table
@@ -70,10 +70,10 @@ export function LiqSheet({
   const columnTotal = (key: keyof typeof totals.columns) => liqMoney(totals.columns[key], true);
   // GN 238 prints BALANCE DUE EMPLOYEE as a negative when the company still
   // owes the employee: with no advances recorded the reference sheet shows
-  // "(150.00)". The TOTAL row above it stays blank — it is the total of the
+  // "(150.00)". The TOTAL row above it stays blank, it is the total of the
   // advances listed in the DATE / OFFICE rows, not the expense total.
   const balanceDueEmployee = liqMoney(-totals.grand, true);
-  // The paper's four rows are the floor — a longer filing grows a row per line
+  // The paper's four rows are the floor, a longer filing grows a row per line
   // in use, and the blank rows at the end are dropped.
   const printedRows = Math.max(LIQ_MIN_LINES, lastFilledLiqLine(entries));
   const printed = entries.slice(0, printedRows);

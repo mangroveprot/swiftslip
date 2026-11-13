@@ -4,7 +4,7 @@ import { ErrorResponse } from '../../../../common/shared/utils/error';
 /**
  * Base for repositories that talk to the RGC inventory database with raw SQL.
  * Every query goes through `run()`, the single place driver/Postgres errors
- * become `ErrorResponse` — so services never inspect error codes.
+ * become `ErrorResponse`, so services never inspect error codes.
  */
 export abstract class RgcRepository {
   protected get sql(): RgcSql {

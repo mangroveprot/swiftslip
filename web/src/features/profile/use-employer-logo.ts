@@ -16,7 +16,7 @@ export function employerLogoPath(employer: Employer | undefined): string {
 /**
  * Employer-aware branding for the current screen.
  *
- * With no argument it follows the **signed-in** employee's profile — the
+ * With no argument it follows the **signed-in** employee's profile, the
  * sidebar, headers, chooser and the employee's own form previews. Pass
  * `override` when the surface shows somebody else's document (an HR reviewer
  * opening an employee's OB form) so the letterhead is the owner's company,

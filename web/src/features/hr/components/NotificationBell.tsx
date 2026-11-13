@@ -3,12 +3,12 @@
  *
  * The feed refreshes over the shared SSE stream (`lib/live-updates.tsx`) rather
  * than polling, so a new row appears the moment it is written. Opening the
- * panel marks everything read — the badge exists to pull someone in, not to
- * demand a second click — and an item navigates to the form it is about.
+ * panel marks everything read, the badge exists to pull someone in, not to
+ * demand a second click, and an item navigates to the form it is about.
  *
  * Each row leads with the outcome icon (submitted / approved / rejected /
  * resubmitted / departure) and, when the event has an actor, their photo and
- * "by Name · Position" — a face and a title, never a bare id.
+ * "by Name · Position", a face and a title, never a bare id.
  */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -44,7 +44,7 @@ export function NotificationBell({
   className?: string;
   /**
    * `row` is the sidebar footer entry: bell, label, and the unread count as a
-   * red dot sitting ON the bell — never a separate pill on the right.
+   * red dot sitting ON the bell, never a separate pill on the right.
    */
   variant?: "icon" | "row";
 }) {
@@ -74,7 +74,7 @@ export function NotificationBell({
     if (target) void navigate(target);
   }
 
-  /** Red unread count — always anchored to the bell, never a right-side pill. */
+  /** Red unread count, always anchored to the bell, never a right-side pill. */
   const badge =
     unread > 0 ? (
       <span

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  */
 
 /**
- * Row styling for every nav entry — active rows get the tinted pill, inert
+ * Row styling for every nav entry, active rows get the tinted pill, inert
  * ("soon") rows stay dimmed and can't take hover. Shared so the SwiftSlip
  * portal and the Admin Panel highlight identically.
  */
@@ -27,7 +27,7 @@ export function sidebarRowClass({
 
 /**
  * Plain icon + label row for a sidebar footer action (Notifications / Switch
- * app) — deliberately NOT a `btn btn-outline` like the old sidebar used: the
+ * app), deliberately NOT a `btn btn-outline` like the old sidebar used: the
  * portal mock keeps these quiet, so both sidebars' footers share this one
  * class.
  */

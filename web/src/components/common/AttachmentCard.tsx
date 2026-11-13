@@ -97,7 +97,7 @@ const COPY: Record<
     removeDescription: "The uploaded file is deleted. This can't be undone.",
   },
 };
-/** Per-kind signed-URL query options — one lookup instead of ternaries. */
+/** Per-kind signed-URL query options, one lookup instead of ternaries. */
 const URL_QUERY = {
   ob: obAttachmentUrlQueryOptions,
   loa: loaAttachmentUrlQueryOptions,
@@ -141,7 +141,7 @@ export function AttachmentCard({
    *  attachment is that something. The editor resolves a real id here before the
    *  upload goes out; omitted for editors that always pass a persisted id. */
   onEnsureRow?: (() => Promise<string>) | undefined;
-  /** A mark that belongs *on* the card rather than next to the title — the
+  /** A mark that belongs *on* the card rather than next to the title, the
    *  approval seal. It is lifted out of the flow into the top-right corner, and
    *  the file row gives up that corner so the mark never sits on the action
    *  buttons. With no file it stands beside the uploader instead. */
@@ -161,12 +161,12 @@ export function AttachmentCard({
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  /** The upload window — the ONLY place files are picked, dropped or pasted.
+  /** The upload window, the ONLY place files are picked, dropped or pasted.
    *  Ctrl+V used to sit on the whole document and fired behind whatever modal
    *  was open (the DTR biometric import, the other-attachments window…); it
    *  now lives inside this window, exactly like the biometric one. */
   const [uploading, setUploading] = useState(false);
-  /** The uploaded file open in the modal viewer — never a new browser tab. */
+  /** The uploaded file open in the modal viewer, never a new browser tab. */
   const [viewing, setViewing] = useState(false);
   const copy = COPY[kind];
   const usesCallerLink = signedUrl !== undefined;
@@ -179,7 +179,7 @@ export function AttachmentCard({
   const isImage = file ? IMAGE_RE.test(file.name) : false;
   /** PDFs don't preview inline on screen, but they can be embedded for print. */
   const isPdf = file ? /\.pdf$/i.test(file.name) : false;
-  // What prints is the file alone — a centered image or the PDF pages. The
+  // What prints is the file alone, a centered image or the PDF pages. The
   // card title, badge and filename are screen-only, and file types that can't
   // render inline (docx, xlsx, …) print nothing instead of a blank page.
   const printable = Boolean(file) && (isImage || isPdf);
@@ -215,7 +215,7 @@ export function AttachmentCard({
     await Promise.all([
       qc.invalidateQueries({ queryKey: urlKey }),
       qc.invalidateQueries({ queryKey: detailKey }),
-      // The list shows name + "Updated" time — mark stale without re-fetching now.
+      // The list shows name + "Updated" time, mark stale without re-fetching now.
       qc.invalidateQueries({ queryKey: listKey, refetchType: "none" }),
     ]);
   }
@@ -223,7 +223,7 @@ export function AttachmentCard({
   /**
    * One file, sent by the attachment window. It THROWS on failure so the
    * caller can toast the reason and leave the window open on the picked
-   * file — pressing Attach again is the retry. The empty and oversize
+   * file, pressing Attach again is the retry. The empty and oversize
    * guards are belt and braces: the window already refuses both.
    */
   async function sendFile(picked: File) {
@@ -231,7 +231,7 @@ export function AttachmentCard({
     if (picked.size > MAX_MB * 1024 * 1024) {
       throw new Error(`Attachments must be ${MAX_MB} MB or smaller.`);
     }
-    // A draft has no id yet, and a file is real content — so this upload is
+    // A draft has no id yet, and a file is real content, so this upload is
     // what forces the row to be created. Resolve the id before reading the file
     // so the created row and the stored file agree.
     const rowId = onEnsureRow ? await onEnsureRow() : id;
@@ -255,7 +255,7 @@ export function AttachmentCard({
   }
 
   /** The window's Attach button: send, then close on success. A failure toasts
-   *  and keeps the window — and the file — in place, so the retry is one click. */
+   *  and keeps the window, and the file, in place, so the retry is one click. */
   async function attachFile(picked: File) {
     setBusy(true);
     try {
@@ -293,7 +293,7 @@ export function AttachmentCard({
   // The uploader is built once and placed two ways: full width when the card
   // carries no mark, and sharing the row with the mark when it does. A stamp
   // laid over the only control in an empty card reads as damage, not approval.
-  // It opens the upload window — pick, drop or Ctrl+V there, never on the page.
+  // It opens the upload window, pick, drop or Ctrl+V there, never on the page.
   const uploadButton = (
     <button
       type="button"
@@ -311,7 +311,7 @@ export function AttachmentCard({
   );
 
   // The card joins the printout only when its file can actually be shown, and
-  // then it always starts on a fresh page — the attachment never shares a
+  // then it always starts on a fresh page, the attachment never shares a
   // sheet with the document. Everything except the file itself (title, seal,
   // filename, buttons) is screen-only.
   return (
@@ -347,7 +347,7 @@ export function AttachmentCard({
               {signing ? (
                 <p className="text-xs text-muted-foreground print:hidden">Preparing link…</p>
               ) : isImage && signed?.url ? (
-                // The thumbnail itself is the button — one click on the
+                // The thumbnail itself is the button, one click on the
                 // picture opens it whole in the modal below.
                 <button
                   type="button"
@@ -379,7 +379,7 @@ export function AttachmentCard({
               </button>
             ) : null}
             {signed?.url ? (
-              // Opens in the modal below — this card never sends a file to a
+              // Opens in the modal below, this card never sends a file to a
               // new browser tab any more.
               <button
                 type="button"
@@ -442,7 +442,7 @@ export function AttachmentCard({
         <div className="mt-2">{uploadButton}</div>
       )}
 
-      {/* The one-file attachment window — pick, drop or Ctrl+V HERE, never on
+      {/* The one-file attachment window, pick, drop or Ctrl+V HERE, never on
           the page. It mirrors the biometric import window: its paste listener
           exists only while it is open, so it can never collide with another
           modal, and the full preview shows the file whole in either

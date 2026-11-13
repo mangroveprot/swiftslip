@@ -20,7 +20,7 @@ import { FileService } from '../../files/services';
 const USER_PHOTO_LIMIT = 100;
 
 /**
- * The profile columns a roster needs — everything except `photo` and
+ * The profile columns a roster needs, everything except `photo` and
  * `signature`. Both are large data URLs, and a full-table scan that pulls them
  * only to read a name wastes bandwidth and memory on every admin page load.
  */
@@ -34,12 +34,12 @@ export type AccountListItem = {
   role: Role;
   created_at: string;
   full_name: string;
-  /** The office / branch — `profiles.area`. */
+  /** The office / branch, `profiles.area`. */
   designation: string;
   department: string;
-  /** The job title — `profiles.designation`. */
+  /** The job title, `profiles.designation`. */
   position: string;
-  /** The company the employee works for — `profiles.employer`. */
+  /** The company the employee works for, `profiles.employer`. */
   employer: Employer;
 };
 
@@ -65,7 +65,7 @@ class UserService extends BaseService<'users', UserRepository> {
   }
 
   /**
-   * Profile photos for a batch of account ids — what the admin lists call to
+   * Profile photos for a batch of account ids, what the admin lists call to
    * put a face beside a name.
    *
    * Only ids that actually have a photo come back: the caller draws initials
@@ -118,7 +118,7 @@ class UserService extends BaseService<'users', UserRepository> {
         this.repository.findAll({}, { sort: { created_at: 'asc' } }),
         // Never `*` here. This scan is for names and org fields only, and since
         // 0032 `*` would drag every user's base64 photo out of the database and
-        // into memory on every visit to User management — for nothing.
+        // into memory on every visit to User management, for nothing.
         this.profiles.findAll({}, { select: PROFILE_NAME_COLUMNS }),
       ]);
       // The real name lives on the profile ("My Account"), not the account row.
@@ -173,7 +173,7 @@ class UserService extends BaseService<'users', UserRepository> {
       });
 
       // Seed the profile so the sign-in ID is also the employee number on
-      // DTR / OB forms — one fewer thing to retype.
+      // DTR / OB forms, one fewer thing to retype.
       await this.profiles.upsert(
         {
           access_code_id: created.id,
@@ -218,7 +218,7 @@ class UserService extends BaseService<'users', UserRepository> {
         );
       }
 
-      // Don't let the last administrator be demoted — it would lock everyone out.
+      // Don't let the last administrator be demoted, it would lock everyone out.
       if (
         existing.role === 'admin' &&
         input.role !== 'admin' &&
@@ -350,7 +350,7 @@ class UserService extends BaseService<'users', UserRepository> {
 
   /**
    * Write the org fields an admin can set from user management. Only the
-   * fields actually supplied change — an edit that touches just the role must
+   * fields actually supplied change, an edit that touches just the role must
    * not wipe a Designation the employee typed under "My Account".
    */
   private async writeProfileDetails(id: string, input: AccountInput) {

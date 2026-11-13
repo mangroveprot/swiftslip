@@ -75,7 +75,7 @@ class InventoryAssetService {
     }
   }
 
-  /** One or many rows — the original `ConfirmDelete` (`RemoveRange`). */
+  /** One or many rows, the original `ConfirmDelete` (`RemoveRange`). */
   async removeMany(
     ids: number[],
   ): Promise<ServiceResponse<{ deleted: number }>> {

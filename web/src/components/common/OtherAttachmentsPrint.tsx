@@ -2,7 +2,7 @@ import { IMAGE_RE, isPrintableFile } from "@/lib/attachment-file";
 import type { OtherFile } from "@swiftslip/shared/types";
 
 /**
- * The print-only half of an "Other attachments" card — LOA and OT share it.
+ * The print-only half of an "Other attachments" card, LOA and OT share it.
  *
  * The on-screen manager stays in the editor's form column, and that column is
  * `.no-print`, which is `display: none !important` on paper. Hiding a box hides
@@ -13,7 +13,7 @@ import type { OtherFile } from "@swiftslip/shared/types";
  * One page per printable file, after the sheet, exactly like the approval
  * attachment: an image centred on the page or a PDF embedded so Chromium prints
  * its pages. A format the browser cannot render inline (docx, xlsx, …)
- * contributes no page at all — and when nothing qualifies this renders `null`,
+ * contributes no page at all, and when nothing qualifies this renders `null`,
  * so a form with only a `.docx` attached still prints exactly one page and the
  * wrapper never leaves a stray flex gap on screen.
  *
@@ -27,10 +27,10 @@ export function OtherAttachmentsPrint({
 }: {
   /** The form's extra files, straight from the form query. */
   files: OtherFile[];
-  /** Signed links keyed by storage path — the same map the card lists from. */
+  /** Signed links keyed by storage path, the same map the card lists from. */
   urls: Record<string, string> | undefined;
   /** Applied to the wrapper, which is a single item of the preview column's
-   *  print order — pass `print:order-N` to place the pages after the sheet. */
+   *  print order, pass `print:order-N` to place the pages after the sheet. */
   className: string;
 }) {
   const printable = files

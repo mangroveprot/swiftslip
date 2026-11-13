@@ -66,7 +66,7 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 /**
  * Settings → Data retention: the admin's one global auto-delete rule and the
- * manual cleanup that follows it. Nothing runs on a schedule — every deletion
+ * manual cleanup that follows it. Nothing runs on a schedule, every deletion
  * comes from a pressed button after an explicit preview. Not a `BaseService`:
  * like AttachmentService it spans several tables (the five form tables), so
  * it holds one repository per table instead.
@@ -100,7 +100,7 @@ class RetentionService {
     };
   }
 
-  /** `GET /` — the setting as the page edits it. */
+  /** `GET /`, the setting as the page edits it. */
   async getSettings(): Promise<ServiceResponse<RetentionSettingsDoc>> {
     try {
       return { success: true, document: await this.readSettings() };
@@ -109,7 +109,7 @@ class RetentionService {
     }
   }
 
-  /** `PUT /` — save the single row (upserted, so the first save seeds it). */
+  /** `PUT /`, save the single row (upserted, so the first save seeds it). */
   async saveSettings(
     input: RetentionSettings,
   ): Promise<ServiceResponse<RetentionSettingsDoc>> {
@@ -140,7 +140,7 @@ class RetentionService {
 
   /**
    * Walk one form type's expired rows in batches and hand back the finished
-   * ones with every storage path they own. Nothing is changed — preview and
+   * ones with every storage path they own. Nothing is changed, preview and
    * run share this so both always agree on what "would go".
    */
   private async collect(type: RetentionFormType, cutoff: string) {
@@ -168,7 +168,7 @@ class RetentionService {
   }
 
   /**
-   * `POST /preview` — count what a set of settings would delete. Defaults to
+   * `POST /preview`, count what a set of settings would delete. Defaults to
    * the saved settings when the draft is omitted. Changes nothing.
    *
    * Every type is counted, ticked or not, because the page shows each type's
@@ -242,7 +242,7 @@ class RetentionService {
     };
   }
 
-  /** `GET /runs/last` — newest history row, or null when nothing ran yet. */
+  /** `GET /runs/last`, newest history row, or null when nothing ran yet. */
   async lastRun(): Promise<ServiceResponse<CleanupRunSummary | null>> {
     try {
       const row = await this.runsRepo.findLatest();
@@ -268,12 +268,12 @@ class RetentionService {
   }
 
   /**
-   * `POST /run` — delete the expired, finished forms of the saved types.
+   * `POST /run`, delete the expired, finished forms of the saved types.
    *
    * Order per type, deliberately: SELECT the rows and collect their file
    * paths → DELETE the rows (in batches) → only then remove the files. A
    * storage failure after the rows are gone just orphans bytes, which is
-   * logged and reported in the run's status — it never leaves a live form
+   * logged and reported in the run's status, it never leaves a live form
    * pointing at a file that no longer exists.
    */
   async run(actor: SessionUser): Promise<ServiceResponse<CleanupRunSummary>> {
@@ -318,7 +318,7 @@ class RetentionService {
           }
           if (deleted) formsDeleted[type] = deleted;
 
-          // Rows are gone — now the bytes. `removeFiles` never throws; it
+          // Rows are gone, now the bytes. `removeFiles` never throws; it
           // reports how many objects storage actually dropped, so a partial
           // failure is visible in the run's status instead of passing as a
           // clean run (the leftover files are orphans, nothing points at them).
@@ -355,7 +355,7 @@ class RetentionService {
         }
         throw error;
       } finally {
-        // Only the run that took the guard releases it — a second admin who
+        // Only the run that took the guard releases it, a second admin who
         // was refused above must not clear the flag under the first run.
         runInProgress = false;
       }

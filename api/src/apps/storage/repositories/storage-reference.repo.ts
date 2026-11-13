@@ -7,7 +7,7 @@ const PAGE = 1000;
 /** Form tables that carry `attachment_path` and `attachment_backend`. */
 const FORM_TABLES: {
   table: TableName;
-  /** The main attachment column — approval slips live here. */
+  /** The main attachment column, approval slips live here. */
   col: string;
   /** The backend marker column added by migration 0031. */
   backendCol: string;
@@ -120,7 +120,7 @@ export class StorageReferenceRepository {
       }
     }
 
-    // ---- files table (the /api/files B2 store — every row is a B2 object) ----
+    // ---- files table (the /api/files B2 store, every row is a B2 object) ----
     let offset = 0;
     for (;;) {
       const rows = await this.readPage('files' as TableName, 'key', offset);

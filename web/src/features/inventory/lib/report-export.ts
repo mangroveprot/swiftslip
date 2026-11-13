@@ -1,12 +1,12 @@
 /**
- * Excel export — client-side port of `InventoryReportService.BuildExcelAsync`
+ * Excel export, client-side port of `InventoryReportService.BuildExcelAsync`
  * (ClosedXML), built on dynamically imported exceljs the same way
  * `word-export.ts` keeps `docx` out of the main bundle.
  *
  * Same recipe as the original service:
  *   1. load the blank `report_template.xlsx` shipped in `/inventory/`
  *   2. clone the template sheet once per floor sheet (ClosedXML `proto.CopyTo`)
- *   3. `FillSheet` — titles, grow/shrink the data block to the real row count,
+ *   3. `FillSheet`, titles, grow/shrink the data block to the real row count,
  *      wipe the sample rows, write the asset rows, rebuild the totals block,
  *      then `ApplyFlexibleLayout` (landscape fit-to-width, wrap text,
  *      content-sized columns)
@@ -28,12 +28,12 @@ const FIRST_DATA_ROW = 5;
 const TEMPLATE_DATA_ROWS = 20;
 const BLANK_ROWS_BEFORE_TOTALS = 4; // breathing room under the table
 const DATA_COLUMNS = 13;
-const HEADER_ROW = FIRST_DATA_ROW - 1; // 4 — column titles
+const HEADER_ROW = FIRST_DATA_ROW - 1; // 4: column titles
 const TEMPLATE_SHEET_NAME = "__template__";
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 /**
- * `Path.GetInvalidFileNameChars()` — quotes, angle brackets, separators,
+ * `Path.GetInvalidFileNameChars()`, quotes, angle brackets, separators,
  * wildcards and control chars 0x00-0x1F. Built via `fromCharCode` so the
  * source file itself carries no control bytes.
  */
@@ -43,7 +43,7 @@ const INVALID_FILENAME_CHARS = new RegExp(
 );
 
 /**
- * Minimum width per column group (NoC) — `AdjustToContents(min,
+ * Minimum width per column group (NoC), `AdjustToContents(min,
  * double.MaxValue)`: breathing room only, no upper cap, so a long value
  * (Notes, serial strings) widens its column instead of being compressed
  * and wrapped into clipped rows.
@@ -69,7 +69,7 @@ const DEFAULT_MINIMUM = 10; // item id / asset type
  * Codepoint ranges covered by the glyph-advance tables below: printable
  * ASCII + Latin-1 + Latin Extended-A, general punctuation (dashes, quotes,
  * ellipsis) and currency symbols (incl. ₱ where the font has it). Anything
- * outside the ranges — or missing from the font — falls back to the
+ * outside the ranges, or missing from the font, falls back to the
  * `.notdef` advance, which is what SixLabors.Fonts reports to ClosedXML too.
  */
 const FONT_ADVANCE_RANGES: ReadonlyArray<readonly [number, number]> = [
@@ -80,7 +80,7 @@ const FONT_ADVANCE_RANGES: ReadonlyArray<readonly [number, number]> = [
 
 /**
  * Glyph advance widths in font units (unitsPerEm 2048), extracted from
- * `C:\Windows\Fonts\arial.ttf` and `calibri.ttf` (cmap + hmtx) — the two
+ * `C:\Windows\Fonts\arial.ttf` and `calibri.ttf` (cmap + hmtx), the two
  * families the template's cells use. Data rows are Arial 9; cells outside
  * the template's style range (rows 23-24) fall back to the workbook default
  * Calibri 11.
@@ -167,10 +167,10 @@ const FONT_METRICS: Readonly<Record<string, FontMetrics | undefined>> = {
   },
 };
 
-/** The workbook's default cell font (template style0) — clamps use its MDW. */
+/** The workbook's default cell font (template style0), clamps use its MDW. */
 const DEFAULT_CELL_FONT = { name: "Calibri", size: 11 } as const;
 
-/** `XLConstants.ColumnWidthOffset` — ClosedXML saves `Width + this`. */
+/** `XLConstants.ColumnWidthOffset`, ClosedXML saves `Width + this`. */
 const COLUMN_WIDTH_OFFSET = 0.710625;
 
 /* ---------------------------------------------------------------- export - */
@@ -203,7 +203,7 @@ async function fetchTemplateBytes(): Promise<ArrayBuffer> {
  * The template anchors the header logo with a two-cell anchor, but its
  * rendered size lives in the picture's `spPr/a:xfrm <a:ext cx cy>` (EMU).
  * ClosedXML reloads that size on load (`Convert.ToInt32(emu × dpi / 914400)`)
- * and re-saves the picture as a one-cell anchor in whole pixels — golden.xlsx
+ * and re-saves the picture as a one-cell anchor in whole pixels, golden.xlsx
  * ships `ext 72×78`. exceljs keeps only from/to positions, so the drawing is
  * the one place the size can be recovered from.
  */
@@ -212,7 +212,7 @@ async function readTemplateImageExt(
 ): Promise<{ width: number; height: number }> {
   const mod = await import("jszip");
   // CJS interop: the namespace may carry `default = module.exports` (Node,
-  // bundler) or be the exports object itself — accept either shape.
+  // bundler) or be the exports object itself, accept either shape.
   const JSZip = mod.default ?? mod;
   const zip = await JSZip.loadAsync(bytes);
   const drawingNames = Object.keys(zip.files)
@@ -243,7 +243,7 @@ type TemplateImageRange = {
 
 /**
  * Swaps every two-cell image anchor for a one-cell anchor with an explicit
- * pixel size — the shape ClosedXML writes. Done on the template sheet before
+ * pixel size, the shape ClosedXML writes. Done on the template sheet before
  * its model is captured, so all cloned floor sheets inherit it.
  */
 function applyTemplateImageExt(sheet: Worksheet, ext: { width: number; height: number }): void {
@@ -281,7 +281,7 @@ export async function buildReportWorkbook(
   templateBytes: ArrayBuffer | Uint8Array,
 ): Promise<Uint8Array<ArrayBuffer>> {
   // exceljs ships CommonJS: `require`/ESM `default` is the exports object
-  // (`{ Workbook, ... }`), while the typings describe named exports — pick
+  // (`{ Workbook, ... }`), while the typings describe named exports, pick
   // whichever shape this bundler/runtime exposes.
   const mod = await import("exceljs");
   const ExcelJS = mod.default ?? mod;
@@ -308,11 +308,11 @@ export async function buildReportWorkbook(
     fillSheet(sheet, report.branchName, floor, merges);
   }
 
-  // ClosedXML `proto.Delete()` — only the floor sheets remain.
+  // ClosedXML `proto.Delete()`, only the floor sheets remain.
   if (workbook.worksheets.length <= 1) throw new Error("Report workbook has no sheets.");
   workbook.removeWorksheet(TEMPLATE_SHEET_NAME);
 
-  // ClosedXML `Worksheet(1).SetTabActive()` — open on the first floor sheet.
+  // ClosedXML `Worksheet(1).SetTabActive()`, open on the first floor sheet.
   if (workbook.views.length > 0) {
     workbook.views = workbook.views.map((view) => ({ ...view, firstSheet: 0, activeTab: 0 }));
   }
@@ -347,7 +347,7 @@ function cloneSheet(
   model.name = name;
   const sheet = workbook.addWorksheet(name);
   // The model setter reads merges from `model.mergeCells`, which the getter
-  // never emits — capture them and apply after FillSheet instead, so merges
+  // never emits, capture them and apply after FillSheet instead, so merges
   // never ride along while rows are being spliced (exceljs doesn't move them).
   const merges = (model.merges ?? []).filter((range): range is string => typeof range === "string");
   (sheet as unknown as { model: SheetModel }).model = model;
@@ -363,7 +363,7 @@ function cellAt(sheet: Worksheet, row: number, column: number): Cell {
 /**
  * exceljs cells can SHARE one style instance (the reader reuses styles), so
  * assigning `cell.alignment = ...` would leak the change onto unrelated cells
- * — swap in a fresh style object instead.
+ * swap in a fresh style object instead.
  */
 function patchAlignment(cell: Cell, alignment: Partial<Alignment>): void {
   const holder = cell as unknown as { style: Style };
@@ -372,14 +372,14 @@ function patchAlignment(cell: Cell, alignment: Partial<Alignment>): void {
 
 /**
  * `row.values` is typed as an array/object union, but the getter always
- * returns a sparse array indexed by column — reading it never materialises
+ * returns a sparse array indexed by column, reading it never materialises
  * new cells.
  */
 function rowValueAt(row: Row, column: number): CellValue | undefined {
   return (row.values as CellValue[])[column];
 }
 
-/** Port of `FindRowContaining` — first column-A cell whose text matches. */
+/** Port of `FindRowContaining`, first column-A cell whose text matches. */
 function findRowContaining(sheet: Worksheet, text: string): number | null {
   const needle = text.toLowerCase();
   let found: number | null = null;
@@ -392,7 +392,7 @@ function findRowContaining(sheet: Worksheet, text: string): number | null {
   return found;
 }
 
-/** Port of `XLCell.Clear(XLClearOptions.Contents)` — values only, styles stay. */
+/** Port of `XLCell.Clear(XLClearOptions.Contents)`, values only, styles stay. */
 function clearRowContents(sheet: Worksheet, rowNumber: number): void {
   const row = sheet.getRow(rowNumber);
   for (let column = 1; column <= DATA_COLUMNS; column++) {
@@ -402,7 +402,7 @@ function clearRowContents(sheet: Worksheet, rowNumber: number): void {
 
 /**
  * Port of ClosedXML's `sourceRow.CopyTo(destRow)` for the data rows: cell
- * styles + row height. (Cell contents are not copied — the template's style
+ * styles + row height. (Cell contents are not copied, the template's style
  * source row is always empty, and FillSheet clears the destination anyway.)
  */
 function copyRowStyle(sheet: Worksheet, sourceRow: number, destRow: number): void {
@@ -470,7 +470,7 @@ function rowValues(row: ReportAssetRow): string[] {
 }
 
 /**
- * Port of `InventoryReportService.FillSheet` — titles, fit the data block to
+ * Port of `InventoryReportService.FillSheet`, titles, fit the data block to
  * the real row count, wipe the sample rows, write the asset rows, rebuild the
  * totals block, then re-apply (shifted) merges and lay the sheet out.
  */
@@ -494,7 +494,7 @@ function fillSheet(
   if (needed > available) {
     const insertAt = totalOfRow;
     const extra = needed - available;
-    // ClosedXML `sheet.Row(insertAt).InsertRowsAbove(extra)` — exceljs moves
+    // ClosedXML `sheet.Row(insertAt).InsertRowsAbove(extra)`, exceljs moves
     // everything below (values, styles, heights); merges we shift ourselves.
     sheet.spliceRows(insertAt, 0, ...Array.from({ length: extra }, (): never[] => []));
 
@@ -534,7 +534,7 @@ function fillSheet(
     preparedRow = findRowContaining(sheet, "PREPARED BY:") ?? totalOfRow + 9;
   }
 
-  // Leave blank rows between the table and the totals block — ClosedXML
+  // Leave blank rows between the table and the totals block, ClosedXML
   // `sheet.Row(totalOfRow).InsertRowsAbove(4)`; exceljs moves the rows below
   // (values, styles, heights) and we shift the merges ourselves.
   sheet.spliceRows(
@@ -557,7 +557,7 @@ function fillSheet(
     cellAt(sheet, totalsStart + index, 1).value = total;
   });
 
-  // Re-apply (possibly shifted) merges — exceljs never moved them with rows.
+  // Re-apply (possibly shifted) merges, exceljs never moved them with rows.
   for (const range of merges) sheet.mergeCellsWithoutStyle(range);
 
   const lastDataRow = needed === 0 ? FIRST_DATA_ROW - 1 : FIRST_DATA_ROW + needed - 1;
@@ -585,7 +585,7 @@ function fontMetrics(family: string): FontMetrics {
   return metrics;
 }
 
-/** `DefaultGraphicEngine.GetMaxDigitWidth` — the widest digit, in pixels. */
+/** `DefaultGraphicEngine.GetMaxDigitWidth`, the widest digit, in pixels. */
 function maxDigitWidthPx(metrics: FontMetrics, size: number): number {
   const scale = (size * 96) / 72 / metrics.upem;
   let widest = 0;
@@ -601,7 +601,7 @@ function maxDigitWidthPx(metrics: FontMetrics, size: number): number {
  * `XLColumn.CalculateMinColumnWidth`):
  *
  *   • every character's advance is ROUNDED to whole pixels before summing
- *   • the font style is ignored — `LoadFont` builds a Regular font from the
+ *   • the font style is ignored, `LoadFont` builds a Regular font from the
  *     family name alone, so bold headers measure with regular glyphs
  *   • textPx + 2×ceil(textPx × 0.03 + scaledMdw / 4) + 1
  */
@@ -647,7 +647,7 @@ function columnIndex(letters: string): number {
   return index;
 }
 
-/** Every merged cell as a `row:column` key — ClosedXML skips them all. */
+/** Every merged cell as a `row:column` key, ClosedXML skips them all. */
 function collectMergedCells(merges: readonly string[]): Set<string> {
   const cells = new Set<string>();
   for (const range of merges) {
@@ -665,7 +665,7 @@ function collectMergedCells(merges: readonly string[]): Set<string> {
 }
 
 /**
- * Clamp MDW — `Round(GetMaxDigitWidth(Workbook.Style.Font))`: the workbook
+ * Clamp MDW, `Round(GetMaxDigitWidth(Workbook.Style.Font))`: the workbook
  * default Calibri 11 has a 7.42px widest digit, i.e. 7px (a .NET banker's
  * round that's nowhere near a midpoint).
  */
@@ -673,18 +673,18 @@ const CLAMP_MDW = Math.round(
   maxDigitWidthPx(fontMetrics(DEFAULT_CELL_FONT.name), DEFAULT_CELL_FONT.size),
 );
 
-/** ClosedXML `DoubleExtensions.SaveRound()` — `Math.Round(value, 6)`. */
+/** ClosedXML `DoubleExtensions.SaveRound()`, `Math.Round(value, 6)`. */
 function saveRound(value: number): number {
   // .NET ties-break to even, but a saved width is
   // `(integer px − 5)/7 + 0.710625`, whose scaled fraction cycles
-  // 0/.14/.29/.43/.57/.71/.86 — never a .5 tie — so Math.round agrees.
+  // 0/.14/.29/.43/.57/.71/.86, never a .5 tie, so Math.round agrees.
   return Math.round(value * 1e6) / 1e6;
 }
 
 /**
  * Port of `AdjustToContents(1, endRow, min, double.MaxValue)`: measure the
  * widest non-merged cell in the column with real glyph metrics, apply the
- * per-column minimum in pixels (never a maximum — content always wins),
+ * per-column minimum in pixels (never a maximum, content always wins),
  * convert back to column-width units and save the way ClosedXML does
  * (`+ 0.710625`, rounded to 6 decimals).
  */
@@ -699,15 +699,15 @@ function autoSizeColumn(
   sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber > endRow) return;
     if (merged.has(`${rowNumber}:${column}`)) return; // `cell.IsMerged()` → skip
-    const value = rowValueAt(row, column); // existing cells only — never materialises new ones
+    const value = rowValueAt(row, column); // existing cells only, never materialises new ones
     if (value == null) return;
     const text = displayText(value);
     if (text === "") return;
     widestPx = Math.max(widestPx, cellWidthPx(text, row.getCell(column).font));
   });
 
-  // Floor in pixels — `XLHelper.NoCToPixels(min, mdw)` for the bound (all
-  // mins ≥ 1 NoC, so the sub-character branch never applies) — then convert
+  // Floor in pixels, `XLHelper.NoCToPixels(min, mdw)` for the bound (all
+  // mins ≥ 1 NoC, so the sub-character branch never applies), then convert
   // back with `PixelToNoC`. There is deliberately no ceiling: the column
   // always grows to fit its widest cell.
   const padding = 2 * Math.ceil(CLAMP_MDW / 4) + 1;
@@ -724,7 +724,7 @@ function applyFlexibleLayout(
   lastDataRow: number,
   merges: readonly string[],
 ): void {
-  // Landscape, 1 page wide, as many tall as needed — replaces the template's
+  // Landscape, 1 page wide, as many tall as needed, replaces the template's
   // fixed 78% print scale (the template already ships fit-to-page settings).
   sheet.pageSetup = {
     ...sheet.pageSetup,

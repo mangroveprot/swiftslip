@@ -27,7 +27,7 @@ function Req() {
 
 /**
  * The top of the COS sheet: the employee identity block and the two header
- * boxes — Date Filed and the change type. The four identity values are the
+ * boxes, Date Filed and the change type. The four identity values are the
  * paper form's header boxes as underline inputs, the way the OB sheet draws
  * them, and each one stays editable (`canEdit` gates it): the profile only
  * seeds a new form. The editor supplies the sheet around this and the rules
@@ -88,7 +88,7 @@ export function CosFormFields({
             onChange={(v) => patch({ date_filed: v })}
           />
 
-          {/* ☐ Shift Schedule   ☐ Rest Day — single choice. */}
+          {/* ☐ Shift Schedule   ☐ Rest Day, single choice. */}
           <fieldset>
             <legend className="lbl">
               Change of Work Schedule
@@ -120,7 +120,7 @@ export function CosFormFields({
 }
 
 /**
- * The lower half of the COS sheet — the reason and the three sign-off boxes
+ * The lower half of the COS sheet, the reason and the three sign-off boxes
  * the paper form prints under it. The editor puts the schedule block between
  * this and the header block, then the employee signature below it.
  */

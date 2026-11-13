@@ -6,8 +6,8 @@ import { formatScheduleLine } from "../lib/schedule-line";
 /**
  * The live preview / print replica of public/cos_template.docx.
  *
- * Laid out fluidly (`w-full`) with the same typography the OB preview uses —
- * 13px Calibri body, an 18px heavy title, 2.5px outer rules — rather than being
+ * Laid out fluidly (`w-full`) with the same typography the OB preview uses,
+ * 13px Calibri body, an 18px heavy title, 2.5px outer rules, rather than being
  * rendered at the template's true width and scaled down, which shrank the text
  * to roughly two-thirds the size of every other preview in the app.
  *
@@ -119,7 +119,7 @@ export function CosPreview({
                 </td>
                 <td>{row ? formatScheduleLine(row.to_date, row.to_start, row.to_end) : null}</td>
                 {/* The signature repeats on every line, matching the Word
-                    export — a repeated table row can't merge its last cell. */}
+                    export, a repeated table row can't merge its last cell. */}
                 <td>
                   <div className="sig-line">
                     {form.employee_signature ? (
@@ -165,7 +165,7 @@ export function CosPreview({
                 <div className="head">Approved by:</div>
                 <div className="who">
                   {/* Same blue note the OB sheet prints when the approval came
-                      through Viber — the attachment tick drives it. */}
+                      through Viber, the attachment tick drives it. */}
                   {form.approved_via_viber ? <div className="viber">Approved via Viber</div> : null}
                   <div className="name">{form.approved_by}</div>
                   Immediate Superior

@@ -26,7 +26,7 @@ type LiqRow = {
   trip_to: string;
   purpose: string;
   currency: string;
-  /** Approval slip ticked — the card shows the Approved seal. */
+  /** Approval slip ticked, the card shows the Approved seal. */
   attachment_approved: boolean;
   grand_total: number;
   updated_at: string;

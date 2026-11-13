@@ -8,7 +8,7 @@ import { ActivityLogService } from '../../activity-log/services';
 import { AccessService } from '../../access/services';
 
 /**
- * Sign-in throttling — failures allowed per ID number / per IP in the window.
+ * Sign-in throttling, failures allowed per ID number / per IP in the window.
  * Ten per ID leaves room for genuine typos while still capping guesses; the
  * per-IP limit catches spraying across many accounts.
  */
@@ -130,7 +130,7 @@ class AuthService {
   /**
    * Identity plus the app grants. Grants are resolved from the database on
    * every read, so an admin changing a rule applies on the next page load.
-   * UI hint only — the real gate is `requireApp`.
+   * UI hint only, the real gate is `requireApp`.
    */
   async session(user: SessionUser): Promise<ServiceResponse<SessionDocument>> {
     try {

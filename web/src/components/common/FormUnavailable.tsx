@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { FileQuestion } from "lucide-react";
 
 /**
- * Shown when an editor's row cannot be read — most often because the form was
+ * Shown when an editor's row cannot be read, most often because the form was
  * deleted (or the URL is a stale bookmark) and the id no longer names anything.
  *
  * Without this the editor fell through to its loading skeleton, so a permanently

@@ -5,7 +5,7 @@
 
 /**
  * Reads a File into raw base64 (no `data:` prefix) for a server function.
- * FileReader rather than a byte loop — a 10 MB attachment would otherwise take
+ * FileReader rather than a byte loop, a 10 MB attachment would otherwise take
  * seconds to encode.
  */
 export async function fileToBase64(file: File): Promise<string> {

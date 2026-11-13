@@ -30,7 +30,7 @@ router.delete(
   LiquidationController.remove,
 );
 
-// POST/GET/DELETE /:id/attachment — the approval slip behind "Approved via Viber".
+// POST/GET/DELETE /:id/attachment, the approval slip behind "Approved via Viber".
 router.use(
   buildAttachmentRoutes(
     {

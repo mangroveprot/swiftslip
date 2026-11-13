@@ -17,13 +17,13 @@ import type { PdfAttachment } from "@/lib/save-pdf";
  * The files a form should carry into its exported PDF.
  *
  * Every editor already renders an attachment card, and that card has already
- * asked for the signed URL — these hooks join the SAME query entry, so calling
+ * asked for the signed URL, these hooks join the SAME query entry, so calling
  * them costs no extra request. A form with no attachment resolves to an empty
  * list and the export behaves exactly as it did before.
  */
 type AttachmentKind = "ob" | "loa" | "cos" | "ot" | "record";
 
-/** One signed-link query per form kind — a switch, so the data type survives. */
+/** One signed-link query per form kind, a switch, so the data type survives. */
 function attachmentUrlQuery(kind: AttachmentKind, id: string) {
   switch (kind) {
     case "ob":

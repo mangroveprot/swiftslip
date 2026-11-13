@@ -1,5 +1,5 @@
 /**
- * "Refined view" filter strip — port of `ActiveFilterBar.razor`.
+ * "Refined view" filter strip, port of `ActiveFilterBar.razor`.
  * Hidden entirely when no filters are active.
  */
 export type FilterChip = {

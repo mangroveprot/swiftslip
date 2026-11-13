@@ -1,5 +1,5 @@
 /**
- * Which applications an account may open — pure functions, no database.
+ * Which applications an account may open, pure functions, no database.
  *
  * Resolution order, first match wins:
  *   1. `role === "admin"`  -> every app. No rule is even read.
@@ -35,7 +35,7 @@ const STAFF_DEFAULT: GrantableAppKey[] = ['swiftslip', 'ticketing'];
 /** Reserved `scope_value` that stores one app's starting point. */
 export const APP_DEFAULT_RULE_VALUE = '__app_default__';
 
-/** Scopes in the order they are consulted — most specific first. */
+/** Scopes in the order they are consulted, most specific first. */
 const SCOPE_ORDER: RuleScope[] = ['user', 'department', 'position'];
 
 export type Rule = {
@@ -131,7 +131,7 @@ export function resolveAccess(
         r.scope === scope &&
         canonical(scope, r.scope_value) === wanted,
     );
-    // Most specific scope wins — never fall through to a broader one.
+    // Most specific scope wins, never fall through to a broader one.
     if (match) {
       return {
         admin: false,

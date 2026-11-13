@@ -16,7 +16,7 @@ import { EXTERNAL_APPS } from "@swiftslip/shared/types";
 import { sessionQueryOptions } from "../queries";
 
 /** Shared card chrome: lifts and zooms smoothly on hover (no motion if reduced).
- *  The 0.3s transition itself comes from `.zoom-card` in `styles.css` — a Tailwind
+ *  The 0.3s transition itself comes from `.zoom-card` in `styles.css`, a Tailwind
  *  transition utility can't win against the unlayered global `a` rule.
  *  `flex-1` makes each card fill its (stretched) grid cell, so both cards in a row
  *  are always exactly the same height instead of hugging their own text. */
@@ -64,10 +64,10 @@ function ExternalAppLogo({ src }: { src: string }) {
 }
 
 /** Post-login entry point: pick which application to open. Deliberately
- *  full-screen — it sits outside the `_app` shell/sidebar.
+ *  full-screen, it sits outside the `_app` shell/sidebar.
  *
  *  Only the apps `session.apps` grants are offered. This is presentation
- *  only — each app's route guard and its server functions enforce the same
+ *  only, each app's route guard and its server functions enforce the same
  *  rule independently. If the grants ever resolve to nothing, fall back to
  *  SwiftSlip so the page is never empty. */
 export function AppChooser() {
@@ -139,7 +139,7 @@ export function AppChooser() {
                           : "h-5 w-auto object-contain"
                       }
                     />
-                    {/* Corner badge — mirrors the "Admin" pill the admin panel header
+                    {/* Corner badge, mirrors the "Admin" pill the admin panel header
                       puts next to this same logo, so the two read as the same surface. */}
                     <span className="absolute -bottom-1.5 -right-1.5 rounded-full border border-dashboard-accent/40 bg-background px-1.5 text-[9px] font-bold uppercase leading-4 tracking-wide text-dashboard-accent">
                       Admin
@@ -206,7 +206,7 @@ export function AppChooser() {
             >
               <Link to="/hr" className={CARD_CLASS}>
                 <span>
-                  {/* HRA mark keeps a white tile in both themes — the logo's navy
+                  {/* HRA mark keeps a white tile in both themes, the logo's navy
                     ink would vanish on the dark-mode paper colour. */}
                   <span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border bg-white p-1 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
                     <img src="/hra-logo.svg" alt="" className="h-full w-full object-contain" />

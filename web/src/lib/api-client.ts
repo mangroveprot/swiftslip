@@ -15,8 +15,8 @@ const BASE = ((import.meta.env["VITE_API_URL"] as string | undefined) || "/api")
 );
 
 /**
- * Full URL for browser APIs that are not `fetch` — currently only the
- * EventSource used by `use-live-updates.ts` — so `VITE_API_URL` / the dev proxy
+ * Full URL for browser APIs that are not `fetch`, currently only the
+ * EventSource used by `use-live-updates.ts`, so `VITE_API_URL` / the dev proxy
  * stay in this one file.
  */
 export const apiStreamUrl = (path: string) => `${BASE}${path}`;
@@ -133,5 +133,5 @@ export function documentsOf<T>(envelope: Envelope<T>): T[] {
   return envelope.documents ?? [];
 }
 
-/** Ids go into URL paths — always encode them. */
+/** Ids go into URL paths, always encode them. */
 export const seg = (value: string | number) => encodeURIComponent(String(value));

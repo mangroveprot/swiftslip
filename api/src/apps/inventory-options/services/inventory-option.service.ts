@@ -7,7 +7,7 @@ import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { InventoryOptionRepository } from '../repositories';
 import { OPTION_TABLES } from '../types';
 
-/** `HHmmss` in UTC — matches the original branch-code fallback. */
+/** `HHmmss` in UTC, matches the original branch-code fallback. */
 function timeSuffix(): string {
   return new Date().toISOString().slice(11, 19).replace(/:/g, '');
 }

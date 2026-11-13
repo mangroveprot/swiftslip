@@ -25,7 +25,7 @@ type LoaRow = {
   position: string;
   date_from: string | null;
   date_to: string | null;
-  /** Certificate ticked — badges the card as Approved. */
+  /** Certificate ticked, badges the card as Approved. */
   attachment_approved: boolean;
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
@@ -44,7 +44,7 @@ export function LoaList() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const now = useNow();
 
-  // A draft lives only in the browser, so there is nothing here to filter out —
+  // A draft lives only in the browser, so there is nothing here to filter out,
   // the list shows exactly the forms that are in the database.
   const visible = forms ?? [];
 
@@ -184,7 +184,7 @@ function LoaCard({
 
       {/* Approved forms get the seal, laid over the card's quiet bottom-right
           corner so it never sits on the department/inclusive-dates lines.
-          Unapproved forms show nothing at all — same rule as the other lists.
+          Unapproved forms show nothing at all, same rule as the other lists.
           The min-height holds that corner open even when a record has fewer
           rows. */}
       {f.attachment_approved ? (

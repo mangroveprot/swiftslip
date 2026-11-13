@@ -1,36 +1,36 @@
 /**
- * One way to save a form as a real PDF file — `Save as PDF` in every editor.
+ * One way to save a form as a real PDF file, `Save as PDF` in every editor.
  *
  * The editors render each form as a pixel replica of its Word template
- * (`.print-sheet` — DTR / OB / COS / OT / LOA). Before this module the only
+ * (`.print-sheet`, DTR / OB / COS / OT / LOA). Before this module the only
  * export was `window.print()` + "Save as PDF" in the browser dialog, which
  * meant the user had to know that trick. This module turns that same form into
- * a downloadable file — and it deliberately saves the **printed** layout, the
+ * a downloadable file, and it deliberately saves the **printed** layout, the
  * one Ctrl+P shows, not the narrow on-screen column:
  *
- *   1. `renderToCanvas` — the sheet is cloned into an off-screen "stage" that
+ *   1. `renderToCanvas`, the sheet is cloned into an off-screen "stage" that
  *      is exactly as wide as the paper's content box (A4 minus the `@page`
  *      margins in `src/styles.css`), with the print rules re-applied to it. So
  *      the form gets the same width, padding and A4 scaling it has in the
  *      print preview, instead of the squeezed on-screen column.
- *   2. `sliceCanvas` — that tall canvas is cut into page-sized slices that
+ *   2. `sliceCanvas`, that tall canvas is cut into page-sized slices that
  *      follow the sheet's own paper guides (`.pdf-break` markers first, then
  *      `page-break-*` CSS, then `avoid-break` groups), so a table row is never
  *      chopped in half by a page change.
- *   3. `imagesToPdf` — each slice becomes one page of the PDF, laid on the
+ *   3. `imagesToPdf`, each slice becomes one page of the PDF, laid on the
  *      same A4 margins the browser uses when printing.
  *
  * Everything is loaded lazily: jspdf + html2canvas-pro are ~400 kB and only
  * matter the moment someone actually exports, so neither is in the main bundle.
  *
- * Attachments ARE included — after the form, one page per stored file:
+ * Attachments ARE included, after the form, one page per stored file:
  *
  *   – An image (the usual viber screenshot or photo of a slip) is drawn on its
  *     own A4 page, scaled to fit and never upscaled past its own resolution.
  *   – A PDF attachment is merged page-for-page with pdf-lib, so the document
  *     keeps its real text and stays selectable. jsPDF cannot import a PDF, and
  *     a canvas capture of the on-screen `<iframe>` only ever sees Chrome's
- *     viewer chrome — which is why this is a merge rather than a screenshot.
+ *     viewer chrome, which is why this is a merge rather than a screenshot.
  *
  * A file that will not load (expired link, offline) never fails the export: the
  * form is still saved, and the toast names what was left out.
@@ -38,7 +38,7 @@
 import { fetchAttachmentBytes } from "@/lib/attachment-file";
 import { toast } from "@/lib/toast";
 
-/** A4 — the sheet CSS is authored against the same paper size. */
+/** A4, the sheet CSS is authored against the same paper size. */
 const A4 = {
   widthPt: 595.28,
   heightPt: 841.89,
@@ -68,7 +68,7 @@ const STAGE_STYLE_ID = "pdf-stage-rules";
 
 /**
  * Page margins in millimetres. These MIRROR the `@page` rules in
- * `src/styles.css` — keep the two in step, or the PDF stops matching Ctrl+P.
+ * `src/styles.css`, keep the two in step, or the PDF stops matching Ctrl+P.
  */
 interface Paper {
   top: number;
@@ -81,13 +81,13 @@ interface Paper {
   centered?: boolean;
 }
 
-/** `@page { size: A4; margin: 6mm 14mm 14mm }` — DTR / OB / COS / OT. */
+/** `@page { size: A4; margin: 6mm 14mm 14mm }`, DTR / OB / COS / OT. */
 const PAPER_DEFAULT: Paper = { top: 6, right: 14, bottom: 14, left: 14 };
 
-/** `@page loa { margin: 13.8mm 5.22mm 6.35mm 9.53mm }` — the LOA template. */
+/** `@page loa { margin: 13.8mm 5.22mm 6.35mm 9.53mm }`, the LOA template. */
 const PAPER_LOA: Paper = { top: 13.8, right: 5.22, bottom: 6.35, left: 9.53 };
 
-/** `@page liq { size: A4 landscape; margin: 8mm }` — the LIQ sheet. */
+/** `@page liq { size: A4 landscape; margin: 8mm }`, the LIQ sheet. */
 const PAPER_LIQ: Paper = {
   top: 8,
   right: 8,
@@ -151,7 +151,7 @@ const STAGE_CSS = `
 `;
 
 export interface SavePdfOptions {
-  /** Element to capture — the editor's own `.print-sheet` preview. */
+  /** Element to capture, the editor's own `.print-sheet` preview. */
   element: HTMLElement;
   /** Download name, without the `.pdf` extension. */
   fileName: string;
@@ -176,7 +176,7 @@ export interface PdfAttachment {
 
 /* ------------------------------------------------------------------ paper - */
 
-/** The paper a form prints on — LOA and LIQ have their own pages. */
+/** The paper a form prints on, LOA and LIQ have their own pages. */
 function paperFor(element: HTMLElement): Paper {
   if (element.classList.contains("liq-print-sheet")) return PAPER_LIQ;
   return element.classList.contains("loa-print-sheet") ? PAPER_LOA : PAPER_DEFAULT;
@@ -213,7 +213,7 @@ function ensureStageStyles(): void {
 /**
  * Copy the sheet into an off-screen box the size of the paper's content area,
  * paint it, and hand back the canvas plus the copy (the copy is what the page
- * slicing has to measure — its wrapping is the printed one).
+ * slicing has to measure, its wrapping is the printed one).
  *
  * The copy stays in place until `dispose()` is called, because a detached
  * element has no measurements; every caller disposes it before it returns, so
@@ -246,7 +246,7 @@ async function renderToCanvas(
   ].join(";");
 
   const root = sheet.cloneNode(true) as HTMLElement;
-  // The copy must not answer `getElementById(sheetId)` — the live sheet does.
+  // The copy must not answer `getElementById(sheetId)`, the live sheet does.
   root.removeAttribute("id");
   stage.append(root);
   document.body.append(stage);
@@ -262,7 +262,7 @@ async function renderToCanvas(
     const { default: html2canvas } = await import("html2canvas-pro");
     const width = root.offsetWidth || widthPx;
     const height = root.offsetHeight || Math.round(contentBox(paper).heightPx);
-    // 2× keeps text crisp when the PDF is zoomed or printed — the same density
+    // 2× keeps text crisp when the PDF is zoomed or printed, the same density
     // a 144 dpi scan would have, at a size that still fits in a browser canvas.
     const scale = Math.min(2, Math.max(1, 2400 / Math.max(width, height)));
     const canvas = await html2canvas(root, {
@@ -394,7 +394,7 @@ function pickBreak(candidates: BreakCandidate[], top: number, limit: number): nu
   if (explicit) return explicit.cut;
 
   // Walk back from the page bottom: an edge is only usable when no avoided
-  // block spans it — that block would be split across two pages.
+  // block spans it, that block would be split across two pages.
   const avoided = candidates.filter((c) => !c.breakAfter);
   for (let i = inside.length - 1; i >= 0; i -= 1) {
     const cut = inside[i]!.cut;
@@ -472,7 +472,7 @@ async function decodeBlob(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
  * Lay every form page on its own A4 sheet, then one page per attachment.
  *
  * Attachments that cannot be drawn (a docx, a link that expired, a password-
- * protected PDF) are named in `skipped` rather than failing the export — losing
+ * protected PDF) are named in `skipped` rather than failing the export, losing
  * the whole file because one screenshot 404'd would be the worse outcome.
  */
 async function buildPdf(
@@ -497,7 +497,7 @@ async function buildPdf(
     if (index > 0) pdf.addPage("a4", orientation);
     const aspect = page.height / Math.max(1, page.width);
     // A slice always fits the width; one taller than the printable area (a
-    // single very tall row) is scaled down rather than cropped — showing all of
+    // single very tall row) is scaled down rather than cropped, showing all of
     // it beats a clean cut line.
     const drawWidth = Math.min(box.widthPt, box.heightPt / aspect);
     const drawHeight = drawWidth * aspect;
@@ -530,7 +530,7 @@ async function buildPdf(
         continue;
       }
       if (!IMAGE_ATTACHMENT_RE.test(attachment.name)) {
-        // docx / xlsx / zip — there is nothing to draw on a page.
+        // docx / xlsx / zip, there is nothing to draw on a page.
         skipped.push(attachment.name);
         continue;
       }
@@ -569,7 +569,7 @@ async function buildPdf(
 /**
  * Append stored PDFs page-for-page. jsPDF cannot import a PDF, so the finished
  * document is handed to pdf-lib, which copies real pages rather than pictures
- * of them — text stays selectable and the attachment keeps its own pagination.
+ * of them, text stays selectable and the attachment keeps its own pagination.
  */
 async function mergePdfs(
   base: Uint8Array,
@@ -585,7 +585,7 @@ async function mergePdfs(
       const copied = await merged.copyPages(source, source.getPageIndices());
       for (const page of copied) merged.addPage(page);
     } catch {
-      // Encrypted or malformed — keep the rest of the export.
+      // Encrypted or malformed, keep the rest of the export.
       skipped.push(file.name);
     }
   }
@@ -607,7 +607,7 @@ async function mergePdfs(
  * });
  * ```
  *
- * Throws when the sheet cannot be captured — callers wrap it in try/catch and
+ * Throws when the sheet cannot be captured, callers wrap it in try/catch and
  * show their own message, or use `savePdfFrom` which already reports the outcome.
  */
 export async function saveElementAsPdf({

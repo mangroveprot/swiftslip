@@ -21,8 +21,8 @@ const HINTS = [
 ];
 
 /**
- * Floating LOA assistant. The whole widget — orange header, bubbles, composer,
- * launcher — lives in the shared `AssistantChat`; this file only supplies the
+ * Floating LOA assistant. The whole widget, orange header, bubbles, composer,
+ * launcher, lives in the shared `AssistantChat`; this file only supplies the
  * LOA copy and wires the turn to the LOA server function.
  */
 export function LoaAssistantChat({

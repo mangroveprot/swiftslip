@@ -74,12 +74,12 @@ export type AccountListItem = {
   role: Role;
   created_at: string;
   full_name: string;
-  /** The office / branch — `profiles.area`. */
+  /** The office / branch, `profiles.area`. */
   designation: string;
   department: string;
-  /** The job title — `profiles.designation`. */
+  /** The job title, `profiles.designation`. */
   position: string;
-  /** The company the employee works for — `profiles.employer` (0 = Regasco, 1 = Mindbridge). */
+  /** The company the employee works for, `profiles.employer` (0 = Regasco, 1 = Mindbridge). */
   employer: Employer;
 };
 
@@ -137,10 +137,10 @@ export type ActivityLogCounts = {
 // ── Form lists (own rows, newest first) ──────────────────────────────────────
 //
 // `deletes_in_days` is set only when a retention cleanup would take this form
-// within the next week — or already would, on the next run (0 or less). It is
+// within the next week, or already would, on the next run (0 or less). It is
 // absent when cleanup is off, this type is not ticked, or the form is kept:
 // still a draft, or waiting for its approval slip. It is a warning, never a
-// promise — nothing is deleted until an admin previews and runs a cleanup.
+// promise, nothing is deleted until an admin previews and runs a cleanup.
 
 export type RecordSummary = {
   id: string;
@@ -165,22 +165,22 @@ export type ObSummary = {
   position: string;
   date_of_ob: string;
   attachment_approved: boolean;
-  /** The HR approval state (shared `ObHrStatus`) — the status badge. */
+  /** The HR approval state (shared `ObHrStatus`), the status badge. */
   hr_status: ObHrStatus;
   updated_at: string;
   deletes_in_days?: number;
   /** How often the form has gone back to HR (0 = first time through). */
   resubmit_count?: number;
-  /** The trips back to HR, oldest first — the queue caption reads the latest. */
+  /** The trips back to HR, oldest first, the queue caption reads the latest. */
   resubmit_history?: ObResubmitEvent[];
-  /** Saved edits not yet sent to HR (migration 0039) — the list badges these. */
+  /** Saved edits not yet sent to HR (migration 0039), the list badges these. */
   pending_changes?: boolean;
   /** The employee's profile picture, signed for this response; null when none. */
   employee_photo?: string | null;
 };
 
 /**
- * One row of the HR review queue — an `ObSummary` plus the supervisor signal
+ * One row of the HR review queue, an `ObSummary` plus the supervisor signal
  * the queue card shows next to the status chip.
  */
 export type HrObSummary = ObSummary & {
@@ -228,7 +228,7 @@ export type LiqSummary = {
   trip_to: string;
   purpose: string;
   currency: string;
-  /** Approval slip ticked — badges the card as Approved, like the other lists. */
+  /** Approval slip ticked, badges the card as Approved, like the other lists. */
   attachment_approved: boolean;
   /** Sum of every expense column, computed by the API from the child rows. */
   grand_total: number;
@@ -273,7 +273,7 @@ export type ObSigner = {
   /** Data URL of the saved signature; "" when none is on file. */
   signature: string;
   /**
-   * The signer's designation from their profile (e.g. "HR ASSOCIATE") — the
+   * The signer's designation from their profile (e.g. "HR ASSOCIATE"), the
    * line the paper form prints under the name in the "Verified by: HRD" box.
    * "" when the profile has none.
    */
@@ -284,13 +284,13 @@ export type ObSigner = {
 
 /** Who signed each part of an OB form. A key is absent until that signature exists. */
 export type ObSigners = {
-  /** `hr_approved_by` — the "Verified by: HRD" box. */
+  /** `hr_approved_by`, the "Verified by: HRD" box. */
   approved?: ObSigner;
-  /** `hr_rejected_by` — the HR reviewer who bounced the form back. */
+  /** `hr_rejected_by`, the HR reviewer who bounced the form back. */
   rejected?: ObSigner;
-  /** `departure_signed_by` — the exit-clearance departure row. */
+  /** `departure_signed_by`, the exit-clearance departure row. */
   departure?: ObSigner;
-  /** `arrival_signed_by` — the exit-clearance arrival row. */
+  /** `arrival_signed_by`, the exit-clearance arrival row. */
   arrival?: ObSigner;
 };
 
@@ -315,7 +315,7 @@ export type ObDetail = Attached & {
 /**
  * The employee behind an OB form, resolved from their profile when HR opens
  * the detail: the face, the org facts the sheet has no box for (office,
- * supervisor) and their latest forms — so a reviewer sees who they are
+ * supervisor) and their latest forms, so a reviewer sees who they are
  * reviewing instead of four denormalised cells.
  */
 export type ObEmployeeProfile = {
@@ -324,15 +324,15 @@ export type ObEmployeeProfile = {
   full_name: string;
   emp_no: string;
   department: string;
-  /** Job title — `profiles.designation`. */
+  /** Job title, `profiles.designation`. */
   position: string;
-  /** Office / branch — `profiles.area`. */
+  /** Office / branch, `profiles.area`. */
   area: string;
-  /** The owner's company — `profiles.employer` (0 = Regasco, 1 = Mindbridge),
+  /** The owner's company, `profiles.employer` (0 = Regasco, 1 = Mindbridge),
    *  so the reviewed form's letterhead matches their employer. */
   employer: Employer;
   supervisor: string;
-  /** Their newest OB forms (max 5), newest first — the form's own history. */
+  /** Their newest OB forms (max 5), newest first, the form's own history. */
   recent: {
     id: string;
     date_of_ob: string;
@@ -342,7 +342,7 @@ export type ObEmployeeProfile = {
 };
 
 /**
- * `GET /api/hr/ob/:id` — the same detail an HR reviewer opens from the queue.
+ * `GET /api/hr/ob/:id`, the same detail an HR reviewer opens from the queue.
  * `employee` is null when the form has no owner profile to resolve.
  */
 export type HrObDetail = ObDetail & {
@@ -361,8 +361,8 @@ export type AttachmentLink = { url: string; name: string };
 
 // ── Optional B2 file store (`/files`) ────────────────────────────────────────
 
-/** `POST /files` — the key to keep, plus the readable original name. */
+/** `POST /files`, the key to keep, plus the readable original name. */
 export type StoredFile = { key: string; name: string };
 
-/** `GET /files/url?key=` — a short-lived presigned download link. */
+/** `GET /files/url?key=`, a short-lived presigned download link. */
 export type FileLink = { url: string; name: string; mimeType: string };

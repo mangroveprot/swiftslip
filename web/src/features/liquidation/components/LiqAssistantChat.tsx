@@ -4,7 +4,7 @@ import { type QuickStartOption } from "@/components/common/QuickStartChips";
 import type { LiqExpense, LiqForm } from "@swiftslip/shared/types";
 
 const GREETING =
-  "Hi! Attach up to five receipts and I'll read them into the expense lines — or just tell me the amounts and I'll type them.";
+  "Hi! Attach up to five receipts and I'll read them into the expense lines, or just tell me the amounts and I'll type them.";
 
 /** One-click starters under the greeting, tailored to the LIQ form. */
 const QUICK_START: QuickStartOption[] = [

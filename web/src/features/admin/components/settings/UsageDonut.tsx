@@ -10,17 +10,17 @@ const SEGMENT_CLASS = {
   free: "stroke-muted",
 } as const satisfies Record<"approval" | "other" | "orphan" | "free", string>;
 
-/** Hairline between two arcs, in px — keeps same-coloured slices legible. */
+/** Hairline between two arcs, in px, keeps same-coloured slices legible. */
 const GAP = 1.5;
 
 /**
- * The storage ring: one arc per slice of a backend's limit — approved slips,
- * other attachments, orphans and free — painted from the same numbers the
+ * The storage ring: one arc per slice of a backend's limit, approved slips,
+ * other attachments, orphans and free, painted from the same numbers the
  * legend beside it reads, so ring and list can never disagree.
  *
  * Pure SVG, no chart library: it prints, scales and themes (the stroke classes
  * resolve to the palette tokens) for free. The centre label scales with the
- * ring — full "60% full" on the page's cards, a bare "1%" inside the smaller
+ * ring, full "60% full" on the page's cards, a bare "1%" inside the smaller
  * cleanup-modal copies, so a nearly-empty ring still says its number. Every
  * non-zero slice also keeps a visible minimum arc, so the ring shows green the
  * moment anything is stored instead of reading as empty at 1 %.
@@ -34,7 +34,7 @@ export function UsageDonut({
   usage: StorageBackendUsage;
   /** Outer diameter in px; the stroke follows it so the ring keeps its weight. */
   size?: number;
-  /** The centre percent — off only when a caller wants the bare ring. */
+  /** The centre percent, off only when a caller wants the bare ring. */
   showLabel?: boolean;
   className?: string;
 }) {
@@ -59,7 +59,7 @@ export function UsageDonut({
 
   /**
    * A slice of 1 % on a 72 px ring is barely 2 px long, and the hairline gap
-   * eats what is left — the ring read as empty grey beside a "1 % full" label.
+   * eats what is left, the ring read as empty grey beside a "1 % full" label.
    * So every non-zero slice is lifted to a floor of 0.6 stroke-widths (about a
    * green dot you can actually see), and "free" absorbs the difference, which
    * keeps the ring closing exactly on the circumference.
@@ -83,7 +83,7 @@ export function UsageDonut({
     usedTotal = usedBudget;
   }
 
-  // Free is whatever is left — including on an empty backend, where it is the
+  // Free is whatever is left, including on an empty backend, where it is the
   // whole ring, so 0 % still paints a full grey track and no green at all.
   const freeLength = Math.max(0, circumference - usedTotal - usedCount * GAP);
   const lengths = [...usedLengths, freeLength];

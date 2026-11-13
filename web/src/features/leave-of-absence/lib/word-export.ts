@@ -6,7 +6,7 @@ import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { LoaForm } from "@swiftslip/shared/types";
 
 // The export fills a tokenized copy of the company's real Word form
-// (public/loa_form_template.docx — tokenized by scripts/loa-template-tokenize.mjs)
+// (public/loa_form_template.docx, tokenized by scripts/loa-template-tokenize.mjs)
 // so the output matches the template's exact layout/styling instead of being
 // rebuilt in code. Original tokens: {IdNumber} {EmployeName} {DepratmentLocation}
 // {DateField} {Postion} {NumberDaysApplied} {From} {To} {Remarks} {date}
@@ -18,16 +18,16 @@ const TEMPLATE_URL = "/loa_form_template.docx";
 
 // A 1×1 FULLY transparent pixel (RGBA 0,0,0,0): docxtemplater's image module
 // refuses to render an empty value, so an employee who hasn't signed yet still
-// exports — the cell just stays blank, exactly like the untouched template.
-// (The value this replaced was RGBA 0,0,255,127 — a half-opaque BLUE — which
+// exports, the cell just stays blank, exactly like the untouched template.
+// (The value this replaced was RGBA 0,0,255,127, a half-opaque BLUE, which
 // Word drew as a blue block in the signature cell of every unsigned export.)
 const TRANSPARENT_PX =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNgAAIAAAUAAen63NgAAAAASUVORK5CYII=";
 
-/** The template's own empty "Others:" line — the fallback when no text is given. */
+/** The template's own empty "Others:" line, the fallback when no text is given. */
 const OTHERS_LINE = "_".repeat(41);
 
-/** Second-line indent for the typed Others text — 15 Calibri-bold spaces
+/** Second-line indent for the typed Others text, 15 Calibri-bold spaces
  *  match the width of the "Others: " prefix (48.5px), so the text starts
  *  under the line instead of in front of it (same rule as the preview). */
 const OTHERS_TEXT_INDENT = " ".repeat(15);
@@ -50,7 +50,7 @@ const CHECK_TOKENS: Record<string, string> = {
  * "Position:" / "Number of Days Applied:" labels and the value cells under them.
  * The ids live in public/loa_form_template.docx, so they survive every render
  * and there's no text to match against (the value cells are empty in the
- * template — their contents differ on every export).
+ * template, their contents differ on every export).
  */
 const CENTERED_PARA_IDS = [
   "36183A05", // Date Filed:
@@ -62,7 +62,7 @@ const CENTERED_PARA_IDS = [
 ];
 
 /** Insert `markup` into the `<w:pPr>` of the paragraph carrying `paraId`, right
- *  before the paragraph's own run-props — where OOXML wants ind / jc / spacing
+ *  before the paragraph's own run-props, where OOXML wants ind / jc / spacing
  *  to sit. Anything that doesn't look like the expected shape is returned
  *  unchanged rather than mangled. */
 function insertInPPr(xml: string, paraId: string, markup: string): string {
@@ -77,7 +77,7 @@ function insertInPPr(xml: string, paraId: string, markup: string): string {
   return xml.slice(0, insertAt) + markup + xml.slice(insertAt);
 }
 
-/** Centre the paragraph carrying `paraId` — `<w:jc>` after `ind`, before `rPr`. */
+/** Centre the paragraph carrying `paraId`, `<w:jc>` after `ind`, before `rPr`. */
 const centerParagraph = (xml: string, paraId: string) =>
   insertInPPr(xml, paraId, '<w:jc w:val="center"/>');
 
@@ -85,7 +85,7 @@ const centerParagraph = (xml: string, paraId: string) =>
  * `w14:paraId` of the REASONS / REMARKS paragraph.
  *
  * Its cell is a vertical merge (`w:vMerge="restart"`) spanning the three rows of
- * the remarks box, and the template aligns it `center` — so the text floats in
+ * the remarks box, and the template aligns it `center`, so the text floats in
  * the middle of a much taller box. Short entries sit in dead space; long ones
  * start a third of the way down and then push the row past the page. Top-align
  * makes the text start on the first line and grow downward instead.
@@ -95,7 +95,7 @@ const REMARKS_PARA_ID = "335E2876";
 /**
  * Leading + size steps for a long REASONS / REMARKS entry.
  *
- * The remarks box is a fixed-height merged cell — about seven lines of 12pt fit
+ * The remarks box is a fixed-height merged cell, about seven lines of 12pt fit
  * before the row outgrows the page and Word spills onto a second sheet. Past
  * that the text has to give, so each step tightens the leading and then drops a
  * point size. Chars that fit scale with 1/f², so 10pt with tight leading lands
@@ -105,7 +105,7 @@ const REMARKS_PARA_ID = "335E2876";
  * single-spaced and lower values are tighter.
  */
 const REMARKS_STEPS = [
-  { over: 1600, line: "160", sz: "16" }, // 8pt — the floor; past ~1600 chars
+  { over: 1600, line: "160", sz: "16" }, // 8pt, the floor; past ~1600 chars
   { over: 1200, line: "180", sz: "18" }, // 9pt  the sheet spills regardless
   { over: 700, line: "200", sz: "20" }, // 10pt
   { over: 300, line: "220", sz: "22" }, // 11pt
@@ -154,12 +154,12 @@ function vAlignCell(xml: string, paraId: string, val: "top" | "center" | "bottom
 /**
  * The "Others:" paragraph (typed answer on top, fill line underneath).
  *
- * The answer line is tightened so it sits just above the fill line — but not
+ * The answer line is tightened so it sits just above the fill line, but not
  * so far that the two collide. `w:line` under `lineRule="auto"` counts 240ths
  * of a single line, so 190 is ~10.9pt for Calibri 11, i.e. ~14.6px between the
  * two baselines: close to the preview's own spacing, and clear of the font's
  * glyph extent. Values much below ~170 make Word draw the answer straight ON
- * the fill line (the value this replaced was 67, ≈3.9pt — less than a third of
+ * the fill line (the value this replaced was 67, ≈3.9pt, less than a third of
  * the text's own height, so the two lines overlapped).
  *
  * The cell is bottom-aligned (`w:vAlign="bottom"`), so the leading moves the
@@ -194,8 +194,8 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
     Object.fromEntries([[CHECK_TOKENS[type], check(form.leave_type === type)]]);
 
   // The typed Others answer goes ON TOP (indented to where the fill line
-  // starts), with "Others:" and the line — plus the two pay boxes, spaced off
-  // the line — underneath it, the same order the preview draws. It only appears
+  // starts), with "Others:" and the line, plus the two pay boxes, spaced off
+  // the line, underneath it, the same order the preview draws. It only appears
   // while Others is the chosen type; switching away keeps the draft in the form
   // but out of the sheet/export.
   const typedOthers =
@@ -215,7 +215,7 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
     approvedBy: form.approved_by ?? "",
     viber: form.approved_via_viber ? "Approved via Viber" : "",
     employee_signature: sigB64 || TRANSPARENT_PX,
-    // Exactly one box gets the tick — the form's single choice.
+    // Exactly one box gets the tick, the form's single choice.
     ...box("Vacation Leave"),
     ...box("Maternity Leave"),
     ...box("Emergency Leave"),
@@ -231,7 +231,7 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
   });
 
   // Post-render XML pass: the typed answer sits ON TOP of the fill line and the
-  // Date Filed / Position / Number of Days cells are centred — both matching the
+  // Date Filed / Position / Number of Days cells are centred, both matching the
   // preview. Centring runs on every export; the answer only when Others is the
   // chosen type.
   const entry = zip.file("word/document.xml");
@@ -239,7 +239,7 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
   if (xml) {
     for (const paraId of CENTERED_PARA_IDS) xml = centerParagraph(xml, paraId);
     // REASONS / REMARKS starts on the first line of its merged box instead of
-    // floating mid-box — that dead gap above the text is what pushed a long
+    // floating mid-box, that dead gap above the text is what pushed a long
     // entry onto a second page.
     xml = vAlignCell(xml, REMARKS_PARA_ID, "top");
     xml = tightenRemarks(xml, REMARKS_PARA_ID, (form.reasons ?? "").length);
@@ -257,7 +257,7 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
       if (pEnd >= 0 && (tcEnd < 0 || pEnd < tcEnd)) {
         // Reuse the label run's rPr so the answer matches the line's styling,
         // then drop it in BEFORE that run: text on top, "Others:" and the fill
-        // line underneath — the order the preview draws. {others_line} is
+        // line underneath, the order the preview draws. {others_line} is
         // followed inline by the pay boxes, so the break goes between the two
         // runs rather than inside the token.
         const runStart = Math.max(xml.lastIndexOf("<w:r>", label), xml.lastIndexOf("<w:r ", label));
@@ -276,7 +276,7 @@ export async function downloadLoaWord({ form, fileName }: { form: LoaForm; fileN
 
     // The template ends with an invisible empty paragraph (after the last
     // table) that still occupies a full line. Once the sheet is even one line
-    // taller — a long REASONS / REMARKS entry, or a typed "Others" answer —
+    // taller, a long REASONS / REMARKS entry, or a typed "Others" answer,
     // Word spills that paragraph onto a blank second page. Pin it to 2pt on
     // EVERY export, not just the ones that also carry a typed answer.
     const sect = xml.lastIndexOf("<w:sectPr");

@@ -38,7 +38,7 @@ export class FileStorageService {
     if (backend === 'b2') {
       await this.b2.upload(key, body, contentType);
     } else {
-      // Supabase — ensure the bucket exists first.
+      // Supabase, ensure the bucket exists first.
       await this.supabase.ensureBucket();
       await this.supabase.upload(key, body, contentType);
     }
@@ -87,7 +87,7 @@ export class FileStorageService {
   /**
    * Best‑effort removal. Accepts an array of { key, backend, size? } objects
    * and reports how many went, how many stayed, and the bytes freed (exact
-   * when `failed` is 0 — on a partial failure the byte count is an upper
+   * when `failed` is 0, on a partial failure the byte count is an upper
    * bound, and `failed` is what the admin should read).
    */
   async removeRefsQuietly(
@@ -132,7 +132,7 @@ export class FileStorageService {
         `Could not remove Supabase folder ${folder}: ${(e as Error).message}`,
       );
     }
-    // Best‑effort B2 removal — if B2 is not configured we just log and skip.
+    // Best‑effort B2 removal, if B2 is not configured we just log and skip.
     if (this.b2Configured()) {
       await this.b2.removePrefix(folder);
     }

@@ -20,7 +20,7 @@ export async function check(): Promise<{
   }
 }
 
-/** Never blocks startup — an unreachable inventory DB only affects inventory. */
+/** Never blocks startup, an unreachable inventory DB only affects inventory. */
 export async function init(): Promise<void> {
   if (!config.db.rgc.url) {
     logger.info('RGC inventory database not configured (inventory is off).');

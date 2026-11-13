@@ -5,7 +5,7 @@ import { sessionQueryOptions } from "@/features/auth/queries";
 import { pageTitle, seo } from "@/lib/seo";
 
 /**
- * RGC Asset Inventory — its own chrome (sidebar + gradient header), outside
+ * RGC Asset Inventory, its own chrome (sidebar + gradient header), outside
  * `_app` on purpose. Child routes provide the pages: index (assets), reports,
  * settings.
  *
@@ -14,7 +14,7 @@ import { pageTitle, seo } from "@/lib/seo";
  * Admin Panel → App access rules. `session.apps` comes from `getSession`,
  * which resolves it from the database on every read.
  *
- * This route guard is UX, not the security boundary — the server functions in
+ * This route guard is UX, not the security boundary, the server functions in
  * `api/inventory.functions.ts` each re-check with `requireApp`, so guessing the
  * URL still hits a 403 at the data layer.
  */

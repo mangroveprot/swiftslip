@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Stand-in for a plain card grid (COS / LOA / OT lists) while the list query
- * loads. Form editors each own a layout-specific `*EditorSkeleton.tsx` — their
+ * loads. Form editors each own a layout-specific `*EditorSkeleton.tsx`, their
  * pages differ too much for a shared two-pane placeholder to stay in sync, and
  * the DTR list has its own `RecordsListSkeleton` for its thumbnail cards.
  */
