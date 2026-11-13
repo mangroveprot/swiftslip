@@ -3,6 +3,13 @@ import { cn } from "@/lib/utils";
 /** The mascot file that ships in `public/`, one image for every AI surface. */
 export const AI_MASCOT_SRC = "/regasco_ai_mascot.webp";
 
+/**
+ * The file's real pixel size. The largest slot is 56 css px (`xl`), so 256
+ * covers a 4x screen with room to spare. It used to ship at 1254 px, which was
+ * 608 KB for a 16 px chat bubble; the 256 px export is 14 KB.
+ */
+export const AI_MASCOT_PX = 256;
+
 const SIZES = {
   xs: "size-4",
   sm: "size-6",
@@ -62,6 +69,9 @@ export function AiMascot({
         alt=""
         aria-hidden="true"
         draggable={false}
+        width={AI_MASCOT_PX}
+        height={AI_MASCOT_PX}
+        decoding="async"
         className={cn("size-full object-contain", ZOOM[size])}
       />
     </span>

@@ -34,7 +34,14 @@ export function ProfileAvatar({
       aria-hidden="true"
     >
       {photo ? (
-        <img src={photo} alt="" className="size-full object-cover" />
+        <img
+          src={photo}
+          alt=""
+          width={size}
+          height={size}
+          decoding="async"
+          className="size-full object-cover"
+        />
       ) : (
         <span className="leading-none">{initialsOf(name)}</span>
       )}
