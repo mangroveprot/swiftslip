@@ -42,8 +42,10 @@ import {
   recordsQueryOptions,
 } from "@/features/records/queries";
 import { fileToBase64 } from "@/lib/file";
+import { makeThumbnail } from "@/lib/attachment-upload";
 import { downloadFromUrl, IMAGE_RE } from "@/lib/attachment-file";
 import { toast } from "@/lib/toast";
+import type { AttachmentLink } from "@swiftslip/shared/api-types";
 
 /** What the document means for this row: the OB slip and the LOA approval
  *  attachment drive an approval mark; the DTR's file is a supporting file. */
@@ -174,7 +176,11 @@ export function AttachmentCard({
     ...URL_QUERY[kind](id),
     enabled: !usesCallerLink && Boolean(file),
   });
-  const signed = usesCallerLink ? (signedUrl ? { url: signedUrl } : null) : ownerSigned;
+  const signed: Pick<AttachmentLink, "url" | "thumbUrl"> | null | undefined = usesCallerLink
+    ? signedUrl
+      ? { url: signedUrl }
+      : null
+    : ownerSigned;
   const signing = usesCallerLink ? signedUrlLoading : ownerSigning;
   const isImage = file ? IMAGE_RE.test(file.name) : false;
   /** PDFs don't preview inline on screen, but they can be embedded for print. */
@@ -235,13 +241,16 @@ export function AttachmentCard({
     // what forces the row to be created. Resolve the id before reading the file
     // so the created row and the stored file agree.
     const rowId = onEnsureRow ? await onEnsureRow() : id;
-    const base64 = await fileToBase64(picked);
+    // The preview is made here, on the device, so the server never pays for
+    // image work and the card later draws 30 KB instead of the original.
+    const [base64, thumbBase64] = await Promise.all([fileToBase64(picked), makeThumbnail(picked)]);
     const payload = {
       data: {
         id: rowId,
         filename: picked.name,
         contentType: picked.type || "application/octet-stream",
         base64,
+        ...(thumbBase64 ? { thumbBase64 } : {}),
       },
     };
     if (kind === "ob") await uploadObAttachment(payload);
@@ -356,12 +365,26 @@ export function AttachmentCard({
                   title="Open the full attachment"
                   onClick={() => setViewing(true)}
                 >
-                  <img
-                    src={signed.url}
-                    alt={file.name}
-                    loading="lazy"
-                    className="max-h-28 w-auto rounded border print:max-h-[24cm] print:max-w-full print:rounded-none"
-                  />
+                  <picture>
+                    {/* Paper keeps the original: the preview is 400 px wide,
+                        fine at 112 px on screen and far too soft at 24 cm. */}
+                    <source media="print" srcSet={signed.url} />
+                    <img
+                      src={signed.thumbUrl ?? signed.url}
+                      alt={file.name}
+                      loading="lazy"
+                      decoding="async"
+                      onError={(event) => {
+                        // A row stored before previews existed has no
+                        // `.thumb.webp` behind it. Fall back to the file once.
+                        const img = event.currentTarget;
+                        if (signed.thumbUrl && img.src !== signed.url) {
+                          img.src = signed.url;
+                        }
+                      }}
+                      className="max-h-28 w-auto rounded border print:max-h-[24cm] print:max-w-full print:rounded-none"
+                    />
+                  </picture>
                 </button>
               ) : null}
             </div>

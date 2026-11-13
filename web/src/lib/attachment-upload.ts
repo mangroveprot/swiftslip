@@ -156,6 +156,82 @@ export async function prepareAttachment(file: File): Promise<File> {
   }
 }
 
+/**
+ * Longest edge of the preview. The card draws attachments at most 112 css px
+ * tall, so 400 leaves a 3.5x buffer for a high-density screen.
+ */
+const THUMB_MAX_EDGE = 400;
+
+/** Preview quality. This is a 112 px tile, not a print source. */
+const THUMB_QUALITY = 0.8;
+
+/** Raw base64 of a blob, no `data:` prefix. */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? "");
+      resolve(dataUrl.slice(dataUrl.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read that preview."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
+ * A small WebP preview of a picture, as raw base64, or null for anything that
+ * is not a picture (and for any failure, a missing preview must never block
+ * the upload itself).
+ *
+ * The stored file is the original the user picked, because it has to survive
+ * printing and zooming. The card, however, draws it at most 112 px tall, so
+ * without this a form with four receipts downloads four full-size photos to
+ * paint four postage stamps. The browser already decodes the picture for
+ * `prepareAttachment`, so this costs one extra tiny encode on the device that
+ * has the CPU to spare, and saves hundreds of kilobytes on every later view.
+ */
+export async function makeThumbnail(file: File): Promise<string | null> {
+  if (typeof document === "undefined") return null;
+  const looksLikePicture =
+    file.type.startsWith("image/") ||
+    (!file.type && /\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name));
+  if (!looksLikePicture) return null;
+
+  let source: ImageBitmap | HTMLImageElement | null = null;
+  try {
+    source = await decode(file);
+    if (!source) return null;
+    const { w, h } = sizeOf(source);
+    if (!w || !h) return null;
+
+    const scale = Math.min(1, THUMB_MAX_EDGE / Math.max(w, h));
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    // Same white paper as `prepareAttachment`: a transparent PNG would turn
+    // black wherever the encoder drops the alpha channel.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, outW, outH);
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(source as CanvasImageSource, 0, 0, outW, outH);
+
+    const blob = await canvasToBlob(canvas, "image/webp", THUMB_QUALITY);
+    // The stored key is always `.thumb.webp`, so a browser that cannot encode
+    // WebP sends no preview instead of a JPEG under a WebP name.
+    if (!blob || blob.type !== "image/webp") return null;
+    return await blobToBase64(blob);
+  } catch {
+    return null;
+  } finally {
+    if (source instanceof ImageBitmap) source.close();
+  }
+}
+
 /** "2.4 MB" / "840 KB", short enough for a row of a list. */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

@@ -154,3 +154,27 @@ export function readUpload(input: {
 
   return { buffer, contentType, name: safeFilename(input.filename) };
 }
+
+/** Ceiling for a preview. A 400 px WebP lands between 10 and 40 KB. */
+export const THUMB_MAX_BYTES = 200 * 1024;
+
+/**
+ * Decode and validate the optional preview the browser sends next to a
+ * picture. Returns null when the client sent none.
+ *
+ * It goes through the same signature check as any upload, so a client cannot
+ * store arbitrary bytes under a `.thumb.webp` key. The size ceiling is separate
+ * because a preview has no reason to be large even inside the 10 MB wire cap.
+ */
+export function readThumbnail(base64: string | undefined) {
+  if (!base64) return null;
+  const { buffer, contentType } = readUpload({
+    filename: 'preview.webp',
+    contentType: 'image/webp',
+    base64,
+  });
+  if (buffer.byteLength > THUMB_MAX_BYTES) {
+    throw new ErrorResponse('PAYLOAD_TOO_LARGE', 'That preview is too large.');
+  }
+  return { buffer, contentType };
+}

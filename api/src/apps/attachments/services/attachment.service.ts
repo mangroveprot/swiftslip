@@ -1,5 +1,6 @@
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import type { SessionUser, StorageBackend } from '@swiftslip/shared/types';
+import { isImagePath, thumbPathOf } from '@swiftslip/shared/attachment-files';
 import { ActivityLogService } from '../../activity-log';
 import FileStorageService from '../../storage/services/file-storage.service';
 import StorageService from '../../storage/services/storage.service';
@@ -11,7 +12,7 @@ import type {
   AttachmentTarget,
   OtherAttachmentTable,
 } from '../types';
-import { readOtherFiles, readUpload } from '../utils';
+import { readOtherFiles, readThumbnail, readUpload } from '../utils';
 
 /** Cap on a form's additional supporting files. */
 export const OTHER_ATTACHMENTS_MAX = 8;
@@ -21,6 +22,8 @@ type UploadInput = {
   filename: string;
   contentType: string;
   base64: string;
+  /** Small WebP preview of a picture, made by the browser. Optional. */
+  thumbBase64?: string | undefined;
 };
 
 const toFailure = (error: unknown) => ({
@@ -75,6 +78,23 @@ class AttachmentService {
   }
 
   /**
+   * Drop a stored file and, when it is a picture, the preview beside it.
+   * Best effort: an orphaned object is harmless, a failed request is not.
+   */
+  private async removeWithThumb(
+    key: string,
+    backend: StorageBackend,
+  ): Promise<void> {
+    const refs = isImagePath(key)
+      ? [
+          { key, backend },
+          { key: thumbPathOf(key), backend },
+        ]
+      : [{ key, backend }];
+    await this.storage.removeRefsQuietly(refs);
+  }
+
+  /**
    * Store the document at `FormAttachement/<owner-id>/<uuid>.<ext>` and point
    * the row at it. A failed row update rolls the fresh upload back so no
    * orphan file is left. The backend is chosen by the admin's storage rule.
@@ -92,16 +112,28 @@ class AttachmentService {
         user.id,
       );
       const { buffer, contentType, name } = readUpload(input);
+      const preview = readThumbnail(input.thumbBase64);
       const backend = await this.storageService.pickBackend();
       const path = prefixedStorageKey(
         `${STORAGE_ROOT}/${user.id}`,
         contentType,
         name,
       );
+      // A preview only makes sense for a picture; ignore one sent with a PDF.
+      const previewPath =
+        preview && isImagePath(path) ? thumbPathOf(path) : null;
 
       await this.storage.upload(path, buffer, contentType, backend);
 
       try {
+        if (preview && previewPath) {
+          await this.storage.upload(
+            previewPath,
+            preview.buffer,
+            preview.contentType,
+            backend,
+          );
+        }
         await this.repo(target.table).update(
           { id: row.id, owner_id: user.id },
           {
@@ -114,16 +146,16 @@ class AttachmentService {
       } catch (error) {
         // Roll the fresh upload back so a failed save can't leave an orphan.
         if (row.attachment_path !== path)
-          await this.storage.removeRefQuietly({ key: path, backend });
+          await this.removeWithThumb(path, backend);
         throw error;
       }
 
       // Same path = replaced in place; nothing to clean up.
       if (row.attachment_path && row.attachment_path !== path) {
-        await this.storage.removeRefQuietly({
-          key: row.attachment_path,
-          backend: backendOf(row.attachment_backend),
-        });
+        await this.removeWithThumb(
+          row.attachment_path,
+          backendOf(row.attachment_backend),
+        );
       }
 
       await ActivityLogService.logBy(user, {
@@ -142,7 +174,9 @@ class AttachmentService {
     userId: string,
     target: AttachmentTarget,
     id: string,
-  ): Promise<ServiceResponse<{ url: string; name: string }>> {
+  ): Promise<
+    ServiceResponse<{ url: string; name: string; thumbUrl?: string }>
+  > {
     try {
       const row = await this.ownedRow(target.table, target.entity, id, userId);
       if (!row.attachment_path) return { success: true };
@@ -151,10 +185,20 @@ class AttachmentService {
         row.attachment_path,
         backend,
       );
-      return {
-        success: true,
-        document: { url, name: row.attachment_name ?? 'attachment' },
+      const document: { url: string; name: string; thumbUrl?: string } = {
+        url,
+        name: row.attachment_name ?? 'attachment',
       };
+      // Pictures carry a preview beside them. A row stored before previews
+      // existed simply has none, and the card draws the original instead.
+      if (isImagePath(row.attachment_path)) {
+        const thumbUrl = await this.storage.signedUrl(
+          thumbPathOf(row.attachment_path),
+          backend,
+        );
+        if (thumbUrl) document.thumbUrl = thumbUrl;
+      }
+      return { success: true, document };
     } catch (error) {
       return toFailure(error);
     }
@@ -183,10 +227,10 @@ class AttachmentService {
         },
       );
       if (row.attachment_path) {
-        await this.storage.removeRefQuietly({
-          key: row.attachment_path,
-          backend: backendOf(row.attachment_backend),
-        });
+        await this.removeWithThumb(
+          row.attachment_path,
+          backendOf(row.attachment_backend),
+        );
       }
       const name = row.attachment_name ?? '';
       await ActivityLogService.logBy(user, {
@@ -243,15 +287,26 @@ class AttachmentService {
       }
 
       const { buffer, contentType, name } = readUpload(input);
+      const preview = readThumbnail(input.thumbBase64);
       const backend = await this.storageService.pickBackend();
       const path = prefixedStorageKey(
         `${STORAGE_ROOT}/${user.id}`,
         contentType,
         name,
       );
+      const previewPath =
+        preview && isImagePath(path) ? thumbPathOf(path) : null;
 
       await this.storage.upload(path, buffer, contentType, backend);
       try {
+        if (preview && previewPath) {
+          await this.storage.upload(
+            previewPath,
+            preview.buffer,
+            preview.contentType,
+            backend,
+          );
+        }
         await this.repo(target.table).update(
           { id: row.id, owner_id: user.id },
           {
@@ -260,7 +315,7 @@ class AttachmentService {
           } as never,
         );
       } catch (error) {
-        await this.storage.removeRefQuietly({ key: path, backend });
+        await this.removeWithThumb(path, backend);
         throw error;
       }
 
@@ -275,7 +330,13 @@ class AttachmentService {
     }
   }
 
-  /** Signed links for every additional file, keyed by storage path. */
+  /**
+   * Signed links for every additional file, keyed by storage path.
+   *
+   * A picture also contributes a second entry under `thumbPathOf(path)`, so
+   * one request serves both the 112 px preview and the full file. The print
+   * views only ever read `[file.path]`, which is why the extra keys are safe.
+   */
   async otherUrls(
     userId: string,
     target: AttachmentTarget,
@@ -291,16 +352,23 @@ class AttachmentService {
       );
       const signed = await Promise.all(
         readOtherFiles(row.other_attachments).map(async (file) => {
-          const url = await this.storage.signedUrl(
-            file.path,
-            file.backend ?? 'supabase',
-          );
+          const backend = file.backend ?? 'supabase';
+          const url = await this.storage.signedUrl(file.path, backend);
           // A file whose object is already gone simply drops out of the list.
-          return url ? ([file.path, url] as const) : null;
+          if (!url) return null;
+          const entries: [string, string][] = [[file.path, url]];
+          if (isImagePath(file.path)) {
+            const thumbUrl = await this.storage.signedUrl(
+              thumbPathOf(file.path),
+              backend,
+            );
+            if (thumbUrl) entries.push([thumbPathOf(file.path), thumbUrl]);
+          }
+          return entries;
         }),
       );
       const document = Object.fromEntries(
-        signed.filter((e): e is readonly [string, string] => e !== null),
+        signed.filter((e): e is [string, string][] => e !== null).flat(),
       );
       return { success: true, document };
     } catch (error) {
@@ -330,10 +398,7 @@ class AttachmentService {
         other_attachments: files.filter((file) => file.path !== path),
         updated_at: new Date().toISOString(),
       } as never);
-      await this.storage.removeRefQuietly({
-        key: path,
-        backend: found.backend ?? 'supabase',
-      });
+      await this.removeWithThumb(path, found.backend ?? 'supabase');
 
       await ActivityLogService.logBy(user, {
         action: 'attachment.removed',
@@ -365,6 +430,12 @@ class AttachmentService {
         typeof ref === 'string'
           ? { key: ref, backend: 'supabase' as StorageBackend }
           : { key: ref.key, backend: ref.backend ?? 'supabase' },
+      )
+      // A picture owns its preview too, so a deleted row leaves no thumbnail.
+      .flatMap((item) =>
+        isImagePath(item.key)
+          ? [item, { key: thumbPathOf(item.key), backend: item.backend }]
+          : [item],
       );
     if (items.length === 0) return { removed: 0, failed: 0 };
     const result = await this.storage.removeRefsQuietly(items);

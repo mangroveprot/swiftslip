@@ -357,7 +357,15 @@ export type OtDetail = Attached & {
   others: OtherFile[];
 };
 
-export type AttachmentLink = { url: string; name: string };
+export type AttachmentLink = {
+  url: string;
+  name: string;
+  /**
+   * A small preview of a picture, signed like `url`. Absent for PDFs, Office
+   * files, and rows stored before previews existed; draw `url` in that case.
+   */
+  thumbUrl?: string;
+};
 
 // ── Optional B2 file store (`/files`) ────────────────────────────────────────
 

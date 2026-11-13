@@ -28,6 +28,13 @@ import type {
  */
 export const MAX_UPLOAD_BASE64 = Math.ceil((10 * 1024 * 1024 * 4) / 3) + 64;
 
+/**
+ * Largest base64 preview the browser may send alongside a picture. A 400 px
+ * WebP is 10 to 40 KB, so this is several times the worst case and still far
+ * below the wire cap on the file itself.
+ */
+export const MAX_THUMB_BASE64 = 300_000;
+
 const period = z
   .string()
   .refine(isPeriod, "Invalid period")
@@ -533,6 +540,13 @@ export const attachmentUploadInput = z.object({
   filename: z.string().min(1).max(200),
   contentType: z.string().min(1).max(150),
   base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
+  /**
+   * Optional small WebP preview of a picture, made by the browser at upload
+   * time. The server stores it beside the file, so a card showing a 112 px
+   * tile no longer downloads the full-size photo. Omitted for PDFs, Office
+   * files, and browsers that cannot encode WebP.
+   */
+  thumbBase64: z.string().min(1).max(MAX_THUMB_BASE64).optional(),
 });
 
 /** `DELETE …/other-attachments?path=`, which additional file to drop. */

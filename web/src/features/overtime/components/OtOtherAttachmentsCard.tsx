@@ -8,12 +8,14 @@ import { AttachmentViewerDialog } from "@/components/common/AttachmentViewerDial
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { downloadFromUrl, IMAGE_RE } from "@/lib/attachment-file";
 import {
+  makeThumbnail,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENT_MB,
   prepareAttachment,
 } from "@/lib/attachment-upload";
 import { fileToBase64 } from "@/lib/file";
 import { toast } from "@/lib/toast";
+import { thumbPathOf } from "@swiftslip/shared/attachment-files";
 import type { OtherFile } from "@swiftslip/shared/types";
 import { otFormQueryOptions, otFormsQueryOptions, otOtherUrlsQueryOptions } from "../queries";
 
@@ -85,13 +87,19 @@ export function OtOtherAttachmentsCard({
     // A draft has no row to attach to yet, so it is stored first. Without this
     // the upload targets the placeholder id and the server rejects it.
     const target = onEnsureRow ? await onEnsureRow() : id;
-    const base64 = await fileToBase64(prepared);
+    // The preview is made on the device, so the card later draws ~30 KB
+    // instead of the stored photo, and the server does no image work.
+    const [base64, thumbBase64] = await Promise.all([
+      fileToBase64(prepared),
+      makeThumbnail(prepared),
+    ]);
     await uploadOtOtherAttachment({
       data: {
         id: target,
         filename: prepared.name,
         contentType: prepared.type || "application/octet-stream",
         base64,
+        ...(thumbBase64 ? { thumbBase64 } : {}),
       },
     });
     await refresh(target);
@@ -133,6 +141,9 @@ export function OtOtherAttachmentsCard({
           <ul className="mt-2 space-y-1.5">
             {others.map((file) => {
               const url = urls?.[file.path];
+              // A picture also has a preview in the same map, under its
+              // derived key, so the tile draws ~30 KB instead of the original.
+              const previewUrl = urls?.[thumbPathOf(file.path)];
               // Previewed exactly like the approval attachment: an image shows
               // inline under its name and opens the modal viewer on click, and
               // so does the open button. Nothing opens in a new browser tab.
@@ -153,9 +164,15 @@ export function OtOtherAttachmentsCard({
                         onClick={() => setViewing({ file, url })}
                       >
                         <img
-                          src={url}
+                          src={previewUrl ?? url}
                           alt={file.name}
                           loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            // Stored before previews existed: draw the file.
+                            const img = event.currentTarget;
+                            if (url && img.src !== url) img.src = url;
+                          }}
                           className="max-h-28 w-auto rounded border"
                         />
                       </button>

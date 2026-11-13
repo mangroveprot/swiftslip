@@ -1,6 +1,7 @@
 import { BaseRepository } from '../../../core/engine';
 import type { TableName } from '../../../core/engine';
 import type { StorageReference } from '@swiftslip/shared/schemas';
+import { isImagePath, thumbPathOf } from '@swiftslip/shared/attachment-files';
 
 const PAGE = 1000;
 
@@ -96,6 +97,11 @@ export class StorageReferenceRepository {
           const key = stripB2Prefix(path);
           // Main attachment: always counted as "approval" regardless of backend.
           main.push({ backend, key });
+          // Its preview is referenced too. Without this the orphan cleanup
+          // would read a thumbnail as garbage and delete it.
+          if (isImagePath(key)) {
+            main.push({ backend, key: thumbPathOf(key) });
+          }
 
           if (others) {
             const extras = row[others];
@@ -109,7 +115,11 @@ export class StorageReferenceRepository {
                   const be = backendOf(
                     (entry as { backend?: unknown }).backend,
                   );
-                  other.push({ backend: be, key: stripB2Prefix(extraPath) });
+                  const extraKey = stripB2Prefix(extraPath);
+                  other.push({ backend: be, key: extraKey });
+                  if (isImagePath(extraKey)) {
+                    other.push({ backend: be, key: thumbPathOf(extraKey) });
+                  }
                 }
               }
             }
