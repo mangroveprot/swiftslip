@@ -133,22 +133,6 @@ export const saveRecordInput = z.object({
   entries: z.array(dtrEntrySchema).max(31),
 });
 
-export const dtrTemplateSchema = z.object({
-  title: z.string(),
-  org_name: z.string(),
-  employee_signature_label: z.string(),
-  certified_by_label: z.string(),
-  certifier_signature_label: z.string(),
-  default_schedule: z.string(),
-  default_period: period,
-  columns: z.object({
-    in: z.string(),
-    out: z.string(),
-    schedule: z.string(),
-    remarks: z.string(),
-  }),
-});
-
 export const createObFormInput = z.object({
   // Client passes its local "today" (YYYY-MM-DD) so Date Filed defaults correctly
   // for the user's timezone rather than the server's.
@@ -984,13 +968,6 @@ export type StorageReference = {
   key: string;
 };
 
-export type StorageReferences = {
-  /** Main attachment_path refs. */
-  main: StorageReference[];
-  /** Other‑attachments paths + files keys. */
-  other: StorageReference[];
-};
-
 /** Overview of storage across both backends. */
 export type StorageOverview = {
   /** The current rule + threshold. */
@@ -1054,12 +1031,6 @@ export type StorageCleanupResult = {
   /** How many deletions failed (still present). */
   failed: number;
 };
-
-/** Input for the orphan‑cleanup mutation (which backend). */
-export const storageOverviewQuery = z.object({
-  refresh: z.enum(["true", "false"]).optional(),
-});
-
 /** Input for previewing orphaned files (optional backend filter). */
 export const storageOrphansPreviewQuery = z.object({
   backend: z.enum(["supabase", "b2", "everywhere"]).optional().default("everywhere"),

@@ -178,7 +178,6 @@ export const createOptionInput = z.object({
   /** Only meaningful for `assetType` ("desktop" | "peripheral" | ...). */
   category: z.string().max(20).optional(),
 });
-export type CreateOptionInput = z.infer<typeof createOptionInput>;
 
 export const renameOptionInput = z.object({
   kind: optionKindSchema,

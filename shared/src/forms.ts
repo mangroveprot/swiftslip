@@ -20,7 +20,3 @@ export type FormEvent = {
 export const FORM_TYPE_LABELS = Object.fromEntries(
   FORM_TYPES.map((type) => [type.key, type.label]),
 ) as Record<FormKind, string>;
-
-export function formTypeLabel(kind: FormKind) {
-  return FORM_TYPE_LABELS[kind];
-}

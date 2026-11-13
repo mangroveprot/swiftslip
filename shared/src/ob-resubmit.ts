@@ -102,13 +102,4 @@ export function obResubmitChanges(
   return changes;
 }
 
-/**
- * The form key a change belongs to, or `entries` when it is an itinerary cell.
- * The HR sheet uses this to ask "was this box changed?" without re-deriving the
- * key format in the browser.
- */
-export function obChangeFieldKey(change: Pick<ObResubmitChange, "key">): string {
-  return change.key.startsWith("entry:") ? "entries" : change.key;
-}
-
 export type { SnapshotEntryKey, SnapshotFormKey };

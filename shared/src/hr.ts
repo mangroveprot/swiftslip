@@ -13,15 +13,6 @@ import type { ObEntry, ObForm } from "./types";
 /** The department whose accounts act as HR reviewers. */
 export const HR_DEPARTMENT = "HR Department";
 
-/**
- * Every position filed under `HR_DEPARTMENT` in `org_positions` — the second
- * half of "who is HR". Read from the same admin-maintained lists as the
- * pickers, so a position added later is HR without a code change.
- */
-export function isHrDepartment(department: string): boolean {
-  return department.trim() === HR_DEPARTMENT;
-}
-
 /** The OB approval states, in flow order. Stored plain in `ob_forms.hr_status`. */
 export const OB_HR_STATUSES = [
   "draft",
@@ -155,8 +146,6 @@ export type ObSubmitSnapshot = {
     time_return: string;
   }>;
 };
-
-export const EMPTY_OB_SUBMIT_SNAPSHOT: ObSubmitSnapshot = { form: {}, entries: [] };
 
 /** The latest trip back to HR, or null for a first-time submission. */
 export function latestObResubmit(
@@ -392,12 +381,3 @@ export const OB_NOTIFICATION_KINDS = [
 ] as const;
 
 export type ObNotificationKind = (typeof OB_NOTIFICATION_KINDS)[number];
-
-/** Plain-English label for each notification kind (activity-log twin). */
-export const OB_NOTIFICATION_LABELS: Record<ObNotificationKind, string> = {
-  ob_submitted: "OB submitted for HR approval",
-  ob_approved: "OB approved by HR",
-  ob_rejected: "OB rejected by HR",
-  ob_resubmitted: "OB resubmitted to HR",
-  ob_departure_signed: "OB departure signed by HR",
-};
