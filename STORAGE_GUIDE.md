@@ -18,6 +18,13 @@ Reference for how file storage is set up and how to use it when a feature needs 
 > The `B2_*` variables are already set on the Render host, so only commit + deploy remains before
 > a `b2-only` rule can be trusted.
 >
+> ⛔ **Cloudflare Worker: NOT deployed, NOT used (2026-11-13).** The Worker named
+> `swiftslip` in the Cloudflare dashboard is still the default `Hello World!` template
+> (0 bindings, 0 invocations in 24 h), and `config.storage.baseUrl` (`FILE_BASE_URL`) has
+> no readers in the API. Attachments are read through the short-lived presigned GET URLs
+> in §7.4, never through the Worker. Everything below describes the design for the day
+> someone wires it up; it is not a description of what runs today.
+>
 > **Admin:** Admin Panel → Settings → Storage shows usage for both backends (approved / other /
 > orphan / free bytes per backend), lets an admin pick where new uploads go (Supabase first → B2
 > overflow, B2 only, Supabase only) with a free-space overflow threshold, and runs the manual orphan
@@ -43,11 +50,11 @@ Backend       ──(creates presigned URLs, deletes files)───────
 
 | Item | Value |
 |---|---|
-| Worker URL | `https://swiftslip-cloudflare.mangroveprot.workers.dev` |
+| Worker URL | `https://swiftslip.mangroveprot.workers.dev` (placeholder, not in use) |
 | Bucket name | `swiftslip` |
 | S3 endpoint | `https://s3.us-west-004.backblazeb2.com` |
 | Region | `us-west-004` |
-| Worker project folder | `swiftslip-cloudflare` |
+| Worker project folder | `swiftslip` on Cloudflare; the source is not in this repo |
 | Worker config | `wrangler.toml` |
 | Worker access | **Read-only** (GET/HEAD), bucket listing disabled |
 
@@ -105,8 +112,8 @@ id, key, original_name, mime_type, size_bytes, owner_id, entity_type, entity_id,
 ## 5. Environment variables (backend `.env` template)
 
 ```env
-# Public
-FILE_BASE_URL=https://swiftslip-cloudflare.mangroveprot.workers.dev
+# Public (empty today, the API does not read it yet)
+FILE_BASE_URL=
 
 # Backblaze B2 (S3 API) - SECRET, backend only
 B2_ENDPOINT=https://s3.us-west-004.backblazeb2.com
@@ -131,14 +138,14 @@ GET {FILE_BASE_URL}/{key}
 Examples:
 
 ```html
-<img src="https://swiftslip-cloudflare.mangroveprot.workers.dev/avatars/42/9f1c.jpg" />
-<a href="https://swiftslip-cloudflare.mangroveprot.workers.dev/documents/2026/10/abc.pdf" download>Download</a>
+<img src="https://files.example.com/avatars/42/9f1c.jpg" />
+<a href="https://files.example.com/documents/2026/10/abc.pdf" download>Download</a>
 ```
 
 Quick test:
 
 ```powershell
-curl -I https://swiftslip-cloudflare.mangroveprot.workers.dev/<key>
+curl -I https://<worker-name>.<account>.workers.dev/<key>
 ```
 
 Notes:
@@ -233,7 +240,7 @@ Browser uploads to B2 are blocked until the bucket allows your site. In Backblaz
 - Operations: `s3_put` (and `s3_get` / `s3_head` if needed)
 - Allowed headers: `*` (or at least `content-type`)
 
-## 8. Worker maintenance (run inside `swiftslip-cloudflare`)
+## 8. Worker maintenance (run inside the Worker project folder, `swiftslip`)
 
 | Task | Command |
 |---|---|
@@ -250,7 +257,7 @@ Rotating the read key:
 4. Run `npx wrangler deploy`, then test a download.
 5. Delete the old key in Backblaze.
 
-Custom domain (later): Cloudflare dashboard > Workers & Pages > swiftslip-cloudflare > Settings > Domains & Routes, e.g. `files.yourdomain.com`. Then update `FILE_BASE_URL`.
+Custom domain (later): Cloudflare dashboard > Workers & Pages > swiftslip > Settings > Domains & Routes, e.g. `files.yourdomain.com`. Then update `FILE_BASE_URL`. None of this applies until the Worker actually serves files (see the status note at the top).
 
 ## 9. Security checklist
 
