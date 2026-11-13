@@ -90,6 +90,8 @@ export function OtEntriesTable({
                 <label className="block">
                   <span className="lbl">Date of OT Work</span>
                   <input
+                    id={`ot-date-${entry.idx}`}
+                    name={`ot_date_${entry.idx}`}
                     type="date"
                     className="inp"
                     disabled={!canEdit}
@@ -121,6 +123,8 @@ export function OtEntriesTable({
                 <label className="block">
                   <span className="lbl">Total OT Hours</span>
                   <input
+                    id={`ot-total-${entry.idx}`}
+                    name={`ot_total_${entry.idx}`}
                     type="text"
                     className="inp"
                     disabled={!canEdit}
@@ -133,6 +137,8 @@ export function OtEntriesTable({
                 <label className="block">
                   <span className="lbl">OT Validation</span>
                   <input
+                    id={`ot-validation-${entry.idx}`}
+                    name={`ot_validation_${entry.idx}`}
                     type="text"
                     className="inp"
                     disabled={!canEdit}
@@ -180,6 +186,8 @@ function TimePair({
         <label className="block">
           <span className="text-[10px] text-muted-foreground">From</span>
           <input
+            id={`ot-${prefix}-from-${index}`}
+            name={`ot_${prefix}_from_${index}`}
             type="time"
             className="inp"
             disabled={disabled}
@@ -191,6 +199,8 @@ function TimePair({
         <label className="block">
           <span className="text-[10px] text-muted-foreground">To</span>
           <input
+            id={`ot-${prefix}-to-${index}`}
+            name={`ot_${prefix}_to_${index}`}
             type="time"
             className="inp"
             disabled={disabled}

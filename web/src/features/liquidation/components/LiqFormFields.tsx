@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 
 import { PlaceChips } from "@/components/common/PlaceChips";
+import { SignatureField } from "@/features/records/components/SignaturePad";
 import {
   LIQ_AMOUNT_KEYS,
   liqAmount,
@@ -79,6 +80,7 @@ export function LiqFormFields({
   onDeleteLine,
   canEdit,
   tripOptions,
+  savedSignature,
 }: {
   form: LiqForm;
   setForm: (form: LiqForm) => void;
@@ -90,6 +92,8 @@ export function LiqFormFields({
   canEdit: boolean;
   /** Destinations already used on the employee's OB forms, the trip is the same. */
   tripOptions: string[];
+  /** Signature saved on My Account, offered under the field like the other forms. */
+  savedSignature?: string | undefined;
 }) {
   const needs = REQUIRED_BOXES.filter((box) => !box.filled(form));
   const totals = liqTotals(entries);
@@ -225,6 +229,17 @@ export function LiqFormFields({
         />
       </div>
 
+      {/* The signature printed above PREPARED BY on the sheet. The profile's
+          saved signature is offered under the field, exactly like OB / LOA /
+          COS / OT, so a form saved before the column existed can still be
+          signed (and a draft can be signed without visiting My Account). */}
+      <SignatureField
+        value={form.employee_signature}
+        disabled={!canEdit}
+        savedSignature={savedSignature}
+        onChange={(employee_signature) => setForm({ ...form, employee_signature })}
+      />
+
       <div className="mt-6 border-t pt-5">
         <div className="mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div>
@@ -312,6 +327,8 @@ export function LiqFormFields({
                   <label className="block">
                     <span className="lbl">Column</span>
                     <select
+                      id={`liq-amount-column-${entry.idx}`}
+                      name="liq-amount-column"
                       className="inp"
                       disabled={!canEdit}
                       value={column}

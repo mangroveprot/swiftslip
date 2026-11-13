@@ -111,6 +111,8 @@ export function OptionManager({
           <div className="px-5 py-3 border-b border-border bg-secondary flex flex-wrap items-center gap-2">
             <input
               type="text"
+              id="inv-option-new-name"
+              name="new-option-name"
               className="flex-1 min-w-[12rem] border border-input rounded-md text-sm px-3 py-1.5 bg-background text-foreground"
               placeholder={placeholder}
               value={draftName}
@@ -119,7 +121,7 @@ export function OptionManager({
             />
             <button
               type="button"
-              className="px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50"
+              className="btn bg-save text-save-foreground hover:bg-save-hover disabled:opacity-60"
               disabled={busy}
               onClick={saveAdd}
             >
@@ -149,6 +151,8 @@ export function OptionManager({
                   <>
                     <input
                       type="text"
+                      id={`inv-option-edit-${option.id}`}
+                      name="edit-option-name"
                       className="flex-1 min-w-0 border border-input rounded-md text-sm px-3 py-1.5 bg-background text-foreground"
                       value={draftName}
                       onChange={(e) => setDraftName(e.target.value)}
@@ -156,7 +160,7 @@ export function OptionManager({
                     />
                     <button
                       type="button"
-                      className="px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50"
+                      className="btn bg-save text-save-foreground hover:bg-save-hover disabled:opacity-60"
                       disabled={busy}
                       onClick={saveEdit}
                     >

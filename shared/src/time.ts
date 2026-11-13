@@ -40,6 +40,22 @@ export function formatDate(date: Date = new Date()): string {
 }
 
 /**
+ * Formats a Date as a short calendar day plus the clock, e.g.
+ * "Nov 3, 2026, 2:32 PM". Used where a timestamp is read on its own (the
+ * roster's Last login column) rather than compared with "now".
+ */
+export function formatDateTime(date: Date = new Date()): string {
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+/**
  * Formats an ISO timestamp as a short relative string, Twitter/Slack-style:
  * "Just now", "5m ago", "3h ago", "6d ago", then falls back to a plain date
  * once it's far enough in the past that "ago" stops being useful.

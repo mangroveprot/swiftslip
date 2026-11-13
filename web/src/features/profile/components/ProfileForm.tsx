@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { saveMyProfile, saveMyPhoto } from "@/api/profile.functions";
 import { Badge } from "@/components/ui/badge";
@@ -307,6 +307,8 @@ export function ProfileForm() {
             <input
               ref={fileRef}
               type="file"
+              id="profile-photo-file"
+              name="photo"
               accept={PHOTO_ACCEPT}
               className="hidden"
               onChange={(event) => {
@@ -460,11 +462,19 @@ function Field({
   onChange: (v: string) => void;
   placeholder?: string | undefined;
 }) {
+  // Three of these render side by side, so the id has to be unique per instance.
+  const fieldId = useId().replace(/:/g, "");
+  const fieldName = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return (
     <label className="block">
       <span className="lbl">{label}</span>
       <input
         className="inp"
+        id={`profile-${fieldId}`}
+        name={fieldName}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}

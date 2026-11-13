@@ -82,3 +82,9 @@ export const markNotificationsRead = async () => {
   await api.post("/notifications/read", {});
   return { ok: true as const };
 };
+
+/** Remove the caller's own notifications; ids never leave that account's rows. */
+export const deleteNotifications = async (ids: string[]) => {
+  await api.post("/notifications/delete", { ids });
+  return { ok: true as const };
+};

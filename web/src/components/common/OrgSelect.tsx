@@ -305,6 +305,8 @@ export function OrgSelect({
         <>
           <input
             className="inp min-h-11 mt-2"
+            id={`${id}-other`}
+            name={`${id}-other`}
             value={value}
             placeholder={placeholder}
             aria-label={`${label}: other`}

@@ -137,6 +137,8 @@ export function BiometricImportDialog({
         <div className="space-y-3 px-5 py-4">
           <input
             ref={inputRef}
+            id="biometric-import-file"
+            name="biometric-import-file"
             type="file"
             accept="application/pdf,image/*"
             className="hidden"

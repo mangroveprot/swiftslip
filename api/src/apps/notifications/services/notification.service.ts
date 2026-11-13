@@ -138,6 +138,29 @@ class NotificationService extends BaseService<
   }
 
   /**
+   * Delete the caller's own notifications, one row or a selection.
+   *
+   * `recipient_id` is part of the filter, so a guessed or forged id can only
+   * ever match nothing — the caller can never delete somebody else's row.
+   */
+  async remove(
+    recipientId: string,
+    ids: string[],
+  ): Promise<ServiceResponse<{ deleted: number }>> {
+    try {
+      const { deletedCount } = await this.repository.deleteMany({
+        recipient_id: recipientId,
+        id: ids,
+      });
+      // The badge count changed; refresh this account's other open tabs.
+      if (deletedCount > 0) UpdatesService.publish({ audience: recipientId });
+      return { success: true, document: { deleted: deletedCount } };
+    } catch (error) {
+      return toFailure(error);
+    }
+  }
+
+  /**
    * Write one row per recipient. Best effort: a failed insert is logged and
    * swallowed so it cannot fail the submit / approve / reject it describes.
    */

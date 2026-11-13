@@ -167,6 +167,8 @@ export function RecordOtherAttachmentsCard({
                         <img
                           src={previewUrl ?? url}
                           alt={file.name}
+                          width={400}
+                          height={400}
                           loading="lazy"
                           decoding="async"
                           onError={(event) => {
@@ -174,7 +176,7 @@ export function RecordOtherAttachmentsCard({
                             const img = event.currentTarget;
                             if (url && img.src !== url) img.src = url;
                           }}
-                          className="max-h-28 w-auto rounded border"
+                          className="h-28 w-28 rounded border object-contain"
                         />
                       </button>
                     ) : signing ? (

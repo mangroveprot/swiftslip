@@ -372,6 +372,11 @@ export function AttachmentCard({
                     <img
                       src={signed.thumbUrl ?? signed.url}
                       alt={file.name}
+                      // A 400 px preview at its largest (see THUMB_MAX_EDGE),
+                      // declared so the browser reserves the tile before the
+                      // lazy image arrives; the CSS square below wins.
+                      width={400}
+                      height={400}
                       loading="lazy"
                       decoding="async"
                       onError={(event) => {
@@ -382,7 +387,7 @@ export function AttachmentCard({
                           img.src = signed.url;
                         }
                       }}
-                      className="max-h-28 w-auto rounded border print:max-h-[24cm] print:max-w-full print:rounded-none"
+                      className="h-28 w-28 rounded border object-contain print:h-auto print:w-auto print:max-h-[24cm] print:max-w-full print:rounded-none"
                     />
                   </picture>
                 </button>

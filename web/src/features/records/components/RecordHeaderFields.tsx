@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { SignatureField } from "./SignaturePad";
 import {
@@ -184,6 +184,9 @@ function Identity({
   required?: boolean;
   onChange: (value: string) => void;
 }) {
+  // Labels repeat across forms but ids must not: one page can render the DTR
+  // header and a second identity block in the same tree.
+  const fieldId = useId();
   return (
     <label className="block min-w-0">
       <span className="block text-[13px] font-medium text-foreground/70">
@@ -191,6 +194,7 @@ function Identity({
         {required ? <Req /> : null}
       </span>
       <input
+        id={fieldId}
         type="text"
         className="mt-1.5 w-full border-0 border-b border-transparent bg-transparent p-0 text-[15px] leading-snug font-semibold text-foreground outline-none transition-colors hover:border-border focus:border-primary/60 disabled:cursor-not-allowed disabled:text-muted-foreground"
         disabled={disabled}
@@ -222,13 +226,15 @@ function Field({
   type?: string;
   onChange: (value: string) => void;
 }) {
+  const fieldId = useId();
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-1.5 block text-[13px] font-medium text-foreground/70">
         {label}
         {required ? <Req /> : null}
       </span>
       <input
+        id={fieldId}
         className="h-10 w-full rounded-md border-0 bg-muted px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:text-muted-foreground"
         type={type}
         disabled={disabled}
@@ -256,13 +262,15 @@ function SelectField({
   onChange: (value: string) => void;
   children: ReactNode;
 }) {
+  const fieldId = useId();
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-1.5 block text-[13px] font-medium text-foreground/70">
         {label}
         {required ? <Req /> : null}
       </span>
       <select
+        id={fieldId}
         className="h-10 w-full rounded-md border-0 bg-muted px-3 text-sm text-foreground outline-none transition-colors focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:text-muted-foreground"
         disabled={disabled}
         value={value}

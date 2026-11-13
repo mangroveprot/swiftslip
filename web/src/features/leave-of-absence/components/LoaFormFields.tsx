@@ -272,6 +272,8 @@ export function LoaFormFields({
               <Req />
             </span>
             <input
+              id="loa-days-applied"
+              name="loa-days-applied"
               className="inp"
               type="text"
               disabled={!canEdit}
@@ -360,6 +362,8 @@ export function LoaFormFields({
             </div>
             {form.leave_type === "Others" ? (
               <input
+                id="loa-leave-type-other"
+                name="loa-leave-type-other"
                 className="inp mt-2"
                 type="text"
                 disabled={!canEdit}
@@ -605,6 +609,8 @@ function ReasonField({
             </button>
           </div>
           <textarea
+            id="loa-ai-notes"
+            name="loa-ai-notes"
             className="inp min-h-[3.5rem] resize-none whitespace-pre-wrap"
             placeholder="e.g. flu for two days, already saw a doctor and was advised to rest"
             value={notes}

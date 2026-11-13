@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { toast } from "@/lib/toast";
-import { relativeTime } from "@swiftslip/shared/time";
+import { formatDate, formatDateTime } from "@swiftslip/shared/time";
 import {
   departmentForPosition,
   EMPLOYER_LABELS,
@@ -36,6 +36,7 @@ import {
 
 import type { Role } from "@swiftslip/shared/types";
 import { accessCodesQueryOptions, orgOptionsQueryOptions } from "../queries";
+import { displayDepartment, isIncomplete, sortUsers, type RosterFilter } from "../lib/roster";
 import { useUserPhotos } from "../use-user-photos";
 import { PASSWORD_MIN_LENGTH } from "@swiftslip/shared/schemas";
 
@@ -54,10 +55,12 @@ type Account = {
   id_number: string;
   role: Role;
   created_at: string;
+  /** The newest successful sign-in on record (ISO); null when none is known. */
+  last_signin_at: string | null;
 };
 
 /** Which tab is selected above the list. */
-type Filter = "all" | "admin" | "user" | "incomplete";
+type Filter = RosterFilter;
 
 function roleText(role: string) {
   return role === "admin" ? "Administrator" : "Staff";
@@ -66,41 +69,27 @@ function roleText(role: string) {
 /**
  * The two access levels, each carrying the line that says what it can do. The
  * dialog draws these as radio buttons rather than a select, so nobody has to
- * pick "Administrator" without knowing that it is the one that can edit,
- * import and manage this list.
+ * pick "Administrator" without knowing what it unlocks.
+ *
+ * The wording describes THIS system, not a generic document manager: an
+ * administrator bypasses every app rule and opens the Admin Panel (accounts,
+ * app access, activity logs, retention, storage); staff file their own forms
+ * from the portal and manage their own account.
  */
 const ACCESS_LEVELS: Array<{ value: Role; label: string; blurb: string }> = [
   {
     value: "admin",
     label: "Administrator",
-    blurb: "Can edit records, import files and manage this list.",
+    blurb:
+      "Full access. Opens the Admin Panel to manage accounts, app access, activity logs, retention and storage. Can also file their own forms.",
   },
-  { value: "user", label: "Staff", blurb: "Can view, print and download." },
+  {
+    value: "user",
+    label: "Staff",
+    blurb:
+      "Files their own DTR, OB, LOA, COS, overtime and liquidation forms, and manages their own account. No Admin Panel.",
+  },
 ];
-
-/**
- * The department a row shows: the one stored on the profile, or the one its
- * position implies for rows that were never backfilled / predate migration
- * 0023, resolved against the live `org_positions` rows, never a built-in
- * copy. The office branch is never a department, so `designation` is not used.
- */
-function displayDepartment(a: Account, lists?: OrgLists) {
-  return a.department.trim() || departmentForPosition(a.position, lists);
-}
-
-/**
- * A profile is incomplete until it says who the person is and where they work:
- * the real name, the Designation (office), the Department, and the Position.
- * Anything less and the forms that auto-fill from the profile print blanks.
- */
-function isIncomplete(a: Account, lists?: OrgLists) {
-  return (
-    !a.full_name.trim() ||
-    !a.designation.trim() ||
-    !displayDepartment(a, lists) ||
-    !a.position.trim()
-  );
-}
 
 const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "all", label: "All" },
@@ -156,23 +145,30 @@ export function UserManagement() {
   };
 
   const query = search.trim().toLowerCase();
-  const list = all.filter((a) => {
-    const byChip =
-      filter === "all"
-        ? true
-        : filter === "incomplete"
-          ? isIncomplete(a, orgLists)
-          : a.role === filter;
-    if (!byChip) return false;
-    if (!query) return true;
-    // `displayDepartment` too: a row awaiting backfill still answers to the
-    // department its position implies.
-    return `${a.id_number} ${a.full_name} ${a.designation} ${a.department} ${a.position} ${employerLabel(
-      a.employer,
-    )} ${displayDepartment(a, orgLists)} ${roleText(a.role)} ${a.role}`
-      .toLowerCase()
-      .includes(query);
-  });
+  // Tab and search only narrow the list; `sortUsers` is what puts it in roster
+  // order. Running it every render (after the filter) means switching tabs or
+  // typing a search can never leave the rows in API order.
+  const list = sortUsers(
+    all.filter((a) => {
+      const byChip =
+        filter === "all"
+          ? true
+          : filter === "incomplete"
+            ? isIncomplete(a, orgLists)
+            : a.role === filter;
+      if (!byChip) return false;
+      if (!query) return true;
+      // `displayDepartment` too: a row awaiting backfill still answers to the
+      // department its position implies.
+      return `${a.id_number} ${a.full_name} ${a.designation} ${a.department} ${a.position} ${employerLabel(
+        a.employer,
+      )} ${displayDepartment(a, orgLists)} ${roleText(a.role)} ${a.role}`
+        .toLowerCase()
+        .includes(query);
+    }),
+    filter,
+    orgLists,
+  );
 
   async function confirmRemove() {
     if (!removing) return;
@@ -205,14 +201,8 @@ export function UserManagement() {
         <div className="min-w-0">
           <PageTitle as="h2">User management</PageTitle>
           <p className="mt-2 max-w-[30rem] text-sm leading-6 text-muted-foreground">
-            Every account signs in with its own ID number and password. Administrators{" "}
-            <ShieldCheck
-              className="inline size-3.5 align-[-2px] text-foreground/80"
-              aria-hidden="true"
-            />{" "}
-            can edit records, import files, and manage this list. Staff{" "}
-            <Eye className="inline size-3.5 align-[-2px] text-foreground/80" aria-hidden="true" />{" "}
-            can view, print, and download.
+            Every account signs in with its own ID number and password. Administrators manage
+            accounts and every app; staff file their own forms.
           </p>
         </div>
         <button className="btn btn-primary ml-auto shrink-0" onClick={() => setEditing("new")}>
@@ -263,6 +253,8 @@ export function UserManagement() {
                 aria-hidden="true"
               />
               <Input
+                id="admin-users-search"
+                name="admin-users-search"
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -301,15 +293,21 @@ export function UserManagement() {
           </div>
         ) : (
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="w-full min-w-[960px] table-fixed text-sm">
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th className="w-28 py-3 pr-4 font-normal">ID</th>
-                  <th className="py-3 pr-4 font-normal">Name and designation</th>
-                  <th className="w-44 py-3 pr-4 font-normal">Position and department</th>
-                  <th className="w-40 py-3 pr-4 font-normal">Access</th>
-                  <th className="w-28 py-3 pr-4 font-normal">Created</th>
-                  <th className="w-24 py-3 font-normal">Actions</th>
+                  {/* Percentage widths + `table-fixed`: the roster fills whatever
+                      the admin panel gives it instead of hugging a 880px strip
+                      and leaving the right half empty. Every cell already
+                      truncates, so a wider window means more of each value is
+                      visible, never a squashed column. */}
+                  <th className="w-[10%] py-3 pr-4 font-normal whitespace-nowrap">ID</th>
+                  <th className="w-[25%] py-3 pr-4 font-normal">Name and designation</th>
+                  <th className="w-[18%] py-3 pr-4 font-normal">Position and department</th>
+                  <th className="w-[13%] py-3 pr-4 font-normal">Access</th>
+                  <th className="w-[10%] py-3 pr-4 font-normal whitespace-nowrap">Created</th>
+                  <th className="w-[16%] py-3 pr-4 font-normal whitespace-nowrap">Last login</th>
+                  <th className="w-[8%] py-3 font-normal">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -319,7 +317,9 @@ export function UserManagement() {
                   const shownDepartment = displayDepartment(a, orgLists);
                   return (
                     <tr key={a.id} className="border-b transition-colors hover:bg-muted/30">
-                      <td className="py-5 pr-4 align-middle text-sm tabular-nums">{a.id_number}</td>
+                      <td className="py-5 pr-4 align-middle text-sm whitespace-nowrap tabular-nums">
+                        {a.id_number}
+                      </td>
                       <td className="py-5 pr-4 align-middle">
                         <div className="flex items-center gap-3">
                           {a.full_name ? (
@@ -405,7 +405,17 @@ export function UserManagement() {
                         className="py-5 pr-4 align-middle text-sm whitespace-nowrap text-muted-foreground tabular-nums"
                         title={new Date(a.created_at).toLocaleString()}
                       >
-                        {relativeTime(a.created_at)}
+                        {formatDate(new Date(a.created_at))}
+                      </td>
+                      <td
+                        className="py-5 pr-4 align-middle text-sm whitespace-nowrap text-muted-foreground tabular-nums"
+                        title={
+                          a.last_signin_at
+                            ? new Date(a.last_signin_at).toLocaleString()
+                            : "No successful sign-in on record"
+                        }
+                      >
+                        {a.last_signin_at ? formatDateTime(new Date(a.last_signin_at)) : "Never"}
                       </td>
                       <td className="py-5 align-middle">
                         <div className="flex items-center gap-1">
@@ -478,7 +488,7 @@ export function UserManagement() {
                           <span className="shrink-0 text-[11px] text-muted-foreground">You</span>
                         ) : null}
                       </p>
-                      <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                      <p className="mt-0.5 text-xs text-muted-foreground whitespace-nowrap tabular-nums">
                         {a.id_number}
                       </p>
                       {incomplete ? (
@@ -549,7 +559,18 @@ export function UserManagement() {
                       className="whitespace-nowrap text-muted-foreground tabular-nums"
                       title={new Date(a.created_at).toLocaleString()}
                     >
-                      {relativeTime(a.created_at)}
+                      {formatDate(new Date(a.created_at))}
+                    </dd>
+                    <dt className="text-muted-foreground">Last login</dt>
+                    <dd
+                      className="whitespace-nowrap text-muted-foreground tabular-nums"
+                      title={
+                        a.last_signin_at
+                          ? new Date(a.last_signin_at).toLocaleString()
+                          : "No successful sign-in on record"
+                      }
+                    >
+                      {a.last_signin_at ? formatDateTime(new Date(a.last_signin_at)) : "Never"}
                     </dd>
                   </dl>
                 </div>
@@ -942,10 +963,8 @@ function AccountDialog({
               </button>
               <button
                 type="submit"
-                // The same green every other primary action in the app saves
-                // with; in dark mode it lifts to the dashboard green so the ink
-                // on top stays readable instead of turning cream-on-green.
-                className="btn bg-success text-success-foreground hover:bg-success-hover focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:bg-dashboard-accent dark:text-primary-foreground dark:hover:bg-dashboard-accent/80"
+                // The same green save fill every form uses, in both themes.
+                className="btn bg-save text-save-foreground hover:bg-save-hover focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={busy}
               >
                 {busy

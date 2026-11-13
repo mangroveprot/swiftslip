@@ -403,6 +403,8 @@ function NameStep({
       <input
         ref={fileRef}
         type="file"
+        id="profile-onboarding-photo"
+        name="photo"
         accept={PHOTO_ACCEPT}
         className="hidden"
         onChange={(event) => {
@@ -413,12 +415,21 @@ function NameStep({
 
       <label className="mt-4 block">
         <span className="lbl">Key No.</span>
-        <input className="inp bg-muted text-muted-foreground" value={keyNo} disabled readOnly />
+        <input
+          className="inp bg-muted text-muted-foreground"
+          id="profile-onboarding-key-no"
+          name="key-no"
+          value={keyNo}
+          disabled
+          readOnly
+        />
       </label>
       <label className="mt-3 block">
         <span className="lbl">Full name</span>
         <input
           className="inp"
+          id="profile-onboarding-full-name"
+          name="full-name"
           value={form.full_name}
           placeholder="Your full name"
           autoFocus
@@ -491,6 +502,8 @@ function WorkStep({
           <span className="lbl">Supervisor</span>
           <input
             className="inp"
+            id="profile-onboarding-supervisor"
+            name="supervisor"
             value={form.supervisor}
             placeholder="e.g. Maria Santos"
             disabled={busy}
@@ -770,6 +783,8 @@ function SignatureCanvas({
       <input
         ref={fileRef}
         type="file"
+        id="profile-onboarding-signature-file"
+        name="signature-file"
         accept="image/png,image/jpeg,image/jpg,image/webp"
         className="hidden"
         onChange={(event) => {

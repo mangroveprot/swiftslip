@@ -378,6 +378,8 @@ export function HrObDetailPage({ id }: { id: string }) {
             <label className="block text-xs font-medium">
               Why is it rejected?
               <textarea
+                id="hr-ob-reject-reason"
+                name="hr-ob-reject-reason"
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
                 rows={3}
@@ -654,6 +656,8 @@ export function HrObDetailPage({ id }: { id: string }) {
                       <label className="block">
                         <span className="text-xs text-muted-foreground">Residence / office</span>
                         <input
+                          id="hr-ob-departure-residence"
+                          name="hr-ob-departure-residence"
                           type="text"
                           value={residence}
                           onChange={(event) => setResidence(event.target.value)}
@@ -663,6 +667,8 @@ export function HrObDetailPage({ id }: { id: string }) {
                       <label className="block">
                         <span className="text-xs text-muted-foreground">Destination</span>
                         <input
+                          id="hr-ob-departure-destination"
+                          name="hr-ob-departure-destination"
                           type="text"
                           value={destination}
                           onChange={(event) => setDestination(event.target.value)}

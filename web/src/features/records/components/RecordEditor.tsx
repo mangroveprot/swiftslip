@@ -543,7 +543,7 @@ function RecordEditorBody({
           {canEdit ? (
             <button
               type="button"
-              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
+              className="btn bg-save text-save-foreground hover:bg-save-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -572,13 +572,13 @@ function RecordEditorBody({
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-4 print:block lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
         {/* THE COLUMN IS THE SCROLL AREA, the LOA treatment. Its children all
             sit at their natural height (`shrink-0`), so the header cards, the
             daily entries and the attachments card keep their own proportion and
             the whole column scrolls top to bottom instead of squeezing the
             entries into whatever height is left. */}
-        <div className="no-print flex min-h-0 flex-col gap-3 lg:overflow-auto">
+        <div className="no-print flex min-h-0 min-w-0 flex-col gap-3 lg:overflow-auto">
           <RecordHeaderFields
             header={header}
             setHeader={setHeader}
@@ -616,7 +616,7 @@ function RecordEditorBody({
         {/* Attachment first, always, but on print it drops back below the
             sheet (`print:order`) so a supporting file still follows the
             record on its own page. */}
-        <div className="flex min-h-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
+        <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:overflow-hidden print:gap-0 print:overflow-visible">
           <div className="print:order-2">
             <AttachmentCard
               kind="record"
@@ -647,7 +647,7 @@ function RecordEditorBody({
               <Maximize2 className="size-3.5" aria-hidden="true" />
             </button>
           </div>
-          <div className="min-h-0 rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
+          <div className="min-h-0 min-w-0 overflow-x-hidden rounded-sm lg:flex-1 lg:overflow-auto print:order-1 print:overflow-visible">
             <DtrPreview
               sheetId="dtr-sheet"
               template={template}

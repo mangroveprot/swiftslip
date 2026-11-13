@@ -238,7 +238,7 @@ export function Storage() {
         <AdminClock />
       </header>
 
-      <div className="mt-5 border-t-2 border-dashboard-rule" />
+      <div className="mt-5 border-t" />
 
       {/* ── The numbers at a glance ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 divide-y border-b sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:divide-border">
@@ -362,6 +362,8 @@ export function Storage() {
               <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
                 <span className="text-muted-foreground">Switch at</span>
                 <Input
+                  id="storage-switch-threshold"
+                  name="storage-switch-threshold"
                   type="number"
                   inputMode="numeric"
                   min={SWITCH_AT_MIN}
@@ -400,6 +402,7 @@ export function Storage() {
             </p>
             <Button
               size="sm"
+              className="bg-save text-save-foreground hover:bg-save-hover"
               onClick={() =>
                 saveMutation.mutate({ rule: draft.rule, minFreePercent: 100 - minFullNumber })
               }
@@ -680,7 +683,7 @@ function StorageSkeleton() {
         </div>
       </div>
 
-      <div className="mt-5 border-t-2 border-dashboard-rule" />
+      <div className="mt-5 border-t" />
 
       <div className="grid grid-cols-1 divide-y border-b sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:divide-border">
         {[0, 1, 2].map((column) => (

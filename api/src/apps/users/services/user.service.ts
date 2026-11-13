@@ -6,6 +6,7 @@ import { employerLabel, type Employer } from '@swiftslip/shared/org';
 import type { AccountPhoto, Role, SessionUser } from '@swiftslip/shared/types';
 import { ProfileRepository } from '../../profile/repositories';
 import { photoUrl } from '../../profile/services/photo-storage';
+import { ActivityLogRepository } from '../../activity-log/repositories';
 import { ActivityLogService } from '../../activity-log/services';
 import { UserRepository } from '../repositories';
 import { AttachmentService } from '../../attachments/services';
@@ -27,12 +28,21 @@ const USER_PHOTO_LIMIT = 100;
 const PROFILE_NAME_COLUMNS =
   'access_code_id,full_name,area,department,designation,employer';
 
+/**
+ * How many recent successful sign-ins the roster scans. Newest first, so every
+ * active account finds its latest row well inside this window; the limit only
+ * keeps a busy month from loading the whole activity table for a 20-row screen.
+ */
+const LAST_SIGNIN_SCAN = 1000;
+
 /** One row in user management: the account joined with its profile. */
 export type AccountListItem = {
   id: string;
   id_number: string;
   role: Role;
   created_at: string;
+  /** The newest successful sign-in on record (ISO); null when none is known. */
+  last_signin_at: string | null;
   full_name: string;
   /** The office / branch, `profiles.area`. */
   designation: string;
@@ -57,6 +67,7 @@ export type AccountInput = {
 
 class UserService extends BaseService<'users', UserRepository> {
   private profiles = new ProfileRepository();
+  private logs = new ActivityLogRepository();
 
   constructor() {
     super(new UserRepository());
@@ -114,15 +125,32 @@ class UserService extends BaseService<'users', UserRepository> {
   /** Every account with the real name / org fields from its profile. */
   async listWithProfiles(): Promise<ServiceResponse<AccountListItem>> {
     try {
-      const [accounts, profiles] = await Promise.all([
+      const [accounts, profiles, signins] = await Promise.all([
         this.repository.findAll({}, { sort: { created_at: 'asc' } }),
         // Never `*` here. This scan is for names and org fields only, and since
         // 0032 `*` would drag every user's base64 photo out of the database and
         // into memory on every visit to User management, for nothing.
         this.profiles.findAll({}, { select: PROFILE_NAME_COLUMNS }),
+        // The roster's "Last login" column. `activity_logs` has no relation to
+        // `users`, so it is a second scan reduced to `actor_id -> newest row`
+        // rather than a join; newest first means the first row per actor wins.
+        this.logs.findAll(
+          { action: 'signin.success' },
+          {
+            select: 'actor_id,created_at',
+            sort: { created_at: 'desc' },
+            limit: LAST_SIGNIN_SCAN,
+          },
+        ),
       ]);
       // The real name lives on the profile ("My Account"), not the account row.
       const details = new Map(profiles.map((p) => [p.access_code_id, p]));
+      const lastSignin = new Map<string, string>();
+      for (const row of signins) {
+        if (row.actor_id && !lastSignin.has(row.actor_id)) {
+          lastSignin.set(row.actor_id, row.created_at);
+        }
+      }
       const documents = accounts.map((account) => {
         const p = details.get(account.id);
         return {
@@ -130,6 +158,7 @@ class UserService extends BaseService<'users', UserRepository> {
           id_number: account.id_number,
           role: account.role as Role,
           created_at: account.created_at,
+          last_signin_at: lastSignin.get(account.id) ?? null,
           full_name: p?.full_name ?? '',
           designation: p?.area ?? '',
           department: p?.department ?? '',

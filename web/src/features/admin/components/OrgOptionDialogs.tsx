@@ -166,6 +166,8 @@ export function OrgOptionDialogs({
             “{target}” becomes the new name on every profile and access rule still holding it.
           </p>
           <Input
+            id="org-rename-name"
+            name="org-rename-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={`e.g. ${KIND_PLACEHOLDERS[kind]}`}
@@ -205,6 +207,8 @@ export function OrgOptionDialogs({
               : `It joins the ${label.toLowerCase()}s every picker offers from now on.`}
           </p>
           <Input
+            id="org-add-name"
+            name="org-add-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={`e.g. ${KIND_PLACEHOLDERS[kind]}`}

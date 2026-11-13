@@ -219,6 +219,7 @@ export function ObItineraryTable({
                         <Req />
                       </span>
                       <PlaceChips
+                        id={`ob-to-place-${row.idx}`}
                         value={row.to_place}
                         options={placeOptions}
                         disabled={!canEdit}
@@ -241,6 +242,8 @@ export function ObItineraryTable({
                     <label className="block">
                       <span className={FIELD_LABEL}>Time of departure (optional)</span>
                       <input
+                        id={`ob-departure-${row.idx}`}
+                        name={`ob_departure_${row.idx}`}
                         type="time"
                         className={FIELD_INPUT}
                         disabled={!canEdit}
@@ -263,6 +266,8 @@ export function ObItineraryTable({
                     <label className="block">
                       <span className={FIELD_LABEL}>Time of return (optional)</span>
                       <input
+                        id={`ob-return-${row.idx}`}
+                        name={`ob_return_${row.idx}`}
                         type="time"
                         className={FIELD_INPUT}
                         disabled={!canEdit}
@@ -319,6 +324,7 @@ function PlaceInput({
   placeholder: string;
   onChange: (value: string) => void;
 }) {
+  const fieldId = useId();
   const listId = useId();
   const hintId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -353,6 +359,7 @@ function PlaceInput({
     <div>
       <div ref={wrapRef} className="relative">
         <input
+          id={fieldId}
           type="text"
           className={cn(FIELD_INPUT, invalid && "ring-1 ring-destructive/60")}
           disabled={disabled}
@@ -536,6 +543,8 @@ function PurposeField({
           </div>
 
           <input
+            id="ob-ai-notes"
+            name="ob-ai-notes"
             type="text"
             className="mt-3 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25"
             placeholder="e.g. holiday on Oct 7 in Dipolog City, so I need to move my shift"
@@ -607,6 +616,7 @@ function AutoTextarea({
   onChange: (value: string) => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const fieldId = useId();
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -618,6 +628,7 @@ function AutoTextarea({
   return (
     <textarea
       ref={ref}
+      id={fieldId}
       rows={1}
       className={cn(
         "w-full resize-none overflow-hidden rounded-md border-0 bg-muted px-3 py-2 text-sm whitespace-pre-wrap break-words text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:text-muted-foreground",

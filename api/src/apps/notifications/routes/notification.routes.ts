@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { validate } from '../../../common/shared';
-import { markNotificationsReadInput } from '@swiftslip/shared/schemas';
+import {
+  deleteNotificationsInput,
+  markNotificationsReadInput,
+} from '@swiftslip/shared/schemas';
 import { authenticate } from '../../auth/middlewares';
 import { NotificationController } from '../controllers';
 
@@ -13,6 +16,11 @@ router.post(
   '/read',
   validate(markNotificationsReadInput),
   NotificationController.markRead,
+);
+router.post(
+  '/delete',
+  validate(deleteNotificationsInput),
+  NotificationController.remove,
 );
 
 export default router;

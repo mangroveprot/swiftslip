@@ -73,6 +73,8 @@ export type AccountListItem = {
   id_number: string;
   role: Role;
   created_at: string;
+  /** The newest successful sign-in on record (ISO); null when none is known. */
+  last_signin_at: string | null;
   full_name: string;
   /** The office / branch, `profiles.area`. */
   designation: string;

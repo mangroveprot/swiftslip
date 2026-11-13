@@ -785,6 +785,8 @@ export function ActivityLogs({
               aria-hidden="true"
             />
             <Input
+              id="admin-logs-search"
+              name="admin-logs-search"
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}

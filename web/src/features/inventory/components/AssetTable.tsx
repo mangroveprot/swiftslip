@@ -87,6 +87,8 @@ export const AssetTable = memo(function AssetTable({
           </svg>
           <input
             type="text"
+            id="asset-search"
+            name="asset-search"
             value={search}
             placeholder="Search by item ID, name, or department"
             className="asset-table__search"
@@ -124,6 +126,8 @@ export const AssetTable = memo(function AssetTable({
               <th className="asset-table__th w-9">
                 <input
                   type="checkbox"
+                  id="asset-select-all"
+                  name="asset-select-all"
                   className="rounded border-input text-brand focus:ring-brand/30"
                   checked={allSelected}
                   onChange={(e) => onSelectAllChanged(e.target.checked)}

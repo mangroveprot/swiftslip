@@ -284,6 +284,8 @@ export function AppAccess() {
                 aria-hidden="true"
               />
               <Input
+                id="admin-access-search"
+                name="admin-access-search"
                 type="search"
                 value={tab === "app" ? appSearch : personSearch}
                 onChange={(e) =>
@@ -944,6 +946,8 @@ function AddRuleDialog({
             aria-hidden="true"
           />
           <Input
+            id="admin-access-scope-search"
+            name="admin-access-scope-search"
             type="search"
             value={term}
             onChange={(e) => setTerm(e.target.value)}

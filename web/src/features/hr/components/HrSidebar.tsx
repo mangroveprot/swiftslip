@@ -39,7 +39,14 @@ function NavCount({ value }: { value: number }) {
  * number updates after an approval without a second request. Completed and
  * Rejected are filtered views of the same route (`?view=…`) and carry no count.
  */
-export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function HrSidebar({
+  onNavigate,
+  inDrawer = false,
+}: {
+  onNavigate?: () => void;
+  /** True when this is the mobile drawer copy, not the desktop rail. */
+  inDrawer?: boolean;
+}) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const view = useRouterState({
     select: (state) => (state.location.search as { view?: string } | undefined)?.view,
@@ -106,7 +113,7 @@ export function HrSidebar({ onNavigate }: { onNavigate?: () => void }) {
         to="/hr/profile"
         signOutAccessName="the HR app"
       >
-        <NotificationBell variant="row" />
+        <NotificationBell variant="row" inDrawer={inDrawer} onNavigate={onNavigate} />
         {apps && apps.length > 1 ? (
           <Link to="/choose" onClick={onNavigate} className={SIDEBAR_ACTION_CLASS}>
             <LayoutGrid className="size-4" aria-hidden="true" />

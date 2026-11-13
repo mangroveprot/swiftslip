@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState, type Ref } from "react";
+import { useId, useState, type Ref } from "react";
 
 /**
  * Labelled text input used by the admin settings forms and the account dialog.
@@ -41,6 +41,13 @@ export function TextField({
 }) {
   const [revealed, setRevealed] = useState(false);
   const isPassword = type === "password";
+  // Several of these can sit on one page (account settings, the user dialog),
+  // so neither the id nor the name may be a fixed string.
+  const fieldId = useId().replace(/:/g, "");
+  const fieldName = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
   return (
     <label className="block">
@@ -49,6 +56,8 @@ export function TextField({
         <input
           ref={inputRef}
           type={isPassword && revealed ? "text" : type}
+          id={`profile-${fieldId}`}
+          name={fieldName}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}

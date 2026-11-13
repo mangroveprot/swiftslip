@@ -80,24 +80,31 @@ export function useSignOutFlow({
 type SignOutButtonProps = {
   /** Button classes, defaults to the plain header/footer button. */
   className?: string;
-  /** Named in the warning ("…sign in again to access <name>"). */
+  /** Names the surface in the confirmation ("…sign in again to access <name>"). */
   accessName?: string;
   /** Runs right before signing out, e.g. to close an open menu. */
   onSignOutStart?: () => void;
+  /**
+   * Drops the "Sign out" label below `sm`, leaving the icon (still labelled for
+   * screen readers). For tight headers where the full word would collide with
+   * the brand mark; footers and menus keep the text.
+   */
+  compact?: boolean;
 };
 
 export function SignOutButton({
   className = "btn btn-outline",
   accessName,
   onSignOutStart,
+  compact = false,
 }: SignOutButtonProps) {
   const { open, modal } = useSignOutFlow({ accessName, onSignOutStart });
 
   return (
     <>
-      <button type="button" className={className} onClick={open}>
+      <button type="button" className={className} onClick={open} aria-label="Sign out">
         <LogOut className="size-4 shrink-0" aria-hidden="true" />
-        Sign out
+        <span className={compact ? "hidden sm:inline" : undefined}>Sign out</span>
       </button>
       {modal}
     </>

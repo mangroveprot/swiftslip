@@ -193,6 +193,7 @@ function SignaturePad({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const fileId = useId();
   const [mode, setMode] = useState<Mode>("draw");
 
   useEffect(() => {
@@ -314,6 +315,7 @@ function SignaturePad({
         </button>
         <input
           ref={fileRef}
+          id={fileId}
           type="file"
           accept="image/png,image/jpeg,image/jpg"
           className="hidden"

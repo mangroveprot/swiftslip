@@ -646,6 +646,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     focusRef.current = el;
                   }}
                   type="text"
+                  id="asset-item-id"
+                  name="asset-item-id"
                   className="min-w-0 flex-1 bg-transparent border-0 border-b border-white/40 px-0 py-0.5 text-xl font-semibold text-white placeholder:text-white/45 focus:outline-none focus:border-white"
                   placeholder="Item ID"
                   value={form.itemId}
@@ -686,6 +688,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     ref={(el) => {
                       focusRef.current = el;
                     }}
+                    id="asset-type-choice"
+                    name="asset-type-choice"
                     className={HEADER_PILL_SELECT}
                     value={form.typeChoice}
                     onChange={(e) => choiceChanged("typeChoice")(e.target.value)}
@@ -706,12 +710,16 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     <>
                       <input
                         type="text"
+                        id="asset-new-type-name"
+                        name="asset-new-type-name"
                         placeholder="New type name"
                         className={HEADER_NEW_INPUT}
                         value={form.typeNewName}
                         onChange={(e) => upd({ typeNewName: e.target.value })}
                       />
                       <select
+                        id="asset-new-type-category"
+                        name="asset-new-type-category"
                         className={HEADER_PILL_SELECT}
                         value={form.typeNewCategory}
                         onChange={(e) => upd({ typeNewCategory: e.target.value })}
@@ -755,6 +763,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     ref={(el) => {
                       focusRef.current = el;
                     }}
+                    id="asset-status-choice"
+                    name="asset-status-choice"
                     className={HEADER_PILL_SELECT}
                     value={form.statusChoice}
                     onChange={(e) => choiceChanged("statusChoice")(e.target.value)}
@@ -771,6 +781,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                   form.statusChoice === "new" ? (
                     <input
                       type="text"
+                      id="asset-new-status-name"
+                      name="asset-new-status-name"
                       placeholder="New status"
                       className={HEADER_NEW_INPUT}
                       value={form.statusNewName}
@@ -796,6 +808,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     ref={(el) => {
                       focusRef.current = el;
                     }}
+                    id="asset-condition-choice"
+                    name="asset-condition-choice"
                     className={HEADER_PILL_SELECT}
                     value={form.conditionChoice}
                     onChange={(e) => choiceChanged("conditionChoice")(e.target.value)}
@@ -819,6 +833,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                   form.conditionChoice === "new" ? (
                     <input
                       type="text"
+                      id="asset-new-condition-name"
+                      name="asset-new-condition-name"
                       placeholder="New condition"
                       className={HEADER_NEW_INPUT}
                       value={form.conditionNewName}
@@ -856,6 +872,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                           ref={(el) => {
                             focusRef.current = el;
                           }}
+                          id="asset-branch-choice"
+                          name="asset-branch-choice"
                           className={SEL}
                           value={form.branchChoice}
                           onChange={(e) =>
@@ -881,6 +899,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       {form.branchChoice === "new" ? (
                         <input
                           type="text"
+                          id="asset-new-branch-name"
+                          name="asset-new-branch-name"
                           placeholder="New branch name"
                           className={INP}
                           value={form.branchNewName}
@@ -913,6 +933,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                           ref={(el) => {
                             focusRef.current = el;
                           }}
+                          id="asset-floor-choice"
+                          name="asset-floor-choice"
                           className={SEL}
                           value={form.floorChoice}
                           onChange={(e) => choiceChanged("floorChoice")(e.target.value)}
@@ -937,6 +959,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       {form.floorChoice === "new" ? (
                         <input
                           type="text"
+                          id="asset-new-floor-label"
+                          name="asset-new-floor-label"
                           placeholder="e.g. 1st or 2nd"
                           className={INP}
                           value={form.floorNewLabel}
@@ -968,6 +992,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                         focusRef.current = el;
                       }}
                       type="text"
+                      id="asset-cubicle-seat"
+                      name="asset-cubicle-seat"
                       className={`field-editor-in ${INP}`}
                       placeholder="e.g. 13 or Front Desk"
                       value={form.cubicle}
@@ -1006,6 +1032,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                         focusRef.current = el;
                       }}
                       type="text"
+                      id="asset-assigned-to"
+                      name="asset-assigned-to"
                       className={`field-editor-in ${INP} text-right max-w-[14rem] ml-auto block`}
                       placeholder="Unassigned"
                       value={form.assignedTo}
@@ -1038,6 +1066,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                           ref={(el) => {
                             focusRef.current = el;
                           }}
+                          id="asset-department-choice"
+                          name="asset-department-choice"
                           className={SEL}
                           value={form.departmentChoice}
                           onChange={(e) => choiceChanged("departmentChoice")(e.target.value)}
@@ -1062,6 +1092,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       {form.departmentChoice === "new" ? (
                         <input
                           type="text"
+                          id="asset-new-department-name"
+                          name="asset-new-department-name"
                           placeholder="New department"
                           className={INP}
                           value={form.departmentNewName}
@@ -1110,6 +1142,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                             focusRef.current = el;
                           }}
                           type="text"
+                          id="asset-monitor-brand"
+                          name="asset-monitor-brand"
                           placeholder="Brand"
                           className={INP}
                           value={form.monitorBrand}
@@ -1117,6 +1151,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                         />
                         <input
                           type="text"
+                          id="asset-monitor-serial"
+                          name="asset-monitor-serial"
                           placeholder="Serial"
                           className={INP}
                           value={form.monitorSerial}
@@ -1153,6 +1189,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                             focusRef.current = el;
                           }}
                           type="text"
+                          id="asset-keyboard-brand"
+                          name="asset-keyboard-brand"
                           placeholder="Brand"
                           className={INP}
                           value={form.keyboardBrand}
@@ -1160,6 +1198,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                         />
                         <input
                           type="text"
+                          id="asset-keyboard-serial"
+                          name="asset-keyboard-serial"
                           placeholder="Serial"
                           className={INP}
                           value={form.keyboardSerial}
@@ -1187,6 +1227,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                           focusRef.current = el;
                         }}
                         type="text"
+                        id="asset-mouse-serial"
+                        name="asset-mouse-serial"
                         placeholder="Serial"
                         className={`field-editor-in ${INP} text-right max-w-[16rem] ml-auto block`}
                         value={form.mouseSerial}
@@ -1221,6 +1263,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                   focusRef.current = el;
                 }}
                 rows={3}
+                id="asset-notes"
+                name="asset-notes"
                 className={`field-editor-in ${INP} resize-none`}
                 placeholder="Add a note…"
                 value={form.notes}
@@ -1259,7 +1303,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
               </button>
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90"
+                className="btn bg-save text-save-foreground hover:bg-save-hover"
                 onClick={() => void save()}
               >
                 {isAddMode ? "Save asset" : "Save changes"}

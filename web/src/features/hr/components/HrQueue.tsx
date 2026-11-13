@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -403,6 +403,8 @@ export function HrQueue() {
         <div className="relative flex h-9 w-full items-center gap-2 rounded-md border border-border bg-card px-3 transition-colors focus-within:border-primary sm:w-80">
           <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <Input
+            id="hr-queue-search"
+            name="hr-queue-search"
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -506,10 +508,13 @@ function FilterSelect({
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
 }) {
+  // Several of these render on one page (status, type, department).
+  const fieldId = useId();
   return (
     <label className="relative inline-flex items-center">
       <span className="sr-only">{label}</span>
       <select
+        id={fieldId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={cn(
@@ -563,6 +568,8 @@ function QueuePagination({
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
           Rows per page
           <select
+            id="hr-rows-per-page"
+            name="hr-rows-per-page"
             value={rowsPerPage}
             onChange={(event) => onRowsPerPage(Number(event.target.value))}
             className="h-8 cursor-pointer rounded-md border border-border bg-card px-2 text-xs text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"

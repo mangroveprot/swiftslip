@@ -21,10 +21,13 @@ export function Sidebar({
   role,
   label,
   onNavigate,
+  inDrawer = false,
 }: {
   role: Role | undefined;
   label?: string;
   onNavigate?: () => void;
+  /** True when this is the mobile drawer copy, not the desktop rail. */
+  inDrawer?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const name = label || roleLabel(role);
@@ -85,7 +88,7 @@ export function Sidebar({
       {/* The identity block IS the account entry: clicking it opens My
           Account, which is why the old "Account" nav row is gone. */}
       <SidebarFooter name={name} photo={photo} sublabel={sublabel} to="/profile">
-        <NotificationBell variant="row" />
+        <NotificationBell variant="row" inDrawer={inDrawer} onNavigate={onNavigate} />
         {/* Shown when there is more than one app to move between. Keyed on the
             resolved grants rather than the role: a staff account given the
             inventory alongside SwiftSlip needs this just as an admin does, and

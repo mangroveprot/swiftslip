@@ -21,6 +21,12 @@ export function DailyEntriesTable({
   busy: boolean;
 }) {
   const cellFields = ["time_in", "time_out", "schedule", "remarks"] as const;
+  const cellLabels = {
+    time_in: template.columns.in,
+    time_out: template.columns.out,
+    schedule: template.columns.schedule,
+    remarks: template.columns.remarks,
+  };
 
   return (
     <section className="form-fill shrink-0 rounded-xl border bg-card p-3 shadow-sm">
@@ -40,7 +46,7 @@ export function DailyEntriesTable({
           the sticky header below would stick to this div (which never scrolls)
           instead of the column scrolling past it. */}
       <div>
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full table-fixed border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
               <th className="w-20 py-1.5">Date</th>
@@ -75,9 +81,12 @@ export function DailyEntriesTable({
                       className={i === cellFields.length - 1 ? "py-0.5" : "py-0.5 pr-1.5"}
                     >
                       <input
+                        id={`dtr-entry-${day}-${field}`}
+                        name={`entry_${day}_${field}`}
                         className="inp"
                         disabled={!canEdit}
                         value={entry[field]}
+                        aria-label={`${cellLabels[field]} for ${formatShortDate(day, header.month, header.year)}`}
                         placeholder={field === "remarks" && restDay ? "SUNDAY" : undefined}
                         onChange={(ev) => onCellChange(day, { [field]: ev.target.value })}
                       />

@@ -43,6 +43,12 @@
   /* Ink that sits ON the success fill. Kept as its own token because dark mode
      flips the fill to cream, and white on cream would be unreadable. */
   --color-success-foreground: var(--success-foreground);
+  /* The Save / submit action of a form. One green in BOTH themes, the same
+     shade the light theme has always used, with white ink on top. Kept apart
+     from --success so changing a success badge can never repaint Save. */
+  --color-save: var(--save);
+  --color-save-hover: var(--save-hover);
+  --color-save-foreground: var(--save-foreground);
   /* Dashboard accent: the editorial green from the dashboard mock. Kept
      separate from --primary so the rest of the admin panel stays navy. */
   --color-dashboard-accent: var(--dashboard-accent);
@@ -103,6 +109,11 @@
   --success: #1f7a3f;
   --success-hover: #196634;
   --success-foreground: oklch(0.99 0.005 85);
+  /* Form Save action. Green in light AND dark (not overridden in .dark), so
+     the primary button never turns pale when the theme changes. */
+  --save: #1f7a3f;
+  --save-hover: #196634;
+  --save-foreground: oklch(0.99 0.005 85);
   --paper: oklch(1 0 0);
   --ink: oklch(0.2 0.02 250);
   /* Solid surface for app chrome (sidebars, mobile headers). Opaque: the
@@ -790,8 +801,8 @@
 .liq-sheet .lb-sign {
   display: block;
   width: auto;
-  max-width: 88%;
-  max-height: 24px;
+  max-width: 92%;
+  max-height: 34px;
   margin: 0 auto 1px;
   object-fit: contain;
   mix-blend-mode: multiply;

@@ -96,6 +96,8 @@ export function CosScheduleTable({
                 <label className="block">
                   <span className="lbl">Effectivity Date</span>
                   <input
+                    id={`cos-effectivity-${row.idx}`}
+                    name={`cos_effectivity_${row.idx}`}
                     type="date"
                     className="inp"
                     disabled={!canEdit}
@@ -167,6 +169,8 @@ function ScheduleSide({
     <div>
       <span className="lbl">{label}</span>
       <input
+        id={`cos-${side}-date-${index}`}
+        name={`cos_${side}_date_${index}`}
         type="date"
         className="inp"
         disabled={disabled}
@@ -178,6 +182,8 @@ function ScheduleSide({
         <label className="block">
           <span className="text-[10px] text-muted-foreground">Start</span>
           <input
+            id={`cos-${side}-start-${index}`}
+            name={`cos_${side}_start_${index}`}
             type="time"
             className="inp"
             disabled={disabled}
@@ -189,6 +195,8 @@ function ScheduleSide({
         <label className="block">
           <span className="text-[10px] text-muted-foreground">End</span>
           <input
+            id={`cos-${side}-end-${index}`}
+            name={`cos_${side}_end_${index}`}
             type="time"
             className="inp"
             disabled={disabled}

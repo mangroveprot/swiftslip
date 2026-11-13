@@ -393,6 +393,8 @@ export function AssistantChat({
               <input
                 ref={fileRef}
                 type="file"
+                id="assistant-attachment-file"
+                name="attachment-file"
                 accept="application/pdf,image/*"
                 multiple={maxAttachments > 1}
                 className="hidden"
@@ -414,6 +416,8 @@ export function AssistantChat({
               <textarea
                 ref={inputRef}
                 rows={1}
+                id="assistant-message-input"
+                name="message"
                 className="min-h-[3.5rem] max-h-32 flex-1 resize-none overflow-y-auto rounded-[1.25rem] border border-border bg-background px-4 py-2 text-sm leading-snug text-foreground outline-none transition placeholder:text-muted-foreground focus:border-regasco/60 focus:ring-4 focus:ring-regasco/15"
                 placeholder={placeholder}
                 aria-label="Message the assistant"

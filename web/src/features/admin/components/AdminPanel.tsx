@@ -7,10 +7,11 @@ import {
   History,
   LayoutDashboard,
   LayoutGrid,
-  Menu,
+  PanelLeft,
   Settings,
   ShieldCheck,
   Users,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -124,24 +125,37 @@ export function AdminPanel() {
     <div className="flex h-dvh flex-col md:grid md:grid-cols-[17rem_1fr] md:overflow-hidden">
       <aside className="no-print hidden md:block md:h-dvh md:overflow-y-auto">{sidebar}</aside>
 
-      <header className="no-print flex items-center justify-between border-b border-border bg-glass px-4 py-3 md:hidden">
-        <span className="flex items-center gap-2">
+      <header className="no-print flex items-center justify-between gap-3 border-b border-border bg-glass px-4 py-3 md:hidden">
+        <span className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            className="-ml-1 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-muted/70"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            title="Menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            {menuOpen ? (
+              <X className="size-5" aria-hidden="true" />
+            ) : (
+              <PanelLeft className="size-5" aria-hidden="true" />
+            )}
+          </button>
           <img
             src={logoPath}
             alt={isRegasco ? "Regasco" : "Mindbridge"}
-            className={`w-auto object-contain ${isRegasco ? "h-6" : "h-7"}`}
+            className="max-h-7 w-auto max-w-28 shrink-0 object-contain object-left"
           />
-          <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+          <span
+            className="min-w-0 truncate text-xl font-bold"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             {APP.name}
           </span>
-          <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
             Admin
           </span>
         </span>
-        <button className="btn btn-outline" onClick={() => setMenuOpen((v) => !v)}>
-          <Menu className="size-4" aria-hidden="true" />
-          {menuOpen ? "Close" : "Menu"}
-        </button>
       </header>
       <MobileSidebarDrawer open={menuOpen} onClose={() => setMenuOpen(false)}>
         {sidebar}
@@ -150,7 +164,11 @@ export function AdminPanel() {
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div
           key={section}
-          className={`${section === "dashboard" ? "max-w-6xl" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out`}
+          // User management is a seven-column roster: a 5xl cap left most of a
+          // wide screen empty while the table squeezed itself into the middle.
+          // It now fills the panel; the reading-width cap stays on the prose
+          // screens. (The dashboard keeps its own slightly wider cap.)
+          className={`${section === "dashboard" ? "max-w-6xl" : section === "users" ? "max-w-none" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out`}
         >
           {section === "dashboard" ? (
             <AdminDashboard onNavigate={navigate} />

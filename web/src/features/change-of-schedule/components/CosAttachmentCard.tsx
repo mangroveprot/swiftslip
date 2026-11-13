@@ -69,6 +69,8 @@ export function CosAttachmentCard({
           title='Marking this approved also checks "Approved via Viber" on the form'
         >
           <input
+            id="cos-attachment-approved"
+            name="attachment-approved"
             type="checkbox"
             className="size-4 accent-primary"
             checked={approved}

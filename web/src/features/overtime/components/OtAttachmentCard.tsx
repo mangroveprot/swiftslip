@@ -62,6 +62,8 @@ export function OtAttachmentCard({
           title='Marking this approved also checks "Approved via Viber" on the form'
         >
           <input
+            id="ot-attachment-approved"
+            name="attachment-approved"
             type="checkbox"
             className="size-4 accent-primary"
             checked={approved}

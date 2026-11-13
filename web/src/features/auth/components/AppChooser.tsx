@@ -85,14 +85,23 @@ export function AppChooser() {
 
   return (
     <main className="relative flex min-h-dvh flex-col justify-center px-4 py-20 md:px-8 md:py-24">
-      <header className="absolute inset-x-0 top-0 mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-6 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
-        <BrandLockup />
+      {/* On a phone the header has four things to hold (brand, theme, face,
+          sign out). At full size they are wider than the screen, so the word
+          and button used to run under each other. Below `sm` the lockup steps
+          down and the sign-out label gives way to its icon; from `sm` up the
+          original sizes return. */}
+      <header className="absolute inset-x-0 top-0 mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-8 sm:py-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
+        <BrandLockup
+          className="min-w-0 gap-2 sm:gap-3"
+          imageClassName="h-8 sm:h-11"
+          wordClassName="text-xl sm:text-[1.75rem]"
+        />
 
-        <span className="flex items-center gap-2 text-sm sm:gap-3">
+        <span className="flex shrink-0 items-center gap-1.5 text-sm sm:gap-3">
           {/* App-level preference */}
           <ThemeToggle />
 
-          <span aria-hidden="true" className="h-5 w-px bg-border" />
+          <span aria-hidden="true" className="hidden h-5 w-px bg-border sm:block" />
 
           {/* Account cluster: identity, then the session-ending action */}
           {session?.label ? (
@@ -105,7 +114,7 @@ export function AppChooser() {
             </span>
           ) : null}
 
-          <SignOutButton />
+          <SignOutButton compact />
         </span>
       </header>
 

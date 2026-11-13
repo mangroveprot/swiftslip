@@ -466,7 +466,7 @@ function OtEditorBody({
           {canEdit ? (
             <button
               type="button"
-              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
+              className="btn bg-save text-save-foreground hover:bg-save-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"

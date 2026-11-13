@@ -73,7 +73,10 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         <AdminClock />
       </header>
 
-      <div className="mt-5 border-t-2 border-dashboard-rule" />
+      {/* Neutral rule, same weight as the divider above the activity panels:
+          the green `dashboard-rule` line read as a success state and fought
+          the flat treatment used by the rest of the admin panel. */}
+      <div className="mt-5 border-t" />
 
       {isError ? (
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -151,7 +154,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         </SummaryColumn>
       </div>
 
-      <div className="grid gap-x-10 gap-y-10 pt-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-x-10 gap-y-10 pt-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
         <FormsFiledPanel events={events} loading={isLoading} />
         <ByFormTypePanel
           rows={typeRows}
@@ -161,7 +164,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         />
       </div>
 
-      <div className="mt-10 grid gap-x-10 gap-y-10 border-t pt-8 lg:grid-cols-2">
+      <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-10 border-t pt-8 lg:grid-cols-2">
         <LatestActivityPanel onNavigate={onNavigate} />
         <SecurityPanel security={data?.security} onNavigate={onNavigate} />
       </div>
@@ -263,6 +266,8 @@ function FormsFiledPanel({ events, loading }: { events: FormEvent[]; loading: bo
             Show
             <span className="relative">
               <select
+                id="admin-forms-show"
+                name="admin-forms-show"
                 value={show}
                 onChange={(event) => setShow(event.target.value as FormKind | "all")}
                 className="h-8 appearance-none rounded-md border border-input bg-background pr-7 pl-2.5 text-xs font-medium text-foreground outline-none transition-colors focus-visible:border-dashboard-accent"

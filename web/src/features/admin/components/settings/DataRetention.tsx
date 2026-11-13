@@ -251,7 +251,7 @@ export function DataRetention() {
         <AdminClock />
       </header>
 
-      <div className="mt-5 border-t-2 border-dashboard-rule" />
+      <div className="mt-5 border-t" />
 
       {/* ── The rule at a glance ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 divide-y border-b sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:divide-border">
@@ -709,7 +709,7 @@ function RetentionSkeleton() {
         </div>
       </div>
 
-      <div className="mt-5 border-t-2 border-dashboard-rule" />
+      <div className="mt-5 border-t" />
 
       <div className="grid grid-cols-1 divide-y border-b sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:divide-border">
         {[0, 1, 2].map((column) => (

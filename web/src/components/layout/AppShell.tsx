@@ -1,4 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
+import { PanelLeft, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { APP } from "@/config/app";
@@ -27,23 +28,47 @@ export function AppShell({ session, children }: { session: SessionUser; children
         <Sidebar role={session.role} label={session.label} />
       </aside>
 
-      <header className="no-print flex items-center justify-between border-b border-border bg-glass px-4 py-3 md:hidden">
-        <span className="flex items-center gap-2">
+      <header className="no-print flex items-center justify-between gap-3 border-b border-border bg-glass px-4 py-3 md:hidden">
+        <span className="flex min-w-0 items-center gap-2">
+          {/* The hamburger leads, where a phone user looks for navigation, and
+              the drawer slides in from the same (left) edge as the desktop
+              rail. The icon replaces the old "Menu" word. */}
+          <button
+            type="button"
+            className="-ml-1 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-muted/70"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            title="Menu"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            {menuOpen ? (
+              <X className="size-5" aria-hidden="true" />
+            ) : (
+              <PanelLeft className="size-5" aria-hidden="true" />
+            )}
+          </button>
           <img
             src={logoPath}
             alt={isRegasco ? "Regasco" : "Mindbridge"}
-            className={`w-auto object-contain ${isRegasco ? "h-8" : "h-10"}`}
+            // A cap on the width as well as the height: the Regasco wordmark is
+            // 5.6:1, so a height-only rule made it swallow the whole bar.
+            className="max-h-8 w-auto max-w-32 shrink-0 object-contain object-left"
           />
-          <span className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+          <span
+            className="min-w-0 truncate text-xl font-bold"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             {APP.name}
           </span>
         </span>
-        <button className="btn btn-outline" onClick={() => setMenuOpen((v) => !v)}>
-          {menuOpen ? "Close" : "Menu"}
-        </button>
       </header>
       <MobileSidebarDrawer open={menuOpen} onClose={() => setMenuOpen(false)}>
-        <Sidebar role={session.role} label={session.label} onNavigate={() => setMenuOpen(false)} />
+        <Sidebar
+          role={session.role}
+          label={session.label}
+          onNavigate={() => setMenuOpen(false)}
+          inDrawer
+        />
       </MobileSidebarDrawer>
 
       <div

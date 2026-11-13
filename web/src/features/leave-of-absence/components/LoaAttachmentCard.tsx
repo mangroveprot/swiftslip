@@ -72,6 +72,8 @@ export function LoaAttachmentCard({
           title='Marking this approved also checks "Approved via Viber" on the form'
         >
           <input
+            id="loa-attachment-approved"
+            name="attachment-approved"
             type="checkbox"
             className="size-4 accent-primary"
             checked={approved}

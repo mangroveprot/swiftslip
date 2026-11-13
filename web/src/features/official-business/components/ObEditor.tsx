@@ -749,7 +749,7 @@ function ObEditorBody({
           {canEdit ? (
             <button
               type="button"
-              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
+              className="btn bg-save text-save-foreground hover:bg-save-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
                 pending === "save" || (pending === null && saveStatus === "saving")

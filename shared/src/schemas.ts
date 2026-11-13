@@ -809,6 +809,15 @@ export const userPhotosInput = z.object({
  */
 export const markNotificationsReadInput = z.object({});
 
+/**
+ * `POST /notifications/delete`, removes the caller's own notifications. The
+ * recipient is still the signed-in account; the ids are only a filter, so an
+ * id belonging to someone else can never match a row.
+ */
+export const deleteNotificationsInput = z.object({
+  ids: z.array(z.string().trim().min(1)).min(1).max(100),
+});
+
 export const accessRuleInput = z.object({
   app_key: z.enum(GRANTABLE_APP_KEYS),
   scope: z.enum(RULE_SCOPES),

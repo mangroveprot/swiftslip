@@ -135,6 +135,7 @@ function Identity({
   onChange: (value: string) => void;
 }) {
   const hintId = useId();
+  const fieldId = useId();
   return (
     <div className="block min-w-0">
       <label className="block">
@@ -143,6 +144,7 @@ function Identity({
           {required ? <Req /> : null}
         </span>
         <input
+          id={fieldId}
           type="text"
           className={cn(
             "mt-1.5 w-full border-0 border-b bg-transparent p-0 text-[15px] leading-snug font-semibold text-foreground outline-none transition-colors hover:border-border focus:border-primary/60 disabled:cursor-not-allowed disabled:text-muted-foreground",

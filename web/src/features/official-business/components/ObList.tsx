@@ -381,6 +381,8 @@ function ObFilters({
 
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
           <input
+            id="ob-group-similar"
+            name="ob-group-similar"
             type="checkbox"
             checked={groupSimilar}
             onChange={(event) => onGroupSimilar(event.target.checked)}
@@ -395,7 +397,7 @@ function ObFilters({
           <p className="mt-3 text-xs text-muted-foreground">No destinations yet.</p>
         ) : (
           <div className="mt-4 space-y-1">
-            {visibleFacets.map((facet) => {
+            {visibleFacets.map((facet, index) => {
               const active = selected.has(facet.key);
               return (
                 <label
@@ -406,6 +408,8 @@ function ObFilters({
                   )}
                 >
                   <input
+                    id={`ob-place-filter-${index}`}
+                    name="ob-place-filter"
                     type="checkbox"
                     checked={active}
                     onChange={() => onTogglePlace(facet)}

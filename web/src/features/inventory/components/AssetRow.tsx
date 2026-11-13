@@ -37,6 +37,8 @@ export const AssetRow = memo(function AssetRow({
       <td className="asset-table__td" onClick={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
+          id={`asset-row-${asset.asset_id}-selected`}
+          name="asset-row-selected"
           className="rounded border-input text-brand focus:ring-brand/30"
           checked={selected}
           onChange={(e) => onSelectedChanged(asset.asset_id, e.target.checked)}

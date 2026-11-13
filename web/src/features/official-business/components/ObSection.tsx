@@ -90,6 +90,7 @@ export function ObField({
   className?: string;
 }) {
   const hintId = useId();
+  const fieldId = useId();
   return (
     <div className={`block ${className}`}>
       <label className="block">
@@ -98,6 +99,7 @@ export function ObField({
           {required ? <Req /> : null}
         </span>
         <input
+          id={fieldId}
           className={`h-10 w-full rounded-md border bg-muted px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/25 disabled:cursor-not-allowed disabled:text-muted-foreground ${
             invalid ? "border-destructive/70" : "border-transparent"
           }`}

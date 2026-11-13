@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "clean": "rimraf dist build node_modules",
     "lint": "eslint .",
+    "test": "vitest run",
     "format": "prettier --write .",
     "test:inventory-report": "node scripts/inventory-report-golden/compare.mjs",
     "test:inventory-report:golden": "dotnet run --project asset_inventory/InventoryGolden -- 1 scripts/inventory-report-golden"
@@ -95,6 +96,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "vitest": "^5.1.0"
   }
 }

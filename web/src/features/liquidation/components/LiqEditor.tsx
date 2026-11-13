@@ -199,9 +199,10 @@ function LiqEditorBody({
       currency: f.currency || "PESOS",
       prepared_by: f.prepared_by,
       approved_by: f.approved_by,
-      // Forms created before the signature column existed (or saved before the
-      // profile had one) fall back to the saved signature, like a new form.
-      employee_signature: f.employee_signature || profile?.signature || "",
+      // The sheet prints exactly what was saved. A row without a signature is
+      // signed from the field in the form card (the profile's signature is
+      // offered there), so an explicit Clear is never undone by a refetch.
+      employee_signature: f.employee_signature,
       attachment_approved: f.attachment_approved ?? false,
       approved_via_viber: f.approved_via_viber ?? false,
     };
@@ -213,7 +214,7 @@ function LiqEditorBody({
     setForm(nextForm);
     setEntries(nextEntries);
     auto.setPersisted(incoming);
-  }, [data, profileReady, profile?.signature, rowId, id, auto]);
+  }, [data, rowId, id, auto]);
 
   // Build a draft from the profile, in the browser, with no request.
   useEffect(() => {
@@ -423,7 +424,7 @@ function LiqEditorBody({
           {canEdit ? (
             <button
               type="button"
-              className="btn bg-success text-success-foreground hover:bg-success-hover disabled:opacity-60"
+              className="btn bg-save text-save-foreground hover:bg-save-hover disabled:opacity-60"
               disabled={busy}
               aria-label={
                 saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : "Save"
@@ -442,8 +443,8 @@ function LiqEditorBody({
         </div>
       </header>
 
-      <div className="grid gap-4 print:block lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
-        <div className="no-print flex flex-col gap-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 print:block lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+        <div className="no-print flex min-w-0 flex-col gap-6">
           <LiqFormFields
             form={form}
             setForm={setForm}
@@ -452,10 +453,11 @@ function LiqEditorBody({
             onDeleteLine={deleteLine}
             canEdit={canEdit}
             tripOptions={tripOptions}
+            savedSignature={profile?.signature}
           />
         </div>
 
-        <div className="flex flex-col gap-3 print:static print:gap-0 print:overflow-visible lg:sticky lg:top-2 lg:self-start">
+        <div className="flex min-w-0 flex-col gap-3 print:static print:gap-0 print:overflow-visible lg:sticky lg:top-2 lg:self-start">
           {/* First in the preview column, exactly like OB / LOA / COS / OT: the
               upload prompt and an already attached slip belong where you look
               first. On paper it drops below the sheet (`print:order-2`), so the

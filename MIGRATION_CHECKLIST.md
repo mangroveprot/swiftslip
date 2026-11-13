@@ -419,6 +419,16 @@ LOA/COS/OT/DTR untouched. Full decision record: `HR_APPROVAL_SPEC.md` (D1–D10)
       (`features/hr/lib/notification-meta.ts`), unread dot and the actor's photo plus
       "by Name · Position". Hard-coded "HR reviewer" notes now show the reviewer's position
       (falling back to "HR").
+- [x] Notification triage + delete (owner's screenshot, 2026-11-13) — the panel gained `Select`
+      (rows become checkboxes), `Select all` / `Clear`, `Delete (n)` and a per-row trash button.
+      Deleting asks for confirmation **inline** in the panel (a nested modal fought the dropdown for
+      focus), then removes the rows and their unread count optimistically, toasts, and refreshes.
+      `POST /notifications/delete` (`deleteNotificationsInput`, 1–100 ids) filters by
+      `recipient_id` as well, so an id from another account can only ever match nothing. On the
+      mobile drawer the panel is a floating card portalled to `document.body` and pinned above the
+      notification row (`right-3`, `bottom` from the bell's rect + 12px), because the drawer's
+      `transform` becomes the containing block for `position: fixed` and pushed a non-portalled card
+      off the left edge.
 - [x] Sidebar account UX — the "Account / My Account" nav row is gone from the main, HR and Admin
       sidebars; the footer identity block is a link to the matching profile route and its caption
       is **Role - Position** (`accountCaption`, e.g. "Administrator - IT Support") instead of the
@@ -744,6 +754,7 @@ Intentional behaviour (do not "fix" back):
 | POST | `/hr/ob/:id/sign-arrival` | hr | `signArrivalInput` | – (departed → completed) |
 | GET | `/notifications` | user | – | `{unread, documents}` |
 | POST | `/notifications/read` | user | `markNotificationsReadInput` | – (marks all read) |
+| POST | `/notifications/delete` | user | `deleteNotificationsInput` | `{deleted}` (own rows only) |
 
 ## 5. Smoke test (after `npm run setup` and filling `api/.env`)
 

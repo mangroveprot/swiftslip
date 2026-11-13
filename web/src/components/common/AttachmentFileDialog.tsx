@@ -168,6 +168,8 @@ export function AttachmentFileDialog({
           <input
             ref={inputRef}
             type="file"
+            id="attach-file-input"
+            name="attachment-file"
             accept={ATTACHMENT_ACCEPT}
             className="hidden"
             disabled={busy}

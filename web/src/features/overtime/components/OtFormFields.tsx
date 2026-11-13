@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Loader2, PencilLine, Sparkles, X } from "lucide-react";
 
 import { writeOtReason } from "@/api/ot.functions";
@@ -152,6 +152,7 @@ function Identity({
   required?: boolean;
   onChange: (v: string) => void;
 }) {
+  const fieldId = useId();
   return (
     <label className="block min-w-0">
       <span className="block text-[13px] font-medium text-foreground/70">
@@ -159,6 +160,7 @@ function Identity({
         {required ? <Req /> : null}
       </span>
       <input
+        id={fieldId}
         type="text"
         className="mt-1.5 w-full border-0 border-b border-transparent bg-transparent p-0 text-[15px] leading-snug font-semibold text-foreground outline-none transition-colors hover:border-border focus:border-primary/60 disabled:cursor-not-allowed disabled:text-muted-foreground"
         disabled={disabled}
@@ -187,6 +189,7 @@ function Field({
   type?: string;
   onChange: (v: string) => void;
 }) {
+  const fieldId = useId();
   return (
     <label className="block">
       <span className="lbl">
@@ -194,6 +197,7 @@ function Field({
         {required ? <Req /> : null}
       </span>
       <input
+        id={fieldId}
         className="inp"
         type={type}
         disabled={disabled}
@@ -223,6 +227,7 @@ function ReasonField({
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState<null | "generate" | "enhance">(null);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const fieldId = useId();
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -324,6 +329,8 @@ function ReasonField({
             </button>
           </div>
           <textarea
+            id="ot-ai-notes"
+            name="ot-ai-notes"
             className="inp min-h-[3.5rem] resize-none whitespace-pre-wrap"
             placeholder="e.g. finish month-end reports"
             value={notes}
@@ -363,6 +370,7 @@ function ReasonField({
 
       <textarea
         ref={ref}
+        id={fieldId}
         rows={1}
         className="inp resize-none overflow-hidden whitespace-pre-wrap break-words"
         style={{ minHeight: "calc(3 * 1.25rem + 0.75rem)" }}

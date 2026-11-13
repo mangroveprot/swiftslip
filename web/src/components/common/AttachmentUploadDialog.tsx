@@ -276,6 +276,8 @@ export function AttachmentUploadDialog({
             ref={inputRef}
             type="file"
             multiple
+            id="attach-upload-input"
+            name="attachment-files"
             accept={ATTACHMENT_ACCEPT}
             className="hidden"
             disabled={busy || seats === 0}
