@@ -371,13 +371,21 @@ export function obReturnState(form: { hr_status: ObHrStatus; date_of_ob: string 
   return { due, out, overdue: days > 0, dueToday: days === 0, daysOverdue: Math.max(0, days) };
 }
 
-/** The one table `notifications.kind` may hold, in flow order. */
-export const OB_NOTIFICATION_KINDS = [
+/**
+ * Every kind `notifications.kind` may hold, in flow order.
+ *
+ * The five `ob_*` kinds are the Official Business approval flow. `form_deleted`
+ * is the retention cleanup telling an employee that one of their old forms was
+ * removed — the only kind that is not part of a review flow, and the only one
+ * whose link opens a list rather than a record, because the record is gone.
+ */
+export const NOTIFICATION_KINDS = [
   "ob_submitted",
   "ob_approved",
   "ob_rejected",
   "ob_resubmitted",
   "ob_departure_signed",
+  "form_deleted",
 ] as const;
 
-export type ObNotificationKind = (typeof OB_NOTIFICATION_KINDS)[number];
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];

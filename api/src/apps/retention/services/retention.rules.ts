@@ -1,5 +1,6 @@
 import {
   RETENTION_FORM_TYPES,
+  type RetentionFormItem,
   type RetentionFormType,
 } from '@swiftslip/shared/schemas';
 import { readOtherFiles } from '../../attachments/utils/other-files';
@@ -55,7 +56,6 @@ export const cutoffFor = (days: number, now: number = Date.now()) =>
 export type RuleFields = {
   attachment_path?: string | null;
   attachment_backend?: string | null;
-  attachment_approved?: boolean;
   /** Non-DTR forms. */
   employee_name?: string;
   date_filed?: string;
@@ -79,19 +79,45 @@ export function isScaffold(type: RetentionFormType, row: RuleFields): boolean {
 }
 
 /**
- * Is this old form "finished", i.e. safe to delete? Owner's rule of
- * 2026-10-29: approved, or nothing ever attached to approve.
+ * Would the cleanup take this form? Owner's rule of 2026-11-14: age alone
+ * decides. A slip still waiting for approval no longer protects a form — once
+ * it is past the keep period it goes, approved or not.
  *
- * • DTR has no approval state at all (migration 0009: "certified, not
- *   approved"), so age alone decides.
- * • OB / LOA / COS / OT carry `attachment_approved`. A slip that was uploaded
- *   but never approved is treated as PENDING and kept forever; a form that
- *   never had a slip has nothing pending, so it goes with its age.
+ * The one form it never takes is the scaffold: a form someone opened and
+ * never filled has nothing to keep, and the app's own `quiet` sweep removes
+ * those. Everything else, every type, is eligible the moment it is old enough.
  */
-export function isFinished(type: RetentionFormType, row: RuleFields): boolean {
-  if (isScaffold(type, row)) return false;
-  if (type === 'dtr') return true;
-  return row.attachment_approved === true || !row.attachment_path;
+export function isEligible(type: RetentionFormType, row: RuleFields): boolean {
+  return !isScaffold(type, row);
+}
+
+/**
+ * The preview list's one row: enough to recognise a form in the review
+ * window without opening it. The label is the person, the date is the form's
+ * own (filed / prepared), and `created_at` is the fallback for DTR, which
+ * files no date of its own.
+ */
+export function itemOf(
+  type: RetentionFormType,
+  row: RuleFields & { id: string; created_at?: string | null },
+  files: number,
+): RetentionFormItem {
+  const person =
+    type === 'dtr'
+      ? row.name
+      : type === 'liq'
+        ? row.prepared_by
+        : row.employee_name;
+  const filed =
+    type === 'dtr' ? null : type === 'liq' ? row.date_prepared : row.date_filed;
+  return {
+    type,
+    id: row.id,
+    label: person?.trim() || 'Untitled form',
+    reference: type === 'dtr' ? row.emp_no?.trim() || null : null,
+    date: filed ?? row.created_at ?? null,
+    files,
+  };
 }
 
 /** Every storage path the row owns: the main slip plus LOA/OT/DTR extras. */

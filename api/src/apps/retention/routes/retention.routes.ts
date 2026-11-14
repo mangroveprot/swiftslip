@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { validate } from '../../../common/shared';
 import {
   retentionPreviewInput,
+  retentionRunInput,
   retentionSettingsInput,
 } from '@swiftslip/shared/schemas';
 import { authenticate, authorizeAdmin } from '../../auth/middlewares';
@@ -23,7 +24,7 @@ router.post(
   validate(retentionPreviewInput),
   RetentionController.preview,
 );
-router.post('/run', RetentionController.run);
+router.post('/run', validate(retentionRunInput), RetentionController.run);
 router.get('/runs/last', RetentionController.lastRun);
 
 export default router;

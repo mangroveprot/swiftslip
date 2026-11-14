@@ -57,6 +57,22 @@ controller → service → repository. Supabase / SQL only in repositories.
 - Never put a secret in a `VITE_*` variable — it is bundled into browser JS.
 - No UX changes during a port.
 
+## UI work
+
+Before changing how anything looks or feels — new screen, redesign, polish, or a visual review —
+load the `ui-taste` skill (`.opencode/skills/ui-taste/SKILL.md`) and follow the playbook it routes
+to. It refines the existing design system, never replaces it: keep the project's tokens, components
+and neighbour screens, and no redesign smuggled into a feature change. Its "finish" step asks for a
+rendered check; if no browser is available, say so — typecheck and lint are not visual verification.
+
+## Git
+
+- **Never commit or push.** Leave every change in the working tree, unstaged, for the owner to
+  review and commit. No `git add`, `git commit`, `git push`, `git tag`, `git rebase`, force-push,
+  branch or worktree creation, or pull request — even when the task is finished and the checks pass.
+  A green `typecheck`/`lint` run is not an invitation to commit.
+- Read-only git (`status`, `diff`, `log`, `show`) is fine; it is how a change gets explained.
+
 ## Before you finish
 
 `npm run typecheck` and `npm run lint` (all workspaces) must pass, then tick the box in

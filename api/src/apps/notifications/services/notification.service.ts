@@ -12,7 +12,7 @@ import { BaseService } from '../../../core/engine';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { logger } from '../../../common/shared/services';
 import type { NotificationRow } from '@swiftslip/shared/api-types';
-import type { ObNotificationKind } from '@swiftslip/shared/hr';
+import type { NotificationKind } from '@swiftslip/shared/hr';
 import { ProfileRepository } from '../../profile/repositories';
 import { photoUrl } from '../../profile/services/photo-storage';
 import { UpdatesService } from '../../updates/services';
@@ -23,7 +23,7 @@ export type NotifyInput = {
   recipients: string[];
   /** Who triggered it, for the row's provenance. */
   actorId?: string | null;
-  kind: ObNotificationKind;
+  kind: NotificationKind;
   title: string;
   body: string;
   /** Relative path inside this app, `/hr/ob/<id>` or `/official-business/<id>`. */

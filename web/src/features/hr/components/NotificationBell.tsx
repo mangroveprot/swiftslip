@@ -43,12 +43,27 @@ import { relativeTime } from "@swiftslip/shared/time";
 import { notificationsQueryOptions } from "../queries";
 import { notificationMeta } from "../lib/notification-meta";
 
+/**
+ * Lists a notification may open when the record itself is gone. The retention
+ * cleanup deletes forms, so its `form_deleted` rows point at the type's list.
+ */
+const LIST_TARGETS = {
+  "/official-business": "/official-business",
+  "/leave-of-absence": "/leave-of-absence",
+  "/change-of-schedule": "/change-of-schedule",
+  "/overtime": "/overtime",
+  "/liquidation": "/liquidation",
+  "/records": "/records",
+} as const;
+
 /** Turn a stored relative link into a typed navigation. */
 function targetOf(link: string) {
   const hr = /^\/hr\/ob\/(.+)$/.exec(link);
   if (hr?.[1]) return { to: "/hr/ob/$id" as const, params: { id: hr[1] } };
   const ob = /^\/official-business\/(.+)$/.exec(link);
   if (ob?.[1]) return { to: "/official-business/$id" as const, params: { id: ob[1] } };
+  const list = LIST_TARGETS[link as keyof typeof LIST_TARGETS];
+  if (list) return { to: list };
   return null;
 }
 
@@ -298,7 +313,7 @@ export function NotificationBell({
         </div>
       ) : rows.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-          Nothing yet. Updates about your OB forms will appear here.
+          Nothing yet. Updates will appear here.
         </p>
       ) : (
         <ul className="max-h-[24rem] overflow-y-auto py-1">

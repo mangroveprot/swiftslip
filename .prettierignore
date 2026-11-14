@@ -6,3 +6,6 @@ build
 package-lock.json
 routeTree.gen.ts
 database.types.ts
+# Vendored agent skills (Uizze ui-taste): shipped verbatim and checksummed in
+# CHECKSUMS.sha256, so reformatting them would break the hashes.
+.opencode

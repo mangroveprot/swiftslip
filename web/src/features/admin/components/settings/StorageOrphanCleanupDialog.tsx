@@ -1,5 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, Loader2 } from "lucide-react";
+import {
+  Eye,
+  File as FileIcon,
+  FileArchive,
+  FileAudio,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  FileVideo,
+  Loader2,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { deleteStorageOrphans } from "@/api/storage.functions";
@@ -32,6 +43,61 @@ const shortDate = (iso: string | null) =>
 
 /** The file's name, the last path segment of its storage key. */
 const baseName = (key: string) => key.split("/").pop() || key;
+
+/** The key's extension, lower-cased and without the dot; "" when there is none. */
+function extensionOf(key: string): string {
+  const name = baseName(key);
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
+}
+
+const IMAGE_EXT = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "avif",
+  "bmp",
+  "svg",
+  "tif",
+  "tiff",
+  "heic",
+  "heif",
+]);
+const SHEET_EXT = new Set(["xls", "xlsx", "csv", "ods"]);
+const ARCHIVE_EXT = new Set(["zip", "rar", "7z", "gz", "tar", "bz2"]);
+const VIDEO_EXT = new Set(["mp4", "mov", "avi", "mkv", "webm", "m4v", "wmv"]);
+const AUDIO_EXT = new Set(["mp3", "wav", "ogg", "m4a", "flac", "aac"]);
+const DOC_EXT = new Set(["doc", "docx", "odt", "rtf", "txt", "md"]);
+
+/** The quiet tile most files get; only the few loud types below are tinted. */
+const TILE_QUIET = "bg-muted text-muted-foreground";
+
+/**
+ * What the little tile beside a file's name shows. Orphan keys are opaque
+ * (`<uuid>.<ext>`), so the extension is the only clue to what the admin is
+ * about to delete: images, PDFs and spreadsheets get their own icon and tone,
+ * everything else a plain sheet with a shared, quiet one.
+ */
+function fileTile(key: string): { Icon: LucideIcon; tone: string } {
+  const ext = extensionOf(key);
+  if (IMAGE_EXT.has(ext)) {
+    return {
+      Icon: FileImage,
+      // `--accent-tint` is a solid fill in dark mode, so the image tile keeps
+      // it at tint strength there, the way PDF and spreadsheets already read.
+      tone: "bg-accent-tint text-accent-tint-foreground dark:bg-accent-tint/15 dark:text-accent-tint",
+    };
+  }
+  if (ext === "pdf") return { Icon: FileText, tone: "bg-destructive/10 text-destructive" };
+  if (SHEET_EXT.has(ext)) return { Icon: FileSpreadsheet, tone: "bg-success/10 text-success" };
+  if (ARCHIVE_EXT.has(ext)) return { Icon: FileArchive, tone: TILE_QUIET };
+  if (VIDEO_EXT.has(ext)) return { Icon: FileVideo, tone: TILE_QUIET };
+  if (AUDIO_EXT.has(ext)) return { Icon: FileAudio, tone: TILE_QUIET };
+  if (DOC_EXT.has(ext)) return { Icon: FileText, tone: TILE_QUIET };
+  return { Icon: FileIcon, tone: TILE_QUIET };
+}
 
 /** "10 minutes" / "24 hours", the grace window, in the unit that reads best. */
 function graceLabel(seconds: number): string {
@@ -306,6 +372,7 @@ export function StorageOrphanCleanupDialog({
               {shown.map((file) => {
                 const id = idOf(file);
                 const ticked = selected.has(id);
+                const { Icon, tone } = fileTile(file.key);
                 return (
                   <li
                     key={id}
@@ -323,21 +390,32 @@ export function StorageOrphanCleanupDialog({
                       className={TICK}
                       aria-label={`Select ${baseName(file.key)} for deletion`}
                     />
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium" title={file.key}>
-                        {baseName(file.key)}
+                    <span className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-2.5">
+                      <span
+                        className={cn(
+                          "flex size-6 shrink-0 items-center justify-center rounded-md border border-border sm:size-7",
+                          tone,
+                        )}
+                        aria-hidden="true"
+                      >
+                        <Icon className="size-3.5" aria-hidden="true" />
                       </span>
-                      {/* The reason and storage show under the name on phones. */}
-                      <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground sm:hidden">
-                        <span
-                          className={cn(
-                            "size-2 rounded-[3px]",
-                            file.backend === "b2" ? "bg-logo" : "bg-foreground",
-                          )}
-                          aria-hidden="true"
-                        />
-                        {BACKEND_LABEL[file.backend]} · {file.reason} ·{" "}
-                        {shortDate(file.lastModified)}
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium" title={file.key}>
+                          {baseName(file.key)}
+                        </span>
+                        {/* The reason and storage show under the name on phones. */}
+                        <span className="mt-0.5 block text-xs text-muted-foreground sm:hidden">
+                          <span
+                            className={cn(
+                              "mr-1.5 inline-block size-2 rounded-[3px] align-baseline",
+                              file.backend === "b2" ? "bg-logo" : "bg-foreground",
+                            )}
+                            aria-hidden="true"
+                          />
+                          {BACKEND_LABEL[file.backend]} · {file.reason} ·{" "}
+                          {shortDate(file.lastModified)}
+                        </span>
                       </span>
                     </span>
                     <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">

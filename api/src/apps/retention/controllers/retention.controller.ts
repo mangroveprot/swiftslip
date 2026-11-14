@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { ApiResponse, ErrorResponseType } from '../../../common/shared';
-import type { RetentionSettings } from '@swiftslip/shared/schemas';
+import type {
+  RetentionRunForm,
+  RetentionSettings,
+} from '@swiftslip/shared/schemas';
 import type { SessionUser } from '@swiftslip/shared/types';
 import { RetentionService } from '../services';
 
@@ -33,8 +36,14 @@ class RetentionController {
 
   static async preview(req: Request, res: Response): Promise<void> {
     try {
-      const { settings } = req.body as { settings?: RetentionSettings };
-      const response = await RetentionService.preview(settings);
+      const { settings, includeItems } = req.body as {
+        settings?: RetentionSettings;
+        includeItems?: boolean;
+      };
+      const response = await RetentionService.preview(
+        settings,
+        includeItems === true,
+      );
       if (response.success) {
         ApiResponse.success(res, response);
       } else {
@@ -47,7 +56,11 @@ class RetentionController {
 
   static async run(req: Request, res: Response): Promise<void> {
     try {
-      const response = await RetentionService.run(req.user as SessionUser);
+      const { forms } = req.body as { forms?: RetentionRunForm[] };
+      const response = await RetentionService.run(
+        req.user as SessionUser,
+        forms,
+      );
       if (response.success) {
         ApiResponse.success(res, response);
       } else {

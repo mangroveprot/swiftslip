@@ -4,6 +4,7 @@ import {
   LogOut,
   RotateCcw,
   Send,
+  Trash2,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -12,10 +13,12 @@ import {
  * How a notification row looks at a glance: the icon in the leading circle
  * and the tone of that circle, keyed by `notifications.kind`.
  *
- * The kinds are the flow itself, submitted → approved / rejected → resubmitted
- * → departure signed, so the icon carries the outcome before the title is
- * read. Tones reuse existing tokens only (`primary`, `success`, `destructive`,
- * the logo orange) so both themes stay correct without new colour values.
+ * The five `ob_*` kinds are the approval flow itself, submitted → approved /
+ * rejected → resubmitted → departure signed, so the icon carries the outcome
+ * before the title is read. `form_deleted` is the retention cleanup: the only
+ * kind that reports something gone rather than something waiting. Tones reuse
+ * existing tokens only (`primary`, `success`, `destructive`, the logo orange)
+ * so both themes stay correct without new colour values.
  * An unknown kind falls back to the bell rather than an empty circle.
  */
 export type NotificationMeta = {
@@ -30,6 +33,7 @@ const META: Record<string, NotificationMeta> = {
   ob_rejected: { icon: XCircle, tone: "bg-destructive/10 text-destructive" },
   ob_resubmitted: { icon: RotateCcw, tone: "bg-logo/15 text-logo-ink" },
   ob_departure_signed: { icon: LogOut, tone: "bg-muted text-muted-foreground" },
+  form_deleted: { icon: Trash2, tone: "bg-muted text-muted-foreground" },
 };
 
 export function notificationMeta(kind: string): NotificationMeta {

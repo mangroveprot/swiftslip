@@ -2,18 +2,24 @@ import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { logger } from '../../../common/shared/services';
 import { ActivityLogService } from '../../activity-log';
 import { AttachmentService } from '../../attachments';
+import { NotificationService } from '../../notifications';
 import type { SessionUser, StorageBackend } from '@swiftslip/shared/types';
 import {
+  RETENTION_FORM_LABELS,
   RETENTION_FORM_TYPES,
+  type CleanupRunResult,
   type CleanupRunSummary,
+  type RetentionFormItem,
   type RetentionFormType,
   type RetentionPreview,
+  type RetentionRunForm,
   type RetentionSettings,
   type RetentionSettingsDoc,
 } from '@swiftslip/shared/schemas';
 import { BaseRepository } from '../../../core/engine';
 import {
   CLEANUP_BATCH,
+  FORM_LINKS,
   RETENTION_TABLES,
   SELECTS,
   type ExpiredRow,
@@ -25,7 +31,8 @@ import {
 } from '../repositories';
 import {
   cutoffFor,
-  isFinished,
+  isEligible,
+  itemOf,
   pathsOf,
   readCountMap,
   readFormTypes,
@@ -56,13 +63,37 @@ const DEFAULT_SETTINGS: RetentionSettingsDoc = {
  */
 let runInProgress = false;
 
-/** Split ids into delete-sized bites (PostgREST `in(...)` lists stay small). */
+/**
+ * Split ids into delete-sized bites (PostgREST `in(...)` lists stay small).
+ */
 function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < items.length; i += size)
     out.push(items.slice(i, i + size));
   return out;
 }
+
+/**
+ * "Oct 4, 2026" for a date-only ISO string, read at UTC so the stored day never
+ * slides into another. The shared `formatDate` formats a `Date` in the
+ * machine's zone; a notification body must read the same on any server.
+ */
+function dayLabel(iso: string): string {
+  const [year, month, day] = iso.slice(0, 10).split('-').map(Number);
+  if (!year || !month || !day) return iso;
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+/** One deleted form, kept with its owner so the run can tell them. */
+type DeletedForm = {
+  item: RetentionFormItem;
+  ownerId: string | null;
+};
 
 /**
  * Settings → Data retention: the admin's one global auto-delete rule and the
@@ -139,7 +170,7 @@ class RetentionService {
   }
 
   /**
-   * Walk one form type's expired rows in batches and hand back the finished
+   * Walk one form type's expired rows in batches and hand back the eligible
    * ones with every storage path they own. Nothing is changed, preview and
    * run share this so both always agree on what "would go".
    */
@@ -158,7 +189,7 @@ class RetentionService {
         },
       );
       for (const raw of page as unknown as ExpiredRow[]) {
-        if (!isFinished(type, raw)) continue;
+        if (!isEligible(type, raw)) continue;
         rows.push(raw);
         paths.push(...pathsOf(type, raw));
       }
@@ -173,25 +204,42 @@ class RetentionService {
    *
    * Every type is counted, ticked or not, because the page shows each type's
    * pile before the admin ticks it; `totalForms` / `totalFiles` only add up
-   * the chosen ones, so the confirm dialog repeats exactly what would go.
+   * the chosen ones, so the review window repeats exactly what would go.
+   *
+   * `includeItems` adds the forms themselves, oldest first, for the review
+   * window's list. Only the ticked types are listed, so the list and the
+   * totals can never disagree.
    */
   async preview(
     draft?: RetentionSettings,
+    includeItems = false,
   ): Promise<ServiceResponse<RetentionPreview>> {
     try {
       const settings = draft ?? (await this.readSettings());
       const chosen = readFormTypes(settings.formTypes);
       const cutoff = cutoffFor(settings.days);
       const perType: RetentionPreview['types'] = [];
+      const items: RetentionFormItem[] = [];
       let totalForms = 0;
       let totalFiles = 0;
       for (const type of RETENTION_FORM_TYPES) {
         const { rows, paths } = await this.collect(type, cutoff);
         perType.push({ type, forms: rows.length, files: paths.length });
-        if (chosen.includes(type)) {
-          totalForms += rows.length;
-          totalFiles += paths.length;
+        if (!chosen.includes(type)) continue;
+        totalForms += rows.length;
+        totalFiles += paths.length;
+        if (includeItems) {
+          for (const row of rows) {
+            items.push(itemOf(type, row, pathsOf(type, row).length));
+          }
         }
+      }
+      if (includeItems) {
+        items.sort(
+          (a, b) =>
+            (a.date ? Date.parse(a.date) : 0) -
+            (b.date ? Date.parse(b.date) : 0),
+        );
       }
 
       return {
@@ -203,11 +251,61 @@ class RetentionService {
           types: perType,
           totalForms,
           totalFiles,
+          items,
         },
       };
     } catch (error) {
       return toFailure(error);
     }
+  }
+
+  /**
+   * The ids the review window sent, re-read from that type's table, keeping
+   * only rows still past the cutoff and still eligible. The admin approved a
+   * list a moment ago; an id that has since gone, or that is no longer old
+   * enough, is skipped rather than trusted.
+   */
+  private async pickRows(
+    type: RetentionFormType,
+    ids: string[],
+    cutoff: string,
+  ): Promise<ExpiredRow[]> {
+    const rows: ExpiredRow[] = [];
+    for (const batch of chunk(ids, CLEANUP_BATCH)) {
+      const page = await this.formRepo(RETENTION_TABLES[type]).findAll(
+        { id: { in: batch }, created_at: { lt: cutoff } },
+        { select: SELECTS[type], limit: batch.length },
+      );
+      for (const raw of page as unknown as ExpiredRow[]) {
+        if (isEligible(type, raw)) rows.push(raw);
+      }
+    }
+    return rows;
+  }
+
+  /**
+   * Delete one type's rows, then the bytes they owned. Rows first, always: a
+   * storage failure after the rows are gone just orphans bytes, it never
+   * leaves a live form pointing at a file that no longer exists.
+   */
+  private async purge(type: RetentionFormType, rows: ExpiredRow[]) {
+    const paths = rows.flatMap((row) => pathsOf(type, row));
+    let deleted = 0;
+    for (const ids of chunk(
+      rows.map((row) => row.id),
+      CLEANUP_BATCH,
+    )) {
+      const result = await this.formRepo(RETENTION_TABLES[type]).deleteMany({
+        id: { in: ids },
+      });
+      deleted += result.deletedCount;
+    }
+    let removed = 0;
+    let failed = 0;
+    if (paths.length) {
+      ({ removed, failed } = await AttachmentService.removeFiles(paths));
+    }
+    return { deleted, removed, failed, files: paths.length };
   }
 
   /** Write the permanent history row and shape it for the wire. */
@@ -268,7 +366,14 @@ class RetentionService {
   }
 
   /**
-   * `POST /run`, delete the expired, finished forms of the saved types.
+   * `POST /run`, delete the expired forms of the saved types.
+   *
+   * With `selection`, only those forms: the ids the review window sent, each
+   * re-checked against the cutoff and the scaffold rule first. Without it,
+   * every form the saved rule covers, the old sweep.
+   *
+   * The answer carries the deleted forms back with the history row, so the
+   * page can list what went instead of only its totals.
    *
    * Order per type, deliberately: SELECT the rows and collect their file
    * paths → DELETE the rows (in batches) → only then remove the files. A
@@ -276,7 +381,10 @@ class RetentionService {
    * logged and reported in the run's status, it never leaves a live form
    * pointing at a file that no longer exists.
    */
-  async run(actor: SessionUser): Promise<ServiceResponse<CleanupRunSummary>> {
+  async run(
+    actor: SessionUser,
+    selection?: RetentionRunForm[],
+  ): Promise<ServiceResponse<CleanupRunResult>> {
     try {
       const settings = await this.readSettings();
       if (!settings.enabled) {
@@ -293,45 +401,75 @@ class RetentionService {
         );
       }
 
+      // Group the ticked forms by table. A type the saved rule does not cover
+      // is dropped: naming a form never widens the rule.
+      let picked: Map<RetentionFormType, string[]> | null = null;
+      if (selection) {
+        const byType = new Map<RetentionFormType, Set<string>>();
+        for (const form of selection) {
+          if (!types.includes(form.type)) continue;
+          const ids = byType.get(form.type) ?? new Set<string>();
+          ids.add(form.id);
+          byType.set(form.type, ids);
+        }
+        if (!byType.size) {
+          throw new ErrorResponse(
+            'BAD_REQUEST',
+            'Select at least one form to delete.',
+          );
+        }
+        picked = new Map(
+          [...byType].map(([type, ids]) => [type, [...ids]] as const),
+        );
+      }
+
+      const runTypes = picked ? [...picked.keys()] : types;
+      const runSettings: RetentionSettings = {
+        ...settings,
+        formTypes: runTypes,
+      };
+      const cutoff = cutoffFor(settings.days);
+
       runInProgress = true;
       const formsDeleted: Partial<Record<RetentionFormType, number>> = {};
       const filesDeleted: Partial<Record<RetentionFormType, number>> = {};
+      const deletedForms: DeletedForm[] = [];
+      /** Ids the selection asked for, so the answer can say what it dropped. */
+      let requested = 0;
       let status = 'completed';
 
       try {
-        const cutoff = cutoffFor(settings.days);
-        for (const type of types) {
-          const { rows, paths } = await this.collect(type, cutoff);
+        for (const type of runTypes) {
+          const ids = picked?.get(type);
+          requested += ids?.length ?? 0;
+          const rows: ExpiredRow[] = ids
+            ? await this.pickRows(type, ids, cutoff)
+            : (await this.collect(type, cutoff)).rows;
           if (!rows.length) continue;
 
-          let deleted = 0;
-          for (const ids of chunk(
-            rows.map((row) => row.id),
-            CLEANUP_BATCH,
-          )) {
-            const result = await this.formRepo(
-              RETENTION_TABLES[type],
-            ).deleteMany({
-              id: { in: ids },
-            });
-            deleted += result.deletedCount;
+          const result = await this.purge(type, rows);
+          if (result.deleted) {
+            formsDeleted[type] = result.deleted;
+            // Once the delete returns, every picked row is gone: this run took
+            // it, or it vanished between the preview and now. Those are exactly
+            // the forms the result panel can name, and whose owners get told.
+            deletedForms.push(
+              ...rows.map((row) => ({
+                item: itemOf(type, row, pathsOf(type, row).length),
+                ownerId: row.owner_id ?? null,
+              })),
+            );
           }
-          if (deleted) formsDeleted[type] = deleted;
-
-          // Rows are gone, now the bytes. `removeFiles` never throws; it
-          // reports how many objects storage actually dropped, so a partial
-          // failure is visible in the run's status instead of passing as a
-          // clean run (the leftover files are orphans, nothing points at them).
-          if (paths.length) {
-            const { removed, failed } =
-              await AttachmentService.removeFiles(paths);
-            if (removed) filesDeleted[type] = removed;
-            if (failed) {
-              status = 'completed_with_file_errors';
-              logger.error(
-                `[retention] storage removed ${removed}/${paths.length} file(s) for ${type} after their rows were deleted`,
-              );
-            }
+          // `removeFiles` never throws; it reports how many objects storage
+          // actually dropped, so a partial failure is visible in the run's
+          // status instead of passing as a clean run (the leftover files are
+          // orphans, nothing points at them).
+          if (result.removed) filesDeleted[type] = result.removed;
+          if (result.failed) {
+            status = 'completed_with_file_errors';
+            logger.error(
+              `[retention] storage removed ${result.removed}/${result.files} file(s) for ${type} after their rows were deleted`,
+            );
           }
         }
       } catch (error) {
@@ -342,7 +480,7 @@ class RetentionService {
         try {
           await this.recordRun(
             actor,
-            settings,
+            runSettings,
             formsDeleted,
             filesDeleted,
             status,
@@ -362,7 +500,7 @@ class RetentionService {
 
       const run = await this.recordRun(
         actor,
-        settings,
+        runSettings,
         formsDeleted,
         filesDeleted,
         status,
@@ -373,12 +511,89 @@ class RetentionService {
       await ActivityLogService.logBy(actor, {
         action: 'cleanup.forms',
         target: `Deleted ${totalForms} form(s) and ${totalFiles} file(s)`,
-        detail: `Kept ${settings.days} days · ${types.join(', ')} · ${status}`,
+        detail: `Kept ${settings.days} days · ${runTypes.join(', ')} · ${status}`,
       });
 
-      return { success: true, document: run };
+      // Only after the run is recorded: the bell says a form is gone, so it
+      // must never fire for a run the history does not have. Best effort by
+      // design — `notify` swallows its own failures, and a recipient whose
+      // owner id is missing cannot be reached at all. The try/catch is the
+      // belt to that suspenders: a notification bug must not turn a finished
+      // cleanup into an error answer.
+      try {
+        await this.notifyOwners(deletedForms, settings.days);
+      } catch (notifyError) {
+        logger.error(
+          '[retention] could not notify owners',
+          notifyError as Error,
+        );
+      }
+
+      return {
+        success: true,
+        document: {
+          ...run,
+          // Oldest first, the same order the review window listed them in.
+          deleted: deletedForms
+            .map((form) => form.item)
+            .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? '')),
+          skipped: Math.max(0, requested - deletedForms.length),
+        },
+      };
     } catch (error) {
       return toFailure(error);
+    }
+  }
+
+  /**
+   * Tell each owner what the run took from them: one notification per person,
+   * not per form. A first run can delete 200 forms; 200 bell rows would bury
+   * every other notification, so the forms are listed (up to three, then
+   * "and N more") inside one row.
+   *
+   * Sent as the system, deliberately: `actorId` is left out so the bell shows
+   * no "by <admin>" line. Whose button did it is the admin's business; the
+   * employee only needs to know the form is gone and why.
+   *
+   * The link opens the type's list, because the record itself no longer
+   * exists. A form filed before ownership existed has no `owner_id`; it is
+   * deleted all the same, just silently.
+   */
+  private async notifyOwners(
+    deleted: DeletedForm[],
+    days: number,
+  ): Promise<void> {
+    const byOwner = new Map<string, RetentionFormItem[]>();
+    for (const { item, ownerId } of deleted) {
+      if (!ownerId) continue;
+      const items = byOwner.get(ownerId) ?? [];
+      items.push(item);
+      byOwner.set(ownerId, items);
+    }
+
+    for (const [recipient, items] of byOwner) {
+      const named = items
+        .slice(0, 3)
+        .map(
+          (item) =>
+            `${RETENTION_FORM_LABELS[item.type]} · ${
+              item.date ? dayLabel(item.date) : 'no date'
+            }`,
+        )
+        .join(', ');
+      const more = items.length > 3 ? ` and ${items.length - 3} more` : '';
+      const period = `${days}-day`;
+
+      await NotificationService.notify({
+        recipients: [recipient],
+        kind: 'form_deleted',
+        title:
+          items.length === 1
+            ? 'Your form was deleted'
+            : `Your ${items.length} forms were deleted`,
+        body: `Past the ${period} keep period: ${named}${more}.`,
+        link: FORM_LINKS[items[0]!.type],
+      });
     }
   }
 }

@@ -12,14 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { plural } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   RETENTION_FORM_TYPES,
   RETENTION_MIN_DAYS,
-  type CleanupRunSummary,
+  type CleanupRunResult,
   type RetentionFormType,
   type RetentionPreview,
+  type RetentionRunForm,
   type RetentionSettings,
 } from "@swiftslip/shared/schemas";
 import { formatDate, relativeTime } from "@swiftslip/shared/time";
@@ -30,8 +32,9 @@ import {
   retentionCountsQueryOptions,
   retentionSettingsQueryOptions,
 } from "../../queries";
-import { FORM_TYPE_LABELS } from "./form-types";
-import { RetentionConfirmDialog } from "./RetentionConfirmDialog";
+import { CleanupResultPanel } from "./CleanupResultPanel";
+import { FORM_TYPE_ICONS, FORM_TYPE_LABELS } from "./form-types";
+import { RetentionPreviewDialog } from "./RetentionPreviewDialog";
 
 /** The editable shape on screen, `days` stays a string while typing. */
 type Draft = { enabled: boolean; days: string; formTypes: RetentionFormType[] };
@@ -53,7 +56,10 @@ const MAX_DAYS = 3650;
 
 const HINT = "text-sm text-muted-foreground";
 const LINK =
-  "text-sm font-medium underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground";
+  "rounded-sm text-sm font-medium underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
+
+/** Same focus ring the shared Button draws, for the bare buttons on this page. */
+const FOCUS = "focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none";
 
 /** Identity of a rule, ignoring key order, used to detect unsaved changes. */
 const keyOf = (rule: { enabled: boolean; days: number; formTypes: readonly RetentionFormType[] }) =>
@@ -82,6 +88,14 @@ function joinNames(names: string[]): string {
 const dayLabel = (days: number) => `${days} day${days === 1 ? "" : "s"}`;
 
 /**
+ * The tile beside each form type: the same icon the SwiftSlip sidebar gives
+ * that form, so a row here is recognisable as the page it cleans up rather
+ * than as one more line of text (see `form-types.ts`).
+ */
+const TYPE_TILE =
+  "flex size-6 shrink-0 items-center justify-center rounded-md border border-border";
+
+/**
  * Admin Panel → Settings → Data retention.
  *
  * Laid out like the dashboard: one panel, a rule under the title, three
@@ -89,10 +103,11 @@ const dayLabel = (days: number) => `${days} day${days === 1 ? "" : "s"}`;
  * the right, then preview/run beside the last run's history.
  *
  * Three moves, in the order the safety demands them: (1) set the rule, it
- * saves itself a moment after the last change, (2) preview what it would
- * delete, counts only, nothing touched, (3) run, behind a confirm dialog that
- * repeats those counts. Run stays locked until a preview has been taken for
- * exactly the saved rule, so the admin always approves the numbers they see.
+ * saves itself a moment after the last change, (2) preview, which opens the
+ * review window listing every form it would delete, nothing touched, (3) run,
+ * from that same window, deleting only the forms still ticked. Run stays
+ * locked until a preview has been taken for exactly the saved rule, so the
+ * admin always approves the forms they see.
  */
 export function DataRetention() {
   const queryClient = useQueryClient();
@@ -102,7 +117,10 @@ export function DataRetention() {
   const [draft, setDraft] = useState<Draft | null>(null);
   /** The preview the admin has actually asked for, with the rule it was for. */
   const [previewed, setPreviewed] = useState<{ key: string; doc: RetentionPreview } | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  /** The review window: the preview's list, where the run happens. */
+  const [reviewOpen, setReviewOpen] = useState(false);
+  /** The receipt of the last run this page made, cleared on the next preview. */
+  const [lastResult, setLastResult] = useState<CleanupRunResult | null>(null);
   const daysRef = useRef<HTMLInputElement>(null);
 
   // Seed the editor once from the saved rule. Deliberately not re-seeded on
@@ -162,25 +180,36 @@ export function DataRetention() {
   const previewMutation = useMutation({
     mutationFn: async (vars: { settings: RetentionSettings; key: string }) => ({
       key: vars.key,
-      doc: await previewRetentionCleanup({ data: { settings: vars.settings } }),
+      doc: await previewRetentionCleanup({
+        data: { settings: vars.settings, includeItems: true },
+      }),
     }),
-    onSuccess: ({ key, doc }) => setPreviewed({ key, doc }),
+    onSuccess: ({ key, doc }) => {
+      setPreviewed({ key, doc });
+      // The window is the point of the preview: it lists what would go, so the
+      // admin can untick anything to keep before the run. An empty preview
+      // needs no window, the inline result below already says nothing would go.
+      if (doc.totalForms > 0) setReviewOpen(true);
+    },
     onError,
   });
 
   const runMutation = useMutation({
-    mutationFn: runRetentionCleanup,
-    onSuccess: (run: CleanupRunSummary) => {
-      setConfirmOpen(false);
+    mutationFn: (forms: RetentionRunForm[]) => runRetentionCleanup(forms),
+    onSuccess: (run: CleanupRunResult) => {
+      setReviewOpen(false);
       setPreviewed(null);
-      toast.success(
-        `Cleanup finished: ${sumCounts(run.formsDeleted)} form(s) and ${sumCounts(run.filesDeleted)} file(s) deleted.`,
-      );
+      // The receipt outlives the toast: naming the forms is the point, and a
+      // toast that disappears in four seconds cannot be read back.
+      setLastResult(run);
+      toast.success("Cleanup finished", {
+        description: `${plural(sumCounts(run.formsDeleted), "form")} and ${plural(sumCounts(run.filesDeleted), "file")} deleted · older than ${dayLabel(run.days)}.`,
+      });
       void queryClient.invalidateQueries({ queryKey: ["cleanup-run"] });
       void queryClient.invalidateQueries({ queryKey: ["retention-counts"] });
     },
     onError: (error) => {
-      setConfirmOpen(false);
+      setReviewOpen(false);
       onError(error);
     },
   });
@@ -207,6 +236,16 @@ export function DataRetention() {
   const nothingToDelete = previewed !== null && previewed.doc.totalForms === 0;
   const canRun = previewMatchesSaved && draft.enabled && !nothingToDelete;
 
+  /**
+   * Preview, then review. The list the window shows is always freshly counted
+   * from the rule on screen, so the numbers the admin ticks against are the
+   * numbers the run will use.
+   */
+  const takePreview = () => {
+    setLastResult(null);
+    previewMutation.mutate({ settings: toInput(draft), key: draftKey });
+  };
+
   const runHint = !daysValid
     ? `Enter at least ${dayLabel(RETENTION_MIN_DAYS)} first.`
     : draft.formTypes.length === 0
@@ -216,7 +255,7 @@ export function DataRetention() {
         : dirty
           ? "Waiting for your changes to save."
           : nothingToDelete
-            ? "Nothing to delete. The preview found no finished forms."
+            ? "Nothing to delete. The preview found no forms past the keep period."
             : !previewMatchesSaved
               ? "Run a preview before cleaning up."
               : "Deletes exactly what the preview showed.";
@@ -305,9 +344,9 @@ export function DataRetention() {
               )}
               aria-hidden="true"
             />
-            <span className={status.tone === "ok" ? "text-foreground" : "text-muted-foreground"}>
-              {status.text}
-            </span>
+            {/* Tone rides on the dot; the words stay the same weight either
+                way, so a pending state is not quieter than a ready one. */}
+            <span className="text-foreground">{status.text}</span>
           </p>
         </SummaryColumn>
       </div>
@@ -326,8 +365,7 @@ export function DataRetention() {
             <div className="min-w-0">
               <p className="text-sm font-medium">Delete old forms when a cleanup runs</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                While off, nothing is ever deleted no matter the settings below. Nothing is deleted
-                on a timer either, only when an admin runs a cleanup.
+                While off, nothing is ever deleted no matter the settings below.
               </p>
             </div>
             <Switch
@@ -351,9 +389,13 @@ export function DataRetention() {
                     aria-pressed={active}
                     onClick={() => setDraft({ ...draft, days: String(preset.days) })}
                     className={cn(
-                      "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                      "rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                      FOCUS,
+                      // The active preset has to be unmistakable at a glance:
+                      // a tinted fill, the same one the dashboard's period
+                      // switch uses, not a border that reads as a hairline.
                       active
-                        ? "border-foreground/25 bg-background text-foreground shadow-sm"
+                        ? "border-foreground/30 bg-muted text-foreground shadow-sm"
                         : "border-border bg-background text-muted-foreground hover:text-foreground",
                     )}
                   >
@@ -397,7 +439,12 @@ export function DataRetention() {
                 <strong className="font-semibold">
                   {dayLabel(daysValid ? daysNumber : RETENTION_MIN_DAYS)}
                 </strong>{" "}
-                will be deleted, oldest first.
+                {/* With the switch off this is a description of the rule, not
+                    a promise: saying "will be deleted" would contradict the
+                    note two lines above it. */}
+                {draft.enabled
+                  ? "will be deleted, oldest first."
+                  : "would be deleted once cleanup is turned on, oldest first."}
               </>
             )}
           </p>
@@ -422,15 +469,33 @@ export function DataRetention() {
               const count = entry?.forms ?? 0;
               const ticked = draft.formTypes.includes(type);
               const counting = countsQuery.isPending;
+              const Icon = FORM_TYPE_ICONS[type];
               return (
                 <li key={type} className="py-2">
-                  <label className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_3.5rem_2rem_3.75rem] items-center gap-x-3">
+                  <label className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_2.5rem_1.5rem_3.5rem] items-center gap-x-2.5">
                     <Checkbox
                       checked={ticked}
                       onCheckedChange={(checked) => toggleType(type, checked === true)}
                       className="data-[state=checked]:border-dashboard-accent data-[state=checked]:bg-dashboard-accent data-[state=checked]:text-white"
                     />
-                    <span className="min-w-0 truncate text-sm">{FORM_TYPE_LABELS[type]}</span>
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      {/* Tinted while the type is in scope, grey while it is
+                          kept: the same "left alone" reading as its bar. */}
+                      <span
+                        className={cn(
+                          TYPE_TILE,
+                          ticked
+                            ? "bg-dashboard-soft text-dashboard-accent"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                        aria-hidden="true"
+                      >
+                        <Icon className="size-3.5" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0 truncate text-sm" title={FORM_TYPE_LABELS[type]}>
+                        {FORM_TYPE_LABELS[type]}
+                      </span>
+                    </span>
                     {counting ? (
                       // Counting walks every expired row; the row keeps its
                       // shape while it waits so nothing jumps when it lands.
@@ -442,7 +507,15 @@ export function DataRetention() {
                     ) : (
                       <>
                         <TypeBar value={count} max={maxCount} muted={!ticked} />
-                        <span className="text-right text-sm font-semibold tabular-nums">
+                        <span
+                          className={cn(
+                            "text-right text-sm font-semibold tabular-nums",
+                            // A zero is a real answer but not a number to
+                            // compare: muting it leaves the piles that matter
+                            // as the only dark figures in the column.
+                            count === 0 && "font-normal text-muted-foreground",
+                          )}
+                        >
                           {count}
                         </span>
                         <span
@@ -462,8 +535,7 @@ export function DataRetention() {
           </ul>
 
           <p className="mt-2 text-xs text-muted-foreground">
-            Bars show how many forms of each type are past the keep period. Greyed types are left
-            alone.
+            Bars show forms past the keep period; greyed types are left alone.
           </p>
         </section>
       </div>
@@ -483,7 +555,7 @@ export function DataRetention() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => previewMutation.mutate({ settings: toInput(draft), key: draftKey })}
+              onClick={takePreview}
               disabled={previewMutation.isPending || !daysValid || draft.formTypes.length === 0}
             >
               {previewMutation.isPending ? (
@@ -504,8 +576,8 @@ export function DataRetention() {
             <div className="mt-4 rounded-lg border border-dashboard-accent/25 bg-dashboard-soft/70 p-3.5 text-sm">
               {previewed.doc.totalForms === 0 ? (
                 <p>
-                  Nothing to delete: no finished forms older than {dayLabel(previewed.doc.days)} in
-                  the chosen types.
+                  Nothing to delete: no forms older than {dayLabel(previewed.doc.days)} in the
+                  chosen types.
                 </p>
               ) : (
                 <>
@@ -530,13 +602,15 @@ export function DataRetention() {
                 </>
               )}
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Cut-off {formatDate(new Date(previewed.doc.cutoff))} · forms waiting for approval
-                are excluded.
+                Cut-off {formatDate(new Date(previewed.doc.cutoff))} · forms still waiting for
+                approval are deleted too.
               </p>
             </div>
           ) : null}
 
-          <div className="mt-6 flex items-end justify-between gap-4 border-t pt-5">
+          {/* Spacing, not a second rule: a shorter divider 30px under the
+              section's full-width one read as a stray line. */}
+          <div className="mt-7 flex items-end justify-between gap-4">
             <div className="min-w-0">
               <p className="text-sm font-medium">Run cleanup</p>
               <p className={cn(HINT, "mt-0.5")}>{runHint}</p>
@@ -544,13 +618,20 @@ export function DataRetention() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => setConfirmOpen(true)}
-              disabled={!canRun || runMutation.isPending}
+              onClick={takePreview}
+              disabled={!canRun || runMutation.isPending || previewMutation.isPending}
+              // A disabled destructive button at half opacity is pale pink
+              // carrying white text: unreadable, and it still reads as the
+              // loudest thing on the page while it cannot be pressed.
+              className="shrink-0 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
             >
               <Play className="size-4" aria-hidden="true" />
               Run cleanup
             </Button>
           </div>
+
+          {/* The receipt of this run, below the button that caused it. */}
+          {lastResult ? <CleanupResultPanel result={lastResult} /> : null}
         </section>
 
         <section aria-labelledby="last-run-title" className="min-w-0">
@@ -606,22 +687,22 @@ export function DataRetention() {
         </section>
       </div>
 
-      <RetentionConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        preview={
-          previewed?.doc ?? {
-            days: daysNumber || RETENTION_MIN_DAYS,
-            cutoff: new Date().toISOString(),
-            chosen: draft.formTypes,
-            types: [],
-            totalForms: 0,
-            totalFiles: 0,
+      {previewed ? (
+        <RetentionPreviewDialog
+          open={reviewOpen}
+          preview={previewed.doc}
+          busy={runMutation.isPending}
+          blockedReason={
+            !draft.enabled
+              ? "Turn the cleanup switch on first."
+              : dirty
+                ? "Waiting for your changes to save…"
+                : null
           }
-        }
-        busy={runMutation.isPending}
-        onConfirm={() => runMutation.mutate()}
-      />
+          onOpenChange={setReviewOpen}
+          onDelete={(forms) => runMutation.mutate(forms)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -751,10 +832,13 @@ function RetentionSkeleton() {
             {[0, 1, 2, 3, 4].map((row) => (
               <div
                 key={row}
-                className="grid grid-cols-[auto_minmax(0,1fr)_3.5rem_2rem_3.75rem] items-center gap-x-3 py-1"
+                className="grid grid-cols-[auto_minmax(0,1fr)_2.5rem_1.5rem_3.5rem] items-center gap-x-2.5 py-1"
               >
                 <div className="size-4 animate-pulse rounded-sm bg-muted" />
-                <div className="h-3.5 w-32 max-w-full animate-pulse rounded bg-muted" />
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="size-6 shrink-0 animate-pulse rounded-md bg-muted" />
+                  <div className="h-3.5 w-32 max-w-full animate-pulse rounded bg-muted" />
+                </div>
                 <BarSkeleton />
                 <CountSkeleton />
                 <StatusSkeleton />
@@ -773,7 +857,7 @@ function RetentionSkeleton() {
             <div className="h-8 w-24 animate-pulse rounded-md bg-muted" />
             <div className="h-4 w-48 max-w-full animate-pulse rounded bg-muted" />
           </div>
-          <div className="mt-6 flex items-end justify-between gap-4 border-t pt-5">
+          <div className="mt-7 flex items-end justify-between gap-4">
             <div className="space-y-2">
               <div className="h-4 w-24 animate-pulse rounded bg-muted" />
               <div className="h-3.5 w-40 max-w-full animate-pulse rounded bg-muted" />

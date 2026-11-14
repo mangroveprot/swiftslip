@@ -225,12 +225,21 @@ Manual, admin-only cleanup of forms older than N days, plus their storage files.
       (permanent history), RLS on with no policies like `activity_logs`
 - [x] `apps/retention` (controller → service → repositories), mounted at `/api/admin/retention`,
       `authenticate` + `authorizeAdmin`: `GET /`, `PUT /`, `POST /preview`, `POST /run`, `GET /runs/last`
-- [x] Selection rules in `services/retention.rules.ts` (pure): expired **and** finished only — pending
-      approval slips and empty scaffolds are never selected; 19 sample-row checks pass
+- [x] Selection rules in `services/retention.rules.ts` (pure): expired **and** eligible only — empty
+      scaffolds are never selected; 19 sample-row checks pass. **Changed 2026-11-14:** pending
+      approval no longer protects a form (`isFinished` → `isEligible`, age alone decides; see
+      `ACTIVITY_LOG.md`), and Preview now opens a review window where forms can be unticked before
+      `POST /run` deletes them.
 - [x] Rows first, files second; storage failures are logged and set `completed_with_file_errors`
 - [x] `cleanup.forms` in the activity log (`ActivityAction`, `FORM_ACTIONS`, labels)
 - [x] Web: `api/retention.functions.ts`, `features/admin/queries.ts`, `components/settings/**`,
       collapsible **Settings** group in `AdminPanel.tsx`
+- [x] **Changed 2026-11-14:** `POST /run` returns the forms it deleted (`CleanupRunResult.deleted`,
+      `skipped`) and the page shows them in a receipt (`CleanupResultPanel.tsx`); each form's owner
+      gets ONE in-app notification per run naming the forms and the keep period
+      (`kind: 'form_deleted'`, link to the type's list, since the record is gone). `SELECTS` now
+      reads `owner_id`; recipients are grouped so a 200-form sweep is one bell row, not 200.
+      No migration: `notifications.kind` is free text.
 - [x] `npm run typecheck`, `npm run lint`, `npm run build` pass (6 pre-existing `react-refresh` warnings only)
 - [ ] **Owner to run:** paste `0028_retention.sql` in the Supabase SQL Editor, then open
       Admin Panel → Settings → Data retention, **Preview** first and only then **Run**. Not tested

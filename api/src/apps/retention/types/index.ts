@@ -27,12 +27,28 @@ export const OTHER_FILES_TABLES: readonly RetentionFormType[] = [
 
 /** What the cleanup selects of an expired row, only what the rules need. */
 export const SELECTS: Record<RetentionFormType, string> = {
-  dtr: 'id,attachment_path,attachment_backend,other_attachments,name,emp_no',
-  ob: 'id,attachment_path,attachment_backend,attachment_approved,employee_name,date_filed',
-  loa: 'id,attachment_path,attachment_backend,attachment_approved,other_attachments,employee_name,date_filed',
-  cos: 'id,attachment_path,attachment_backend,attachment_approved,employee_name,date_filed',
-  ot: 'id,attachment_path,attachment_backend,attachment_approved,other_attachments,employee_name,date_filed',
-  liq: 'id,prepared_by,date_prepared',
+  dtr: 'id,owner_id,attachment_path,attachment_backend,other_attachments,name,emp_no,created_at',
+  ob: 'id,owner_id,attachment_path,attachment_backend,employee_name,date_filed,created_at',
+  loa: 'id,owner_id,attachment_path,attachment_backend,other_attachments,employee_name,date_filed,created_at',
+  cos: 'id,owner_id,attachment_path,attachment_backend,employee_name,date_filed,created_at',
+  ot: 'id,owner_id,attachment_path,attachment_backend,other_attachments,employee_name,date_filed,created_at',
+  liq: 'id,owner_id,prepared_by,date_prepared,created_at',
+};
+
+/**
+ * Where a deleted form's owner is sent when the bell row is opened.
+ *
+ * The form itself is gone, so its record route would 404: the link points at
+ * the type's list instead. A notification link is a stored relative path, so
+ * these must match routes the router actually has.
+ */
+export const FORM_LINKS: Record<RetentionFormType, string> = {
+  dtr: '/records',
+  ob: '/official-business',
+  loa: '/leave-of-absence',
+  cos: '/change-of-schedule',
+  ot: '/overtime',
+  liq: '/liquidation',
 };
 
 /**
@@ -41,9 +57,16 @@ export const SELECTS: Record<RetentionFormType, string> = {
  */
 export type ExpiredRow = {
   id: string;
+  /**
+   * The account that filed the form (`users.id`), and therefore the one the
+   * cleanup notifies. Nullable in the table for rows imported before
+   * ownership existed, so the run skips a row without an owner.
+   */
+  owner_id?: string | null;
+  /** Every form table stamps one; the preview list dates DTR from it. */
+  created_at?: string;
   attachment_path?: string | null;
   attachment_backend?: string | null;
-  attachment_approved?: boolean;
   other_attachments?: unknown;
   /** Non-DTR forms. */
   employee_name?: string;

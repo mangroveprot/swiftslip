@@ -877,6 +877,20 @@ export const RETENTION_FORM_TYPES = ["dtr", "ob", "loa", "cos", "ot", "liq"] as 
 
 export type RetentionFormType = (typeof RETENTION_FORM_TYPES)[number];
 
+/**
+ * How each cleanup type is written in a sentence — the receipt, and the
+ * notification the cleanup sends the employee. `dtr` is not in `FORM_TYPES`
+ * (the dashboard never charts it), so retention carries its own labels.
+ */
+export const RETENTION_FORM_LABELS: Record<RetentionFormType, string> = {
+  dtr: "Daily Time Record",
+  ob: "Official Business",
+  loa: "Leave of Absence",
+  cos: "Change of Schedule",
+  ot: "Overtime",
+  liq: "Statement of Liquidation",
+};
+
 export const retentionFormTypeSchema = z.enum(RETENTION_FORM_TYPES);
 
 /**
@@ -907,16 +921,67 @@ export const retentionSettingsInput = z.object({
 /**
  * `POST /admin/retention/preview` counts what the *draft* on screen would
  * delete. The settings are optional so a plain `{}` previews the saved ones.
+ *
+ * `includeItems` asks for the per-form list the review window shows; the
+ * page's by-type bars leave it off, because counting is enough there and the
+ * list can be long.
  */
 export const retentionPreviewInput = z.object({
   settings: retentionSettingsInput.optional(),
+  includeItems: z.boolean().optional(),
+});
+
+/**
+ * `POST /admin/retention/run` may carry the exact forms the admin left ticked
+ * in the review window. Omitted, the run sweeps everything the saved rule
+ * covers (the old behaviour). The API re-checks every id against the cutoff
+ * and the finished test before deleting, so a stale list can never take a
+ * form that would otherwise be kept.
+ */
+export const retentionRunInput = z.object({
+  forms: z
+    .array(
+      z.object({
+        type: retentionFormTypeSchema,
+        id: z.string().min(1),
+      }),
+    )
+    .max(10_000)
+    .optional(),
 });
 
 export type RetentionSettings = z.infer<typeof retentionSettingsInput>;
 
+/** The run input as typed code sees it. */
+export type RetentionRunInput = z.infer<typeof retentionRunInput>;
+
+/**
+ * The fields the run needs to name one form, as `forms[]` carries them.
+ * The type picks the table; the id is that table's primary key.
+ */
+export type RetentionRunForm = { type: RetentionFormType; id: string };
+
 /** The saved setting as the API returns it. */
 export type RetentionSettingsDoc = RetentionSettings & {
   updatedAt: string;
+};
+
+/**
+ * One form in the preview list: enough to recognise it in the review window
+ * without opening it. `reference` is the employee number (DTR only); the
+ * other tables do not store one.
+ */
+export type RetentionFormItem = {
+  type: RetentionFormType;
+  id: string;
+  /** Who the form is for; "Untitled form" when the row names no one. */
+  label: string;
+  /** Employee number, when the table has one. */
+  reference: string | null;
+  /** The form's own date (filed / prepared), ISO like the row. */
+  date: string | null;
+  /** Stored files that would go with it. */
+  files: number;
 };
 
 /** What one form type would lose, and what the whole preview adds up to. */
@@ -934,6 +999,12 @@ export type RetentionPreview = {
   types: { type: RetentionFormType; forms: number; files: number }[];
   totalForms: number;
   totalFiles: number;
+  /**
+   * The forms themselves, oldest first, when `includeItems` was asked for.
+   * Unticked types are not listed, so the list is exactly what the totals
+   * count.
+   */
+  items: RetentionFormItem[];
 };
 
 /**
@@ -953,6 +1024,20 @@ export type CleanupRunSummary = {
   filesDeleted: Partial<Record<RetentionFormType, number>>;
   /** `completed`, or `completed_with_file_errors` when storage lagged behind. */
   status: string;
+};
+
+/**
+ * What `POST /admin/retention/run` answers with: the permanent history row,
+ * plus the forms that actually went so the page can name them ("Official
+ * Business · Maria Santos · 4 Oct") instead of only counting them.
+ *
+ * `deleted` is oldest first and never longer than the run's counts. `skipped`
+ * is how many forms in the confirmed selection were no longer eligible when
+ * the run re-checked them — zero for a sweep of the whole rule.
+ */
+export type CleanupRunResult = CleanupRunSummary & {
+  deleted: RetentionFormItem[];
+  skipped: number;
 };
 
 /** The three possible storage rules. */

@@ -1,6 +1,6 @@
 import type { RetentionFormType } from '@swiftslip/shared/schemas';
 import { RetentionSettingsRepository } from '../repositories';
-import { isFinished, readFormTypes, type RuleFields } from './retention.rules';
+import { isEligible, readFormTypes, type RuleFields } from './retention.rules';
 
 const DAY_MS = 86_400_000;
 
@@ -52,7 +52,7 @@ export function reminderDays(
   now: number = Date.now(),
 ): number | null {
   if (!notice || !notice.formTypes.includes(type)) return null;
-  if (!row.created_at || !isFinished(type, row)) return null;
+  if (!row.created_at || !isEligible(type, row)) return null;
   const left = daysUntilDeletion(row.created_at, notice.days, now);
   return left <= REMINDER_DAYS ? left : null;
 }
