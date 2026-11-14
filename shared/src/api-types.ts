@@ -141,8 +141,10 @@ export type ActivityLogCounts = {
 // `deletes_in_days` is set only when a retention cleanup would take this form
 // within the next week, or already would, on the next run (0 or less). It is
 // absent when cleanup is off, this type is not ticked, or the form is kept:
-// still a draft, or waiting for its approval slip. It is a warning, never a
-// promise, nothing is deleted until an admin previews and runs a cleanup.
+// still a draft, or waiting for its approval slip. `deletes_at` is the exact
+// age milestone those days count down to, so the card can print a fixed date
+// instead of "in N days". It is a warning, never a promise, nothing is deleted
+// until an admin previews and runs a cleanup.
 
 export type RecordSummary = {
   id: string;
@@ -156,6 +158,8 @@ export type RecordSummary = {
   attachment_path: string | null;
   updated_at: string;
   deletes_in_days?: number;
+  /** The retention age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 export type ObSummary = {
@@ -171,6 +175,8 @@ export type ObSummary = {
   hr_status: ObHrStatus;
   updated_at: string;
   deletes_in_days?: number;
+  /** The retention age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
   /** How often the form has gone back to HR (0 = first time through). */
   resubmit_count?: number;
   /** The trips back to HR, oldest first, the queue caption reads the latest. */
@@ -219,6 +225,8 @@ export type LoaSummary = {
   attachment_approved: boolean;
   updated_at: string;
   deletes_in_days?: number;
+  /** The retention age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 export type LiqSummary = {
@@ -236,6 +244,8 @@ export type LiqSummary = {
   grand_total: number;
   updated_at: string;
   deletes_in_days?: number;
+  /** The retention age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 export type CosSummary = {
@@ -248,6 +258,8 @@ export type CosSummary = {
   attachment_approved: boolean;
   updated_at: string;
   deletes_in_days?: number;
+  /** The retention age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 export type OtSummary = {
@@ -260,6 +272,8 @@ export type OtSummary = {
   attachment_approved: boolean;
   updated_at: string;
   deletes_in_days?: number;
+  /** The retention age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 // ── Form details ─────────────────────────────────────────────────────────────

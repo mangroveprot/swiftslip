@@ -1,20 +1,18 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { deleteLiqForm } from "@/api/liquidation.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import { DeletionNotice } from "@/components/common/DeletionNotice";
+import { FormCardMeta } from "@/components/common/FormCardMeta";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
-import { useNow } from "@/lib/use-now";
 import { liqDate, liqMoney } from "@swiftslip/shared/liq";
-import { relativeTime } from "@swiftslip/shared/time";
 import { liqFormsQueryOptions } from "../queries";
 
 type LiqRow = {
@@ -32,6 +30,8 @@ type LiqRow = {
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
   deletes_in_days?: number;
+  /** The age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 export function LiqList() {
@@ -43,7 +43,6 @@ export function LiqList() {
   useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<LiqRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const now = useNow();
 
   const visible = forms ?? [];
 
@@ -84,7 +83,6 @@ export function LiqList() {
               key={f.id}
               form={f as LiqRow}
               index={i}
-              now={now}
               onDelete={() => setPendingDelete(f as LiqRow)}
             />
           ))}
@@ -123,12 +121,10 @@ export function LiqList() {
 function LiqCard({
   form: f,
   index,
-  now,
   onDelete,
 }: {
   form: LiqRow;
   index: number;
-  now: Date;
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
@@ -195,16 +191,12 @@ function LiqCard({
         </span>
       </p>
 
-      <DeletionNotice days={f.deletes_in_days} />
-      {f.updated_at ? (
-        <p
-          className="flex items-center gap-1 text-[11px] text-muted-foreground"
-          title={new Date(f.updated_at).toLocaleString()}
-        >
-          <Clock className="size-3" aria-hidden="true" />
-          Updated {relativeTime(f.updated_at, now)}
-        </p>
-      ) : null}
+      <FormCardMeta
+        updatedAt={f.updated_at}
+        deletesInDays={f.deletes_in_days}
+        deletesAt={f.deletes_at}
+        className="pr-14"
+      />
 
       {/* Same seal as the OB / LOA / COS / OT cards: an approved slip lays it
           over the quiet bottom-right corner, and an unapproved form shows

@@ -47,7 +47,7 @@ export function CleanupResultPanel({ result }: { result: CleanupRunResult }) {
   const hidden = items.length - shown.length;
 
   return (
-    <div className="mt-5 rounded-lg border border-dashboard-accent/25 bg-dashboard-soft/70 p-3.5 text-sm">
+    <div className="mt-5 rounded-lg border border-dashboard-accent/25 bg-dashboard-soft/70 p-3.5 text-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[220ms] motion-safe:ease-strong">
       <p className="font-medium">
         {plural(forms, "form")} and {plural(files, "file")} deleted.
       </p>

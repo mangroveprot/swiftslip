@@ -11,12 +11,67 @@ import { useQuery } from "@tanstack/react-query";
 
 import { logReportDownload } from "@/api/inventory.functions";
 import { toast } from "@/lib/toast";
+import { ReportAssetCard } from "../components/ReportAssetCard";
+import { formatFloorDisplay } from "../lib/helpers";
 import { buildReportFileName, downloadReportWorkbook } from "../lib/report-export";
 import { reportQueryOptions } from "../queries";
 import { useInventoryShell } from "../shell-context";
 
 function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/** Floor tabs in the header, phone only: the Excel sheet tabs stay at md+. */
+function ReportFloorTabs({
+  sheets,
+  activeIndex,
+  onSelect,
+}: {
+  sheets: Array<{ sheetName: string; floorLabel: string }>;
+  activeIndex: number;
+  onSelect: (index: number) => void;
+}) {
+  const focus =
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+
+  return (
+    <div className="no-scrollbar -mx-1 -my-1 flex items-center gap-1 overflow-x-auto px-1 py-1 text-sm">
+      {sheets.map((sheet, index) => (
+        <button
+          key={`${sheet.sheetName}-${index}`}
+          type="button"
+          className={
+            index === activeIndex
+              ? `px-2.5 py-1.5 rounded-md text-white font-semibold shrink-0 underline underline-offset-[6px] decoration-2 decoration-white/90 ${focus}`
+              : `px-2.5 py-1.5 rounded-md text-white/70 hover:text-white shrink-0 ${focus}`
+          }
+          onClick={() => onSelect(index)}
+        >
+          {formatFloorDisplay(sheet.floorLabel) || sheet.sheetName}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Printed-sheet totals, shared by the table (md+) and the phone list. */
+function ReportTotals({ totals }: { totals: string[] }) {
+  return (
+    <div className="px-4 py-4 border-t border-slate-100 space-y-1 bg-white text-slate-700">
+      <p className="text-xs font-semibold text-slate-700">TOTAL OF:</p>
+      {totals.length === 0 ? (
+        <p className="text-xs text-slate-400">0 items</p>
+      ) : (
+        totals.map((total) => (
+          <p key={total} className="text-xs text-slate-700">
+            {total}
+          </p>
+        ))
+      )}
+      <p className="text-xs text-slate-400 pt-3">PREPARED BY: RGC-Dipolog IT Personnel</p>
+      <p className="text-xs font-medium text-slate-600">IT SUPPORT</p>
+    </div>
+  );
 }
 
 export function InventoryReportsPage() {
@@ -65,6 +120,10 @@ export function InventoryReportsPage() {
 
   const shellLoading = shell.branches.length === 0;
 
+  // Phone list shows the floor picked in the header tabs; the desktop sheet
+  // uses the same index for its Excel tabs.
+  const activeSheet = document?.sheets[activeSheetIndex] ?? document?.sheets[0] ?? null;
+
   return (
     <>
       <div className="flex flex-col flex-1 min-h-0 gap-4">
@@ -90,7 +149,7 @@ export function InventoryReportsPage() {
             </div>
             <button
               type="button"
-              className="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold bg-logo-bright text-white shadow-lg shadow-black/25 hover:bg-logo-hover disabled:opacity-50"
+              className="self-start sm:self-auto shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold bg-logo-bright text-white shadow-lg shadow-black/25 hover:bg-logo-hover disabled:opacity-50"
               disabled={busy || document == null || branchId == null}
               onClick={() => void downloadExcel()}
             >
@@ -112,6 +171,16 @@ export function InventoryReportsPage() {
               )}
             </button>
           </div>
+
+          {document != null && document.sheets.length > 1 && (
+            <div className="relative z-[1] mt-3 md:hidden">
+              <ReportFloorTabs
+                sheets={document.sheets}
+                activeIndex={activeSheetIndex}
+                onSelect={setActiveSheetIndex}
+              />
+            </div>
+          )}
         </header>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
@@ -143,117 +212,127 @@ export function InventoryReportsPage() {
                 </span>
               </div>
 
-              {document.sheets.map((sheet, i) => {
-                const isActive = i === activeSheetIndex;
-                return (
-                  <div
-                    key={`${sheet.sheetName}-${i}`}
-                    className={
-                      isActive
-                        ? "report-floor-panel"
-                        : "report-floor-panel report-floor-panel--hidden"
-                    }
-                  >
-                    {/* Paper stays light in both themes: this block is a preview
+              {/* Phone: the printed sheet is unreadable at this width, so the
+                  selected floor is listed in full, one block per asset. */}
+              <div className="md:hidden">
+                {activeSheet != null && (
+                  <div key={`${activeSheet.sheetName}-${activeSheetIndex}`}>
+                    <div className="report-mobile__subtitle">Deployed Assets Inventory</div>
+                    <div className="report-mobile__floor">
+                      <span className="report-mobile__floor-title">{activeSheet.floorTitle}</span>
+                      <span className="report-mobile__floor-branch">{document.branchName}</span>
+                    </div>
+                    {activeSheet.rows.length === 0 ? (
+                      <p className="report-mobile__empty">No assets on this floor.</p>
+                    ) : (
+                      activeSheet.rows.map((row, rowIndex) => (
+                        <ReportAssetCard key={`${row.itemId}-${rowIndex}`} row={row} />
+                      ))
+                    )}
+                    <ReportTotals totals={activeSheet.totals} />
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden md:block">
+                {document.sheets.map((sheet, i) => {
+                  const isActive = i === activeSheetIndex;
+
+                  return (
+                    <div
+                      key={`${sheet.sheetName}-${i}`}
+                      className={
+                        isActive
+                          ? "report-floor-panel"
+                          : "report-floor-panel report-floor-panel--hidden"
+                      }
+                    >
+                      {/* Paper stays light in both themes: this block is a preview
                         of a printed sheet, so it keeps the look it will have on
                         paper (same rule as the DTR preview and the PDF). */}
-                    <div className="overflow-x-auto bg-white text-slate-700">
-                      <table className="report-sheet w-full text-xs border-collapse">
-                        <thead>
-                          <tr>
-                            <th colSpan={13} className="report-sheet__title" />
-                          </tr>
-                          <tr>
-                            <th colSpan={13} className="report-sheet__subtitle">
-                              Deployed Assets Inventory
-                            </th>
-                          </tr>
-                          <tr>
-                            <th colSpan={13} className="report-sheet__floor">
-                              {sheet.floorTitle}
-                            </th>
-                          </tr>
-                          <tr className="report-sheet__head">
-                            <th>ITEM ID</th>
-                            <th>Monitor - Last 10 Digits</th>
-                            <th>Keyboard &amp; Mouse</th>
-                            <th>Asset Type</th>
-                            <th>Cubicle</th>
-                            <th>Assigned To</th>
-                            <th>Department</th>
-                            <th>Location</th>
-                            <th>Status</th>
-                            <th>Condition</th>
-                            <th>Floor</th>
-                            <th>Installed</th>
-                            <th>Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sheet.rows.length === 0 ? (
+                      <div className="overflow-x-auto bg-white text-slate-700">
+                        <table className="report-sheet w-full text-xs border-collapse">
+                          <thead>
                             <tr>
-                              <td colSpan={13} className="report-sheet__empty">
-                                No assets on this floor.
-                              </td>
+                              <th colSpan={13} className="report-sheet__title" />
                             </tr>
-                          ) : (
-                            sheet.rows.map((row, rowIndex) => (
-                              <tr key={`${row.itemId}-${rowIndex}`}>
-                                <td>{row.itemId}</td>
-                                <td>{row.monitor}</td>
-                                <td>{row.keyboardMouse}</td>
-                                <td>{row.assetType}</td>
-                                <td>{row.cubicle}</td>
-                                <td>{row.assignedTo}</td>
-                                <td>{row.department}</td>
-                                <td>{row.location}</td>
-                                <td>{row.status}</td>
-                                <td>{row.condition}</td>
-                                <td>{row.floor}</td>
-                                <td>{row.installed}</td>
-                                <td>{row.notes}</td>
+                            <tr>
+                              <th colSpan={13} className="report-sheet__subtitle">
+                                Deployed Assets Inventory
+                              </th>
+                            </tr>
+                            <tr>
+                              <th colSpan={13} className="report-sheet__floor">
+                                {sheet.floorTitle}
+                              </th>
+                            </tr>
+                            <tr className="report-sheet__head">
+                              <th>ITEM ID</th>
+                              <th>Monitor - Last 10 Digits</th>
+                              <th>Keyboard &amp; Mouse</th>
+                              <th>Asset Type</th>
+                              <th>Cubicle</th>
+                              <th>Assigned To</th>
+                              <th>Department</th>
+                              <th>Location</th>
+                              <th>Status</th>
+                              <th>Condition</th>
+                              <th>Floor</th>
+                              <th>Installed</th>
+                              <th>Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sheet.rows.length === 0 ? (
+                              <tr>
+                                <td colSpan={13} className="report-sheet__empty">
+                                  No assets on this floor.
+                                </td>
                               </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                            ) : (
+                              sheet.rows.map((row, rowIndex) => (
+                                <tr key={`${row.itemId}-${rowIndex}`}>
+                                  <td>{row.itemId}</td>
+                                  <td>{row.monitor}</td>
+                                  <td>{row.keyboardMouse}</td>
+                                  <td>{row.assetType}</td>
+                                  <td>{row.cubicle}</td>
+                                  <td>{row.assignedTo}</td>
+                                  <td>{row.department}</td>
+                                  <td>{row.location}</td>
+                                  <td>{row.status}</td>
+                                  <td>{row.condition}</td>
+                                  <td>{row.floor}</td>
+                                  <td>{row.installed}</td>
+                                  <td>{row.notes}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
 
-                    {/* Totals footer of the same printed sheet, stays on paper too. */}
-                    <div className="px-4 py-4 border-t border-slate-100 space-y-1 bg-white text-slate-700">
-                      <p className="text-xs font-semibold text-slate-700">TOTAL OF:</p>
-                      {sheet.totals.length === 0 ? (
-                        <p className="text-xs text-slate-400">0 items</p>
-                      ) : (
-                        sheet.totals.map((total) => (
-                          <p key={total} className="text-xs text-slate-700">
-                            {total}
-                          </p>
-                        ))
-                      )}
-                      <p className="text-xs text-slate-400 pt-3">
-                        PREPARED BY: RGC-Dipolog IT Personnel
-                      </p>
-                      <p className="text-xs font-medium text-slate-600">IT SUPPORT</p>
+                      {/* Totals footer of the same printed sheet, stays on paper too. */}
+                      <ReportTotals totals={sheet.totals} />
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {/* Excel-style sheet tabs */}
-              <div className="flex items-end gap-0 px-2 pt-2 bg-secondary border-t border-border overflow-x-auto no-scrollbar">
-                {document.sheets.map((sheet, idx) => (
-                  <button
-                    type="button"
-                    key={`${sheet.sheetName}-${idx}`}
-                    className={
-                      idx === activeSheetIndex ? "report-tab report-tab--active" : "report-tab"
-                    }
-                    onClick={() => setActiveSheetIndex(idx)}
-                  >
-                    {sheet.sheetName}
-                  </button>
-                ))}
+                {/* Excel-style sheet tabs */}
+                <div className="flex items-end gap-0 px-2 pt-2 bg-secondary border-t border-border overflow-x-auto no-scrollbar">
+                  {document.sheets.map((sheet, idx) => (
+                    <button
+                      type="button"
+                      key={`${sheet.sheetName}-${idx}`}
+                      className={
+                        idx === activeSheetIndex ? "report-tab report-tab--active" : "report-tab"
+                      }
+                      onClick={() => setActiveSheetIndex(idx)}
+                    >
+                      {sheet.sheetName}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

@@ -5,7 +5,7 @@
  * exactly like the original's in-memory LINQ over `assetItems`. Offline
  * sync (highlight flashes, forced sync passes) was dropped for the web port.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { deleteAssets, quickCreateOption, saveAsset } from "@/api/inventory.functions";
@@ -23,7 +23,6 @@ import { AssetTable } from "../components/AssetTable";
 import { BulkActionBar } from "../components/BulkActionBar";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { InventoryTopBar } from "../components/InventoryTopBar";
-import { StatCards } from "../components/StatCards";
 import type { DrawerMode } from "../components/ViewAssetDrawer";
 import { ViewAssetDrawer } from "../components/ViewAssetDrawer";
 import { compareOrdinalIgnoreCase, distinctSortedFloorLabels, isBlank } from "../lib/helpers";
@@ -75,6 +74,8 @@ export function InventoryHomePage() {
   }>({ open: false, asset: null, mode: "view" });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<InventoryAsset[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
 
   /* ------------------------------------------------------ derived - */
 
@@ -297,6 +298,11 @@ export function InventoryHomePage() {
   };
 
   const confirmDelete = async () => {
+    // Same double-fire guard as the drawer save: the button's `disabled` only
+    // lands on the next render.
+    if (deletingRef.current) return;
+    deletingRef.current = true;
+    setDeleting(true);
     const count = pendingDelete.length;
     const ids = pendingDelete.map((a) => a.asset_id);
     try {
@@ -307,6 +313,9 @@ export function InventoryHomePage() {
       showToast(count > 1 ? `${count} assets deleted` : "Asset deleted");
     } catch (err) {
       showToast(`Failed to delete asset(s): ${messageOf(err)}`, "error");
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
     }
   };
 
@@ -330,7 +339,10 @@ export function InventoryHomePage() {
           (
             qc.getQueryData(inventoryQueryOptions().queryKey) as InventoryData | undefined
           )?.assets.find((a) => a.asset_id === req.assetId) ?? null;
-        setDrawer({ open: true, asset: fresh, mode: "view" });
+        // The invalidate above normally guarantees `fresh`; if the row is gone
+        // (deleted elsewhere), close instead of reopening a blank "edit" form.
+        if (fresh) setDrawer({ open: true, asset: fresh, mode: "view" });
+        else closeDrawer();
       }
       showToast(isNew ? "Asset added" : "Your changes have been saved.");
     } catch (err) {
@@ -370,17 +382,6 @@ export function InventoryHomePage() {
         ) : (
           <>
             <div className="shrink-0">
-              <StatCards
-                total={scoped.length}
-                inUse={inUseCount}
-                available={availableCount}
-                unassigned={unassignedCount}
-                selectedFilter={statFilter}
-                onFilterSelect={onStatFilterSelect}
-              />
-            </div>
-
-            <div className="shrink-0">
               <ActiveFilterBar
                 chips={activeFilterChips}
                 matchCount={visible.length}
@@ -404,6 +405,11 @@ export function InventoryHomePage() {
               selectedTypeId={selectedTypeId}
               searchText={searchText}
               allSelected={allSelected}
+              totalAssets={scoped.length}
+              inUseCount={inUseCount}
+              availableCount={availableCount}
+              unassignedCount={unassignedCount}
+              selectedFilter={statFilter}
               onSelectAllChanged={selectAllChanged}
               onRowSelectedChanged={rowSelectedChanged}
               onView={openViewDrawer}
@@ -411,6 +417,7 @@ export function InventoryHomePage() {
               onDelete={requestDeleteOne}
               onTypeFilterChanged={setSelectedTypeId}
               onSearchChanged={setSearchText}
+              onFilterSelect={onStatFilterSelect}
             />
           </>
         )}
@@ -442,6 +449,7 @@ export function InventoryHomePage() {
         count={pendingDelete.length}
         onCancel={cancelDelete}
         onConfirm={() => void confirmDelete()}
+        busy={deleting}
       />
     </>
   );

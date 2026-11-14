@@ -7,7 +7,7 @@ import { createContext, useContext } from "react";
 
 import type { InventoryBranch } from "@swiftslip/shared/inventory";
 
-export type InventoryView = "assets" | "reports" | "settings";
+export type InventoryView = "assets" | "showrooms" | "reports" | "settings";
 
 export type InventoryShell = {
   branches: InventoryBranch[];
@@ -30,6 +30,10 @@ export type InventoryShell = {
   /** >0 when an add-asset request is pending; the assets page consumes it. */
   pendingAdd: number;
   clearPendingAdd: () => void;
+  /** Sidebar "Add showroom": same handshake, but for the Showrooms page. */
+  requestAddShowroom: () => void;
+  pendingAddShowroom: number;
+  clearPendingAddShowroom: () => void;
 };
 
 export const InventoryShellContext = createContext<InventoryShell | null>(null);

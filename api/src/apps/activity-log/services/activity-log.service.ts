@@ -50,10 +50,23 @@ const FORM_ACTIONS = [
   'cleanup.forms',
 ];
 
+/**
+ * Showroom-board actions. Kept apart from the form actions so the admin log
+ * can offer a dedicated Showrooms tab, while still appearing in the dashboard's
+ * general activity feed.
+ */
+const SHOWROOM_ACTIONS = [
+  'showroom.created',
+  'showroom.updated',
+  'showroom.deleted',
+  'showroom.stock_updated',
+];
+
 const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {
   security: ['signin.success', 'signin.failed'],
   activity: [
     ...FORM_ACTIONS,
+    ...SHOWROOM_ACTIONS,
     // Admin-panel changes belong in Latest activity too.
     'user.created',
     'user.updated',
@@ -70,6 +83,7 @@ const ACTION_GROUPS: Record<ActivityLogActionFilter, string[]> = {
   access: ['access.updated'],
   accounts: ['user.created', 'user.updated', 'user.deleted'],
   records: [...FORM_ACTIONS, 'org.updated'],
+  showrooms: SHOWROOM_ACTIONS,
 };
 
 type LogRange = { from?: string | undefined; to?: string | undefined };
@@ -207,7 +221,7 @@ class ActivityLogService extends BaseService<
           ...(Object.keys(createdAt).length ? { created_at: createdAt } : {}),
         });
 
-      const [all, signin, signinFailed, access, accounts, records] =
+      const [all, signin, signinFailed, access, accounts, records, showrooms] =
         await Promise.all([
           countFor(),
           countFor(ACTION_GROUPS.signin),
@@ -215,6 +229,7 @@ class ActivityLogService extends BaseService<
           countFor(ACTION_GROUPS.access),
           countFor(ACTION_GROUPS.accounts),
           countFor(ACTION_GROUPS.records),
+          countFor(ACTION_GROUPS.showrooms),
         ]);
 
       return {
@@ -226,6 +241,7 @@ class ActivityLogService extends BaseService<
           access,
           accounts,
           records,
+          showrooms,
         },
       };
     } catch (error) {

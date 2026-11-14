@@ -1,19 +1,17 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { deleteRecord } from "@/api/records.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
-import { DeletionNotice } from "@/components/common/DeletionNotice";
+import { FormCardMeta } from "@/components/common/FormCardMeta";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
-import { useNow } from "@/lib/use-now";
 import { MONTHS, periodLabel, periodRange } from "@swiftslip/shared/period";
-import { relativeTime } from "@swiftslip/shared/time";
 import type { Period } from "@swiftslip/shared/types";
 import { recordsQueryOptions } from "../queries";
 import { RecordsListSkeleton } from "./RecordsListSkeleton";
@@ -30,6 +28,8 @@ type RecordRow = {
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
   deletes_in_days?: number;
+  /** The age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 type Status = "upcoming" | "active" | "closing" | "closed";
@@ -44,7 +44,6 @@ export function RecordsList() {
   useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<RecordRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const now = useNow();
 
   // A draft exists only in the browser, so there is nothing here to filter out,
   // the list shows exactly the records that are in the database.
@@ -87,7 +86,6 @@ export function RecordsList() {
               key={r.id}
               record={r as RecordRow}
               index={i}
-              now={now}
               onDelete={() => setPendingDelete(r as RecordRow)}
             />
           ))}
@@ -125,12 +123,10 @@ export function RecordsList() {
 function RecordCard({
   record: r,
   index,
-  now,
   onDelete,
 }: {
   record: RecordRow;
   index: number;
-  now: Date;
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
@@ -196,16 +192,12 @@ function RecordCard({
         <p className="mt-3 text-xs text-foreground">
           {MONTHS[r.month - 1]} {r.year} · {periodLabel(r.period as Period, r.month, r.year)}
         </p>
-        <DeletionNotice days={r.deletes_in_days} className="mt-2" />
-        {r.updated_at ? (
-          <p
-            className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground"
-            title={new Date(r.updated_at).toLocaleString()}
-          >
-            <Clock className="size-3" aria-hidden="true" />
-            Updated {relativeTime(r.updated_at, now)}
-          </p>
-        ) : null}
+        <FormCardMeta
+          updatedAt={r.updated_at}
+          deletesInDays={r.deletes_in_days}
+          deletesAt={r.deletes_at}
+          className="mt-2"
+        />
       </div>
 
       <RecordThumbnail status={status} hasName={Boolean(r.name)} />

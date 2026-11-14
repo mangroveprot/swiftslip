@@ -11,6 +11,7 @@ import { HrRoutes } from '../../apps/hr';
 import { InventoryAssetRoutes } from '../../apps/inventory-assets';
 import { InventoryOptionRoutes } from '../../apps/inventory-options';
 import { InventoryReportRoutes } from '../../apps/inventory-reports';
+import { InventoryShowroomRoutes } from '../../apps/inventory-showrooms';
 import { LiquidationRoutes } from '../../apps/liquidation';
 import { LoaRoutes } from '../../apps/loa';
 import { NotificationRoutes } from '../../apps/notifications';
@@ -56,6 +57,7 @@ router.use('/ai', AiRoutes);
 // Inventory (separate RGC database). Most specific prefixes first.
 router.use('/inventory/options', InventoryOptionRoutes);
 router.use('/inventory/reports', InventoryReportRoutes);
+router.use('/inventory/showrooms', InventoryShowroomRoutes);
 router.use('/inventory', InventoryAssetRoutes);
 
 export default router;

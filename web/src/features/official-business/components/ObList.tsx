@@ -2,7 +2,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
-  Clock,
   ExternalLink,
   MapPin,
   PencilLine,
@@ -15,7 +14,7 @@ import { useMemo, useState } from "react";
 
 import { deleteObForm } from "@/api/official-business.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
-import { DeletionNotice } from "@/components/common/DeletionNotice";
+import { FormCardMeta } from "@/components/common/FormCardMeta";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ResubmitBadge } from "@/components/common/ResubmitBadge";
@@ -24,9 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
 import { toast } from "@/lib/toast";
-import { useNow } from "@/lib/use-now";
 import { cn } from "@/lib/utils";
-import { relativeTime } from "@swiftslip/shared/time";
 import type { ObHrStatus, ObResubmitEvent } from "@swiftslip/shared/hr";
 import {
   buildPlaceFacets,
@@ -58,6 +55,8 @@ type ObRow = {
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
   deletes_in_days?: number;
+  /** The age milestone `deletes_in_days` counts down to (ISO). */
+  deletes_at?: string;
 };
 
 type DateRange = "any" | "7d" | "month";
@@ -98,7 +97,6 @@ export function ObList() {
   const [groupSimilar, setGroupSimilar] = useState(true);
   const [selectedPlaces, setSelectedPlaces] = useState<Map<string, string>>(() => new Map());
   const [showAllPlaces, setShowAllPlaces] = useState(false);
-  const now = useNow();
 
   const allForms = useMemo(() => forms ?? [], [forms]);
   const facets = useMemo(() => buildPlaceFacets(allForms, groupSimilar), [allForms, groupSimilar]);
@@ -262,7 +260,6 @@ export function ObList() {
                   key={form.id}
                   form={form}
                   index={index}
-                  now={now}
                   onDelete={() => setPendingDelete(form)}
                 />
               ))}
@@ -461,12 +458,10 @@ function SelectedPlaceChip({ label, onRemove }: { label: string; onRemove: () =>
 function ObCard({
   form: f,
   index,
-  now,
   onDelete,
 }: {
   form: ObRow;
   index: number;
-  now: Date;
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
@@ -562,16 +557,12 @@ function ObCard({
             {destination ? `To ${destination}` : "No destination"}
           </span>
         </p>
-        <DeletionNotice days={f.deletes_in_days} />
-        {f.updated_at ? (
-          <p
-            className="mt-auto flex items-center gap-1.5 pr-12 text-[11px] text-muted-foreground"
-            title={new Date(f.updated_at).toLocaleString()}
-          >
-            <Clock className="size-3.5 shrink-0" aria-hidden="true" />
-            Updated {relativeTime(f.updated_at, now)}
-          </p>
-        ) : null}
+        <FormCardMeta
+          updatedAt={f.updated_at}
+          deletesInDays={f.deletes_in_days}
+          deletesAt={f.deletes_at}
+          className="mt-auto pr-12"
+        />
 
         {/* The same seal as every other form card, sized so it clears the
             card's text lines while still reading as a stamp. */}

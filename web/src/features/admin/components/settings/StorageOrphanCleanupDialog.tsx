@@ -357,7 +357,10 @@ export function StorageOrphanCleanupDialog({
             Nothing to clean up. Every stored file is linked to a form.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
+          <div
+            key={tab}
+            className="overflow-hidden rounded-lg border border-border motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
+          >
             {/* Column heads, hidden on phones, where rows stack instead. */}
             <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3 py-2.5 text-xs font-medium text-muted-foreground sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,6rem)_minmax(0,11.5rem)_3.25rem_3.5rem]">
               <span aria-hidden="true" />

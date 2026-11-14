@@ -15,6 +15,7 @@ import type { InventoryShell, InventoryView } from "../shell-context";
 
 const ROUTES = {
   assets: "/rgc-asset-inventory",
+  showrooms: "/rgc-asset-inventory/showrooms",
   reports: "/rgc-asset-inventory/reports",
   settings: "/rgc-asset-inventory/settings",
 } as const;
@@ -30,6 +31,7 @@ export function InventoryLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assetCount, setAssetCount] = useState<number | null>(null);
   const [pendingAdd, setPendingAdd] = useState(0);
+  const [pendingAddShowroom, setPendingAddShowroom] = useState(0);
 
   // Mirrors `RegisterBranches`: keep the current branch when it still exists,
   // otherwise fall back to the first one.
@@ -48,7 +50,9 @@ export function InventoryLayout() {
     ? "reports"
     : pathname.startsWith(ROUTES.settings)
       ? "settings"
-      : "assets";
+      : pathname.startsWith(ROUTES.showrooms)
+        ? "showrooms"
+        : "assets";
 
   // The drawer stays open after a nav tap only until the route actually
   // changes, this also covers paths we don't drive from the sidebar
@@ -73,6 +77,14 @@ export function InventoryLayout() {
     }
   }, [activeView, navigate]);
 
+  const requestAddShowroom = useCallback(() => {
+    setSidebarOpen(false);
+    setPendingAddShowroom((n) => n + 1);
+    if (activeView !== "showrooms") {
+      void navigate({ to: ROUTES.showrooms });
+    }
+  }, [activeView, navigate]);
+
   const shell: InventoryShell = useMemo(
     () => ({
       branches,
@@ -94,6 +106,9 @@ export function InventoryLayout() {
       requestAddAsset,
       pendingAdd,
       clearPendingAdd: () => setPendingAdd(0),
+      requestAddShowroom,
+      pendingAddShowroom,
+      clearPendingAddShowroom: () => setPendingAddShowroom(0),
     }),
     [
       branches,
@@ -104,12 +119,14 @@ export function InventoryLayout() {
       sidebarOpen,
       requestAddAsset,
       pendingAdd,
+      requestAddShowroom,
+      pendingAddShowroom,
     ],
   );
 
   return (
     <InventoryShellContext.Provider value={shell}>
-      <div className="rgc-inventory flex h-dvh overflow-hidden relative bg-background text-foreground">
+      <div className="rgc-inventory flex h-dvh overflow-hidden relative text-foreground">
         <InventorySidebar shell={shell} />
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0">

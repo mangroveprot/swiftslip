@@ -99,7 +99,7 @@ export function OptionManager({
             <span className="text-xs text-muted-foreground">{options.length} total</span>
             <button
               type="button"
-              className="text-xs font-medium text-brand hover:underline"
+              className="text-xs font-medium text-brand-600 hover:underline"
               onClick={startAdd}
             >
               + Add

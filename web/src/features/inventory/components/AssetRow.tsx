@@ -4,10 +4,11 @@
  */
 import { memo } from "react";
 import type { CSSProperties } from "react";
+import { PencilLine, Trash2 } from "lucide-react";
 
 import type { InventoryAsset } from "@swiftslip/shared/inventory";
 
-import { conditionBadgeClasses, isBlank, statusBadgeClasses } from "../lib/helpers";
+import { isBlank } from "../lib/helpers";
 
 type AssetRowProps = {
   asset: InventoryAsset;
@@ -30,7 +31,9 @@ export const AssetRow = memo(function AssetRow({
 }: AssetRowProps) {
   return (
     <tr
-      className="asset-table__row asset-row-fade-in-right group cursor-pointer"
+      className={`asset-table__row asset-row-fade-in-right group cursor-pointer ${
+        selected ? "asset-table__row--selected" : ""
+      }`}
       style={{ "--row-i": Math.min(index, 12) } as CSSProperties}
       onClick={() => onView(asset)}
     >
@@ -39,7 +42,8 @@ export const AssetRow = memo(function AssetRow({
           type="checkbox"
           id={`asset-row-${asset.asset_id}-selected`}
           name="asset-row-selected"
-          className="rounded border-input text-brand focus:ring-brand/30"
+          aria-label={`Select ${asset.item_id ?? "asset"}`}
+          className="size-4 accent-[var(--inv-orange)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--inv-orange)] focus-visible:ring-offset-1"
           checked={selected}
           onChange={(e) => onSelectedChanged(asset.asset_id, e.target.checked)}
         />
@@ -59,7 +63,10 @@ export const AssetRow = memo(function AssetRow({
         <span className="asset-table__type-chip">{asset.type?.type_name ?? "—"}</span>
       </td>
 
-      <td className="asset-table__td truncate">
+      <td
+        className="asset-table__td truncate"
+        title={isBlank(asset.assigned_to) ? undefined : (asset.assigned_to ?? undefined)}
+      >
         {isBlank(asset.assigned_to) ? (
           <span className="asset-table__unassigned">Unassigned</span>
         ) : (
@@ -67,72 +74,43 @@ export const AssetRow = memo(function AssetRow({
         )}
       </td>
 
-      <td className="asset-table__td text-muted-foreground truncate hidden md:table-cell">
+      <td
+        className="asset-table__td text-muted-foreground truncate hidden xl:table-cell"
+        title={asset.department?.department_name ?? undefined}
+      >
         {asset.department?.department_name ?? "—"}
       </td>
-      <td className="asset-table__td text-muted-foreground truncate hidden md:table-cell">
+      <td className="asset-table__td text-muted-foreground truncate hidden xl:table-cell">
         {isBlank(asset.cubicle_seat) ? "—" : asset.cubicle_seat}
       </td>
 
       <td className="asset-table__td">
-        <span className={`asset-table__badge ${statusBadgeClasses(asset.status)}`}>
-          {asset.status?.status_name ?? "—"}
-        </span>
+        <span className="asset-table__status">{asset.status?.status_name ?? "—"}</span>
       </td>
 
-      <td className="asset-table__td hidden md:table-cell">
-        <span
-          className={`asset-table__badge ${conditionBadgeClasses(asset.condition?.condition_name)}`}
-        >
-          {asset.condition?.condition_name ?? "—"}
-        </span>
+      <td className="asset-table__td hidden xl:table-cell">
+        <span className="asset-table__condition">{asset.condition?.condition_name ?? "—"}</span>
       </td>
 
       <td className="asset-table__td asset-table__actions" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-0.5 opacity-70 transition-opacity group-hover:opacity-100">
+        <div className="flex items-center justify-start gap-1">
           <button
             type="button"
-            title="Edit"
             aria-label="Edit"
-            className="asset-table__icon-btn"
+            className="row-action"
             onClick={() => onEdit(asset)}
           >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.862 3.487a2.25 2.25 0 0 1 3.182 3.182L8.25 18.463 3 19.5l1.037-5.25L16.862 3.487Z"
-              />
-            </svg>
+            <PencilLine className="size-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Edit</span>
           </button>
           <button
             type="button"
-            title="Delete"
             aria-label="Delete"
-            className="asset-table__icon-btn asset-table__icon-btn--danger"
+            className="row-action row-action--danger"
             onClick={() => onDelete(asset)}
           >
-            <svg
-              className="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 6h18M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6m2 0v13.5A1.5 1.5 0 0 1 16.5 21h-9A1.5 1.5 0 0 1 6 19.5V6h12ZM10 11v6M14 11v6"
-              />
-            </svg>
+            <Trash2 className="size-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Delete</span>
           </button>
         </div>
       </td>

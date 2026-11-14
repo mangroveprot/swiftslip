@@ -281,7 +281,10 @@ export function UserManagement() {
             ))}
           </div>
         ) : list.length === 0 ? (
-          <div className="px-4 py-10 text-center">
+          <div
+            key={`empty:${filter}`}
+            className="px-4 py-10 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
+          >
             <p className="text-sm font-medium">
               {all.length ? "No accounts match your filters" : "No accounts yet"}
             </p>
@@ -292,7 +295,10 @@ export function UserManagement() {
             </p>
           </div>
         ) : (
-          <div className="hidden overflow-x-auto md:block">
+          <div
+            key={`table:${filter}`}
+            className="hidden overflow-x-auto md:block motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
+          >
             <table className="w-full min-w-[960px] table-fixed text-sm">
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
@@ -421,7 +427,7 @@ export function UserManagement() {
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
                             aria-label={`Edit ${a.id_number}`}
                             title="Edit"
                             onClick={() => setEditing({ ...a, role: a.role as Role })}
@@ -431,7 +437,7 @@ export function UserManagement() {
                           {isYou ? null : (
                             <button
                               type="button"
-                              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive active:scale-95"
                               aria-label={`Remove ${a.id_number}`}
                               title="Remove"
                               onClick={() => setRemoving({ ...a, role: a.role as Role })}
@@ -452,7 +458,10 @@ export function UserManagement() {
         {/* Phones: the same account, stacked. No sideways scrolling to reach
             the edit buttons, and long names wrap instead of being cut off. */}
         {!isLoading && list.length > 0 ? (
-          <div className="md:hidden">
+          <div
+            key={`cards:${filter}`}
+            className="md:hidden motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
+          >
             {list.map((a) => {
               const isYou = a.id === session?.id;
               const incomplete = isIncomplete(a);
@@ -500,7 +509,7 @@ export function UserManagement() {
                     <div className="flex shrink-0 items-center gap-0.5">
                       <button
                         type="button"
-                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
                         aria-label={`Edit ${a.id_number}`}
                         title="Edit"
                         onClick={() => setEditing({ ...a, role: a.role as Role })}
@@ -510,7 +519,7 @@ export function UserManagement() {
                       {isYou ? null : (
                         <button
                           type="button"
-                          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive active:scale-95"
                           aria-label={`Remove ${a.id_number}`}
                           title="Remove"
                           onClick={() => setRemoving({ ...a, role: a.role as Role })}

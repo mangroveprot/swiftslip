@@ -299,7 +299,10 @@ export function AppAccess() {
               />
             </div>
 
-            <div className="mt-1 max-h-[28rem] overflow-y-auto">
+            <div
+              key={tab}
+              className="mt-1 max-h-[28rem] overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
+            >
               {tab === "app" ? (
                 visibleApps.length ? (
                   visibleApps.map((app) => {
@@ -388,7 +391,7 @@ export function AppAccess() {
             // key forces a remount on tab or selection change, replaying the
             // enter animation the same way InventoryLayout does on route change.
             key={tab === "app" ? `app:${appKey}` : `person:${selectedPerson?.id ?? "none"}`}
-            className="min-w-0 lg:border-l lg:pl-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out"
+            className="min-w-0 lg:border-l lg:pl-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
           >
             {tab === "app" ? (
               <AppDetail
@@ -495,7 +498,7 @@ function AppDetail({
       {showWho ? (
         <div
           key="who-list"
-          className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out"
+          className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
         >
           <WhoList app={app} people={people} />
         </div>

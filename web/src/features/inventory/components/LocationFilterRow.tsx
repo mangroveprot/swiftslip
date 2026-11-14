@@ -18,9 +18,12 @@ function activeTabClass(selected: string | null, floorLabel: string | null): str
 
   const isActive = (candidate ?? "").toLowerCase() === (selectedTrimmed ?? "").toLowerCase();
 
+  const focus =
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+
   return isActive
-    ? "px-2.5 py-1.5 rounded-md text-white font-semibold shrink-0 underline underline-offset-[6px] decoration-2 decoration-white/90"
-    : "px-2.5 py-1.5 rounded-md text-white/70 hover:text-white shrink-0";
+    ? `px-2.5 py-1.5 rounded-md text-white font-semibold shrink-0 underline underline-offset-[6px] decoration-2 decoration-white/90 ${focus}`
+    : `px-2.5 py-1.5 rounded-md text-white/70 hover:text-white shrink-0 ${focus}`;
 }
 
 export function LocationFilterRow({
@@ -39,7 +42,7 @@ export function LocationFilterRow({
   }
 
   return (
-    <div className="flex items-center gap-1 text-sm">
+    <div className="no-scrollbar -mx-1 -my-1 flex items-center gap-1 overflow-x-auto px-1 py-1 text-sm">
       <button
         type="button"
         className={activeTabClass(selectedFloorLabel, null)}

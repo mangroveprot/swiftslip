@@ -4,6 +4,7 @@
  * sync badge here; offline sync was dropped for the web port.
  */
 import { useEffect, useState } from "react";
+import { Menu } from "lucide-react";
 
 import { formatDate, formatTime } from "@swiftslip/shared/time";
 
@@ -37,17 +38,19 @@ export function InventoryTopBar({
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
-            className="lg:hidden text-white/80 hover:text-white"
+            className="lg:hidden -m-2 p-2 text-white/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             onClick={onMenuToggle}
             aria-label="Open menu"
           >
-            ☰
+            <Menu className="size-5" aria-hidden="true" />
           </button>
           <div className="flex flex-col leading-tight min-w-0">
-            <span className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
               Asset inventory
+            </h1>
+            <span className="text-sm md:text-base text-white/75 truncate mt-1">
+              {branchSubtitle}
             </span>
-            <span className="text-sm md:text-lg text-white/80 truncate mt-1">{branchSubtitle}</span>
           </div>
         </div>
 

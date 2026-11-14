@@ -59,15 +59,18 @@ export function reminderDays(
 
 /**
  * Add `deletes_in_days` to the rows a cleanup would take within the warning
- * window. Best effort on purpose: a reminder is a nicety, so a settings read
- * that fails returns the list untouched instead of breaking the screen.
+ * window, plus the exact moment (`deletes_at`) that count is counting down to.
+ * The card shows the date, not "in 7 days": a date keeps its meaning when the
+ * employee reads it again tomorrow. Best effort on purpose: a reminder is a
+ * nicety, so a settings read that fails returns the list untouched instead of
+ * breaking the screen.
  */
 export async function withDeletionReminder<
   T extends RuleFields & { created_at?: string | null },
 >(
   type: RetentionFormType,
   rows: T[],
-): Promise<Array<T & { deletes_in_days?: number }>> {
+): Promise<Array<T & { deletes_in_days?: number; deletes_at?: string }>> {
   if (rows.length === 0) return rows;
 
   let notice: RetentionNotice | null = null;
@@ -81,6 +84,14 @@ export async function withDeletionReminder<
   const now = Date.now();
   return rows.map((row) => {
     const days = reminderDays(type, row, notice, now);
-    return days === null ? row : { ...row, deletes_in_days: days };
+    const created = row.created_at ? Date.parse(row.created_at) : Number.NaN;
+    if (days === null || Number.isNaN(created)) return row;
+    return {
+      ...row,
+      deletes_in_days: days,
+      // The age milestone itself, not "now + days": the card must not drift
+      // by a day depending on when it is read.
+      deletes_at: new Date(created + notice.days * DAY_MS).toISOString(),
+    };
   });
 }

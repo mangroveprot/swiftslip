@@ -573,7 +573,7 @@ export function DataRetention() {
           </div>
 
           {previewed ? (
-            <div className="mt-4 rounded-lg border border-dashboard-accent/25 bg-dashboard-soft/70 p-3.5 text-sm">
+            <div className="mt-4 rounded-lg border border-dashboard-accent/25 bg-dashboard-soft/70 p-3.5 text-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[220ms] motion-safe:ease-strong">
               {previewed.doc.totalForms === 0 ? (
                 <p>
                   Nothing to delete: no forms older than {dayLabel(previewed.doc.days)} in the

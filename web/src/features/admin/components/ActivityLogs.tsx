@@ -620,7 +620,7 @@ function AccessGroupRow({
         <div
           id={detailsId}
           key="access-details"
-          className="mt-2 space-y-1.5 border-l pl-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-200 motion-safe:ease-out"
+          className="mt-2 space-y-1.5 border-l pl-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
         >
           {group.rows.map((row) => (
             <div key={row.id} className="flex gap-2 text-xs text-muted-foreground">
@@ -855,7 +855,7 @@ export function ActivityLogs({
         // the AppAccess detail pane and Inventory route transitions.
         <div
           key={`${filter}:${range}:${page}`}
-          className="mt-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out"
+          className="mt-5 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
         >
           {days.map((day, index) => (
             <section key={day.key} className={index === 0 ? "" : "mt-5 border-t pt-5"}>

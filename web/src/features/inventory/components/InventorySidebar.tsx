@@ -1,9 +1,9 @@
 /**
- * Inventory sidebar, port of `Layout/Sidebar.razor` (regasco header strip,
+ * Inventory sidebar, port of `Layout/Sidebar.razor` (brand lockup,
  * branch dropdown, Add asset, nav items + assets badge, footer).
  * Offline-sync bits from the original are intentionally absent.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { LayoutGrid } from "lucide-react";
 
@@ -13,6 +13,7 @@ import type { InventoryShell, InventoryView } from "../shell-context";
 
 const NAV_ITEMS: { key: InventoryView; label: string }[] = [
   { key: "assets", label: "Assets" },
+  { key: "showrooms", label: "Showrooms" },
   { key: "reports", label: "Reports" },
   { key: "settings", label: "Settings" },
 ];
@@ -25,6 +26,16 @@ function NavIcon({ view }: { view: InventoryView }) {
           strokeLinecap="round"
           strokeLinejoin="round"
           d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+        />
+      </svg>
+    );
+  if (view === "showrooms")
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 9.5V20h18V9.5M2 9.5 4.5 4h15L22 9.5M2 9.5h20M9 20v-6h6v6"
         />
       </svg>
     );
@@ -56,6 +67,24 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
 
   const closeMenu = () => setBranchMenuOpen(false);
 
+  // Dismiss the branch picker from anywhere: Escape, or a pointer outside it.
+  useEffect(() => {
+    if (!branchMenuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setBranchMenuOpen(false);
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (!target?.closest(".sidebar-branch, .sidebar-branch-menu")) setBranchMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [branchMenuOpen]);
+
   const switchApp = () => {
     setBranchMenuOpen(false);
     shell.closeSidebar();
@@ -67,13 +96,16 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
     if (branchId !== shell.selectedBranchId) shell.selectBranch(branchId);
   };
 
-  const handleAddAsset = () => {
+  const isShowrooms = shell.activeView === "showrooms";
+
+  const handleAdd = () => {
     setBranchMenuOpen(false);
-    shell.requestAddAsset();
+    if (isShowrooms) shell.requestAddShowroom();
+    else shell.requestAddAsset();
   };
 
   const sidebarClasses =
-    "app-sidebar w-[86vw] max-w-80 h-full border-r border-regasco-deep/30 flex flex-col shrink-0 " +
+    "app-sidebar w-[86vw] max-w-80 h-full flex flex-col shrink-0 " +
     "fixed lg:static left-0 z-40 transition-transform duration-200 lg:translate-x-0 inset-y-0 " +
     (shell.sidebarOpen ? "translate-x-0" : "-translate-x-full");
 
@@ -88,24 +120,20 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
       ) : null}
 
       <aside className={sidebarClasses} onClick={closeMenu}>
-        <div className="flex flex-col h-full min-h-0">
-          <div className="regasco-header h-[7.25rem] flex items-center justify-between gap-3 px-4 pb-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="regasco-header__logo">
-                <img src="/inventory/logo.webp" alt="" />
-              </div>
-              <div className="min-w-0">
-                <span className="regasco-mark" aria-label="REGASCO Asset inventory">
-                  <span className="regasco-mark__text">REGASCO</span>
-                  <span className="regasco-mark__line" aria-hidden="true" />
-                  <span className="regasco-mark__sub">Asset inventory</span>
-                </span>
+        <div className="flex flex-col h-full min-h-0 overflow-y-auto no-scrollbar">
+          <div className="flex items-center justify-between gap-3 px-3.5 pt-5 pb-4 border-b border-white/15">
+            <div className="sidebar-brand">
+              <img src="/inventory/logo.webp" alt="" className="sidebar-brand__logo" />
+              <div className="sidebar-brand__wordmark">
+                <span className="sidebar-brand__name">REGASCO</span>
+                <span className="sidebar-brand__rule" aria-hidden="true" />
+                <span className="sidebar-brand__sub">ASSET INVENTORY</span>
               </div>
             </div>
             <button
               type="button"
               aria-label="Close menu"
-              className="lg:hidden text-white/80 hover:text-white text-lg leading-none shrink-0"
+              className="lg:hidden -m-2 p-2 text-lg leading-none text-white/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white shrink-0"
               onClick={() => shell.closeSidebar()}
             >
               &times;
@@ -125,7 +153,6 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                   setBranchMenuOpen((open) => !open);
                 }}
               >
-                <span className="sidebar-branch__dot" aria-hidden="true" />
                 <span className="sidebar-branch__label truncate">
                   {shell.branchSubtitle || "Select branch"}
                 </span>
@@ -152,7 +179,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {shell.branches.length === 0 ? (
-                    <p className="px-3 py-2 text-xs text-white/70">No branches loaded</p>
+                    <p className="px-3 py-2 text-xs text-muted-foreground">No branches loaded</p>
                   ) : (
                     shell.branches.map((branch) => {
                       const selected = branch.branch_id === shell.selectedBranchId;
@@ -180,7 +207,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                 className="sidebar-add-asset"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleAddAsset();
+                  handleAdd();
                 }}
               >
                 <span className="sidebar-add-asset__icon" aria-hidden="true">
@@ -188,7 +215,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
                   </svg>
                 </span>
-                Add asset
+                {isShowrooms ? "Add showroom" : "Add asset"}
               </button>
             </div>
 
@@ -200,6 +227,7 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
                   className={`sidebar-nav-item ${
                     shell.activeView === item.key ? "sidebar-nav-item--active" : ""
                   }`}
+                  aria-current={shell.activeView === item.key ? "page" : undefined}
                   onClick={() => {
                     // Close the drawer before/while navigating so the next
                     // page is visible immediately on phones and tablets.
@@ -219,15 +247,10 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
             </nav>
           </div>
 
-          <div className="sidebar-photo-spacer flex-1 min-h-0" aria-hidden="true" />
-
-          <div className="sidebar-footer">
+          <div className="sidebar-footer mt-auto">
             <div className="flex items-center gap-2.5 px-1">
-              <div className="sidebar-footer__avatar">IT</div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-2 min-w-0">
-                  <p className="text-sm font-medium leading-none truncate text-white">IT Support</p>
-                </div>
+                <p className="text-sm font-medium leading-none truncate text-white">IT Support</p>
                 <p className="text-xs text-white/70 leading-none mt-0.5 truncate">
                   {shell.branchSubtitle}
                 </p>
@@ -235,20 +258,16 @@ export function InventorySidebar({ shell }: { shell: InventoryShell }) {
               {/* Sits with the account, not between the two action buttons:
                   wedged in that row it broke the pair apart and read as a
                   third button in both themes. */}
-              <ThemeToggle className="shrink-0 text-white/80 hover:bg-white/20 hover:text-white" />
+              <ThemeToggle className="shrink-0 text-white/80 hover:bg-white/20 hover:text-white focus-visible:ring-white/80" />
             </div>
 
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={switchApp}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
-              >
+            <div className="sidebar-footer__actions">
+              <button type="button" onClick={switchApp} className="sidebar-footer__action">
                 <LayoutGrid className="size-4 shrink-0" aria-hidden="true" />
                 Switch app
               </button>
               <SignOutButton
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
+                className="sidebar-footer__action"
                 accessName="the RGC Asset Inventory"
                 onSignOutStart={() => setBranchMenuOpen(false)}
               />

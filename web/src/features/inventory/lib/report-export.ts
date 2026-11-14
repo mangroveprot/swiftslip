@@ -176,9 +176,12 @@ const COLUMN_WIDTH_OFFSET = 0.710625;
 /* ---------------------------------------------------------------- export - */
 
 /**
- * Port of the original download file name:
- * `$"REGASCO_{safe}_inventory_{DateTime.Now:yyyyMMdd}.xlsx"` with
- * `Path.GetInvalidFileNameChars()` split out.
+ * Port of the original download file name, now stamped with the time as well:
+ * `REGASCO_{safe}_inventory_{yyyyMMdd}_{HHmmss}.xlsx`. The date alone meant two
+ * downloads on the same day landed as "…(1).xlsx"; the seconds keep every save
+ * distinguishable and sortable.
+ *
+ * `Path.GetInvalidFileNameChars()` are split out, same as the original.
  */
 export function buildReportFileName(branchName: string): string {
   const safe = branchName
@@ -186,8 +189,10 @@ export function buildReportFileName(branchName: string): string {
     .filter((part) => part.length > 0)
     .join("_");
   const now = new Date();
-  const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
-  return `REGASCO_${safe}_inventory_${stamp}.xlsx`;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const date = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+  const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  return `REGASCO_${safe}_inventory_${date}_${time}.xlsx`;
 }
 
 /** Fetches the template shipped in `public/inventory/` (browser only). */

@@ -168,7 +168,7 @@ export function AdminPanel() {
           // wide screen empty while the table squeezed itself into the middle.
           // It now fills the panel; the reading-width cap stays on the prose
           // screens. (The dashboard keeps its own slightly wider cap.)
-          className={`${section === "dashboard" ? "max-w-6xl" : section === "users" ? "max-w-none" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out`}
+          className={`${section === "dashboard" ? "max-w-6xl" : section === "users" ? "max-w-none" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong`}
         >
           {section === "dashboard" ? (
             <AdminDashboard onNavigate={navigate} />
@@ -323,14 +323,14 @@ function SettingsGroup({
           <span className="min-w-0 truncate">{item.label}</span>
           <ChevronDown
             className={cn(
-              "ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform",
+              "ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform duration-[180ms] ease-strong motion-reduce:transition-none",
               expanded ? "" : "-rotate-90",
             )}
             aria-hidden="true"
           />
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent>
+      <CollapsibleContent className="overflow-hidden duration-[180ms] ease-strong data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:animate-none">
         {/* Indented under a hairline so the children read as one group. */}
         <div className="ml-[0.9rem] space-y-0.5 border-l border-border/70 pl-3 pt-0.5">
           {(item.children ?? []).map((child) =>

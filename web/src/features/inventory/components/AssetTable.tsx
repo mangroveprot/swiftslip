@@ -8,7 +8,10 @@
  */
 import { memo, useEffect, useState } from "react";
 
+import { AssetCard } from "./AssetCard";
 import { AssetRow } from "./AssetRow";
+import { StatTabs } from "./StatTabs";
+import type { StatFilterKey } from "./StatTabs";
 import type { InventoryAsset, InventoryAssetTypeOption } from "@swiftslip/shared/inventory";
 
 type AssetTableProps = {
@@ -19,6 +22,11 @@ type AssetTableProps = {
   selectedTypeId: number | null;
   searchText: string;
   allSelected: boolean;
+  totalAssets: number;
+  inUseCount: number;
+  availableCount: number;
+  unassignedCount: number;
+  selectedFilter: string;
   onSelectAllChanged: (checked: boolean) => void;
   onRowSelectedChanged: (assetId: number, checked: boolean) => void;
   onView: (asset: InventoryAsset) => void;
@@ -26,13 +34,8 @@ type AssetTableProps = {
   onDelete: (asset: InventoryAsset) => void;
   onTypeFilterChanged: (typeId: number | null) => void;
   onSearchChanged: (text: string) => void;
+  onFilterSelect: (key: StatFilterKey) => void;
 };
-
-function typeTabClass(selectedTypeId: number | null, typeId: number | null): string {
-  return typeId === selectedTypeId
-    ? "asset-table__type asset-table__type--active"
-    : "asset-table__type";
-}
 
 export const AssetTable = memo(function AssetTable({
   assets,
@@ -42,6 +45,11 @@ export const AssetTable = memo(function AssetTable({
   selectedTypeId,
   searchText,
   allSelected,
+  totalAssets,
+  inUseCount,
+  availableCount,
+  unassignedCount,
+  selectedFilter,
   onSelectAllChanged,
   onRowSelectedChanged,
   onView,
@@ -49,6 +57,7 @@ export const AssetTable = memo(function AssetTable({
   onDelete,
   onTypeFilterChanged,
   onSearchChanged,
+  onFilterSelect,
 }: AssetTableProps) {
   // Local, instant value for the search box; the actual (expensive) filtering
   // is debounced so typing stays smooth on large asset lists.
@@ -69,10 +78,19 @@ export const AssetTable = memo(function AssetTable({
 
   return (
     <div className="asset-table">
+      <StatTabs
+        total={totalAssets}
+        inUse={inUseCount}
+        available={availableCount}
+        unassigned={unassignedCount}
+        selectedFilter={selectedFilter}
+        onFilterSelect={onFilterSelect}
+      />
+
       <div className="asset-table__toolbar">
-        <div className="relative w-full sm:w-80">
+        <div className="relative w-full md:w-96">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
             viewBox="0 0 20 20"
             fill="none"
             aria-hidden="true"
@@ -89,6 +107,7 @@ export const AssetTable = memo(function AssetTable({
             type="text"
             id="asset-search"
             name="asset-search"
+            aria-label="Search assets"
             value={search}
             placeholder="Search by item ID, name, or department"
             className="asset-table__search"
@@ -96,30 +115,72 @@ export const AssetTable = memo(function AssetTable({
           />
         </div>
 
-        <div className="asset-table__types no-scrollbar" role="tablist" aria-label="Asset type">
-          <button
-            type="button"
-            role="tab"
-            className={typeTabClass(selectedTypeId, null)}
-            onClick={() => onTypeFilterChanged(null)}
-          >
-            All types
-          </button>
-          {assetTypes.map((type) => (
-            <button
-              type="button"
-              role="tab"
-              key={type.type_id}
-              className={typeTabClass(selectedTypeId, type.type_id)}
-              onClick={() => onTypeFilterChanged(type.type_id)}
+        <div className="flex items-center gap-2 sm:gap-4">
+          <label className="inventory-type">
+            <span className="inventory-type__label">Type:</span>
+            <select
+              id="asset-type"
+              name="asset-type"
+              aria-label="Filter by type"
+              className="inventory-type__select"
+              value={selectedTypeId ?? ""}
+              onChange={(e) =>
+                onTypeFilterChanged(e.target.value === "" ? null : Number(e.target.value))
+              }
             >
-              {type.type_name}
-            </button>
-          ))}
+              <option value="">All types</option>
+              {assetTypes.map((type) => (
+                <option key={type.type_id} value={type.type_id}>
+                  {type.type_name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
-      <div className="asset-table__scroll">
+      {/* Phone layout: the table header has nowhere to go, so select-all lives
+          in its own strip above the stacked cards. */}
+      <div className="asset-table__mobile-bar md:hidden">
+        <label className="asset-table__select-all">
+          <input
+            type="checkbox"
+            id="asset-select-all-mobile"
+            name="asset-select-all-mobile"
+            aria-label="Select all assets"
+            className="size-4 accent-[var(--inv-orange)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--inv-orange)] focus-visible:ring-offset-1"
+            checked={allSelected}
+            onChange={(e) => onSelectAllChanged(e.target.checked)}
+          />
+          Select all
+        </label>
+      </div>
+
+      <div className="asset-cards md:hidden">
+        {assets.length === 0 ? (
+          <div className="asset-card__empty">
+            <p className="text-sm font-medium text-foreground">No assets match this view</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Adjust filters or clear search to see more records.
+            </p>
+          </div>
+        ) : (
+          assets.map((asset, index) => (
+            <AssetCard
+              key={asset.asset_id}
+              asset={asset}
+              selected={selectedIds.has(asset.asset_id)}
+              index={index}
+              onSelectedChanged={onRowSelectedChanged}
+              onView={onView}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="asset-table__scroll hidden md:block">
         <table className="w-full text-sm table-fixed min-w-[26rem] lg:min-w-0">
           <thead>
             <tr className="asset-table__head">
@@ -128,19 +189,24 @@ export const AssetTable = memo(function AssetTable({
                   type="checkbox"
                   id="asset-select-all"
                   name="asset-select-all"
-                  className="rounded border-input text-brand focus:ring-brand/30"
+                  aria-label="Select all assets"
+                  className="size-4 accent-[var(--inv-orange)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--inv-orange)] focus-visible:ring-offset-1"
                   checked={allSelected}
                   onChange={(e) => onSelectAllChanged(e.target.checked)}
                 />
               </th>
-              <th className="asset-table__th w-[15%]">Item ID</th>
-              <th className="asset-table__th w-[10%] hidden md:table-cell">Type</th>
-              <th className="asset-table__th w-[18%]">Assigned to</th>
-              <th className="asset-table__th w-[16%] hidden md:table-cell">Department</th>
-              <th className="asset-table__th w-[9%] hidden md:table-cell">Cubicle</th>
-              <th className="asset-table__th w-24">Status</th>
-              <th className="asset-table__th w-24 hidden md:table-cell">Condition</th>
-              <th className="asset-table__th asset-table__th--actions w-20 text-right">Actions</th>
+              <th className="asset-table__th w-[30%] md:w-[28%] xl:w-[18%]">Item ID</th>
+              <th className="asset-table__th w-[12%] hidden md:table-cell md:w-[13%] xl:w-[9%]">
+                Type
+              </th>
+              <th className="asset-table__th w-[28%] md:w-[27%] xl:w-[14%]">Assigned to</th>
+              <th className="asset-table__th w-[17%] hidden xl:table-cell">Department</th>
+              <th className="asset-table__th w-[7%] hidden xl:table-cell">Cubicle</th>
+              <th className="asset-table__th w-[15%] md:w-[14%] xl:w-[9%]">Status</th>
+              <th className="asset-table__th w-[10%] hidden xl:table-cell">Condition</th>
+              <th className="asset-table__th asset-table__th--actions w-[8.5rem] xl:w-[13%]">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -171,7 +237,7 @@ export const AssetTable = memo(function AssetTable({
         </table>
       </div>
 
-      <div className="asset-table__footer">
+      <div className="asset-table__footer hidden md:flex">
         <span className="asset-table__meta">
           Showing <strong className="text-foreground">{assets.length}</strong> of{" "}
           <strong className="text-foreground">{totalCount}</strong> assets

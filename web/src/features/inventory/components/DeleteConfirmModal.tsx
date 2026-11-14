@@ -10,6 +10,8 @@ type DeleteConfirmModalProps = {
   count: number;
   onCancel: () => void;
   onConfirm: () => void;
+  /** Delete request in flight: confirm shows a spinner, both buttons lock. */
+  busy?: boolean;
 };
 
 export function DeleteConfirmModal({
@@ -17,6 +19,7 @@ export function DeleteConfirmModal({
   count,
   onCancel,
   onConfirm,
+  busy = false,
 }: DeleteConfirmModalProps) {
   return (
     <ConfirmModal
@@ -28,6 +31,8 @@ export function DeleteConfirmModal({
           : "This will permanently remove this asset. This can't be undone."
       }
       confirmLabel="Delete"
+      busy={busy}
+      busyLabel="Deleting…"
       onCancel={onCancel}
       onConfirm={onConfirm}
     />
