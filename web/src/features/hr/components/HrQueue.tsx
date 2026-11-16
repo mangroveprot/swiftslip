@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -156,7 +157,8 @@ function pageNumbers(current: number, count: number): Array<number | "gap"> {
  * a second query.
  */
 export function HrQueue() {
-  const { data, isLoading, isError, error, refetch } = useQuery(hrQueueQueryOptions());
+  const { data, isLoading, isError, error, errorUpdatedAt, isFetching, refetch } =
+    useQuery(hrQueueQueryOptions());
   const viewParam = useRouterState({
     select: (state) => (state.location.search as { view?: string } | undefined)?.view,
   });
@@ -444,16 +446,13 @@ export function HrQueue() {
       {isLoading ? (
         <QueueSkeleton />
       ) : isError ? (
-        <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          <p>{error instanceof Error ? error.message : "Could not load the queue."}</p>
-          <button
-            type="button"
-            className="mt-2 font-medium underline underline-offset-4"
-            onClick={() => void refetch()}
-          >
-            Try again
-          </button>
-        </div>
+        <ErrorStateFromError
+          className="mt-6"
+          error={error}
+          at={errorUpdatedAt ? new Date(errorUpdatedAt) : null}
+          retrying={isFetching}
+          onRetry={() => void refetch()}
+        />
       ) : total === 0 ? (
         bucket.length === 0 ? (
           <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-5 px-6 py-16 text-center">

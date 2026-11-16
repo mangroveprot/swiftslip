@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
+import { dtrSubject, formDeleteCopy } from "@/lib/form-delete-copy";
 import { toast } from "@/lib/toast";
 import { MONTHS, periodLabel, periodRange } from "@swiftslip/shared/period";
 import type { Period } from "@swiftslip/shared/types";
@@ -44,6 +45,8 @@ export function RecordsList() {
   useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<RecordRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // Named by the days it covers, not the owner name: every row here is the same person.
+  const deleting = pendingDelete ? formDeleteCopy(dtrSubject(pendingDelete)) : null;
 
   // A draft exists only in the browser, so there is nothing here to filter out,
   // the list shows exactly the records that are in the database.
@@ -54,12 +57,12 @@ export function RecordsList() {
   }
 
   async function confirmDelete() {
-    if (!pendingDelete) return;
+    if (!pendingDelete || !deleting) return;
     setDeleteBusy(true);
     try {
       await deleteRecord({ data: { id: pendingDelete.id } });
       await qc.invalidateQueries({ queryKey: recordsQueryOptions().queryKey });
-      toast.success(`Deleted "${pendingDelete.name || "Untitled record"}"`);
+      toast.success(deleting.toast);
       setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete that record.");
@@ -110,7 +113,7 @@ export function RecordsList() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && !deleteBusy && setPendingDelete(null)}
-        title={`Delete "${pendingDelete?.name || "Untitled record"}"?`}
+        title={deleting?.title ?? "Delete this record?"}
         description="This permanently removes the record and all its daily entries. This can't be undone."
         confirmLabel="Delete"
         busy={deleteBusy}

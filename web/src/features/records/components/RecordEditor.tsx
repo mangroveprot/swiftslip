@@ -22,7 +22,6 @@ import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
 import { PageTitle } from "@/components/common/PageTitle";
-import { isMissingRow } from "@/lib/missing-row";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,7 +136,7 @@ function RecordEditorBody({
 
   // Fetched only once there is a real id, a draft has nothing to load, which is
   // why opening one shows the form straight away instead of a skeleton.
-  const { data, error, isError } = useQuery({
+  const { data, error, isError, isFetching, refetch } = useQuery({
     ...recordQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -354,8 +353,16 @@ function RecordEditorBody({
   // A draft needs the profile to build itself and a real record needs the server
   // copy; once either arrives the form is ready to render. The list warms the
   // profile query, so this is normally instant.
-  if (isError && isMissingRow(error))
-    return <FormUnavailable backTo="/records" label="Time records" />;
+  if (isError && !header)
+    return (
+      <FormUnavailable
+        backTo="/records"
+        label="Time records"
+        error={error}
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!header) return <RecordEditorSkeleton />;
 
   const days = daysForPeriod(header.period, header.month, header.year);

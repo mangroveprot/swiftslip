@@ -139,6 +139,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      sessions: {
+        Row: {
+          created_at: string;
+          expires_at: string;
+          id: string;
+          ip: string;
+          last_seen_at: string;
+          remembered: boolean;
+          token_hash: string;
+          user_agent: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at: string;
+          id?: string;
+          ip?: string;
+          last_seen_at?: string;
+          remembered?: boolean;
+          token_hash: string;
+          user_agent?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          ip?: string;
+          last_seen_at?: string;
+          remembered?: boolean;
+          token_hash?: string;
+          user_agent?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       dtr_entries: {
         Row: {
           day: number;

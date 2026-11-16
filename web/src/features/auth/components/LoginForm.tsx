@@ -6,6 +6,7 @@ import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { signIn } from "@/api/auth.functions";
 import { BrandLockup } from "@/components/common/BrandLockup";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SESSION } from "@/config/app";
 import { resetOnboardingSession } from "@/features/profile/onboarding";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -29,6 +30,8 @@ export function LoginForm() {
   const [idNumber, setIdNumber] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  /** "Keep me signed in": 30 days instead of 12 hours. On unless unticked. */
+  const [remember, setRemember] = useState(true);
   const [capsLock, setCapsLock] = useState(false);
   /** Per-field messages from our own empty-field checks. */
   const [fieldErrors, setFieldErrors] = useState<{ idNumber?: string; password?: string }>({});
@@ -63,7 +66,9 @@ export function LoginForm() {
     setBusy(true);
     resetErrors();
     try {
-      const result = await signIn({ data: { idNumber: idNumber.trim(), password } });
+      const result = await signIn({
+        data: { idNumber: idNumber.trim(), password, rememberMe: remember },
+      });
       if (!result.ok) {
         setBusy(false);
         setRejected(true);
@@ -220,6 +225,21 @@ export function LoginForm() {
             </div>
           </div>
 
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              id="remember-me"
+              checked={remember}
+              disabled={busy}
+              onCheckedChange={(value) => setRemember(value === true)}
+            />
+            <label
+              htmlFor="remember-me"
+              className="cursor-pointer text-[0.8125rem] font-medium text-foreground/80"
+            >
+              Remember Me
+            </label>
+          </div>
+
           <button
             type="submit"
             disabled={busy}
@@ -239,7 +259,8 @@ export function LoginForm() {
 
         <p className="mt-7 border-t border-border pt-5 text-xs leading-relaxed text-foreground/60">
           Forgot your password? Ask an administrator to reset it. For your security, a session ends
-          on its own after {SESSION.maxAgeSeconds / 3600} hours.
+          on its own after {SESSION.maxAgeSeconds / 3600} hours, or{" "}
+          {SESSION.rememberMaxAgeSeconds / 86400} days when “Remember Me” is ticked.
         </p>
       </div>
     </main>

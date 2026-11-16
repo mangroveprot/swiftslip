@@ -11,6 +11,7 @@ import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
+import { cosSubject, formDeleteCopy } from "@/lib/form-delete-copy";
 import { toast } from "@/lib/toast";
 import { cosFormsQueryOptions } from "../queries";
 
@@ -22,6 +23,8 @@ type CosRow = {
   position: string;
   /** "shift" | "rest_day" | "", the Change of Work Schedule box. */
   change_type: string;
+  /** Effectivity date on each schedule row; names the form when deleted. */
+  effectivity_dates: string[];
   /** Approval slip ticked, badges the card as Approved. */
   attachment_approved: boolean;
   updated_at: string;
@@ -48,6 +51,8 @@ export function CosList() {
   useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<CosRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // Named by its effectivity date, not the owner name: every row here is the same person.
+  const deleting = pendingDelete ? formDeleteCopy(cosSubject(pendingDelete)) : null;
 
   // A draft lives only in the browser, so there is nothing here to filter out,
   // the list shows exactly the forms that are in the database.
@@ -58,12 +63,12 @@ export function CosList() {
   }
 
   async function confirmDelete() {
-    if (!pendingDelete) return;
+    if (!pendingDelete || !deleting) return;
     setDeleteBusy(true);
     try {
       await deleteCosForm({ data: { id: pendingDelete.id } });
       await qc.invalidateQueries({ queryKey: cosFormsQueryOptions().queryKey });
-      toast.success(`Deleted "${pendingDelete.employee_name || "Untitled form"}"`);
+      toast.success(deleting.toast);
       setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete that form.");
@@ -114,7 +119,7 @@ export function CosList() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && !deleteBusy && setPendingDelete(null)}
-        title={`Delete "${pendingDelete?.employee_name || "Untitled form"}"?`}
+        title={deleting?.title ?? "Delete this form?"}
         description="This permanently removes the form and its approval attachment. This can't be undone."
         confirmLabel="Delete"
         busy={deleteBusy}

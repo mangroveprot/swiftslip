@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { APP } from "@/config/app";
-import { isMissingRow } from "@/lib/missing-row";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
 import { friendlyError, toast } from "@/lib/toast";
@@ -160,7 +159,7 @@ function departureLockCopy(status: ObHrStatus): string {
  * slip and a scaled copy of the actual form.
  */
 export function HrObDetailPage({ id }: { id: string }) {
-  const { data, isError, error } = useQuery(hrObQueryOptions(id));
+  const { data, isError, error, isFetching, refetch } = useQuery(hrObQueryOptions(id));
   const attachmentLink = useQuery({
     ...hrObAttachmentUrlQueryOptions(id),
     enabled: Boolean(data?.attachment),
@@ -243,7 +242,16 @@ export function HrObDetailPage({ id }: { id: string }) {
     setArrivalTime(returnEntry?.time_return || "");
   }, [form, entries, itinerary]);
 
-  if (isError && isMissingRow(error)) return <FormUnavailable backTo="/hr" label="the HR queue" />;
+  if (isError && !form)
+    return (
+      <FormUnavailable
+        backTo="/hr"
+        label="the HR queue"
+        error={error}
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!form || !status) return <DetailSkeleton />;
 
   const office = (data?.employee?.area ?? "").trim();

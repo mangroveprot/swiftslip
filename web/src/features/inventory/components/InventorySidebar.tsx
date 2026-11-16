@@ -13,8 +13,8 @@ import type { InventoryShell, InventoryView } from "../shell-context";
 
 const NAV_ITEMS: { key: InventoryView; label: string }[] = [
   { key: "assets", label: "Assets" },
-  { key: "showrooms", label: "Showrooms" },
   { key: "reports", label: "Reports" },
+  { key: "showrooms", label: "Showrooms" },
   { key: "settings", label: "Settings" },
 ];
 

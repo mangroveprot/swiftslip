@@ -7,6 +7,7 @@ import {
   History,
   LayoutDashboard,
   LayoutGrid,
+  MonitorSmartphone,
   PanelLeft,
   Settings,
   ShieldCheck,
@@ -35,6 +36,7 @@ import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { cn } from "@/lib/utils";
 import type { Employer } from "@swiftslip/shared/org";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
+import { ActiveSessions } from "./ActiveSessions";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
 import { AppAccess } from "./AppAccess";
@@ -42,7 +44,7 @@ import { DataRetention } from "./settings/DataRetention";
 import { Storage } from "./settings/Storage";
 import { UserManagement } from "./UserManagement";
 
-type Section = "dashboard" | "users" | "access" | "logs" | "retention" | "storage";
+type Section = "dashboard" | "users" | "access" | "sessions" | "logs" | "retention" | "storage";
 
 /**
  * A nav row. `id` is the section it opens; a parent row (one with `children`)
@@ -64,6 +66,7 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
     items: [
       { id: "users", label: "User management", icon: Users },
       { id: "access", label: "App access", icon: ShieldCheck },
+      { id: "sessions", label: "Active sessions", icon: MonitorSmartphone },
       { id: "logs", label: "Activity logs", icon: History },
       {
         id: null,
@@ -168,7 +171,7 @@ export function AdminPanel() {
           // wide screen empty while the table squeezed itself into the middle.
           // It now fills the panel; the reading-width cap stays on the prose
           // screens. (The dashboard keeps its own slightly wider cap.)
-          className={`${section === "dashboard" ? "max-w-6xl" : section === "users" ? "max-w-none" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong`}
+          className={`${section === "dashboard" ? "max-w-6xl" : section === "users" || section === "sessions" ? "max-w-none" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong`}
         >
           {section === "dashboard" ? (
             <AdminDashboard onNavigate={navigate} />
@@ -176,6 +179,8 @@ export function AdminPanel() {
             <UserManagement />
           ) : section === "access" ? (
             <AppAccess />
+          ) : section === "sessions" ? (
+            <ActiveSessions />
           ) : section === "retention" ? (
             <DataRetention />
           ) : section === "storage" ? (

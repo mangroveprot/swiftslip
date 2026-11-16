@@ -15,6 +15,8 @@ import { toast } from "@/lib/toast";
 import type { OptionKind, OptionMutationResult } from "@swiftslip/shared/inventory";
 
 import { OptionManager } from "../components/OptionManager";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
+import { SettingsSkeleton } from "../components/SettingsSkeleton";
 import { managedOptionsQueryOptions } from "../queries";
 import { useInventoryShell } from "../shell-context";
 
@@ -31,12 +33,16 @@ export function InventorySettingsPage() {
     [],
   );
 
-  const { data, isError, error } = useQuery(managedOptionsQueryOptions());
+  const { data, isError, error, errorUpdatedAt, isFetching, refetch } = useQuery(
+    managedOptionsQueryOptions(),
+  );
   const [saving, setSaving] = useState(false);
 
+  // A refresh that fails keeps the cards on screen, so it can stay a toast; a
+  // first load with nothing to show gets the in-card error block instead.
   useEffect(() => {
-    if (isError) showToast(`Failed to load options: ${messageOf(error)}`, "error");
-  }, [isError, error, showToast]);
+    if (isError && data) showToast(`Failed to load options: ${messageOf(error)}`, "error");
+  }, [isError, data, error, showToast]);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["inventory"] });
 
@@ -122,8 +128,19 @@ export function InventorySettingsPage() {
 
         <div className="flex-1 min-h-0 overflow-y-auto">
           {options == null && !isError ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : options == null ? null : (
+            <SettingsSkeleton />
+          ) : options == null ? (
+            <div className="max-w-3xl">
+              <div className="rounded-lg border bg-card">
+                <ErrorStateFromError
+                  error={error}
+                  at={errorUpdatedAt ? new Date(errorUpdatedAt) : null}
+                  retrying={isFetching}
+                  onRetry={() => void refetch()}
+                />
+              </div>
+            </div>
+          ) : (
             <div className="max-w-3xl space-y-6">
               <OptionManager
                 title="Branches"

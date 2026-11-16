@@ -4,6 +4,7 @@ import {
   getActivityFeedFn,
   getActivityLogCountsFn,
   getAdminStatsFn,
+  listActiveSessionsFn,
   listActivityLogsFn,
 } from "@/api/admin.functions";
 import { listCodes } from "@/api/access-codes.functions";
@@ -38,6 +39,21 @@ export const adminStatsQueryOptions = () =>
   queryOptions({
     queryKey: ["admin-stats"],
     queryFn: () => getAdminStatsFn(),
+  });
+
+/**
+ * Live sessions. A "right now" view, so no stale list is ever shown: after a
+ * revoke, or when the admin comes back to the screen, it asks again.
+ */
+export const activeSessionsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["active-sessions"],
+    queryFn: () => listActiveSessionsFn(),
+    staleTime: 0,
+    // "Right now" means the list ages out: a device that signed out elsewhere
+    // should leave the screen without the admin reloading it.
+    refetchInterval: 60_000,
+    refetchOnReconnect: true,
   });
 
 export type ActivityLogFilters = {

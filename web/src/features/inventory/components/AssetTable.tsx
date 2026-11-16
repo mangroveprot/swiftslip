@@ -76,6 +76,15 @@ export const AssetTable = memo(function AssetTable({
     return () => clearTimeout(timer);
   }, [search, searchText, onSearchChanged]);
 
+  // Two different empties: nothing exists in this branch/floor yet, or the
+  // filters hid every row. "Adjust your filters" is wrong advice when there is
+  // nothing to narrow.
+  const nothingInScope = totalAssets === 0;
+  const emptyTitle = nothingInScope ? "No assets here yet" : "No assets match this view";
+  const emptyHint = nothingInScope
+    ? "Add the first one with Add asset in the sidebar."
+    : "Adjust filters or clear search to see more records.";
+
   return (
     <div className="asset-table">
       <StatTabs
@@ -159,10 +168,8 @@ export const AssetTable = memo(function AssetTable({
       <div className="asset-cards md:hidden">
         {assets.length === 0 ? (
           <div className="asset-card__empty">
-            <p className="text-sm font-medium text-foreground">No assets match this view</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Adjust filters or clear search to see more records.
-            </p>
+            <p className="text-sm font-medium text-foreground">{emptyTitle}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{emptyHint}</p>
           </div>
         ) : (
           assets.map((asset, index) => (
@@ -213,10 +220,8 @@ export const AssetTable = memo(function AssetTable({
             {assets.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-6 py-14 text-center">
-                  <p className="text-sm font-medium text-foreground">No assets match this view</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Adjust filters or clear search to see more records.
-                  </p>
+                  <p className="text-sm font-medium text-foreground">{emptyTitle}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{emptyHint}</p>
                 </td>
               </tr>
             ) : (

@@ -24,6 +24,8 @@ import {
 
 import type { ShowroomDrawerMode } from "../components/ShowroomDrawer";
 import { ShowroomDrawer } from "../components/ShowroomDrawer";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
+import { ShowroomBoardSkeleton, ShowroomStatsSkeleton } from "../components/ShowroomSkeleton";
 import { ShowroomStats } from "../components/ShowroomStats";
 import { ShowroomTable } from "../components/ShowroomTable";
 import { buildShowroomFileName, downloadShowroomsWorkbook } from "../lib/showroom-export";
@@ -37,13 +39,20 @@ function messageOf(err: unknown): string {
 export function InventoryShowroomsPage() {
   const shell = useInventoryShell();
   const qc = useQueryClient();
-  const { data, isLoading, isError, error } = useQuery(showroomsQueryOptions());
+  const { data, isLoading, isError, error, errorUpdatedAt, isFetching, refetch } =
+    useQuery(showroomsQueryOptions());
   const {
     data: stock,
     isLoading: stockLoading,
     isError: stockError,
     error: stockErrorObj,
+    errorUpdatedAt: stockErrorUpdatedAt,
+    isFetching: stockFetching,
+    refetch: refetchStock,
   } = useQuery(showroomStockQueryOptions());
+
+  /** The board shows one failure; the first query to fail owns its timestamp. */
+  const failedAt = errorUpdatedAt > 0 ? errorUpdatedAt : stockErrorUpdatedAt;
 
   const showToast = useCallback(
     (message: string, level: "success" | "error" | "warning" | "info" = "success") =>
@@ -211,7 +220,9 @@ export function InventoryShowroomsPage() {
               </div>
             </div>
 
-            {!isLoading && !stockLoading && !isError && !stockError && (
+            {isLoading || stockLoading ? (
+              <ShowroomStatsSkeleton />
+            ) : !isError && !stockError ? (
               <ShowroomStats
                 showrooms={showrooms}
                 totalUnits={stock?.cctvTotalUnits ?? 0}
@@ -219,18 +230,24 @@ export function InventoryShowroomsPage() {
                 onFilterChange={setFilter}
                 onSaveTotal={saveTotalUnits}
               />
-            )}
+            ) : null}
           </div>
         </header>
 
         {isLoading || stockLoading ? (
-          <p className="text-sm text-muted-foreground shrink-0">Loading showrooms…</p>
+          <ShowroomBoardSkeleton />
         ) : isError || stockError ? (
-          <div className="bg-card text-card-foreground border border-border rounded-lg px-5 py-10 text-center">
-            <p className="text-sm text-muted-foreground">Could not load the showrooms.</p>
-            {(error ?? stockErrorObj) ? (
-              <p className="text-xs text-red-600 mt-2">{messageOf(error ?? stockErrorObj)}</p>
-            ) : null}
+          <div className="showroom-board">
+            <ErrorStateFromError
+              className="flex-1 justify-center"
+              error={error ?? stockErrorObj}
+              at={failedAt > 0 ? new Date(failedAt) : null}
+              retrying={isFetching || stockFetching}
+              onRetry={() => {
+                void refetch();
+                void refetchStock();
+              }}
+            />
           </div>
         ) : (
           <ShowroomTable

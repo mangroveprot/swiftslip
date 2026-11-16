@@ -105,13 +105,6 @@ class AuthService {
         label: fullName || account.id_number,
         idNumber: account.id_number,
       };
-      await ActivityLogService.log({
-        action: 'signin.success',
-        actorId: user.id,
-        actorName: user.label,
-        actorNumber: user.idNumber,
-        ip,
-      });
       return { success: true, document: user };
     } catch (error) {
       return {
@@ -125,6 +118,20 @@ class AuthService {
               ),
       };
     }
+  }
+
+  /**
+   * The successful sign-in is recorded by the controller, after the session
+   * row exists: a sign-in that never got a cookie is not a successful one.
+   */
+  async recordSignIn(user: SessionUser, ip: string): Promise<void> {
+    await ActivityLogService.log({
+      action: 'signin.success',
+      actorId: user.id,
+      actorName: user.label,
+      actorNumber: user.idNumber,
+      ip,
+    });
   }
 
   /**

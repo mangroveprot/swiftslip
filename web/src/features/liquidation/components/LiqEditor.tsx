@@ -16,7 +16,6 @@ import { createLiqForm, saveLiqForm } from "@/api/liquidation.functions";
 import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
-import { isMissingRow } from "@/lib/missing-row";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,7 +91,7 @@ function LiqEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  const { data, error, isError } = useQuery({
+  const { data, error, isError, isFetching, refetch } = useQuery({
     ...liqFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -274,8 +273,16 @@ function LiqEditorBody({
 
   useEffect(() => flushOnPageHide(auto), [auto]);
 
-  if (isError && isMissingRow(error))
-    return <FormUnavailable backTo="/liquidation" label="Statement of Liquidation forms" />;
+  if (isError && !form)
+    return (
+      <FormUnavailable
+        backTo="/liquidation"
+        label="Statement of Liquidation forms"
+        error={error}
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!form) return <LiqEditorSkeleton />;
 
   /** Replace one expense row (index 0..LIQ_LINES-1). */

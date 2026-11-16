@@ -1,9 +1,13 @@
 import { BaseRepository } from '../../../core/engine';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { logger } from '../../../common/shared/services';
+import type { ActiveSession } from '@swiftslip/shared/api-types';
 import type { FormEvent, FormKind } from '@swiftslip/shared/forms';
 import { departmentForPosition } from '@swiftslip/shared/org';
+import type { Role } from '@swiftslip/shared/types';
 import { ActivityLogRepository } from '../../activity-log/repositories';
+import { SessionRepository } from '../../auth/repositories';
+import { ProfileRepository } from '../../profile/repositories';
 import { UserRepository } from '../../users/repositories';
 import { UserService } from '../../users/services';
 
@@ -69,6 +73,8 @@ const isProfileIncomplete = (a: {
 
 class AdminService {
   private users = new UserRepository();
+  private profiles = new ProfileRepository();
+  private sessionRepository = new SessionRepository();
   private records = new BaseRepository('dtr_records');
   private forms = {
     ob_forms: new BaseRepository('ob_forms'),
@@ -247,6 +253,97 @@ class AdminService {
     } catch (error) {
       logger.error('[admin-stats] security summary', error as Error);
       return empty;
+    }
+  }
+
+  /** Every live sign-in, for the panel's Active sessions screen. */
+  async sessions(
+    currentSessionId?: string,
+  ): Promise<ServiceResponse<ActiveSession>> {
+    try {
+      const rows = await this.sessionRepository.live();
+      const userIds = [...new Set(rows.map((row) => row.user_id))];
+
+      const accounts = userIds.length
+        ? await this.users.findAll(
+            { id: userIds },
+            { select: 'id,id_number,role' },
+          )
+        : [];
+      const profiles = userIds.length
+        ? await this.profiles.findAll(
+            { access_code_id: userIds },
+            { select: 'access_code_id,full_name' },
+          )
+        : [];
+
+      const accountById = new Map(accounts.map((row) => [row.id, row]));
+      const nameById = new Map(
+        profiles.map((row) => [
+          row.access_code_id,
+          (row.full_name ?? '').trim(),
+        ]),
+      );
+
+      const documents: ActiveSession[] = [];
+      for (const row of rows) {
+        const account = accountById.get(row.user_id);
+        // No account row means it is being deleted right now; the session is
+        // already gone with it, so there is nothing to show or revoke.
+        if (!account) continue;
+        documents.push({
+          id: row.id,
+          userId: row.user_id,
+          idNumber: account.id_number,
+          name: nameById.get(row.user_id) || account.id_number,
+          role: account.role as Role,
+          ip: row.ip,
+          userAgent: row.user_agent,
+          createdAt: row.created_at,
+          lastSeenAt: row.last_seen_at,
+          expiresAt: row.expires_at,
+          remembered: row.remembered,
+          current: row.id === currentSessionId,
+        });
+      }
+
+      return { success: true, documents };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /** End one session everywhere, including any copy of its cookie. */
+  async revokeSession(id: string): Promise<ServiceResponse<never>> {
+    try {
+      const removed = await this.sessionRepository.delete({ id });
+      if (!removed) {
+        throw new ErrorResponse(
+          'NOT_FOUND_ERROR',
+          'That session has already ended.',
+        );
+      }
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
     }
   }
 }

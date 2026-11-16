@@ -28,6 +28,28 @@ import type {
 
 export type SessionDocument = SessionUser & { apps: AppKey[] };
 
+/**
+ * `GET /api/admin/sessions`, one live sign-in. A session is a row in the
+ * database, not just a cookie, so revoking it here ends it on every device
+ * that holds a copy. `remembered` says whether it was issued with "Keep me
+ * signed in" (30 days) or the ordinary lifetime (12 hours).
+ */
+export type ActiveSession = {
+  id: string;
+  userId: string;
+  idNumber: string;
+  name: string;
+  role: Role;
+  ip: string;
+  userAgent: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+  remembered: boolean;
+  /** True for the administrator's own browser, so it can be labelled. */
+  current: boolean;
+};
+
 /** What one (row, app) pair actually resolves to. */
 export type AccessOutcome = {
   /** An administrator holds every app and cannot be restricted. */
@@ -131,6 +153,7 @@ export type ActivityLogCounts = {
   access: number;
   accounts: number;
   records: number;
+  showrooms: number;
   signin: number;
   "signin-failed": number;
   all: number;
@@ -260,6 +283,8 @@ export type CosSummary = {
   deletes_in_days?: number;
   /** The retention age milestone `deletes_in_days` counts down to (ISO). */
   deletes_at?: string;
+  /** Effectivity date on each schedule row (ascending); names a deleted form. */
+  effectivity_dates: string[];
 };
 
 export type OtSummary = {
@@ -274,6 +299,8 @@ export type OtSummary = {
   deletes_in_days?: number;
   /** The retention age milestone `deletes_in_days` counts down to (ISO). */
   deletes_at?: string;
+  /** Date of OT work on each row (ascending); names a deleted form. */
+  ot_dates: string[];
 };
 
 // ── Form details ─────────────────────────────────────────────────────────────

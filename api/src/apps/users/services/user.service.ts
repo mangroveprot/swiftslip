@@ -1,6 +1,7 @@
 import { BaseService } from '../../../core/engine';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { PasswordService } from '../../../common/shared/services/password.service';
+import { logger } from '../../../common/shared/services';
 import { PASSWORD_MIN_LENGTH } from '@swiftslip/shared/schemas';
 import { employerLabel, type Employer } from '@swiftslip/shared/org';
 import type { AccountPhoto, Role, SessionUser } from '@swiftslip/shared/types';
@@ -9,6 +10,7 @@ import { photoUrl } from '../../profile/services/photo-storage';
 import { ActivityLogRepository } from '../../activity-log/repositories';
 import { ActivityLogService } from '../../activity-log/services';
 import { UserRepository } from '../repositories';
+import { SessionRepository } from '../../auth/repositories';
 import { AttachmentService } from '../../attachments/services';
 import { FileService } from '../../files/services';
 
@@ -68,6 +70,7 @@ export type AccountInput = {
 class UserService extends BaseService<'users', UserRepository> {
   private profiles = new ProfileRepository();
   private logs = new ActivityLogRepository();
+  private sessions = new SessionRepository();
 
   constructor() {
     super(new UserRepository());
@@ -274,6 +277,23 @@ class UserService extends BaseService<'users', UserRepository> {
           ...(passwordHash ? { password_hash: passwordHash } : {}),
         },
       );
+
+      // A password reset by an administrator ends every session of that
+      // account. The changed hash already rejects their cookies; deleting the
+      // rows is what keeps the Active sessions screen honest.
+      if (passwordHash) {
+        try {
+          await this.sessions.deleteMany({ user_id: id });
+        } catch (error) {
+          // The changed hash already rejects those cookies; a stale row only
+          // shows on Active sessions until it expires. Never fail the reset
+          // after the password itself was saved.
+          logger.error(
+            '[users] session cleanup after password reset',
+            error as Error,
+          );
+        }
+      }
 
       if (
         input.designation !== undefined ||

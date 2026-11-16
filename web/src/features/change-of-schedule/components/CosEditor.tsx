@@ -16,7 +16,6 @@ import { createCosForm, saveCosForm } from "@/api/cos.functions";
 import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
-import { isMissingRow } from "@/lib/missing-row";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,7 +107,7 @@ function CosEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  const { data, error, isError } = useQuery({
+  const { data, error, isError, isFetching, refetch } = useQuery({
     ...cosFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -285,8 +284,16 @@ function CosEditorBody({
   // Closing the tab skips the unmount above, so persist on the way out too.
   useEffect(() => flushOnPageHide(auto), [auto]);
 
-  if (isError && isMissingRow(error))
-    return <FormUnavailable backTo="/change-of-schedule" label="Change of Schedule forms" />;
+  if (isError && !form)
+    return (
+      <FormUnavailable
+        backTo="/change-of-schedule"
+        label="Change of Schedule forms"
+        error={error}
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!form) return <CosEditorSkeleton />;
 
   /** Explicit Save, writes now rather than waiting for the timer. */

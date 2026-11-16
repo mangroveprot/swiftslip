@@ -20,6 +20,8 @@ import type {
 import { ActiveFilterBar } from "../components/ActiveFilterBar";
 import type { FilterChip } from "../components/ActiveFilterBar";
 import { AssetTable } from "../components/AssetTable";
+import { AssetTableError } from "../components/AssetTableError";
+import { AssetTableSkeleton } from "../components/AssetTableSkeleton";
 import { BulkActionBar } from "../components/BulkActionBar";
 import { DeleteConfirmModal } from "../components/DeleteConfirmModal";
 import { InventoryTopBar } from "../components/InventoryTopBar";
@@ -40,7 +42,8 @@ function eqIC(value: string | null | undefined, other: string): boolean {
 export function InventoryHomePage() {
   const shell = useInventoryShell();
   const qc = useQueryClient();
-  const { data, isLoading, isError, error } = useQuery(inventoryQueryOptions());
+  const { data, isLoading, isError, error, errorUpdatedAt, isFetching, refetch } =
+    useQuery(inventoryQueryOptions());
   const showToast = useCallback(
     (message: string, level: "success" | "error" | "warning" | "info" = "success") =>
       toast[level](message),
@@ -216,10 +219,12 @@ export function InventoryHomePage() {
     }
   }, [pendingAdd, clearPendingAdd]);
 
-  // Query failure → the original's "Failed to load data: …" toast.
+  // A failed refresh keeps the rows on screen, so it can stay a toast (the
+  // original's "Failed to load data: …"). A first load with nothing to show
+  // gets the in-card error panel instead — one message, not two.
   useEffect(() => {
-    if (isError) showToast(`Failed to load data: ${messageOf(error)}`, "error");
-  }, [isError, error, showToast]);
+    if (isError && data) showToast(`Failed to load data: ${messageOf(error)}`, "error");
+  }, [isError, data, error, showToast]);
 
   /* ----------------------------------------------------- handlers - */
 
@@ -377,8 +382,15 @@ export function InventoryHomePage() {
           />
         </div>
 
-        {isLoading ? (
-          <p className="text-sm text-muted-foreground shrink-0">Loading…</p>
+        {isError && !data ? (
+          <AssetTableError
+            error={error}
+            at={errorUpdatedAt ? new Date(errorUpdatedAt) : null}
+            retrying={isFetching}
+            onRetry={() => void refetch()}
+          />
+        ) : isLoading ? (
+          <AssetTableSkeleton />
         ) : (
           <>
             <div className="shrink-0">

@@ -41,7 +41,31 @@ class CosService extends BaseService<'cos_forms', CosFormRepository> {
           sort: { updated_at: 'desc' },
         },
       );
-      const documents = await withDeletionReminder('cos', rows);
+      if (!rows.length) return { success: true as const, documents: [] };
+
+      // The effectivity date lives on the schedule rows, and it is what names a
+      // form on its way out ("COS form effective 10/03/2026"): one query for
+      // every form on the list, not one per form.
+      const schedules = await this.schedules.findAll(
+        { form_id: rows.map((row) => row.id) },
+        { select: 'form_id,effectivity_date', sort: { idx: 'asc' } },
+      );
+      const effectivity = new Map<string, string[]>();
+      for (const schedule of schedules) {
+        const date = schedule.effectivity_date?.trim();
+        if (!date) continue;
+        const dates = effectivity.get(schedule.form_id) ?? [];
+        if (!dates.includes(date)) dates.push(date);
+        effectivity.set(schedule.form_id, dates);
+      }
+
+      const documents = await withDeletionReminder(
+        'cos',
+        rows.map((row) => ({
+          ...row,
+          effectivity_dates: (effectivity.get(row.id) ?? []).sort(),
+        })),
+      );
       return { success: true as const, documents };
     } catch (error) {
       return toFailure(error);

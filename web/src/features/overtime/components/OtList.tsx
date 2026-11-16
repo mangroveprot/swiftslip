@@ -11,6 +11,7 @@ import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
+import { formDeleteCopy, otSubject } from "@/lib/form-delete-copy";
 import { toast } from "@/lib/toast";
 import { otFormsQueryOptions } from "../queries";
 import { formatOtDateFiled } from "../lib/ot-line";
@@ -22,6 +23,8 @@ type OtRow = {
   department: string;
   position: string;
   date_filed: string;
+  /** Date of OT work on each row; names the form when deleted. */
+  ot_dates: string[];
   attachment_approved: boolean;
   updated_at: string;
   /** Set when a retention cleanup would take this form within a week. */
@@ -40,6 +43,8 @@ export function OtList() {
   useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<OtRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // Named by its date of work, not the owner name: every row here is the same person.
+  const deleting = pendingDelete ? formDeleteCopy(otSubject(pendingDelete)) : null;
 
   // A draft lives only in the browser, so there is nothing here to filter out,
   // the list shows exactly the forms that are in the database.
@@ -50,12 +55,12 @@ export function OtList() {
   }
 
   async function confirmDelete() {
-    if (!pendingDelete) return;
+    if (!pendingDelete || !deleting) return;
     setDeleteBusy(true);
     try {
       await deleteOtForm({ data: { id: pendingDelete.id } });
       await qc.invalidateQueries({ queryKey: otFormsQueryOptions().queryKey });
-      toast.success(`Deleted "${pendingDelete.employee_name || "Untitled form"}"`);
+      toast.success(deleting.toast);
       setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete that form.");
@@ -106,7 +111,7 @@ export function OtList() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && !deleteBusy && setPendingDelete(null)}
-        title={`Delete "${pendingDelete?.employee_name || "Untitled form"}"?`}
+        title={deleting?.title ?? "Delete this form?"}
         description="This permanently removes the form, its OT lines and its approval attachment. This can't be undone."
         confirmLabel="Delete"
         busy={deleteBusy}

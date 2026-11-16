@@ -16,12 +16,14 @@ import { deleteObForm } from "@/api/official-business.functions";
 import { ApprovedStamp } from "@/components/common/ApprovedStamp";
 import { FormCardMeta } from "@/components/common/FormCardMeta";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ResubmitBadge } from "@/components/common/ResubmitBadge";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
+import { formDeleteCopy, obSubject } from "@/lib/form-delete-copy";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import type { ObHrStatus, ObResubmitEvent } from "@swiftslip/shared/hr";
@@ -85,13 +87,23 @@ const CARD_BORDER = "border-[#c9cec8] dark:border-[#4a514b]";
 export function ObList() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data: forms, isLoading, isError, error, refetch } = useQuery(obFormsQueryOptions());
+  const {
+    data: forms,
+    isLoading,
+    isError,
+    error,
+    errorUpdatedAt,
+    isFetching,
+    refetch,
+  } = useQuery(obFormsQueryOptions());
   // Warm the profile while the list is on screen: a new form is built from it the
   // moment "New form" is pressed, so fetching it only then would put a skeleton in
   // front of the user for data we could already have had.
   useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<ObRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // Named by its date, not the owner name: every row here is the same person.
+  const deleting = pendingDelete ? formDeleteCopy(obSubject(pendingDelete)) : null;
   const [search, setSearch] = useState("");
   const [range, setRange] = useState<DateRange>("any");
   const [groupSimilar, setGroupSimilar] = useState(true);
@@ -155,12 +167,12 @@ export function ObList() {
   }
 
   async function confirmDelete() {
-    if (!pendingDelete) return;
+    if (!pendingDelete || !deleting) return;
     setDeleteBusy(true);
     try {
       await deleteObForm({ data: { id: pendingDelete.id } });
       await qc.invalidateQueries({ queryKey: obFormsQueryOptions().queryKey });
-      toast.success(`Deleted "${pendingDelete.employee_name || "Untitled form"}"`);
+      toast.success(deleting.toast);
       setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete that form.");
@@ -239,16 +251,13 @@ export function ObList() {
           {isLoading ? (
             <ObListSkeleton />
           ) : isError ? (
-            <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-              <p>{error instanceof Error ? error.message : "Could not load forms."}</p>
-              <button
-                type="button"
-                className="mt-2 font-medium underline underline-offset-4"
-                onClick={() => void refetch()}
-              >
-                Try again
-              </button>
-            </div>
+            <ErrorStateFromError
+              className="mt-6"
+              error={error}
+              at={errorUpdatedAt ? new Date(errorUpdatedAt) : null}
+              retrying={isFetching}
+              onRetry={() => void refetch()}
+            />
           ) : allForms.length === 0 ? (
             <EmptyForms onCreate={newForm} />
           ) : visible.length === 0 ? (
@@ -271,7 +280,7 @@ export function ObList() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && !deleteBusy && setPendingDelete(null)}
-        title={`Delete "${pendingDelete?.employee_name || "Untitled form"}"?`}
+        title={deleting?.title ?? "Delete this form?"}
         description="This permanently removes the form and its itinerary. This can't be undone."
         confirmLabel="Delete"
         busy={deleteBusy}

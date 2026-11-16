@@ -76,7 +76,7 @@ export function showroomSheetRows(rows: Showroom[]): string[][] {
  */
 export function showroomSummaryRows(
   summary: ShowroomCctvSummary,
-): Array<Array<string | number>> {
+): [Array<string | number>, Array<string | number>] {
   return [
     ["Total units", "CCTV installed", "Units available"],
     [summary.totalUnits, summary.installed, summary.available],

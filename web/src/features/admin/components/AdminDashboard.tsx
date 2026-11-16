@@ -9,6 +9,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { FORM_TYPES, type FormEvent, type FormKind } from "@swiftslip/shared/forms";
@@ -79,16 +80,13 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       <div className="mt-5 border-t" />
 
       {isError ? (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          <span>{error instanceof Error ? error.message : "Could not load dashboard totals."}</span>
-          <button
-            type="button"
-            onClick={() => void refetch()}
-            className="font-medium underline underline-offset-4"
-          >
-            Try again
-          </button>
-        </div>
+        <ErrorStateFromError
+          className="mt-5"
+          error={error}
+          onRetry={() => void refetch()}
+          retrying={statsQuery.isFetching}
+          at={statsQuery.errorUpdatedAt ? new Date(statsQuery.errorUpdatedAt) : null}
+        />
       ) : null}
 
       <div className="grid grid-cols-1 divide-y border-b sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:divide-border">
@@ -490,6 +488,10 @@ function activityVerb(action: string) {
       return "created an OT form";
     case "ot.deleted":
       return "removed an OT form";
+    case "liq.created":
+      return "created a liquidation report";
+    case "liq.deleted":
+      return "removed a liquidation report";
     case "record.created":
       return "created a DTR record";
     case "record.deleted":
@@ -772,9 +774,7 @@ function LatestActivityPanel({
       {isLoading ? (
         <FeedSkeleton />
       ) : isError ? (
-        <p className="mt-4 text-sm text-muted-foreground">
-          {error instanceof Error ? error.message : "Could not load activity."}
-        </p>
+        <ErrorStateFromError className="mt-4" error={error} announce={false} />
       ) : rows.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">No activity yet.</p>
       ) : (
@@ -925,9 +925,7 @@ function SecurityPanel({
       {isLoading ? (
         <FeedSkeleton />
       ) : isError ? (
-        <p className="mt-4 text-sm text-muted-foreground">
-          {error instanceof Error ? error.message : "Could not load security events."}
-        </p>
+        <ErrorStateFromError className="mt-4" error={error} announce={false} />
       ) : items.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">No sign-in activity yet.</p>
       ) : (

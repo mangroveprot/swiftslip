@@ -17,7 +17,6 @@ import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
-import { isMissingRow } from "@/lib/missing-row";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,7 +103,7 @@ function LoaEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  const { data, error, isError } = useQuery({
+  const { data, error, isError, isFetching, refetch } = useQuery({
     ...loaFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -323,8 +322,16 @@ function LoaEditorBody({
   // Closing the tab skips the unmount above, so persist on the way out too.
   useEffect(() => flushOnPageHide(auto), [auto]);
 
-  if (isError && isMissingRow(error))
-    return <FormUnavailable backTo="/leave-of-absence" label="Leave of Absence forms" />;
+  if (isError && !form)
+    return (
+      <FormUnavailable
+        backTo="/leave-of-absence"
+        label="Leave of Absence forms"
+        error={error}
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!form) return <LoaEditorSkeleton />;
 
   /** Explicit Save, writes now rather than waiting for the timer. */

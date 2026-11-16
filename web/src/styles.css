@@ -1421,6 +1421,11 @@
     --inv-line: #e6e7df;
     --inv-navy: #0f1b4d;
     --inv-orange: #ea6a2e;
+    /* The shared ErrorState's filled action: white 13px on --inv-orange is
+       only ~3.2:1, so the inventory hands it the same deep orange the drawer's
+       Save and the sidebar's Add asset use. */
+    --error-state-accent: #c24a0e;
+    --error-state-accent-foreground: #ffffff;
     /* One accent inside the inventory: interaction is orange, not app blue. */
     --color-brand: var(--inv-orange);
     --color-brand-600: #b9491a;
@@ -1542,6 +1547,101 @@
     line-height: 1;
     text-align: center;
     white-space: nowrap;
+  }
+
+  /* --- Shared error state (components/common/ErrorState.tsx) --------------
+     One block for every "this could not load": neutral tile, one sentence,
+     one filled action, technical facts kept to the footer. Themes retint the
+     action through --error-state-accent (the inventory points it at its
+     contrast-safe orange), so the same block works on the blue app too. */
+  .error-state {
+    @apply flex flex-col items-center px-6 py-10 text-center;
+  }
+
+  /* Fills the viewport: for a route that could not load at all, so the block
+     lands where the page would have been instead of at the top of a blank
+     screen. Padding and type stay identical, so the two densities never drift
+     apart. */
+  .error-state--page {
+    @apply justify-center;
+    min-height: 100dvh;
+  }
+
+  .error-state__icon {
+    @apply flex size-11 shrink-0 items-center justify-center rounded-[0.875rem] bg-muted
+           text-muted-foreground;
+  }
+
+  .error-state__title {
+    @apply mt-4 text-xl font-semibold tracking-tight text-foreground;
+  }
+
+  .error-state__text {
+    @apply mt-2 max-w-[24rem] text-sm leading-[1.6] text-muted-foreground;
+  }
+
+  .error-state__actions {
+    @apply mt-5 flex flex-wrap items-center justify-center gap-2;
+  }
+
+  /* Geometry copied from `components/ui/button` (h-9, px-4, text-sm,
+     font-medium, rounded-md) so an error's action is the app's button and not a
+     bigger one. Only the fill stays local: it comes from --error-state-accent so
+     the inventory keeps its orange while the blue app keeps --primary. */
+  .error-state__primary {
+    @apply inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-md px-4
+           text-sm font-medium shadow transition-colors
+           disabled:cursor-not-allowed disabled:opacity-60;
+    background-color: var(--error-state-accent, var(--primary));
+    color: var(--error-state-accent-foreground, var(--primary-foreground));
+  }
+
+  /* Darken the surface, never the label. */
+  .error-state__primary:hover:not(:disabled) {
+    background-image: linear-gradient(rgb(0 0 0 / 8%), rgb(0 0 0 / 8%));
+  }
+
+  /* The app's `outline` button, at the same size: a real control beside the
+     filled one, at every width (it used to be bare text on desktop and a
+     bordered box on phones, which read as two different components). */
+  .error-state__secondary {
+    @apply inline-flex h-9 cursor-pointer items-center justify-center rounded-md border
+           border-input bg-background px-4 text-sm font-medium text-foreground shadow-sm
+           transition-colors hover:bg-accent hover:text-accent-foreground
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  /* Copy is a utility, not an action: quiet text, so two real buttons never sit
+     side by side in the block. */
+  .error-state__details {
+    @apply inline-flex h-9 cursor-pointer items-center justify-center rounded-md px-2
+           text-[0.8125rem] font-medium text-muted-foreground transition-colors
+           hover:text-foreground hover:underline hover:underline-offset-4
+           disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .error-state__primary:focus-visible,
+  .error-state__secondary:focus-visible,
+  .error-state__details:focus-visible {
+    outline: 2px solid var(--error-state-accent, var(--primary));
+    outline-offset: 2px;
+  }
+
+  .error-state__meta {
+    @apply mt-4 text-[0.6875rem] tabular-nums text-muted-foreground;
+    letter-spacing: 0.01em;
+  }
+
+  /* Stack the actions on phones: same block, full-width targets. */
+  @media (max-width: 639.98px) {
+    .error-state__actions {
+      @apply w-full flex-col items-stretch gap-2;
+    }
+
+    .error-state__primary,
+    .error-state__secondary {
+      @apply w-full;
+    }
   }
 
   /* Home / asset inventory page header only */
@@ -1969,6 +2069,18 @@
 
   .asset-table__meta strong {
     @apply font-semibold;
+  }
+
+  /* --- Asset table state surfaces ----------------------------------------
+     The skeleton reuses the table's own classes, so only the bars are new.
+     The failure block itself is the shared `ErrorState`; here it only has to
+     fill the space the rows would have used. */
+  .asset-skeleton {
+    @apply block animate-pulse rounded bg-muted;
+  }
+
+  .asset-table__error {
+    @apply flex-1 justify-center;
   }
 
   /* --- Showrooms header stats ---------------------------------------------

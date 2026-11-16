@@ -12,9 +12,11 @@ import { useQuery } from "@tanstack/react-query";
 import { logReportDownload } from "@/api/inventory.functions";
 import { toast } from "@/lib/toast";
 import { ReportAssetCard } from "../components/ReportAssetCard";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
+import { ReportSkeleton } from "../components/ReportSkeleton";
 import { formatFloorDisplay } from "../lib/helpers";
 import { buildReportFileName, downloadReportWorkbook } from "../lib/report-export";
-import { reportQueryOptions } from "../queries";
+import { inventoryQueryOptions, reportQueryOptions } from "../queries";
 import { useInventoryShell } from "../shell-context";
 
 function messageOf(err: unknown): string {
@@ -83,11 +85,19 @@ export function InventoryReportsPage() {
   );
 
   const branchId = shell.selectedBranchId;
+  // The page is reachable on a hard load, so the branch list can still be in
+  // flight (or failed) when the report query is disabled. Same key as the
+  // layout's query, so this never fires a second request.
+  const inventory = useQuery(inventoryQueryOptions());
+  const inventoryFailed = inventory.isError && inventory.data == null;
   const {
     data: document,
     isLoading,
     isError,
     error,
+    errorUpdatedAt,
+    isFetching,
+    refetch,
   } = useQuery({
     ...reportQueryOptions(branchId ?? -1),
     enabled: branchId != null,
@@ -184,20 +194,40 @@ export function InventoryReportsPage() {
         </header>
 
         <div className="flex-1 min-h-0 overflow-y-auto">
-          {shellLoading || (branchId != null && isLoading) ? (
-            <p className="text-sm text-muted-foreground">Loading report…</p>
+          {inventoryFailed ? (
+            <div className="bg-card text-card-foreground border border-border rounded-lg">
+              <ErrorStateFromError
+                error={inventory.error}
+                at={inventory.errorUpdatedAt ? new Date(inventory.errorUpdatedAt) : null}
+                retrying={inventory.isFetching}
+                onRetry={() => void inventory.refetch()}
+              />
+            </div>
+          ) : isError && document == null ? (
+            <div className="bg-card text-card-foreground border border-border rounded-lg">
+              <ErrorStateFromError
+                error={error ?? new Error("The report came back empty.")}
+                at={errorUpdatedAt ? new Date(errorUpdatedAt) : null}
+                retrying={isFetching}
+                onRetry={() => void refetch()}
+              />
+            </div>
+          ) : shellLoading || (branchId != null && isLoading) ? (
+            <ReportSkeleton />
           ) : branchId == null ? (
             <div className="bg-card text-card-foreground border border-border rounded-lg px-5 py-10 text-center">
               <p className="text-sm text-muted-foreground">
                 Select a branch to preview its inventory report.
               </p>
             </div>
-          ) : isError || document == null ? (
-            <div className="bg-card text-card-foreground border border-border rounded-lg px-5 py-10 text-center">
-              <p className="text-sm text-muted-foreground">Could not build the report.</p>
-              {isError && error ? (
-                <p className="text-xs text-red-600 mt-2">{messageOf(error)}</p>
-              ) : null}
+          ) : document == null ? (
+            <div className="bg-card text-card-foreground border border-border rounded-lg">
+              <ErrorStateFromError
+                error={error ?? new Error("The report came back empty.")}
+                at={errorUpdatedAt ? new Date(errorUpdatedAt) : null}
+                retrying={isFetching}
+                onRetry={() => void refetch()}
+              />
             </div>
           ) : (
             <div className="bg-card text-card-foreground border border-border rounded-lg overflow-hidden shadow-sm">

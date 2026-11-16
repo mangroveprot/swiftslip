@@ -42,6 +42,12 @@ const EnvSchema = z.object({
     .int()
     .positive()
     .default(60 * 60 * 12),
+  // "Keep me signed in", ticked by default on the sign-in screen.
+  SESSION_REMEMBER_MAX_AGE_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 30),
 
   // Supabase (Dashboard → Project Settings → API)
   SUPABASE_URL: z
@@ -184,6 +190,7 @@ function buildConfig() {
       secret: env.SESSION_SECRET,
       cookieName: env.SESSION_COOKIE_NAME,
       maxAgeSeconds: env.SESSION_MAX_AGE_SECONDS,
+      rememberMaxAgeSeconds: env.SESSION_REMEMBER_MAX_AGE_SECONDS,
     },
     gemini: {
       /** `undefined` means the AI features answer "not configured". */

@@ -50,6 +50,8 @@ export const roleSchema = z.enum(["admin", "user"]);
 export const signInInput = z.object({
   idNumber: z.string().trim().min(1, "Enter your ID number.").max(64),
   password: z.string().max(200),
+  /** "Keep me signed in" for 30 days instead of 12 hours. Defaults on. */
+  rememberMe: z.boolean().default(true),
 });
 
 export const idInput = z.object({ id });

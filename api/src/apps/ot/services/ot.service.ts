@@ -45,7 +45,31 @@ class OtService extends BaseService<'ot_forms', OtFormRepository> {
           sort: { updated_at: 'desc' },
         },
       );
-      const documents = await withDeletionReminder('ot', rows);
+      if (!rows.length) return { success: true as const, documents: [] };
+
+      // The date of the work lives on the OT rows, and it is what names a form
+      // on its way out ("OT form for 10/03/2026"): one query for every form on
+      // the list, not one per form.
+      const entries = await this.entries.findAll(
+        { form_id: rows.map((row) => row.id) },
+        { select: 'form_id,date_of_ot', sort: { idx: 'asc' } },
+      );
+      const workedOn = new Map<string, string[]>();
+      for (const entry of entries) {
+        const date = entry.date_of_ot?.trim();
+        if (!date) continue;
+        const dates = workedOn.get(entry.form_id) ?? [];
+        if (!dates.includes(date)) dates.push(date);
+        workedOn.set(entry.form_id, dates);
+      }
+
+      const documents = await withDeletionReminder(
+        'ot',
+        rows.map((row) => ({
+          ...row,
+          ot_dates: (workedOn.get(row.id) ?? []).sort(),
+        })),
+      );
       return { success: true as const, documents };
     } catch (error) {
       return toFailure(error);

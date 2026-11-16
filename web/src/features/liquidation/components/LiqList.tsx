@@ -11,6 +11,7 @@ import { PageTitle } from "@/components/common/PageTitle";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
+import { formDeleteCopy, liqSubject } from "@/lib/form-delete-copy";
 import { toast } from "@/lib/toast";
 import { liqDate, liqMoney } from "@swiftslip/shared/liq";
 import { liqFormsQueryOptions } from "../queries";
@@ -43,6 +44,8 @@ export function LiqList() {
   useQuery(profileQueryOptions());
   const [pendingDelete, setPendingDelete] = useState<LiqRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // Named by the date prepared, not the owner name: every row here is the same person.
+  const deleting = pendingDelete ? formDeleteCopy(liqSubject(pendingDelete)) : null;
 
   const visible = forms ?? [];
 
@@ -51,12 +54,12 @@ export function LiqList() {
   }
 
   async function confirmDelete() {
-    if (!pendingDelete) return;
+    if (!pendingDelete || !deleting) return;
     setDeleteBusy(true);
     try {
       await deleteLiqForm({ data: { id: pendingDelete.id } });
       await qc.invalidateQueries({ queryKey: liqFormsQueryOptions().queryKey });
-      toast.success(`Deleted "${pendingDelete.prepared_by || "Untitled form"}"`);
+      toast.success(deleting.toast);
       setPendingDelete(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete that form.");
@@ -108,7 +111,7 @@ export function LiqList() {
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && !deleteBusy && setPendingDelete(null)}
-        title={`Delete "${pendingDelete?.prepared_by || "Untitled form"}"?`}
+        title={deleting?.title ?? "Delete this form?"}
         description="This permanently removes the form. This can't be undone."
         confirmLabel="Delete"
         busy={deleteBusy}

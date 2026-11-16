@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { deleteStorageOrphans } from "@/api/storage.functions";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -349,9 +350,12 @@ export function StorageOrphanCleanupDialog({
             Listing orphaned files…
           </div>
         ) : preview.isError ? (
-          <p className="rounded-lg border border-border px-3.5 py-4 text-sm text-muted-foreground">
-            The list could not be loaded. Close this window and try again.
-          </p>
+          <div className="rounded-lg border border-border">
+            <ErrorStateFromError
+              error={preview.error}
+              at={preview.errorUpdatedAt ? new Date(preview.errorUpdatedAt) : null}
+            />
+          </div>
         ) : files.length === 0 ? (
           <p className="rounded-lg border border-border px-3.5 py-4 text-sm text-muted-foreground">
             Nothing to clean up. Every stored file is linked to a form.

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { Input } from "@/components/ui/input";
@@ -199,6 +200,8 @@ function secondaryFor(row: LogRow) {
     case "cos.deleted":
     case "ot.created":
     case "ot.deleted":
+    case "liq.created":
+    case "liq.deleted":
     case "record.created":
     case "record.deleted":
       return shorten(row.detail) || null;
@@ -342,6 +345,18 @@ function entryMain(row: LogRow): ReactNode {
           {actor} removed a DTR record for <Target value={row.target} />
         </>
       );
+    case "liq.created":
+      return (
+        <>
+          {actor} created a liquidation report for <Target value={row.target} />
+        </>
+      );
+    case "liq.deleted":
+      return (
+        <>
+          {actor} removed a liquidation report for <Target value={row.target} />
+        </>
+      );
     case "asset.created":
       return (
         <>
@@ -418,6 +433,8 @@ function iconFor(action: string): LucideIcon {
     case "cos.deleted":
     case "ot.created":
     case "ot.deleted":
+    case "liq.created":
+    case "liq.deleted":
       return FileText;
     default:
       return Activity;
@@ -833,11 +850,12 @@ export function ActivityLogs({
       {pageQuery.isLoading ? (
         <ActivitySkeleton />
       ) : pageQuery.isError ? (
-        <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-          {pageQuery.error instanceof Error
-            ? pageQuery.error.message
-            : "Could not load activity logs."}
-        </p>
+        <ErrorStateFromError
+          error={pageQuery.error}
+          onRetry={() => void pageQuery.refetch()}
+          retrying={pageQuery.isFetching}
+          at={pageQuery.errorUpdatedAt ? new Date(pageQuery.errorUpdatedAt) : null}
+        />
       ) : days.length === 0 ? (
         <div className="px-4 py-12 text-center">
           <p className="text-sm font-medium">

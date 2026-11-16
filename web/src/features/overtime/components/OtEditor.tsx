@@ -17,7 +17,6 @@ import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
 import { OtherAttachmentsPrint } from "@/components/common/OtherAttachmentsPrint";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
-import { isMissingRow } from "@/lib/missing-row";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,7 +111,7 @@ function OtEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  const { data, error, isError } = useQuery({
+  const { data, error, isError, isFetching, refetch } = useQuery({
     ...otFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -298,8 +297,16 @@ function OtEditorBody({
   // Closing the tab skips the unmount above, so persist on the way out too.
   useEffect(() => flushOnPageHide(auto), [auto]);
 
-  if (isError && isMissingRow(error))
-    return <FormUnavailable backTo="/overtime" label="Overtime forms" />;
+  if (isError && !form)
+    return (
+      <FormUnavailable
+        backTo="/overtime"
+        label="Overtime forms"
+        error={error}
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!form) return <OtEditorSkeleton />;
 
   /** Explicit Save, writes now rather than waiting for the timer. */

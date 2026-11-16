@@ -18,6 +18,7 @@ import {
   setAccessRule,
   setAppDefault,
 } from "@/api/access-rules.functions";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { toast } from "@/lib/toast";
@@ -234,8 +235,6 @@ export function AppAccess() {
     });
   }
 
-  const error = overview.error instanceof Error ? overview.error.message : null;
-
   return (
     <section className="rounded-xl border bg-card p-3 sm:p-4">
       <div className="min-w-0">
@@ -271,8 +270,14 @@ export function AppAccess() {
 
       <div className="mt-3 border-t" />
 
-      {error ? (
-        <p className="mt-4 text-sm text-destructive">{error}</p>
+      {overview.error ? (
+        <ErrorStateFromError
+          className="mt-4"
+          error={overview.error}
+          onRetry={() => void overview.refetch()}
+          retrying={overview.isFetching}
+          at={overview.errorUpdatedAt ? new Date(overview.errorUpdatedAt) : null}
+        />
       ) : overview.isLoading || !data ? (
         <AccessSkeleton />
       ) : (

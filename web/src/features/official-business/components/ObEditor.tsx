@@ -24,8 +24,8 @@ import {
 import { ApiError } from "@/lib/api-client";
 import { PageTitle } from "@/components/common/PageTitle";
 import { PreviewLightbox } from "@/components/common/PreviewLightbox";
+import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { FormUnavailable } from "@/components/common/FormUnavailable";
-import { isMissingRow } from "@/lib/missing-row";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,7 +173,7 @@ function ObEditorBody({
   const [rowId, setRowId] = useState<string | null>(isDraft ? null : id);
   const rowIdRef = useRef<string | null>(isDraft ? null : id);
 
-  const { data, error, isError } = useQuery({
+  const { data, error, isError, isFetching, refetch } = useQuery({
     ...obFormQueryOptions(rowId ?? ""),
     enabled: rowId !== null,
   });
@@ -434,8 +434,16 @@ function ObEditorBody({
   // Closing the tab skips the unmount above, so persist on the way out too.
   useEffect(() => flushOnPageHide(auto), [auto]);
 
-  if (isError && isMissingRow(error))
-    return <FormUnavailable backTo="/official-business" label="Official Business forms" />;
+  if (isError && !form)
+    return (
+      <FormUnavailable
+        backTo="/official-business"
+        label="Official Business forms"
+        error={error}
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    );
   if (!form) return <ObEditorSkeleton />;
 
   const snapshot = localRef.current ?? "";
@@ -951,15 +959,15 @@ function ObEditorBody({
  */
 class ObEditorErrorBoundary extends Component<
   { id: string; children: React.ReactNode },
-  { hasError: boolean }
+  { hasError: boolean; error: Error | null }
 > {
   constructor(props: { id: string; children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(): { hasError: boolean } {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): { hasError: boolean; error: Error } {
+    return { hasError: true, error };
   }
 
   override componentDidCatch(error: Error, info: React.ErrorInfo) {
@@ -969,19 +977,14 @@ class ObEditorErrorBoundary extends Component<
   override render() {
     if (!this.state.hasError) return this.props.children;
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 text-center">
-        <p className="text-sm font-medium text-destructive">The editor could not load.</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Try refreshing the page. Your work is backed up locally.
-        </p>
-        <button
-          type="button"
-          className="btn btn-primary mt-4"
-          onClick={() => window.location.reload()}
-        >
-          Refresh
-        </button>
-      </div>
+      <ErrorStateFromError
+        className="min-h-[50vh] justify-center"
+        error={this.state.error}
+        title="The editor could not load"
+        description="Try refreshing the page. Your work is backed up locally."
+        onRetry={() => window.location.reload()}
+        retryLabel="Refresh"
+      />
     );
   }
 }

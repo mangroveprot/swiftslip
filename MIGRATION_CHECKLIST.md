@@ -145,6 +145,31 @@ auto-fixed at the start of Phase 5). Still not exercised against the real RGC da
 - [ ] Golden test (`web/scripts/inventory-report-golden`) only covers the client-side Excel export, which is
       untouched. Nothing yet compares the new `buildReportDocumentFromRows` output with the old one — compare
       `GET /api/inventory/reports/<branchId>` against the old `getReportDocument` for one branch.
+- [x] Assets page state UI: a loading skeleton that matches the board (tabs, toolbar, cards, 45 px
+      rows, footer) and — through the shared `components/common/ErrorState` — an in-card failure
+      block with the mock's neutral icon tile, one sentence, `Try again`, a tiny
+      `Error 503 · date` footer and `Copy error details` (2026-11-16, see `ACTIVITY_LOG.md`).
+- [x] Reports / Showrooms / Settings state UI: layout-matching skeletons (report sheet + totals +
+      Excel tabs, banner stats + board tabs/toolbar/table, five lookup cards) and the shared
+      `ErrorStateFromError` in each page's own container, with `Try again` kept through a retry and
+      a toast when only a refresh fails (2026-11-16, see `ACTIVITY_LOG.md`).
+- [x] `ErrorState` made centralisable before rolling it out beyond inventory: `onRetry`/`retrying`/
+      `retryLabel` as the first-class retry (instead of a hand-built `primaryAction`),
+      `secondaryAction` renders **alongside** `details` instead of being dropped, `density="page"`
+      (`min-height: 100dvh`) for a route that could not load at all, and `announce={false}` to opt a
+      re-rendering section out of `role="alert"` (2026-11-16, see `ACTIVITY_LOG.md`).
+- [x] Error-state rollout beyond inventory: the admin storage orphan-cleanup dialog's failed preview
+      renders the shared `ErrorStateFromError` (no retry — closing the dialog is the action), and the
+      four inventory pages (Assets, Reports, Showrooms, Settings) were audited clean: no
+      `InventoryErrorState` / `describeLoadError` left, no stale `WifiOff` / `Lock` / `ShieldOff` /
+      `SearchX` / `CircleAlert` / `RotateCw` imports (2026-11-16, see `ACTIVITY_LOG.md`).
+- [x] One error language app-wide: `describeErrorState` (`web/src/lib/error-state-copy.ts`) and
+      `ErrorStateFromError` now carry 12 surfaces — inventory Assets / Reports / Showrooms / Settings,
+      HR queue, OB list, admin dashboard totals + both feeds, App Access, Activity Logs, storage
+      orphan cleanup, the OB editor boundary, `FormUnavailable` (7 editors) and the root
+      `RouteError`. Inventory's `InventoryErrorState` and `load-error.ts` (+ its test) are deleted;
+      the retry button is withheld on 400/403/404/409 because retrying repeats the refusal, and a
+      401 offers `Sign in` (sign-in is `/`) (2026-11-16, see `ACTIVITY_LOG.md`).
 
 Intentional changes in Phase 4 (do not "fix" back):
 - Settings mutations no longer return `{ ok:false, level, message }`. They fail with the standard error shape
@@ -197,6 +222,11 @@ Intentional changes in Phase 5 (do not "fix" back):
 - Build output is static `web/dist` (the Cloudflare/Nitro worker target is gone). Any static host works but must
   serve `index.html` for unknown paths. `@tanstack/devtools-vite` was dropped (no devtools UI was mounted).
 - Session expiry mid-use surfaces as a 401 `ApiError`; since Phase 6 a global handler sends the user to the login page.
+- [x] **Changed 2026-11-16:** a form's delete confirmation and success toast name it by its own date
+      (`Deleted OB form dated 10/03/2026`, `Deleted DTR for 11/01/2026 - 11/15/2026`), not by the
+      owner's name, which is identical on every row of a personal list. `web/src/lib/form-delete-copy.ts`
+      builds both lines; `GET /cos` and `GET /ot` now carry `effectivity_dates` / `ot_dates` for it
+      (one extra owner-scoped query per list, never one per form).
 
 ### Phase 6 — Hardening ✅ code done; lint/typecheck + real-environment checks pending
 Written without network access: files were syntax-checked only. **Not** run: `npm install`,
@@ -697,12 +727,43 @@ Intentional behaviour (do not "fix" back):
 - PREPARED BY prints the saved signature; there is still no HR queue, no Word export and no
   signature capture inside LIQ itself (the profile's signature is the one used).
 
+### Phase 11 — Server-side sessions ✅ code done; migration not applied yet
+
+Sign-out used to clear only the browser's copy of the cookie, so a cookie copied beforehand stayed
+valid until it expired. A session is now a row, and the cookie only names it.
+- [x] `api/drizzle/migrations/0042_sessions.sql` — `sessions` (`user_id` → `users` ON DELETE CASCADE,
+      `token_hash` UNIQUE, `remembered`, `ip`, `user_agent`, `created_at`, `last_seen_at`,
+      `expires_at`), indexes, RLS on with no policies like the other tables
+- [x] `SessionService` issues / validates / revokes the row; `POST /auth/sign-out` deletes it, so a
+      copy of the cookie is dead immediately. `last_seen_at` is touched at most once a minute
+- [x] Signing in again in the same browser deletes the session its cookie named; an account keeps
+      at most 10 sessions (oldest out), so a stale login tab cannot leave a live cookie behind
+- [x] The `signin.success` audit row is written only after the session row exists
+- [x] "Remember Me" (checked by default) → 30 days; unticked → 12 h
+      (`SESSION_REMEMBER_MAX_AGE_SECONDS`)
+- [x] Admin Panel → Manage → **Active sessions** (`GET /api/admin/sessions`,
+      `DELETE /api/admin/sessions/:id`), admin-only; the current session is marked "This device" and
+      has no revoke button on its row
+- [x] An administrator's password reset also deletes that account's sessions; deleting an account
+      cascades
+- [x] `npm run typecheck`, `npm run lint`, `npm run test -w @swiftslip/web` (52/52) pass; sign-in and
+      Active sessions rendered at 1440 and 390 against a local stub
+- [ ] **Owner to run:** paste `0042_sessions.sql` in the Supabase SQL Editor **before** deploying.
+      Until then sign-in fails with a database error (the table does not exist) and every existing
+      cookie is refused once. After deploying, sign in and open Admin Panel → Active sessions; sign
+      in on a second browser, sign out there, and confirm that browser's copied cookie now gets 401.
+
 ## 4. Cookie / auth contract (Phase 2, needed by Phase 5)
 
-- Cookie name `swiftslip-session`, `httpOnly`, `sameSite=lax`, `secure` in production, 12 h.
-- Value = `base64url(json).hmacSHA256` signed with `SESSION_SECRET`. Payload: `{id, role, label, idNumber, pw, exp}`.
+- Cookie name `swiftslip-session`, `httpOnly`, `sameSite=lax`, `secure` in production, 12 h — or
+  30 days when "Keep me signed in" was ticked (the default since 2026-11-16).
+- Value = `base64url(json).hmacSHA256` signed with `SESSION_SECRET`. Payload:
+  `{sid, id, role, label, idNumber, pw, exp}`.
+- `sid` names a `public.sessions` row, which stores only `sha256(sid)`; `POST /auth/sign-out` deletes
+  that row, so the cookie and any copy of it stop working at once.
 - `pw` = first 16 hex of SHA-256 of the stored `password_hash`; changing a password signs out other devices.
-- Every request re-reads `users` (role/deleted/pw changes apply immediately).
+- Every request re-reads `sessions` (exists, not expired, same user) and `users` (role/deleted/pw
+  changes apply immediately).
 - The browser must send `credentials: 'include'`; the API sets `cors({ credentials: true, origin: CORS_ORIGIN })`.
 
 ### Endpoints (all under `/api`)
@@ -728,6 +789,8 @@ Intentional behaviour (do not "fix" back):
 | PATCH | `/org-options` | admin | `renameOrgOptionInput` | – |
 | DELETE | `/org-options?kind=&value=` | admin | `orgKindInput` (query) | – |
 | GET | `/admin/stats` | admin | – | `AdminStats` |
+| GET | `/admin/sessions` | admin | – | `documents`: live sessions (person, device, IP, seen, expires) |
+| DELETE | `/admin/sessions/:id` | admin | – | – (ends that session now) |
 | GET | `/activity-logs` | admin | `listActivityLogsQuery` | `documents` + `total` |
 | GET | `/activity-logs/counts` | admin | `activityLogRangeInput` (query) | counts |
 | GET | `/activity-logs/feed?feed=` | admin | `activityLogFeedInput` (query) | `documents` |
