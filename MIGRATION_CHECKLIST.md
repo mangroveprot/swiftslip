@@ -227,6 +227,13 @@ Intentional changes in Phase 5 (do not "fix" back):
       owner's name, which is identical on every row of a personal list. `web/src/lib/form-delete-copy.ts`
       builds both lines; `GET /cos` and `GET /ot` now carry `effectivity_dates` / `ot_dates` for it
       (one extra owner-scoped query per list, never one per form).
+- [x] **Added 2026-11-16:** **Share as image** and **Save as PNG** in every editor's Export menu
+      (OB, LOA, COS, OT, LIQ, DTR): `sheetPng()` captures the same print sheet the PDF uses. Phones
+      get the system share sheet; desktops get the PNG copied to the clipboard by the page itself
+      (Windows' own share dialog handed it to Viber's handler, which printed "copied, paste it"
+      over an empty clipboard), then a `.png` download. `Save as PNG` is the file on demand. The form
+      only — the approval slip stays out of the image, nothing is uploaded, and share/clipboard need
+      https or localhost.
 
 ### Phase 6 — Hardening ✅ code done; lint/typecheck + real-environment checks pending
 Written without network access: files were syntax-checked only. **Not** run: `npm install`,
@@ -271,11 +278,18 @@ Manual, admin-only cleanup of forms older than N days, plus their storage files.
       reads `owner_id`; recipients are grouped so a 200-form sweep is one bell row, not 200.
       No migration: `notifications.kind` is free text.
 - [x] `npm run typecheck`, `npm run lint`, `npm run build` pass (6 pre-existing `react-refresh` warnings only)
+- [x] **Changed 2026-11-16:** the page had two controls for one action. `Run cleanup` only called
+      `takePreview` — it could never delete — while the deleting happens inside the review window,
+      so it read as a dead destructive button and `Preview` read as if it only counted. The dead
+      row is gone (`runHint`, `canRun`, `nothingToDelete`, the `Play` icon with it); the single
+      action is **Preview and clean up** under a card titled "Clean up old forms", and the window
+      it opens carries the same title. No API change, the safety is unchanged: that window is the
+      only way to a cleanup and its button states the exact count it deletes.
 - [ ] **Owner to run:** paste `0028_retention.sql` in the Supabase SQL Editor, then open
-      Admin Panel → Settings → Data retention, **Preview** first and only then **Run**. Not tested
-      against the real database. **If `0028` was applied before 2026-10-29** (it capped the period at
-      30 days), also paste `0029_retention_days_floor.sql` — otherwise saving 7 days fails with
-      `violates check constraint "retention_settings_days_check"`.
+      Admin Panel → Settings → Data retention, press **Preview and clean up**, review the list and
+      delete from that window. Not tested against the real database. **If `0028` was applied before
+      2026-10-29** (it capped the period at 30 days), also paste `0029_retention_days_floor.sql` —
+      otherwise saving 7 days fails with `violates check constraint "retention_settings_days_check"`.
 
 ### Phase 8 — Optional B2 file storage (`/api/files`) + Storage settings page ✅ code done; migration + real-bucket test pending
 
@@ -301,6 +315,12 @@ rule entirely and writes every attachment to Supabase. Deploy it before testing 
       `PUT /` (save rule + threshold, logged), `POST /orphans`, `POST /orphans/everywhere`
 - [x] Cleanup modal: `GET /orphans/preview` + `POST /orphans/delete` implemented (re-checks each key
       at delete time) and wired to `StorageOrphanCleanupDialog.tsx`, which replaces the blind confirm
+- [x] **Fixed 2026-11-16:** the orphan scan only knew the five form tables and the `files` table, so
+      every profile picture (`ProfilePhoto/<user id>.<ext>`, same bucket, own root) read as garbage
+      and a cleanup deleted them all. `StorageReferenceRepository.read()` now collects
+      `profiles.photo` paths too, `ownerIdOf()` understands the photo layout (so a leftover is
+      labelled "Account deleted" / "Replaced by a newer photo", never "Form deleted"), and deleting
+      an account now removes its photo as well.
 - [x] Web: `api/storage.functions.ts`, `features/admin/components/settings/Storage.tsx`, `Storage`
       nav item in `AdminPanel.tsx` (replaced the "soon" row)
 - [x] Config: `SUPABASE_STORAGE_BUCKET`, `SUPABASE_STORAGE_LIMIT_MB`, `B2_STORAGE_LIMIT_MB`,

@@ -6,7 +6,7 @@ import { PASSWORD_MIN_LENGTH } from '@swiftslip/shared/schemas';
 import { employerLabel, type Employer } from '@swiftslip/shared/org';
 import type { AccountPhoto, Role, SessionUser } from '@swiftslip/shared/types';
 import { ProfileRepository } from '../../profile/repositories';
-import { photoUrl } from '../../profile/services/photo-storage';
+import { photoUrl, removePhoto } from '../../profile/services/photo-storage';
 import { ActivityLogRepository } from '../../activity-log/repositories';
 import { ActivityLogService } from '../../activity-log/services';
 import { UserRepository } from '../repositories';
@@ -344,6 +344,9 @@ class UserService extends BaseService<'users', UserRepository> {
       }
       await this.repository.delete({ id });
       await AttachmentService.removeUserFiles(id);
+      // The photo sits under its own root, outside the folder just swept.
+      const profile = await this.profiles.findOne({ access_code_id: id });
+      await removePhoto(profile?.photo ?? '');
       // Same best-effort cleanup for the optional B2 store (no-op when it has
       // no files for this account or is not configured).
       await FileService.removeUserFiles(id);

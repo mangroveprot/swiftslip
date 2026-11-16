@@ -9,6 +9,8 @@ import {
   Loader2,
   Maximize2,
   Printer,
+  ImageDown,
+  Share2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -41,6 +43,7 @@ import {
 import { localToday } from "@/lib/form-draft";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { saveSheetPng, shareSheetImage } from "@/lib/share-image";
 import { usePdfAttachment, usePdfOtherAttachments } from "@/lib/pdf-attachments";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
@@ -451,6 +454,32 @@ function OtEditorBody({
               >
                 <FileDown className="size-4" aria-hidden="true" />
                 Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void saveSheetPng(
+                    "ot-sheet",
+                    pdfFileName(APP.name, "OT", form.employee_name || "form"),
+                  )
+                }
+              >
+                <ImageDown className="size-4" aria-hidden="true" />
+                Save as PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void shareSheetImage(
+                    "ot-sheet",
+                    pdfFileName(APP.name, "OT", form.employee_name || "form"),
+                  )
+                }
+              >
+                <Share2 className="size-4" aria-hidden="true" />
+                Share as image
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"

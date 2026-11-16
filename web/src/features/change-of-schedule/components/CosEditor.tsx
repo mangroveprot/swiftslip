@@ -9,6 +9,8 @@ import {
   Loader2,
   Maximize2,
   Printer,
+  ImageDown,
+  Share2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -41,6 +43,7 @@ import { localToday } from "@/lib/form-draft";
 import { printSheet } from "@/lib/print";
 import { usePdfAttachment } from "@/lib/pdf-attachments";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { saveSheetPng, shareSheetImage } from "@/lib/share-image";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
 import type { CosForm, CosSchedule } from "@swiftslip/shared/types";
@@ -442,6 +445,32 @@ function CosEditorBody({
               >
                 <FileDown className="size-4" aria-hidden="true" />
                 Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void saveSheetPng(
+                    "cos-sheet",
+                    pdfFileName(APP.name, "COS", form.employee_name || "form"),
+                  )
+                }
+              >
+                <ImageDown className="size-4" aria-hidden="true" />
+                Save as PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void shareSheetImage(
+                    "cos-sheet",
+                    pdfFileName(APP.name, "COS", form.employee_name || "form"),
+                  )
+                }
+              >
+                <Share2 className="size-4" aria-hidden="true" />
+                Share as image
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"

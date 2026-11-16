@@ -144,6 +144,31 @@ export class StorageReferenceRepository {
       offset += PAGE;
     }
 
+    // ---- profiles: each person's photo, `ProfilePhoto/<user id>.<ext>` ----
+    // They sit in this same bucket, so a scan that reads only the form tables
+    // reads every profile picture as garbage and the cleanup deletes them all.
+    // The column can still hold a legacy `data:` URL or a full link (a row
+    // written before photos moved to object storage, or hand-fixed); only a
+    // stored path is an object reference. Always Supabase: the one backend a
+    // photo is ever written to.
+    let photoOffset = 0;
+    for (;;) {
+      const rows = await this.readPage(
+        'profiles' as TableName,
+        'photo',
+        photoOffset,
+      );
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        const photo = row.photo as string | null;
+        if (!photo || photo.startsWith('data:') || photo.startsWith('http'))
+          continue;
+        other.push({ backend: 'supabase', key: photo });
+      }
+      if (rows.length < PAGE) break;
+      photoOffset += PAGE;
+    }
+
     return { main, other };
   }
 

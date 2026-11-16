@@ -40,7 +40,7 @@ const TICK =
   "border-success data-[state=checked]:border-success data-[state=checked]:bg-success data-[state=checked]:text-success-foreground";
 
 /**
- * Settings → Data retention → Preview.
+ * Settings → Data retention → Preview and clean up.
  *
  * The review-before-delete window, modelled on the orphaned-files cleanup:
  * it lists every form the rule would delete, oldest first, with the type, the
@@ -121,7 +121,7 @@ export function RetentionPreviewDialog({
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Preview cleanup</DialogTitle>
+          <DialogTitle>Clean up old forms</DialogTitle>
           <DialogDescription>
             These forms are older than {preview.days} day{preview.days === 1 ? "" : "s"}. Review the
             list, then delete what you don't need.

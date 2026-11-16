@@ -19,6 +19,7 @@ import type {
 } from '@swiftslip/shared/schemas';
 import type { StoredObject } from '../types';
 import { STORAGE_ROOT } from '../../attachments/repositories';
+import { PROFILE_PHOTO_ROOT } from '../../profile/services/photo-storage';
 
 const toFailure = (error: unknown) => ({
   success: false as const,
@@ -499,7 +500,12 @@ export class StorageService {
       const describe = (key: string): string => {
         const ownerId = this.ownerIdOf(key);
         if (ownerId === null) return 'Not linked to any record';
-        return existing.has(ownerId) ? 'Form deleted' : 'Account deleted';
+        if (!existing.has(ownerId)) return 'Account deleted';
+        // The row still has an account but points at another file: for a photo
+        // that means the person replaced it and the old object did not come off.
+        return key.startsWith(`${PROFILE_PHOTO_ROOT}/`)
+          ? 'Replaced by a newer photo'
+          : 'Form deleted';
       };
 
       const files: OrphanedFile[] = orphans.map(({ obj, backend: b }) => ({
@@ -612,9 +618,17 @@ export class StorageService {
     }
   }
 
-  /** `FormAttachement/<user id>/…` → the owner's id, or null for any other layout. */
+  /**
+   * Which account a stored key belongs to: `FormAttachement/<id>/…` for a
+   * form file, `ProfilePhoto/<id>.<ext>` for a picture. Null for any other
+   * layout, e.g. the B2 `/files` store whose keys are bare uuids.
+   */
   private ownerIdOf(key: string): string | null {
     const parts = key.split('/');
+    if (parts[0] === PROFILE_PHOTO_ROOT && parts[1]) {
+      const name = parts[1].replace(/\.[^./]+$/, '');
+      return name || null;
+    }
     return parts.length >= 3 && parts[0] === STORAGE_ROOT && parts[1]
       ? parts[1]
       : null;

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Eye, Loader2, Play } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -100,14 +100,13 @@ const TYPE_TILE =
  *
  * Laid out like the dashboard: one panel, a rule under the title, three
  * divided summary columns, then the rule on the left and the form types on
- * the right, then preview/run beside the last run's history.
+ * the right, then the cleanup card beside the last run's history.
  *
- * Three moves, in the order the safety demands them: (1) set the rule, it
- * saves itself a moment after the last change, (2) preview, which opens the
- * review window listing every form it would delete, nothing touched, (3) run,
- * from that same window, deleting only the forms still ticked. Run stays
- * locked until a preview has been taken for exactly the saved rule, so the
- * admin always approves the forms they see.
+ * Two moves: (1) set the rule, it saves itself a moment after the last change,
+ * (2) preview, which opens the review window listing every form a cleanup
+ * would delete, nothing touched, and deletes from that same window once the
+ * admin presses Delete. That window is the only way to a cleanup, so the
+ * admin always approves the forms that go.
  */
 export function DataRetention() {
   const queryClient = useQueryClient();
@@ -233,32 +232,16 @@ export function DataRetention() {
     setDraft({ ...draft, formTypes: allTicked ? [] : [...RETENTION_FORM_TYPES] });
 
   const previewMatchesSaved = previewed !== null && previewed.key === savedKey && !dirty;
-  const nothingToDelete = previewed !== null && previewed.doc.totalForms === 0;
-  const canRun = previewMatchesSaved && draft.enabled && !nothingToDelete;
 
   /**
    * Preview, then review. The list the window shows is always freshly counted
    * from the rule on screen, so the numbers the admin ticks against are the
-   * numbers the run will use.
+   * numbers the delete will use.
    */
   const takePreview = () => {
     setLastResult(null);
     previewMutation.mutate({ settings: toInput(draft), key: draftKey });
   };
-
-  const runHint = !daysValid
-    ? `Enter at least ${dayLabel(RETENTION_MIN_DAYS)} first.`
-    : draft.formTypes.length === 0
-      ? "Tick at least one form type first."
-      : !draft.enabled
-        ? "Turn the switch on first."
-        : dirty
-          ? "Waiting for your changes to save."
-          : nothingToDelete
-            ? "Nothing to delete. The preview found no forms past the keep period."
-            : !previewMatchesSaved
-              ? "Run a preview before cleaning up."
-              : "Deletes exactly what the preview showed.";
 
   // The third summary column is the "what still has to happen" line. With no
   // type ticked nothing can ever be deleted, not even previewed, so that
@@ -283,8 +266,8 @@ export function DataRetention() {
         <div className="min-w-0">
           <PageTitle as="h2">Data retention</PageTitle>
           <p className="mt-2 max-w-[42rem] text-sm leading-6 text-muted-foreground">
-            Choose how long forms are kept. Nothing is ever deleted on its own, only when an admin
-            previews, then presses Run cleanup.
+            Choose how long forms are kept. Nothing is ever deleted on its own: an admin opens the
+            list here, then deletes from it.
           </p>
         </div>
         <AdminClock />
@@ -333,7 +316,9 @@ export function DataRetention() {
           value={draft.enabled ? "On" : "Off"}
           valueClassName={draft.enabled ? "" : "text-muted-foreground"}
           note={
-            draft.enabled ? "Only when you press Run cleanup." : "While off, nothing is deleted."
+            draft.enabled
+              ? "Only when you press Preview and clean up."
+              : "While off, nothing is deleted."
           }
         >
           <p className="flex items-center gap-2 text-sm">
@@ -540,15 +525,15 @@ export function DataRetention() {
         </section>
       </div>
 
-      {/* ── Preview, run, and the run before this one ────────────────────── */}
+      {/* ── Preview and clean up, beside the run before this one ─────────── */}
       <div className="mt-10 grid gap-x-10 gap-y-10 border-t pt-8 lg:grid-cols-2">
         <section aria-labelledby="preview-run-title" className="min-w-0">
           <h3 id="preview-run-title" className="text-lg font-semibold tracking-tight">
-            Preview and run
+            Clean up old forms
           </h3>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            A preview only counts. It never deletes. The run then removes exactly what the preview
-            showed, oldest first.
+            The list shows every form a cleanup would delete, oldest first. Nothing is removed until
+            you delete from it, and only what you leave ticked goes.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -563,12 +548,12 @@ export function DataRetention() {
               ) : (
                 <Eye className="size-4" aria-hidden="true" />
               )}
-              Preview
+              Preview and clean up
             </Button>
             <p className={HINT}>
               {previewed
                 ? `${previewed.doc.totalForms} form${previewed.doc.totalForms === 1 ? "" : "s"} and ${previewed.doc.totalFiles} file${previewed.doc.totalFiles === 1 ? "" : "s"} would go.`
-                : "Run a preview to see what would be removed."}
+                : "See every form a cleanup would delete."}
             </p>
           </div>
 
@@ -608,29 +593,7 @@ export function DataRetention() {
             </div>
           ) : null}
 
-          {/* Spacing, not a second rule: a shorter divider 30px under the
-              section's full-width one read as a stray line. */}
-          <div className="mt-7 flex items-end justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Run cleanup</p>
-              <p className={cn(HINT, "mt-0.5")}>{runHint}</p>
-            </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={takePreview}
-              disabled={!canRun || runMutation.isPending || previewMutation.isPending}
-              // A disabled destructive button at half opacity is pale pink
-              // carrying white text: unreadable, and it still reads as the
-              // loudest thing on the page while it cannot be pressed.
-              className="shrink-0 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
-            >
-              <Play className="size-4" aria-hidden="true" />
-              Run cleanup
-            </Button>
-          </div>
-
-          {/* The receipt of this run, below the button that caused it. */}
+          {/* The receipt of this run, below the list that ran it. */}
           {lastResult ? <CleanupResultPanel result={lastResult} /> : null}
         </section>
 

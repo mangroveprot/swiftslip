@@ -9,6 +9,8 @@ import {
   Loader2,
   Maximize2,
   Printer,
+  ImageDown,
+  Share2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -35,6 +37,7 @@ import { isDraftId, promoteDraft, readDraft, writeDraft } from "@/lib/draft";
 import { liqToday } from "@swiftslip/shared/liq";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { saveSheetPng, shareSheetImage } from "@/lib/share-image";
 import { toast } from "@/lib/toast";
 import type { LiqExpense, LiqForm } from "@swiftslip/shared/types";
 import { APP } from "@/config/app";
@@ -417,6 +420,32 @@ function LiqEditorBody({
               >
                 <FileDown className="size-4" aria-hidden="true" />
                 Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void saveSheetPng(
+                    "liq-sheet",
+                    pdfFileName(APP.name, "LIQ", form.prepared_by || "form"),
+                  )
+                }
+              >
+                <ImageDown className="size-4" aria-hidden="true" />
+                Save as PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void shareSheetImage(
+                    "liq-sheet",
+                    pdfFileName(APP.name, "LIQ", form.prepared_by || "form"),
+                  )
+                }
+              >
+                <Share2 className="size-4" aria-hidden="true" />
+                Share as image
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"

@@ -263,7 +263,7 @@ export function StorageOrphanCleanupDialog({
           <span>
             <span className="font-medium">Preview only.</span> Nothing has been deleted yet. Files
             uploaded in the last {graceLabel(preview.data?.graceSeconds ?? 0) || "a few minutes"}{" "}
-            are skipped.
+            are skipped. A profile picture still in use is never listed.
           </span>
         </p>
 

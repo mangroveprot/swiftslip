@@ -679,6 +679,27 @@ export async function savePdfFrom(
   }).catch(() => undefined);
 }
 
+/**
+ * The same print-layout sheet, captured as one PNG image.
+ *
+ * The PDF path slices a tall capture into A4 pages; a chat app wants one
+ * picture it can draw inline, so this stops after the capture. Same stage,
+ * same print rules, same density: what a colleague sees in Viber is the
+ * paper layout, not the narrow on-screen column.
+ */
+export async function sheetPng(element: HTMLElement): Promise<Blob> {
+  const { canvas, dispose } = await renderToCanvas(element, paperFor(element));
+  try {
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((value) => resolve(value), "image/png");
+    });
+    if (!blob) throw new Error("The form could not be turned into an image.");
+    return blob;
+  } finally {
+    dispose();
+  }
+}
+
 /** A file name with anything Windows or a browser would reject, removed. */
 export function pdfFileName(...parts: (string | number | undefined | null)[]): string {
   return (

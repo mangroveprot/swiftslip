@@ -9,6 +9,8 @@ import {
   Loader2,
   Maximize2,
   Printer,
+  ImageDown,
+  Share2,
   Save as SaveIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -34,6 +36,7 @@ import { DTR_TEMPLATE } from "@swiftslip/shared/dtr-template";
 import { fileToBase64 } from "@/lib/file";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { saveSheetPng, shareSheetImage } from "@/lib/share-image";
 import { usePdfAttachment, usePdfOtherAttachments } from "@/lib/pdf-attachments";
 import { readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { toast } from "@/lib/toast";
@@ -528,6 +531,42 @@ function RecordEditorBody({
               >
                 <FileDown className="size-4" aria-hidden="true" />
                 Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void saveSheetPng(
+                    "dtr-sheet",
+                    pdfFileName(
+                      APP.name,
+                      header?.name || "record",
+                      header ? MONTHS[header.month - 1] : undefined,
+                      header?.year,
+                    ),
+                  )
+                }
+              >
+                <ImageDown className="size-4" aria-hidden="true" />
+                Save as PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void shareSheetImage(
+                    "dtr-sheet",
+                    pdfFileName(
+                      APP.name,
+                      header?.name || "record",
+                      header ? MONTHS[header.month - 1] : undefined,
+                      header?.year,
+                    ),
+                  )
+                }
+              >
+                <Share2 className="size-4" aria-hidden="true" />
+                Share as image
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"

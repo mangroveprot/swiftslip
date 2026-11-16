@@ -9,6 +9,8 @@ import {
   Loader2,
   Maximize2,
   Printer,
+  ImageDown,
+  Share2,
   Save,
   Send,
   X,
@@ -44,6 +46,7 @@ import { isDraftId, promoteDraft, readDraft, writeDraft } from "@/lib/draft";
 import { localToday } from "@/lib/form-draft";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
+import { saveSheetPng, shareSheetImage } from "@/lib/share-image";
 import { usePdfAttachment } from "@/lib/pdf-attachments";
 import { deleteSignatureBackup, readSignatureBackup, saveSignatureBackup } from "@/lib/signature";
 import { friendlyError, toast } from "@/lib/toast";
@@ -735,6 +738,32 @@ function ObEditorBody({
               >
                 <FileDown className="size-4" aria-hidden="true" />
                 Save as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void saveSheetPng(
+                    "ob-sheet",
+                    pdfFileName(APP.name, "OB", form.employee_name || "form"),
+                  )
+                }
+              >
+                <ImageDown className="size-4" aria-hidden="true" />
+                Save as PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="focus:bg-muted focus:text-foreground"
+                disabled={busy}
+                onSelect={() =>
+                  void shareSheetImage(
+                    "ob-sheet",
+                    pdfFileName(APP.name, "OB", form.employee_name || "form"),
+                  )
+                }
+              >
+                <Share2 className="size-4" aria-hidden="true" />
+                Share as image
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="focus:bg-muted focus:text-foreground"

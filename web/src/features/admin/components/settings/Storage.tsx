@@ -274,8 +274,8 @@ export function Storage() {
           valueClassName={totals.orphanFiles > 0 ? "" : "text-muted-foreground"}
           note={
             totals.orphanFiles === 0
-              ? "Every stored file is linked to a form."
-              : `${formatBytes(totals.orphanBytes)} not linked to any form.`
+              ? "Every stored file is linked to a form or a profile picture."
+              : `${formatBytes(totals.orphanBytes)} not linked to any form or picture.`
           }
           noteDot={totals.orphanFiles > 0}
         >
@@ -532,7 +532,7 @@ function BackendCard({
                   {
                     {
                       approval: "Approval slips",
-                      other: "Other attachments",
+                      other: "Other files",
                       orphan: "Orphaned files",
                       free: "Free",
                     }[segment.key]
