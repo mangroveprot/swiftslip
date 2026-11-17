@@ -34,9 +34,9 @@ function shortDate(iso: string): string {
 /** "Deletes Nov 21" / "Deletes in 3 days" / "Deletes tomorrow". */
 function deletionText(days: number, deletesAt: string | undefined): string {
   if (days <= 0) return "Due for deletion";
-  if (days === 1) return "Deletes tomorrow";
-  if (days <= 3) return `Deletes in ${days} days`;
-  return deletesAt ? `Deletes ${shortDate(deletesAt)}` : `Deletes in ${days} days`;
+  if (days === 1) return "Deleted tomorrow";
+  if (days <= 3) return `Deleted on ${days} days`;
+  return deletesAt ? `Deleted on ${shortDate(deletesAt)}` : `Deleted ${days} days`;
 }
 
 /**

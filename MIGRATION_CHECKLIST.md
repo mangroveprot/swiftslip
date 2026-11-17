@@ -234,6 +234,23 @@ Intentional changes in Phase 5 (do not "fix" back):
       over an empty clipboard), then a `.png` download. `Save as PNG` is the file on demand. The form
       only — the approval slip stays out of the image, nothing is uploaded, and share/clipboard need
       https or localhost.
+- [x] **Fixed 2026-11-17:** a printed **approval slip** came out as a postage stamp (65 × 106 mm in
+      the corner of an empty A4 page). Since `a7e7b49` the card swapped the 400 px preview for the
+      file with `<source media="print">`, and Chromium never re-picks a picture's source for the
+      print layout, so paper kept the preview and printed it at its own pixel size. The preview img
+      is now `print:hidden`, with the file beside it as `hidden print:block print:mx-auto
+      print:max-h-[95vh] print:max-w-full`, and the card itself is the slip page in print
+      (`print:flex print:h-[99vh] print:mt-[0.5vh] print:flex-col print:justify-center`), so the file
+      is scaled to fit the sheet and centred both ways on it. 99vh, not 100vh: a 100vh box overflows
+      and prints a blank page. `vh` is the page's content box, so one rule fits the 277 mm portrait
+      sheets and the 194 mm LIQ landscape page; the PDF branch got `print:h-[90vh]`.
+      Affected all six editors (OB, LOA, COS, OT, LIQ, the DTR's supporting document); the HR
+      reviewer page (caller-scoped link, no preview) and the extra-attachment pages were never
+      affected. Measured on the built CSS with `chrome --headless --print-to-pdf`: a 1080 × 1760
+      slip draws 161.4 × 263.0 mm with 24.3 / 24.2 mm sides and 13.0 / 21.1 mm top and bottom
+      (centre 144.5 mm, the middle of the printable area), a 2000 × 600 slip takes the full 182 mm
+      content width, and on the LIQ landscape page 113.0 × 184.4 mm with 92.1 / 92.0 mm sides and
+      12.7 / 12.8 mm top and bottom. One sheet per slip, no blank page.
 
 ### Phase 6 — Hardening ✅ code done; lint/typecheck + real-environment checks pending
 Written without network access: files were syntax-checked only. **Not** run: `npm install`,

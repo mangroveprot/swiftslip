@@ -327,7 +327,7 @@ export function AttachmentCard({
     <section
       className={`${cardClassName}${
         printable
-          ? " print:break-before-page print:border-0 print:rounded-none print:bg-transparent print:p-0 print:shadow-none"
+          ? " print:flex print:h-[99vh] print:mt-[0.5vh] print:flex-col print:justify-center print:break-before-page print:border-0 print:rounded-none print:bg-transparent print:p-0 print:shadow-none"
           : " print:hidden"
       }`}
     >
@@ -343,7 +343,7 @@ export function AttachmentCard({
       ) : null}
 
       {file ? (
-        <div className="mt-2 space-y-2">
+        <div className="mt-2 space-y-2 print:mt-0">
           <div
             className={`flex items-center gap-2 rounded-lg border px-3 py-2 print:rounded-none print:border-0 print:px-0 print:py-0${
               stamp ? " pr-20 print:pr-0" : ""
@@ -356,19 +356,17 @@ export function AttachmentCard({
               {signing ? (
                 <p className="text-xs text-muted-foreground print:hidden">Preparing link…</p>
               ) : isImage && signed?.url ? (
-                // The thumbnail itself is the button, one click on the
-                // picture opens it whole in the modal below.
-                <button
-                  type="button"
-                  className="mt-1.5 block cursor-zoom-in text-left"
-                  aria-label={`Open ${file.name}`}
-                  title="Open the full attachment"
-                  onClick={() => setViewing(true)}
-                >
-                  <picture>
-                    {/* Paper keeps the original: the preview is 400 px wide,
-                        fine at 112 px on screen and far too soft at 24 cm. */}
-                    <source media="print" srcSet={signed.url} />
+                <>
+                  {/* Screen: the stored preview is the button, one click on
+                      the picture opens the file whole in the modal below.
+                      Screen only, paper takes the original image below. */}
+                  <button
+                    type="button"
+                    className="mt-1.5 block cursor-zoom-in text-left print:hidden"
+                    aria-label={`Open ${file.name}`}
+                    title="Open the full attachment"
+                    onClick={() => setViewing(true)}
+                  >
                     <img
                       src={signed.thumbUrl ?? signed.url}
                       alt={file.name}
@@ -387,10 +385,27 @@ export function AttachmentCard({
                           img.src = signed.url;
                         }
                       }}
-                      className="h-28 w-28 rounded border object-contain print:h-auto print:w-auto print:max-h-[24cm] print:max-w-full print:rounded-none"
+                      className="h-28 w-28 rounded border object-contain"
                     />
-                  </picture>
-                </button>
+                  </button>
+                  {/* Paper: the file itself, centred on the sheet and scaled to
+                      fit inside it, whichever way the page runs. `vh` is the
+                      printed page's content box (277 mm on the OB/LOA/DTR
+                      sheets, 194 mm on the LIQ landscape page), so one rule
+                      fits every form; a height in mm could only fit one. A
+                      `<source media="print">` cannot do this job: Chromium
+                      picks a picture's source when it loads and never picks
+                      again for the print layout, so paper kept the 400 px
+                      preview and printed it at its own pixel size, a postage
+                      stamp on an A4 sheet. This img is `hidden` on screen, but
+                      hidden images are still fetched, which is what keeps the
+                      dialog off a blank page. */}
+                  <img
+                    src={signed.url}
+                    alt={file.name}
+                    className="hidden print:mx-auto print:block print:max-h-[95vh] print:max-w-full print:rounded-none"
+                  />
+                </>
               ) : null}
             </div>
             {signed?.url ? (
@@ -453,7 +468,7 @@ export function AttachmentCard({
               src={signed.url}
               title={file.name}
               loading="lazy"
-              className="hidden h-40 w-full border print:block print:h-[24cm]"
+              className="hidden h-40 w-full border print:block print:h-[90vh]"
             />
           ) : null}
 
