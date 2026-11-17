@@ -55,6 +55,27 @@ const ErrorCodes = {
     message: 'A cleanup run is already in progress. Wait for it to finish.',
     statusCode: 409,
   },
+  BACKUP_IN_PROGRESS: {
+    code: 'BACKUP_IN_PROGRESS',
+    message: 'A backup is already running. Wait for it to finish.',
+    statusCode: 409,
+  },
+  BACKUP_NOT_CONNECTED: {
+    code: 'BACKUP_NOT_CONNECTED',
+    message:
+      'Google Drive is not connected. Connect it in Settings → Backup first.',
+    statusCode: 409,
+  },
+  BACKUP_FAILED: {
+    code: 'BACKUP_FAILED',
+    message: 'The backup could not be completed.',
+    statusCode: 500,
+  },
+  DRIVE_ERROR: {
+    code: 'DRIVE_ERROR',
+    message: 'Google Drive refused the request.',
+    statusCode: 502,
+  },
   IN_USE_ERROR: {
     code: 'IN_USE_ERROR',
     message: 'This item is still in use.',

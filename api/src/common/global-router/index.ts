@@ -3,6 +3,7 @@ import { AccessRoutes } from '../../apps/access';
 import { ActivityLogRoutes } from '../../apps/activity-log';
 import { AdminRoutes } from '../../apps/admin';
 import { AiRoutes } from '../../apps/ai';
+import { BackupRoutes, BackupTriggerRoutes } from '../../apps/backup';
 import { BiometricImportRoutes } from '../../apps/biometric-import';
 import { CosRoutes } from '../../apps/cos';
 import { AuthRoutes } from '../../apps/auth';
@@ -41,7 +42,10 @@ router.use('/activity-logs', ActivityLogRoutes);
 // must not be swallowed by the /admin catch-all.
 router.use('/admin/retention', RetentionRoutes);
 router.use('/admin/storage', StorageRoutes);
+router.use('/admin/backup', BackupRoutes);
 router.use('/admin', AdminRoutes);
+// The backup trigger link a cron service calls: token-authenticated, no session.
+router.use('/backup', BackupTriggerRoutes);
 router.use('/records', RecordRoutes);
 router.use('/official-business', OfficialBusinessRoutes);
 router.use('/hr', HrRoutes);

@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
+import { BACKUP_TARGETS } from '@swiftslip/shared/schemas';
+
 dotenv.config();
 
 /**
@@ -135,6 +137,37 @@ const EnvSchema = z.object({
     .string()
     .url()
     .default('https://secure.backblaze.com/b2_buckets.htm'),
+
+  // ── Database backup (Admin Panel → Settings → Backup) ─────────────────────
+  // Optional as a group: unset = the page names what is missing and "Back up
+  // now" refuses, everything else keeps working.
+  //
+  // The Postgres connection string `pg_dump` uses. Take it from Supabase →
+  // Project Settings → Database: the pooler's session mode (port 5432) is the
+  // IPv4 one. SECRET: it carries the database password.
+  SUPABASE_DB_URL: z
+    .string()
+    .min(1)
+    .refine(
+      (v) => v.startsWith('postgresql://') || v.startsWith('postgres://'),
+      { message: 'must start with postgresql:// or postgres://' },
+    )
+    .optional(),
+  // Google OAuth client (type: Web application) that owns the Drive link.
+  // SECRET: the client secret stays on the server, like every other key here.
+  GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  // The EXACT redirect URI registered on that client. Defaults to the site's
+  // own origin + /api/admin/backup/google/callback.
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().url().optional(),
+  // The `pg_dump` binary. On PATH in the Docker image; a Windows check-out
+  // usually needs the full path to pg_dump.exe.
+  PG_DUMP_PATH: z.string().min(1).default('pg_dump'),
+  // Ceiling for one gzipped dump buffered before upload, so a 512 MB host can
+  // never be asked for an unbounded amount of memory. Over this = loud failure.
+  BACKUP_MAX_MB: z.coerce.number().int().positive().max(512).default(128),
+  // How many past dumps the Backup page lists — rows, one per database per run.
+  BACKUP_HISTORY_LIMIT: z.coerce.number().int().positive().max(50).default(20),
 });
 
 /** Treat `FOO=` (empty string) the same as "not set". */
@@ -247,6 +280,36 @@ function buildConfig() {
         bucket: env.SUPABASE_STORAGE_BUCKET,
         limitBytes: env.SUPABASE_STORAGE_LIMIT_MB * 1024 * 1024,
         dashboardUrl: env.SUPABASE_STORAGE_DASHBOARD_URL,
+      },
+    },
+    // Database backup to Google Drive (Admin Panel → Settings → Backup).
+    // One run dumps EVERY database that has a connection string: the SwiftSlip
+    // project (SUPABASE_DB_URL) and the RGC inventory database
+    // (RGC_INVENTORY_DATABASE_URL, already required by the stock pages). Empty
+    // list = nothing to dump and the page says which variable is missing.
+    backup: {
+      targets: BACKUP_TARGETS.flatMap((target) => {
+        const url = env[target.envKey];
+        return url ? [{ ...target, url }] : [];
+      }),
+      dumpPath: env.PG_DUMP_PATH,
+      maxDumpBytes: env.BACKUP_MAX_MB * 1024 * 1024,
+      historyLimit: env.BACKUP_HISTORY_LIMIT,
+      google: {
+        clientId: env.GOOGLE_OAUTH_CLIENT_ID,
+        clientSecret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+        /** Registered on the OAuth client; must match byte for byte. */
+        redirectUri:
+          env.GOOGLE_OAUTH_REDIRECT_URI ??
+          `${
+            env.CORS_ORIGIN.split(',')
+              .map((origin) => origin.trim())
+              .filter(Boolean)[0] ?? 'http://localhost:8080'
+          }/api/admin/backup/google/callback`,
+        /** Both halves present = the Connect button can work. */
+        configured: Boolean(
+          env.GOOGLE_OAUTH_CLIENT_ID && env.GOOGLE_OAUTH_CLIENT_SECRET,
+        ),
       },
     },
   };

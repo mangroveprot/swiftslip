@@ -15,6 +15,7 @@ import {
   previewRetentionCleanup,
 } from "@/api/retention.functions";
 import { getStorageOverview, previewStorageOrphans } from "@/api/storage.functions";
+import { getBackupOverview } from "@/api/backup.functions";
 import {
   RETENTION_FORM_TYPES,
   RETENTION_MIN_DAYS,
@@ -146,6 +147,20 @@ export const storageOverviewQueryOptions = () =>
     // The API caches usage for a minute anyway; a short staleTime keeps a
     // section switch instant without pretending the numbers never move.
     staleTime: 30 * 1000,
+  });
+
+/**
+ * The Backup page's overview. A run is a rare, momentous event and the history
+ * has to be right after one finishes, so it is refetched while a run is in
+ * flight (the page polls the same key) and kept briefly otherwise.
+ */
+export const backupOverviewQueryOptions = (refetchWhileRunning = false) =>
+  queryOptions({
+    queryKey: ["backup-overview"],
+    queryFn: () => getBackupOverview(),
+    staleTime: 15 * 1000,
+    refetchInterval: refetchWhileRunning ? 5_000 : false,
+    refetchOnWindowFocus: false,
   });
 
 /**

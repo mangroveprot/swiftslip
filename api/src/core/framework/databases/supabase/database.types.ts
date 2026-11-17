@@ -1189,6 +1189,105 @@ export type Database = {
         };
         Relationships: [];
       };
+      backup_settings: {
+        Row: {
+          account_email: string | null;
+          connected_at: string | null;
+          cron_token: string | null;
+          enabled: boolean;
+          folder_id: string | null;
+          folder_name: string;
+          id: boolean;
+          keep_count: number;
+          last_run_at: string | null;
+          oauth_state: string | null;
+          oauth_state_at: string | null;
+          refresh_token: string | null;
+          updated_at: string;
+          updated_by_id: string | null;
+          updated_by_name: string | null;
+        };
+        Insert: {
+          account_email?: string | null;
+          connected_at?: string | null;
+          cron_token?: string | null;
+          enabled?: boolean;
+          folder_id?: string | null;
+          folder_name?: string;
+          id?: boolean;
+          keep_count?: number;
+          last_run_at?: string | null;
+          oauth_state?: string | null;
+          oauth_state_at?: string | null;
+          refresh_token?: string | null;
+          updated_at?: string;
+          updated_by_id?: string | null;
+          updated_by_name?: string | null;
+        };
+        Update: {
+          account_email?: string | null;
+          connected_at?: string | null;
+          cron_token?: string | null;
+          enabled?: boolean;
+          folder_id?: string | null;
+          folder_name?: string;
+          id?: boolean;
+          keep_count?: number;
+          last_run_at?: string | null;
+          oauth_state?: string | null;
+          oauth_state_at?: string | null;
+          refresh_token?: string | null;
+          updated_at?: string;
+          updated_by_id?: string | null;
+          updated_by_name?: string | null;
+        };
+        Relationships: [];
+      };
+      backup_runs: {
+        Row: {
+          actor_id: string | null;
+          actor_name: string | null;
+          error: string | null;
+          file_id: string | null;
+          file_name: string | null;
+          finished_at: string | null;
+          id: string;
+          size_bytes: number | null;
+          started_at: string;
+          status: string;
+          target: string | null;
+          triggered_by: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          error?: string | null;
+          file_id?: string | null;
+          file_name?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          size_bytes?: number | null;
+          started_at?: string;
+          status?: string;
+          target?: string | null;
+          triggered_by?: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          error?: string | null;
+          file_id?: string | null;
+          file_name?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          size_bytes?: number | null;
+          started_at?: string;
+          status?: string;
+          target?: string | null;
+          triggered_by?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

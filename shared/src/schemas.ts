@@ -1190,3 +1190,130 @@ export type StorageOrphanDeleteResult = {
   failed: number;
   bytes: number;
 };
+
+/* ── Database backup (Admin Panel → Settings → Backup) ───────────────────────
+ *
+ * Only databases are backed up, not the attachment buckets: a dump of one
+ * project is a few megabytes, while the files are gigabytes and would not fit
+ * a free host's bandwidth (see BACKUP_GUIDE.md). The dumps land in a Google
+ * Drive folder the admin connects once; a secret link runs it on a schedule.
+ */
+
+/**
+ * The databases one run covers, in the order they are dumped.
+ *
+ * `id` is also the dump's file-name prefix (`swiftslip-2026….sql.gz`), so it is
+ * a stable identifier: renaming one would orphan the old files in Drive and
+ * break the retention sweep. `envKey` names the variable that supplies the
+ * connection string, so a missing one tells the admin exactly what to add.
+ *
+ * Both are POSTGRES databases. The inventory one is the same connection the
+ * stock pages already use, reused here — a backup needs no second secret.
+ */
+export const BACKUP_TARGETS = [
+  { id: "swiftslip", label: "SwiftSlip", envKey: "SUPABASE_DB_URL" },
+  { id: "inventory", label: "RGC inventory", envKey: "RGC_INVENTORY_DATABASE_URL" },
+] as const;
+
+export type BackupTargetId = (typeof BACKUP_TARGETS)[number]["id"];
+export type BackupTargetInfo = (typeof BACKUP_TARGETS)[number];
+
+/** One database as the page lists it in Setup: the target plus its state. */
+export type BackupDatabaseStatus = BackupTargetInfo & {
+  /** Its connection string is present in the environment. */
+  configured: boolean;
+};
+
+/** How many finished dumps Drive keeps, PER database. Older ones are deleted. */
+export const BACKUP_KEEP_MIN = 1;
+export const BACKUP_KEEP_MAX = 90;
+
+/**
+ * Input for saving Settings → Backup. Everything else (the Drive connection,
+ * the trigger token) is changed by its own action, so a settings save can
+ * never silently re-point a backup at another account.
+ */
+export const backupSettingsInput = z.object({
+  /** When off, the cron link refuses to run. "Back up now" still works. */
+  enabled: z.boolean(),
+  keepCount: z.number().int().min(BACKUP_KEEP_MIN).max(BACKUP_KEEP_MAX),
+});
+export type BackupSettingsInput = z.infer<typeof backupSettingsInput>;
+
+/** What started a run: the admin's button, or the cron link. */
+export const BACKUP_TRIGGERS = ["manual", "cron"] as const;
+export type BackupTrigger = (typeof BACKUP_TRIGGERS)[number];
+
+export const BACKUP_RUN_STATUSES = ["running", "succeeded", "failed"] as const;
+export type BackupRunStatus = (typeof BACKUP_RUN_STATUSES)[number];
+
+/** One dump, as the Backup page lists it. */
+export type BackupRun = {
+  id: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: BackupRunStatus;
+  trigger: BackupTrigger;
+  /**
+   * Which database this dump is. `null` on rows written before the target
+   * column existed (migration 0044) — the page then labels them "SwiftSlip",
+   * which is the only database those rows could have been.
+   */
+  target: BackupTargetId | null;
+  /** Size of the gzipped dump that reached Drive. */
+  sizeBytes: number | null;
+  fileName: string | null;
+  /** Drive file id, when the upload finished. */
+  fileId: string | null;
+  /** Plain-English failure, already safe to show. */
+  error: string | null;
+  /** Who pressed the button; null for a cron run. */
+  actorName: string | null;
+};
+
+/**
+ * Everything Settings → Backup needs in one read: the settings, whether the
+ * halves are ready (Google OAuth configured, Drive connected, `pg_dump` on the
+ * host, at least one database reachable), the trigger token, and the history.
+ */
+export type BackupOverview = {
+  settings: {
+    enabled: boolean;
+    keepCount: number;
+    folderName: string;
+    updatedAt: string;
+    updatedByName: string | null;
+  };
+  /** The app's Google OAuth client is present in the environment. */
+  oauthConfigured: boolean;
+  /**
+   * The redirect URI the server will actually send to Google. Shown so the
+   * admin registers the same string byte for byte (a mismatch is Google's
+   * `redirect_uri_mismatch` refusal).
+   */
+  googleRedirectUri: string;
+  drive: {
+    connected: boolean;
+    accountEmail: string | null;
+    connectedAt: string | null;
+  };
+  /** `pg_dump` on this host, with its version banner when found. */
+  pgDump: { available: boolean; version: string | null };
+  /** One row per database the run would dump, configured or not. */
+  databases: BackupDatabaseStatus[];
+  /** True when "Back up now" would actually produce at least one file. */
+  ready: boolean;
+  /** The bearer half of the cron link; null until one is generated. */
+  cronToken: string | null;
+  /**
+   * `backup_settings` exists. False = migration 0043 has not been applied, and
+   * the page says so instead of every control failing on save.
+   */
+  migrationApplied: boolean;
+  /**
+   * `backup_runs.target` exists. False = migration 0044 has not been applied,
+   * so a run could not record which database it belongs to.
+   */
+  targetColumnReady: boolean;
+  runs: BackupRun[];
+};

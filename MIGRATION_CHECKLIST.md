@@ -790,6 +790,62 @@ valid until it expired. A session is now a row, and the cookie only names it.
       cookie is refused once. After deploying, sign in and open Admin Panel → Active sessions; sign
       in on a second browser, sign out there, and confirm that browser's copied cookie now gets 401.
 
+### Phase 12 — Database backup to Google Drive (Settings → Backup) ✅ code done; migration + real-Drive test pending
+
+The database only. Attachments are deliberately out of scope: 10 GB through a Render free service
+is twice the workspace's monthly bandwidth allowance (5 GB) and is the "external object storage"
+traffic pattern the free-tier docs list as a suspension risk — `BACKUP_GUIDE.md` has the numbers.
+A gzipped `pg_dump` is a few MB, so it costs nothing and runs in seconds.
+- [x] `api/drizzle/migrations/0043_backup.sql` — `backup_settings` (single row: the Drive token,
+      retention count, trigger token, OAuth state) + `backup_runs` (permanent history). RLS on with
+      no policies, like every other table.
+- [x] `apps/backup` (controller → service → repositories), mounted at `/admin/backup` behind
+      `authenticate` + `authorizeAdmin`: `GET /` (overview: settings, readiness, link, runs),
+      `PUT /` (`backupSettingsInput`), `GET /google/start` (consent URL), `GET /google/callback`
+      (302 back to `/admin?backup=…&section=backup`), `POST /google/disconnect`, `POST /link`
+      (rotate), `POST /run`
+- [x] Public trigger link `GET|POST /api/backup/cron/:token` — token compared in constant time, only
+      starts a run, answers **202 immediately** and works in the background (a free instance
+      cold-starts in ~1 min; cron services do not wait)
+- [x] `services/dump.service.ts` — `pg_dump --clean --if-exists --format=plain` piped through gzip
+      with a `BACKUP_MAX_MB` cap and a 5-minute kill; the connection string is parsed into `PG*` env
+      vars so the password never appears in the process list
+- [x] `services/drive.service.ts` — OAuth (`drive.file` only), folder ensure/create, resumable
+      upload, retention prune, revoke on disconnect. No service account (no Drive quota); the guide
+      says to publish the consent screen, because a *Testing* app's refresh token dies after 7 days
+- [x] `services/secret-box.ts` — AES-256-GCM seal/open for the refresh token (key from
+      `SESSION_SECRET`), 48-hex trigger token, constant-time compare
+- [x] One run at a time (claimed synchronously before any `await`), run row written before the work,
+      stale `running` rows closed as failed after 30 minutes, retention pruned only after success
+- [x] Config + `.env.example` + `render.yaml`: `SUPABASE_DB_URL`, `GOOGLE_OAUTH_CLIENT_ID`,
+      `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, `PG_DUMP_PATH`, `BACKUP_MAX_MB`,
+      `BACKUP_HISTORY_LIMIT`; new codes `BACKUP_IN_PROGRESS` / `BACKUP_NOT_CONNECTED` /
+      `BACKUP_FAILED` / `DRIVE_ERROR`; new `backup.*` activity actions
+- [x] `Dockerfile` runtime stage installs the newest `pg_dump` Alpine has (18 → 17 → 16). An older
+      client refuses a newer server, so the fallback order matters
+- [x] Web: `api/backup.functions.ts`, `features/admin/queries.ts`,
+      `components/settings/Backup.tsx`, `Backup` nav row + `?section=` landing in `AdminPanel.tsx`
+- [x] `npm run typecheck`, `npm run lint` (0 errors, same 8 `react-refresh` warnings) and
+      `npm run build` pass; a 21-check probe of the pure parts passed (seal/tamper/cron token/
+      OAuth URL/dump name); **rendered** in headless Chrome at 1200 px with seeded data, both states
+      (nothing connected / three runs), against the owner's reference.
+      Docker image build untested — the daemon was not running on the machine used.
+- [x] **Both databases per run.** One press (or one cron hit) dumps every configured database and
+      uploads one file each: `swiftslip-…sql.gz` from `SUPABASE_DB_URL` and `inventory-…sql.gz` from
+      `RGC_INVENTORY_DATABASE_URL` (reused — the stock pages already need it, so the second backup
+      costs no extra secret). `0044_backup_target.sql` adds `backup_runs.target`, one row per
+      database, so a failure on one never hides the success of the other; retention is counted per
+      database and the sweep matches on the file-name prefix. Dumps run one after the other and each
+      buffer is released before the next, so `BACKUP_MAX_MB` stays the ceiling.
+- [ ] **Owner to run:** paste `0043_backup.sql` **and** `0044_backup_target.sql` in the Supabase SQL
+      editor; add `SUPABASE_DB_URL` (session pooler, port 5432), `GOOGLE_OAUTH_CLIENT_ID` and
+      `GOOGLE_OAUTH_CLIENT_SECRET` to the Render service; publish the OAuth consent screen and
+      register `https://regasco.dpdns.org/api/admin/backup/google/callback` as the redirect URI; then
+      Settings → Backup → Connect → **Back up now**, and confirm BOTH files appear in Drive (the
+      inventory one needs nothing new — its URL is already set). Then paste the trigger link into a
+      weekly cron job. Restore one of them once into a scratch project (§4 of `BACKUP_GUIDE.md`) —
+      an untested backup is not a backup.
+
 ## 4. Cookie / auth contract (Phase 2, needed by Phase 5)
 
 - Cookie name `swiftslip-session`, `httpOnly`, `sameSite=lax`, `secure` in production, 12 h — or
@@ -864,6 +920,14 @@ valid until it expired. A session is now a row, and the cookie only names it.
 | GET | `/notifications` | user | – | `{unread, documents}` |
 | POST | `/notifications/read` | user | `markNotificationsReadInput` | – (marks all read) |
 | POST | `/notifications/delete` | user | `deleteNotificationsInput` | `{deleted}` (own rows only) |
+| GET | `/admin/backup` | admin | – | `BackupOverview` (settings, readiness, link, runs) |
+| PUT | `/admin/backup` | admin | `backupSettingsInput` | `BackupOverview` |
+| GET | `/admin/backup/google/start` | admin | – | `{url}` (Google consent screen) |
+| GET | `/admin/backup/google/callback` | admin (redirect) | Google `code`/`state` | 302 → `/admin?backup=…&section=backup` |
+| POST | `/admin/backup/google/disconnect` | admin | – | `BackupOverview` (also revokes the grant) |
+| POST | `/admin/backup/link` | admin | – | `BackupOverview` (new trigger token) |
+| POST | `/admin/backup/run` | admin | - | `BackupRun[]` (one per database, waits for the dumps) |
+| GET / POST | `/backup/cron/:token` | token | – | `{started, at}` → 202, run continues in the background |
 
 ## 5. Smoke test (after `npm run setup` and filling `api/.env`)
 

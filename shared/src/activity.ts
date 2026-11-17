@@ -40,4 +40,8 @@ export const ACTION_LABELS: Record<string, string> = {
   "cleanup.forms": "Data cleanup run",
   "storage.rule_changed": "Storage rule changed",
   "storage.orphans_cleaned": "Storage orphans cleaned",
+  "backup.settings_changed": "Backup settings changed",
+  "backup.drive_connected": "Google Drive connected for backups",
+  "backup.drive_disconnected": "Google Drive disconnected from backups",
+  "backup.run": "Database backup run",
 };

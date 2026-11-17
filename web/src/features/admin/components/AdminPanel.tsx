@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
   Database,
+  DatabaseBackup,
   HardDrive,
   History,
   LayoutDashboard,
@@ -41,10 +42,37 @@ import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
 import { AppAccess } from "./AppAccess";
 import { DataRetention } from "./settings/DataRetention";
+import { Backup } from "./settings/Backup";
 import { Storage } from "./settings/Storage";
 import { UserManagement } from "./UserManagement";
 
-type Section = "dashboard" | "users" | "access" | "sessions" | "logs" | "retention" | "storage";
+type Section =
+  "dashboard" | "users" | "access" | "sessions" | "logs" | "retention" | "storage" | "backup";
+
+const SECTIONS: Section[] = [
+  "dashboard",
+  "users",
+  "access",
+  "sessions",
+  "logs",
+  "retention",
+  "storage",
+  "backup",
+];
+
+/**
+ * The section the address bar asks for, when it names a real one.
+ *
+ * Set by the server for a redirect that has to land on a specific page: the
+ * Google Drive handshake returns to
+ * `/admin?backup=connected&section=backup`, so the admin lands on the page the
+ * toast is about instead of the dashboard.
+ */
+function sectionFromAddress(): Section {
+  if (typeof window === "undefined") return "dashboard";
+  const wanted = new URLSearchParams(window.location.search).get("section");
+  return SECTIONS.find((section) => section === wanted) ?? "dashboard";
+}
 
 /**
  * A nav row. `id` is the section it opens; a parent row (one with `children`)
@@ -75,6 +103,7 @@ const SECTION_GROUPS: { label: string; items: AdminItem[] }[] = [
         children: [
           { id: "retention", label: "Data retention", icon: Database },
           { id: "storage", label: "Storage", icon: HardDrive },
+          { id: "backup", label: "Backup", icon: DatabaseBackup },
         ],
       },
     ],
@@ -96,7 +125,7 @@ export function AdminPanel() {
   // from the same cached profile the My Account page edits.
   const { data: profile } = useQuery(profileQueryOptions());
   const { logoPath, isRegasco } = useEmployerLogo();
-  const [section, setSection] = useState<Section>("dashboard");
+  const [section, setSection] = useState<Section>(sectionFromAddress);
   const [logFilter, setLogFilter] = useState<ActivityLogActionFilter | "all">("all");
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -185,6 +214,8 @@ export function AdminPanel() {
             <DataRetention />
           ) : section === "storage" ? (
             <Storage />
+          ) : section === "backup" ? (
+            <Backup />
           ) : (
             <ActivityLogs initialFilter={logFilter} />
           )}

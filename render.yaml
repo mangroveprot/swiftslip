@@ -56,3 +56,22 @@ services:
         sync: false
       - key: B2_UPLOAD_APP_KEY
         sync: false
+      # Database backup (Admin Panel → Settings → Backup). `sync: false` = the
+      # NAME is declared here, the value is typed into the dashboard. Unset
+      # values only switch the feature off; the site keeps working.
+      #
+      # One run dumps one database per connection string:
+      #   SwiftSlip      ← SUPABASE_DB_URL (session pooler, port 5432). SECRET.
+      #   RGC inventory  ← RGC_INVENTORY_DATABASE_URL, declared above and reused
+      #                    as-is — no second backup secret.
+      #
+      #   GOOGLE_OAUTH_*          OAuth client (type: Web application) used to
+      #                           connect the Drive folder. SECRET.
+      #   GOOGLE_OAUTH_REDIRECT_URI  Optional; defaults to
+      #                           <CORS_ORIGIN>/api/admin/backup/google/callback
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false

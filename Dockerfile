@@ -27,6 +27,14 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# `pg_dump` for Admin Panel → Settings → Backup (BACKUP_GUIDE.md). The database
+# may be newer than this image's Alpine release, and pg_dump refuses to dump a
+# NEWER server, so the newest client available is tried first and older ones are
+# the fallback. Client tools only: a few tens of MB, no server process.
+RUN apk add --no-cache postgresql18-client \
+ || apk add --no-cache postgresql17-client \
+ || apk add --no-cache postgresql16-client
+
 COPY package.json package-lock.json ./
 COPY api/package.json api/package.json
 COPY shared/package.json shared/package.json

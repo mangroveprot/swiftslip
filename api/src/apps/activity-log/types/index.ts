@@ -37,7 +37,11 @@ export type ActivityAction =
   | 'ai.request'
   | 'cleanup.forms'
   | 'storage.rule_changed'
-  | 'storage.orphans_cleaned';
+  | 'storage.orphans_cleaned'
+  | 'backup.settings_changed'
+  | 'backup.drive_connected'
+  | 'backup.drive_disconnected'
+  | 'backup.run';
 
 export type ActivityEntry = {
   action: ActivityAction;
