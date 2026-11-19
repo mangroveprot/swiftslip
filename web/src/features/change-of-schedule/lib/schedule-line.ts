@@ -1,12 +1,11 @@
-import { formatClock } from "@/lib/clock";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { CosSchedule } from "@swiftslip/shared/types";
 
 /**
  * The schedule line is picked as a date plus two times, but the sheet prints it
- * as one run of text, "10/07/2026 - 8am - 5pm", exactly the shape the template
- * uses. These helpers are the single place that composition happens, so the
- * preview and the Word export can never drift apart.
+ * as one run of text, "10/07/2026 - 08:00am - 05:00pm", exactly the shape the
+ * template uses. These helpers are the single place that composition happens,
+ * so the preview and the Word export can never drift apart.
  */
 
 /** The date half, e.g. "10/07/2026". */
@@ -14,12 +13,31 @@ export function formatScheduleDate(date: string): string {
   return date ? formatMonthDayYear(date) : "";
 }
 
-/** The hours half, e.g. "08am - 05pm" ("" when neither end is set). */
-export function formatScheduleHours(start: string, end: string): string {
-  return [formatClock(start), formatClock(end)].filter(Boolean).join(" - ");
+/**
+ * A time as this sheet prints it: "08:00am", minutes always shown.
+ *
+ * Deliberately NOT `formatClock`, which OT's sheet keeps using: that one drops
+ * ":00", so a 08:00 start printed as "08am" while the time picker above it
+ * read "08:00 AM" — one value, read as two. The shape stays this sheet's own
+ * (two-digit hour, lowercase suffix, no space), only the minutes are added.
+ */
+export function formatScheduleClock(hhmm: string): string {
+  const [rawHour, rawMinute] = (hhmm ?? "").split(":");
+  const h = Number(rawHour);
+  if (!rawHour || !Number.isFinite(h)) return "";
+  const parsed = Number(rawMinute);
+  const minute = Number.isFinite(parsed) && parsed >= 0 && parsed <= 59 ? parsed : 0;
+  const suffix = h < 12 ? "am" : "pm";
+  const hour = String(h % 12 === 0 ? 12 : h % 12).padStart(2, "0");
+  return `${hour}:${String(minute).padStart(2, "0")}${suffix}`;
 }
 
-/** The whole printed line, e.g. "10/07/2026 - 08am - 05pm". */
+/** The hours half, e.g. "08:00am - 05:00pm" ("" when neither end is set). */
+export function formatScheduleHours(start: string, end: string): string {
+  return [formatScheduleClock(start), formatScheduleClock(end)].filter(Boolean).join(" - ");
+}
+
+/** The whole printed line, e.g. "10/07/2026 - 08:00am - 05:00pm". */
 export function formatScheduleLine(date: string, start: string, end: string): string {
   return [formatScheduleDate(date), formatScheduleHours(start, end)].filter(Boolean).join(" - ");
 }
