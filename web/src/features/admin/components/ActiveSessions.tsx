@@ -6,6 +6,7 @@ import { revokeSessionFn } from "@/api/admin.functions";
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { Input } from "@/components/ui/input";
 import { plural } from "@/lib/format";
 import { friendlyError, toast } from "@/lib/toast";
@@ -13,6 +14,7 @@ import type { ActiveSession } from "@swiftslip/shared/api-types";
 import { formatDateTime, relativeTime } from "@swiftslip/shared/time";
 import { describeDevice } from "../lib/device";
 import { activeSessionsQueryOptions } from "../queries";
+import { useUserPhotos } from "../use-user-photos";
 
 /**
  * Active sessions: one row per device that is signed in right now.
@@ -41,6 +43,10 @@ export function ActiveSessions() {
       )
     : all;
   const remembered = all.filter((row) => row.remembered).length;
+  // One batch request for the faces on the rows in view, from the same
+  // `["user-photos", …]` cache the other admin lists use. A person without a
+  // photo draws their initials instead.
+  const photos = useUserPhotos(rows.map((row) => row.userId));
 
   async function revoke() {
     if (!pending) return;
@@ -148,17 +154,27 @@ export function ActiveSessions() {
                 {rows.map((row) => (
                   <tr key={row.id} className="border-b last:border-b-0">
                     <td className="py-4 pr-4 align-middle">
-                      <p className="flex items-baseline gap-2">
-                        <span className="truncate font-medium">{row.name}</span>
-                        {row.current ? (
-                          <span className="shrink-0 text-[11px] text-muted-foreground">
-                            This device
-                          </span>
-                        ) : null}
-                      </p>
-                      <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-                        {row.idNumber}
-                      </p>
+                      <div className="flex items-center gap-3">
+                        <ProfileAvatar
+                          photo={photos[row.userId]}
+                          name={row.name}
+                          size={32}
+                          className="shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="flex items-baseline gap-2">
+                            <span className="truncate font-medium">{row.name}</span>
+                            {row.current ? (
+                              <span className="shrink-0 text-[11px] text-muted-foreground">
+                                This device
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+                            {row.idNumber}
+                          </p>
+                        </div>
+                      </div>
                     </td>
                     <td className="py-4 pr-4 align-middle">
                       <p className="flex items-center gap-1.5">
@@ -216,18 +232,26 @@ export function ActiveSessions() {
             {rows.map((row) => (
               <div key={row.id} className="border-b py-4 last:border-b-0">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="flex items-baseline gap-2">
-                      <span className="truncate text-sm font-semibold">{row.name}</span>
-                      {row.current ? (
-                        <span className="shrink-0 text-[11px] text-muted-foreground">
-                          This device
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-                      {row.idNumber}
-                    </p>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <ProfileAvatar
+                      photo={photos[row.userId]}
+                      name={row.name}
+                      size={36}
+                      className="shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="flex items-baseline gap-2">
+                        <span className="truncate text-sm font-semibold">{row.name}</span>
+                        {row.current ? (
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            This device
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+                        {row.idNumber}
+                      </p>
+                    </div>
                   </div>
                   {row.current ? null : (
                     <button

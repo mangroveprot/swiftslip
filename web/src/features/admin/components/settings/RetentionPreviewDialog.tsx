@@ -1,6 +1,7 @@
-import { Eye, Loader2 } from "lucide-react";
+import { ChevronDown, Eye, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,9 +22,11 @@ import type {
 import { formatDate } from "@swiftslip/shared/time";
 
 import { FORM_TYPE_ICONS, FORM_TYPE_LABELS } from "./form-types";
+import { useUserPhotos } from "../../use-user-photos";
 
-/** Rows shown before the list collapses; the rest sit behind "Show all". */
-const COLLAPSED_ROWS = 6;
+/** Rows shown before the faded peek; each "Show more" reveals another batch. */
+const VISIBLE_INITIAL = 10;
+const VISIBLE_STEP = 10;
 
 const idOf = (item: RetentionFormItem) => `${item.type}:${item.id}`;
 
@@ -81,13 +84,13 @@ export function RetentionPreviewDialog({
    * dimmed before the ticks land.
    */
   const [selected, setSelected] = useState<Set<string> | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [visible, setVisible] = useState(VISIBLE_INITIAL);
 
-  // Closing must not carry the last ticks into the next open.
+  // Closing must not carry the last ticks or the expanded list into the next open.
   useEffect(() => {
     if (open) return;
     setSelected(null);
-    setShowAll(false);
+    setVisible(VISIBLE_INITIAL);
   }, [open]);
 
   const isTicked = (item: RetentionFormItem) => selected === null || selected.has(idOf(item));
@@ -98,8 +101,14 @@ export function RetentionPreviewDialog({
   );
   const selectedFiles = selectedItems.reduce((sum, item) => sum + item.files, 0);
 
-  const shown = showAll ? items : items.slice(0, COLLAPSED_ROWS);
-  const hidden = items.length - shown.length;
+  // The faces on the rows in view, from the same batched cache the admin lists
+  // use. A legacy row with no owner falls back to initials.
+  const photos = useUserPhotos(items.map((item) => item.ownerId));
+
+  const shown = items.slice(0, visible);
+  // One faded, half-cut row says "the list continues" without printing it.
+  const peek = visible < items.length ? (items[visible] ?? null) : null;
+  const hasMore = peek !== null;
 
   const allTicked = items.length > 0 && items.every(isTicked);
   const someTicked = !allTicked && items.some(isTicked);
@@ -117,29 +126,101 @@ export function RetentionPreviewDialog({
     });
   };
 
+  /** One row; `peek` is the decorative, half-height glimpse of the next form. */
+  const rowOf = (item: RetentionFormItem, peek = false) => {
+    const id = idOf(item);
+    const ticked = isTicked(item);
+    const Icon = FORM_TYPE_ICONS[item.type];
+    return (
+      <li
+        key={peek ? `peek-${id}` : id}
+        aria-hidden={peek || undefined}
+        style={
+          peek
+            ? {
+                maskImage: "linear-gradient(to bottom, #000 55%, transparent 100%)",
+                WebkitMaskImage: "linear-gradient(to bottom, #000 55%, transparent 100%)",
+              }
+            : undefined
+        }
+        className={cn(
+          "grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 py-3.5 text-sm transition-colors sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,10rem)_minmax(0,4.5rem)_3.75rem]",
+          peek
+            ? "pointer-events-none max-h-[26px] select-none overflow-hidden opacity-60 blur-[1.5px]"
+            : "hover:bg-muted/40",
+          // A form left behind reads muted; the orange icon, the checkbox and
+          // the footer count still say what goes.
+          !ticked && "text-muted-foreground",
+        )}
+      >
+        <Checkbox
+          checked={ticked}
+          onCheckedChange={() => toggle(id)}
+          disabled={busy || peek}
+          tabIndex={peek ? -1 : undefined}
+          className={TICK}
+          aria-label={`Select ${FORM_TYPE_LABELS[item.type]} for ${item.label}`}
+        />
+        <span className="flex min-w-0 items-center gap-2">
+          <ProfileAvatar
+            photo={photos[item.ownerId ?? ""]}
+            name={item.label}
+            size={22}
+            className="shrink-0"
+          />
+          <Icon className="size-4 shrink-0 text-logo" aria-hidden="true" />
+          <span className="min-w-0">
+            <span className="block truncate font-medium" title={item.label}>
+              {item.label}
+            </span>
+            {/* The type, date and files show under the name on phones, so the
+                two columns can stay hidden there. */}
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground sm:hidden">
+              {FORM_TYPE_LABELS[item.type]}
+              {item.reference ? ` · ${item.reference}` : ""} · {shortDate(item.date)} ·{" "}
+              {item.files === 0 ? "no files" : plural(item.files, "file")}
+            </span>
+          </span>
+        </span>
+        <span className="hidden min-w-0 truncate sm:block" title={FORM_TYPE_LABELS[item.type]}>
+          {FORM_TYPE_LABELS[item.type]}
+        </span>
+        <span
+          className="hidden whitespace-nowrap sm:block"
+          title={item.date ? new Date(item.date).toLocaleString() : undefined}
+        >
+          {shortDate(item.date)}
+        </span>
+        <span className="hidden text-right whitespace-nowrap tabular-nums sm:block">
+          {item.files === 0 ? "—" : plural(item.files, "file")}
+        </span>
+      </li>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Clean up old forms</DialogTitle>
-          <DialogDescription>
+        <DialogHeader className="pr-8">
+          <DialogTitle className="text-xl tracking-tight">Clean up old forms</DialogTitle>
+          <DialogDescription className="leading-6">
             These forms are older than {preview.days} day{preview.days === 1 ? "" : "s"}. Review the
             list, then delete what you don't need.
           </DialogDescription>
         </DialogHeader>
 
-        {/* ── Preview banner ─────────────────────────────────────────────── */}
-        <p className="flex items-start gap-2 rounded-lg border border-dashboard-accent/30 bg-dashboard-soft px-3.5 py-2.5 text-sm text-foreground">
-          <Eye className="mt-0.5 size-4 shrink-0 text-dashboard-accent" aria-hidden="true" />
+        {/* ── Preview note ───────────────────────────────────────────────── */}
+        <p className="flex items-start gap-2.5 text-sm leading-6">
+          <Eye className="mt-0.5 size-4 shrink-0 text-foreground" aria-hidden="true" />
           <span>
-            <span className="font-medium">Preview only.</span> Nothing has been deleted yet. Every
-            form past the keep period is here, approved or still waiting for approval.
+            <span className="font-semibold">Preview only.</span> Nothing has been deleted yet. Every
+            form past the keep period is listed here, approved or still waiting for approval.
           </span>
         </p>
 
         {/* ── Selection bar ──────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
             <Checkbox
               checked={allTicked ? true : someTicked ? "indeterminate" : false}
               onCheckedChange={toggleAll}
@@ -151,7 +232,7 @@ export function RetentionPreviewDialog({
               {formatCount(selectedItems.length)} of {formatCount(items.length)} forms selected
             </span>
           </label>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Cut-off {formatDate(new Date(preview.cutoff))}
           </p>
         </div>
@@ -162,9 +243,9 @@ export function RetentionPreviewDialog({
             Nothing to delete. No forms of the chosen types are past the keep period.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
+          <div>
             {/* Column heads, hidden on phones, where rows stack instead. */}
-            <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 border-b border-border px-3 py-2.5 text-xs font-medium text-muted-foreground sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,9rem)_minmax(0,4.5rem)_3.75rem]">
+            <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 border-b border-border pb-2.5 text-xs text-muted-foreground sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,10rem)_minmax(0,4.5rem)_3.75rem]">
               <span aria-hidden="true" />
               <span>Form</span>
               <span className="hidden sm:block">Type</span>
@@ -172,105 +253,50 @@ export function RetentionPreviewDialog({
               <span className="hidden text-right sm:block">Files</span>
             </div>
 
-            <ul className="max-h-[38vh] divide-y divide-border overflow-y-auto">
-              {shown.map((item) => {
-                const id = idOf(item);
-                const ticked = isTicked(item);
-                const Icon = FORM_TYPE_ICONS[item.type];
-                return (
-                  <li
-                    key={id}
-                    className={cn(
-                      "grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-3 px-3 py-2.5 text-sm transition-colors sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,9rem)_minmax(0,4.5rem)_3.75rem] sm:py-3",
-                      // Ticked rows stay white, unticked dim: what is left
-                      // behind after the delete is visible without counting.
-                      ticked ? "hover:bg-muted/40" : "bg-muted/30 hover:bg-muted/50",
-                    )}
-                  >
-                    <Checkbox
-                      checked={ticked}
-                      onCheckedChange={() => toggle(id)}
-                      disabled={busy}
-                      className={TICK}
-                      aria-label={`Select ${FORM_TYPE_LABELS[item.type]} for ${item.label}`}
-                    />
-                    <span className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-2.5">
-                      <span
-                        className={cn(
-                          "flex size-6 shrink-0 items-center justify-center rounded-md border border-border sm:size-7",
-                          ticked
-                            ? "bg-dashboard-soft text-dashboard-accent"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                        aria-hidden="true"
-                      >
-                        <Icon className="size-3.5" aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium" title={item.label}>
-                          {item.label}
-                        </span>
-                        {/* The type, date and files show under the name on
-                            phones, so the two columns can stay hidden there. */}
-                        <span className="mt-0.5 block truncate text-xs text-muted-foreground sm:hidden">
-                          {FORM_TYPE_LABELS[item.type]}
-                          {item.reference ? ` · ${item.reference}` : ""} · {shortDate(item.date)} ·{" "}
-                          {item.files === 0 ? "no files" : plural(item.files, "file")}
-                        </span>
-                      </span>
-                    </span>
-                    <span className="hidden min-w-0 sm:block">
-                      <span
-                        className="inline-block max-w-full truncate rounded-md border border-border bg-muted px-2 py-0.5 align-bottom text-xs text-muted-foreground"
-                        title={FORM_TYPE_LABELS[item.type]}
-                      >
-                        {FORM_TYPE_LABELS[item.type]}
-                      </span>
-                    </span>
-                    <span
-                      className="hidden text-xs text-muted-foreground sm:block"
-                      title={item.date ? new Date(item.date).toLocaleString() : undefined}
-                    >
-                      {shortDate(item.date)}
-                    </span>
-                    <span className="hidden text-right text-xs tabular-nums text-muted-foreground sm:block">
-                      {item.files === 0 ? "—" : plural(item.files, "file")}
-                    </span>
-                  </li>
-                );
-              })}
+            <ul className="divide-y divide-border">
+              {shown.map((item) => rowOf(item))}
+              {peek ? rowOf(peek, true) : null}
             </ul>
 
-            {hidden > 0 ? (
-              <button
-                type="button"
-                onClick={() => setShowAll(true)}
-                className="w-full cursor-pointer border-t border-border px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {plural(hidden, "more form")} in this list.{" "}
-                <span className="font-medium underline underline-offset-2">Show all</span>
-              </button>
+            {hasMore ? (
+              <div className="mt-3 flex justify-center">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="h-auto gap-1.5 px-0 py-0 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+                  onClick={() => setVisible((count) => count + VISIBLE_STEP)}
+                >
+                  <ChevronDown className="size-4" aria-hidden="true" />
+                  Show more
+                </Button>
+              </div>
             ) : null}
           </div>
         )}
 
-        <DialogFooter className="gap-3 sm:justify-between">
-          <div className="max-w-sm text-xs leading-5 text-muted-foreground">
+        <DialogFooter className="gap-4 sm:items-center sm:justify-between sm:space-x-0">
+          <div className="max-w-[22rem] text-[13px] leading-5 text-muted-foreground">
             {blockedReason ? (
               <p className="font-medium text-foreground">{blockedReason}</p>
             ) : (
               <p>
-                <span className="font-medium text-foreground">Deleting is permanent.</span> Deleted
-                forms and their files can't be recovered. Untick any form you want to keep.
+                <span className="font-semibold text-foreground">Deleting is permanent.</span>{" "}
+                Deleted forms and their files can't be recovered. Untick any form you want to keep.
               </p>
             )}
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              className="h-10 px-4"
+              disabled={busy}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
+              className="h-10 px-4 font-semibold"
               disabled={busy || blockedReason !== null || selectedItems.length === 0}
               onClick={() =>
                 onDelete(selectedItems.map((item) => ({ type: item.type, id: item.id })))
@@ -278,7 +304,7 @@ export function RetentionPreviewDialog({
             >
               {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
               Delete {plural(selectedItems.length, "form")}
-              {selectedFiles > 0 ? ` + ${plural(selectedFiles, "file")}` : ""}
+              {selectedFiles > 0 ? ` and ${plural(selectedFiles, "file")}` : ""}
             </Button>
           </div>
         </DialogFooter>

@@ -1,12 +1,13 @@
 /**
  * Phone-width showroom row. The desktop table collapses to this stacked card
- * below `md`: name plus a pencil on the first line, then a CCTV line (installed
- * state, connection dot + label, and the free note) and an Internet line.
- * Tapping anywhere on the card edits it — the board has no view-only mode.
+ * below `md`: thumbnail, name and a pencil on the first line, then a CCTV line
+ * (installed state, connection dot + label, and the free note) and an Internet
+ * line. Tapping the thumbnail previews the photo; tapping anywhere else on the
+ * card edits it — the board has no view-only mode.
  */
 import { memo } from "react";
 import type { CSSProperties } from "react";
-import { PencilLine } from "lucide-react";
+import { PencilLine, Store } from "lucide-react";
 
 import type { Showroom } from "@swiftslip/shared/showrooms";
 import {
@@ -21,12 +22,15 @@ type ShowroomCardProps = {
   showroom: Showroom;
   index: number;
   onEdit: (showroom: Showroom) => void;
+  /** The thumbnail opens a full-size preview instead of the drawer. */
+  onPreview: (showroom: Showroom) => void;
 };
 
 export const ShowroomCard = memo(function ShowroomCard({
   showroom,
   index,
   onEdit,
+  onPreview,
 }: ShowroomCardProps) {
   const note = showroom.cctv_note?.trim() ?? "";
   const connectionTone = cctvConnectionTone(showroom.cctv_connection);
@@ -39,9 +43,33 @@ export const ShowroomCard = memo(function ShowroomCard({
       onClick={() => onEdit(showroom)}
     >
       <div className="showroom-card__head">
-        <span className="showroom-card__name" title={showroom.showroom_name}>
-          {showroom.showroom_name}
-        </span>
+        <div className="showroom-card__identity">
+          {showroom.photo_thumb ? (
+            <button
+              type="button"
+              className="showroom-card__thumb showroom-card__thumb--button"
+              aria-label={`Preview ${showroom.showroom_name} photo`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onPreview(showroom);
+              }}
+            >
+              <img
+                src={showroom.photo_thumb}
+                alt=""
+                loading="lazy"
+                className="size-full object-cover"
+              />
+            </button>
+          ) : (
+            <span className="showroom-card__thumb showroom-card__thumb--empty" aria-hidden="true">
+              <Store className="size-4" />
+            </span>
+          )}
+          <span className="showroom-card__name" title={showroom.showroom_name}>
+            {showroom.showroom_name}
+          </span>
+        </div>
         <button
           type="button"
           aria-label="Edit"

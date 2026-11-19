@@ -15,11 +15,17 @@ import type {
   StorageCleanupResult,
   StorageOrphanDeleteResult,
   StorageOrphanPreview,
+  StorageOrphanPreviewUrl,
   OrphanedFile,
 } from '@swiftslip/shared/schemas';
 import type { StoredObject } from '../types';
 import { STORAGE_ROOT } from '../../attachments/repositories';
 import { PROFILE_PHOTO_ROOT } from '../../profile/services/photo-storage';
+import { INVENTORY_MEDIA_ROOT } from '../utils/key';
+
+/** True for objects the RGC inventory app owns; they are never orphan candidates. */
+const isInventoryMedia = (key: string) =>
+  key.startsWith(`${INVENTORY_MEDIA_ROOT}/`);
 
 const toFailure = (error: unknown) => ({
   success: false as const,
@@ -168,6 +174,14 @@ export class StorageService {
     let orphanFiles = 0;
 
     for (const obj of objects) {
+      // Inventory photos are referenced by the RGC database, which this scan
+      // cannot see. Count them as ordinary usage, never as orphans.
+      if (isInventoryMedia(obj.key)) {
+        otherBytes += obj.size;
+        otherFiles += 1;
+        continue;
+      }
+
       const ref = `${backend}:${obj.key}`;
 
       if (mainSet.has(ref)) {
@@ -362,6 +376,8 @@ export class StorageService {
       // Orphans only: unreferenced AND older than the grace period, so a
       // just‑finished upload whose row is still being written is never hit.
       const orphans = objects.filter((obj) => {
+        // The inventory module owns these and cleans them itself.
+        if (isInventoryMedia(obj.key)) return false;
         const ref = `${backend}:${obj.key}`;
         if (mainSet.has(ref) || otherSet.has(ref)) return false;
         const fresh =
@@ -469,6 +485,9 @@ export class StorageService {
       const orphans: { obj: StoredObject; backend: StorageBackend }[] = [];
       backends.forEach((b, index) => {
         for (const obj of listings[index] ?? []) {
+          // Inventory photos live in this bucket but are referenced by the RGC
+          // database; this scan must never offer them for deletion.
+          if (isInventoryMedia(obj.key)) continue;
           const ref = `${b}:${obj.key}`;
           if (mainSet.has(ref) || otherSet.has(ref)) continue;
           const fresh =
@@ -534,6 +553,47 @@ export class StorageService {
   }
 
   /**
+   * `GET /orphans/preview-url`, the cleanup modal's image preview. Read-only:
+   * signs one object only after re-checking that the same scan still calls it
+   * unreferenced, so the link can never be used to peek at a live file or at
+   * an inventory-owned picture.
+   */
+  async orphanPreviewUrl(
+    _actor: SessionUser,
+    backend: StorageBackend,
+    key: string,
+  ): Promise<ServiceResponse<StorageOrphanPreviewUrl>> {
+    try {
+      if (isInventoryMedia(key)) {
+        throw new ErrorResponse(
+          'BAD_REQUEST',
+          'That file is managed by the inventory app.',
+        );
+      }
+
+      const { main, other } = await this.refRepo.read();
+      const ref = `${backend}:${key}`;
+      const inUse = [...main, ...other].some(
+        (row) => `${row.backend}:${row.key}` === ref,
+      );
+      if (inUse) {
+        throw new ErrorResponse('BAD_REQUEST', 'That file is still in use.');
+      }
+
+      const url = await this.fileStorage.signedUrl(key, backend);
+      if (!url) {
+        throw new ErrorResponse(
+          'NOT_FOUND_ERROR',
+          'That file could not be opened. It may already be gone.',
+        );
+      }
+      return { success: true, document: { url } };
+    } catch (error) {
+      return toFailure(error);
+    }
+  }
+
+  /**
    * `POST /orphans/delete`, the modal's "Delete N files". The file list is
    * re-checked server-side before anything is removed: an object that has
    * gained a form reference since the preview (or is inside the grace
@@ -569,6 +629,7 @@ export class StorageService {
       });
 
       const safe = files.filter((f) => {
+        if (isInventoryMedia(f.key)) return false; // the inventory app owns it
         const obj = live.get(`${f.backend}:${f.key}`);
         if (!obj) return false; // already gone
         const ref = `${f.backend}:${f.key}`;

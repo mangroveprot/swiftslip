@@ -548,6 +548,15 @@ export class BackupService {
       const runs: BackupRun[] = [];
       const saved: string[] = [];
       const failed: string[] = [];
+      /**
+       * The run's own folder, `SwiftSlip Backups/2026-11-19 09-26-45/`.
+       * Created on the FIRST successful dump, so a run where every database
+       * failed leaves no empty folder behind.
+       */
+      const runFolder: { id: string | null; name: string } = {
+        id: null,
+        name: Drive.runFolderName(new Date()),
+      };
       let pruned = 0;
 
       for (const target of targets) {
@@ -561,9 +570,14 @@ export class BackupService {
 
         try {
           const dump = await dumpDatabase(target);
-          const uploaded = await Drive.uploadDump(
+          runFolder.id ??= await Drive.createRunFolder(
             accessToken,
             folderId,
+            runFolder.name,
+          );
+          const uploaded = await Drive.uploadDump(
+            accessToken,
+            runFolder.id,
             dump.fileName,
             dump.bytes,
             target.label,
@@ -593,23 +607,6 @@ export class BackupService {
           saved.push(
             `${target.label}: ${uploaded.name} (${formatMegabytes(size)})`,
           );
-
-          // Retention is a courtesy, not part of the guarantee: a failed sweep
-          // must not mark a saved backup as failed. Counted per database, so
-          // "keep 14" means 14 of each. Only a database that actually uploaded
-          // is swept: a run where every dump failed must never delete old ones.
-          try {
-            pruned += await Drive.pruneDumps(
-              accessToken,
-              folderId,
-              row.keep_count,
-              Drive.dumpPrefix(target.id),
-            );
-          } catch (error) {
-            logger.warn(
-              `Backup saved, but the old-dump sweep failed: ${(error as Error).message}`,
-            );
-          }
         } catch (error) {
           // One database failing must not cost the other its dump: record this
           // row, tell the page, and carry on with the next target.
@@ -641,11 +638,29 @@ export class BackupService {
         }
       }
 
+      // Retention, once per run and only after something reached Drive: the
+      // newest `keep` dated folders survive, older ones are trashed together
+      // with the dumps inside them. A run where every dump failed must never
+      // delete older backups, and a failed sweep must not fail a saved one.
+      if (saved.length > 0) {
+        try {
+          pruned = await Drive.pruneRunFolders(
+            accessToken,
+            folderId,
+            row.keep_count,
+          );
+        } catch (error) {
+          logger.warn(
+            `Backups saved, but the old-folder sweep failed: ${(error as Error).message}`,
+          );
+        }
+      }
+
       try {
         const detail = [
           saved.join(' · '),
           failed.length > 0 ? `${failed.length} failed` : '',
-          pruned > 0 ? `${pruned} old dump(s) removed` : '',
+          pruned > 0 ? `${pruned} old folder(s) removed` : '',
         ]
           .filter(Boolean)
           .join(' · ');

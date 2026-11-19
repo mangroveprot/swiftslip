@@ -19,7 +19,7 @@ import { formatDate } from "@swiftslip/shared/time";
 
 import { AdminClock } from "../AdminClock";
 import { storageOverviewQueryOptions } from "../../queries";
-import { BrandMark } from "./BrandMark";
+import { BrandIcon, BrandMark } from "./BrandMark";
 import { StorageOrphanCleanupDialog } from "./StorageOrphanCleanupDialog";
 import { UsageDonut } from "./UsageDonut";
 
@@ -165,21 +165,34 @@ export function Storage() {
   const ruleSentence =
     draft.rule === "supabase-first" ? (
       <>
-        New files go to <strong className="font-semibold text-foreground">Supabase</strong>.
+        New files go to{" "}
+        <strong className="font-semibold text-foreground">
+          <BrandIcon backend="supabase" className="mr-1" />
+          Supabase
+        </strong>
+        .
         {switchPercent !== null ? (
           <>
             {" "}
             Once it is <strong className="font-semibold text-foreground">
               {switchPercent}%
             </strong>{" "}
-            full, they go to <strong className="font-semibold text-foreground">Backblaze B2</strong>{" "}
+            full, they go to{" "}
+            <strong className="font-semibold text-foreground">
+              <BrandIcon backend="b2" className="mr-1" />
+              Backblaze B2
+            </strong>{" "}
             instead.
           </>
         ) : (
           <>
             {" "}
             Type the switch point above: once Supabase is that full, new files go to{" "}
-            <strong className="font-semibold text-foreground">Backblaze B2</strong>.
+            <strong className="font-semibold text-foreground">
+              <BrandIcon backend="b2" className="mr-1" />
+              Backblaze B2
+            </strong>
+            .
           </>
         )}
         {!b2.connected ? (
@@ -192,7 +205,11 @@ export function Storage() {
     ) : draft.rule === "b2-only" ? (
       <>
         Every new file goes to{" "}
-        <strong className="font-semibold text-foreground">Backblaze B2</strong>.
+        <strong className="font-semibold text-foreground">
+          <BrandIcon backend="b2" className="mr-1" />
+          Backblaze B2
+        </strong>
+        .
         {!b2.connected ? (
           <span className="text-logo">
             {" "}
@@ -202,8 +219,12 @@ export function Storage() {
       </>
     ) : (
       <>
-        Every new file goes to <strong className="font-semibold text-foreground">Supabase</strong>.
-        Uploads fail when it is full.
+        Every new file goes to{" "}
+        <strong className="font-semibold text-foreground">
+          <BrandIcon backend="supabase" className="mr-1" />
+          Supabase
+        </strong>
+        . Uploads fail when it is full.
       </>
     );
   const lastChanged =
@@ -421,8 +442,6 @@ export function Storage() {
       <StorageOrphanCleanupDialog
         open={cleaning !== null}
         scope={cleaning ?? "everywhere"}
-        supabase={supabase}
-        b2={b2}
         onOpenChange={(open) => !open && setCleaning(null)}
       />
     </section>
@@ -643,16 +662,12 @@ function CapacityBar({
 
       <ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
         <li className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-[3px] bg-dashboard-accent" aria-hidden="true" />
+          <BrandIcon backend="supabase" />
           Used now, {Math.round(usedShare)}% ({formatBytes(used)})
         </li>
         {switchAt === null ? null : (
           <li className="flex items-center gap-1.5">
-            <span
-              className="size-2.5 rounded-[3px] border border-border"
-              style={HATCH}
-              aria-hidden="true"
-            />
+            <BrandIcon backend="b2" />
             Backblaze B2 takes over
           </li>
         )}

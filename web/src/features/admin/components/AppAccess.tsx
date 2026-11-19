@@ -22,6 +22,7 @@ import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { toast } from "@/lib/toast";
+import { useUrlState } from "@/lib/use-url-state";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { GRANTABLE_APP_KEYS, type GrantableAppKey, type RuleScope } from "@swiftslip/shared/types";
+import { ACCESS_TABS, type AccessTab } from "../lib/admin-search";
 import { useUserPhotos } from "../use-user-photos";
 
 const APP_LABELS: Record<GrantableAppKey, string> = {
@@ -45,6 +47,12 @@ const SCOPE_LABELS: Record<RuleScope, string> = {
   user: "Person",
   department: "Department",
   position: "Position",
+};
+
+/** The two tab labels, keyed by the URL value the hook stores. */
+const ACCESS_TAB_LABELS: Record<AccessTab, string> = {
+  app: "By app",
+  person: "By person",
 };
 
 const PERSON_STATES = [
@@ -108,7 +116,9 @@ function reasonFor(person: Person, app: GrantableAppKey) {
  */
 export function AppAccess() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"app" | "person">("app");
+  // Which reading of access is open lives in the address bar, so a refresh
+  // keeps the same tab instead of returning to "By app".
+  const [tab, setTab] = useUrlState<AccessTab>("tab", ACCESS_TABS, "app");
   const [appKey, setAppKey] = useState<GrantableAppKey>(GRANTABLE_APP_KEYS[0]);
   const [personId, setPersonId] = useState<string | null>(null);
   const [appSearch, setAppSearch] = useState("");
@@ -246,24 +256,19 @@ export function AppAccess() {
       </div>
 
       <div className="mt-8 flex flex-wrap items-center gap-x-7">
-        {(
-          [
-            { key: "app", label: "By app" },
-            { key: "person", label: "By person" },
-          ] as const
-        ).map((item) => (
+        {ACCESS_TABS.map((key) => (
           <button
-            key={item.key}
+            key={key}
             type="button"
-            aria-pressed={tab === item.key}
-            onClick={() => setTab(item.key)}
+            aria-pressed={tab === key}
+            onClick={() => setTab(key)}
             className={`border-b-2 pt-1 pb-3 text-sm transition-colors ${
-              tab === item.key
+              tab === key
                 ? "border-primary font-medium text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {item.label}
+            {ACCESS_TAB_LABELS[key]}
           </button>
         ))}
       </div>

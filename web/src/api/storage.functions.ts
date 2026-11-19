@@ -3,6 +3,7 @@ import type {
   StorageBackend,
   StorageOrphanDeleteResult,
   StorageOrphanPreview,
+  StorageOrphanPreviewUrl,
   StorageOverview,
   StorageSettings,
   StorageSettingsDoc,
@@ -36,6 +37,24 @@ export const previewStorageOrphans = async ({
   documentOf(
     await api.get<StorageOrphanPreview>("/admin/storage/orphans/preview", {
       backend: data?.backend ?? "everywhere",
+    }),
+  );
+
+/**
+ * Sign one image from the orphan list so the admin can see it before deleting
+ * it. The API re-checks that the file is still unreferenced before signing.
+ */
+export const getStorageOrphanPreviewUrl = async ({
+  key,
+  backend,
+}: {
+  key: string;
+  backend: StorageBackend;
+}) =>
+  documentOf(
+    await api.get<StorageOrphanPreviewUrl>("/admin/storage/orphans/preview-url", {
+      key,
+      backend,
     }),
   );
 

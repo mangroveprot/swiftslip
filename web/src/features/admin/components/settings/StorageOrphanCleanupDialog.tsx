@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { deleteStorageOrphans } from "@/api/storage.functions";
+import { deleteStorageOrphans, getStorageOrphanPreviewUrl } from "@/api/storage.functions";
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -28,19 +28,29 @@ import {
 import { formatBytes, formatCount, plural } from "@/lib/format";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import type { OrphanedFile, StorageBackend, StorageBackendUsage } from "@swiftslip/shared/schemas";
+import type { OrphanedFile, StorageBackend } from "@swiftslip/shared/schemas";
 
 import { storageOrphansPreviewQueryOptions } from "../../queries";
-import { UsageDonut } from "./UsageDonut";
+import { BrandIcon } from "./BrandMark";
 
 /** Rows shown before the list collapses; the rest sit behind "Show all". */
 const COLLAPSED_ROWS = 5;
 
 const idOf = (file: OrphanedFile) => `${file.backend}:${file.key}`;
 
-/** "Sep 12", the list's date column; the full date rides in the tooltip. */
+/** "Oct 19", the list's date column; the full date rides in the tooltip. */
 const shortDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+
+/** "Nov 19, 2026, 2:05 PM": the exact moment a file stops being protected. */
+const cutOffLabel = (graceSeconds: number) =>
+  new Date(Date.now() - graceSeconds * 1000).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 
 /** The file's name, the last path segment of its storage key. */
 const baseName = (key: string) => key.split("/").pop() || key;
@@ -100,6 +110,8 @@ function fileTile(key: string): { Icon: LucideIcon; tone: string } {
   return { Icon: FileIcon, tone: TILE_QUIET };
 }
 
+const isImage = (key: string) => IMAGE_EXT.has(extensionOf(key));
+
 /** "10 minutes" / "24 hours", the grace window, in the unit that reads best. */
 function graceLabel(seconds: number): string {
   if (seconds < 90) return plural(seconds, "second");
@@ -124,10 +136,12 @@ const TICK =
  * Settings → Storage → "Clean up orphaned files".
  *
  * The review-before-delete window behind both cleanup buttons. It lists
- * every file no form points to, per backend, with the reason, age and size
- * lets the admin untick anything to keep, and deletes only what is still
- * ticked. The API re-checks each key at delete time, so a stale list (a file
- * that gained a form since the preview, say) can never take a live file.
+ * every file no form or record points to, with the reason, age and size, lets
+ * the admin untick anything to keep, and deletes only what is still ticked.
+ * Images can be opened first: the preview link is signed on demand and the API
+ * re-checks that the file is still unreferenced. The API re-checks every key at
+ * delete time too, so a stale list (a file that gained a form since the preview,
+ * say) can never take a live file.
  *
  * Nothing here deletes on open: the query is read-only, and the destructive
  * action is the single button in the footer, which states exactly how many
@@ -136,16 +150,11 @@ const TICK =
 export function StorageOrphanCleanupDialog({
   open,
   scope,
-  supabase,
-  b2,
   onOpenChange,
 }: {
   open: boolean;
   /** Which backend's orphans to show: one of them, or both. */
   scope: StorageBackend | "everywhere";
-  /** The page's live usage, feeds the "full → full" arrows on the cards. */
-  supabase: StorageBackendUsage;
-  b2: StorageBackendUsage;
   onOpenChange: (open: boolean) => void;
 }) {
   const queryClient = useQueryClient();
@@ -158,8 +167,8 @@ export function StorageOrphanCleanupDialog({
   }, [preview.data]);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [tab, setTab] = useState<StorageBackend | "all">("all");
   const [showAll, setShowAll] = useState(false);
+  const [previewFile, setPreviewFile] = useState<OrphanedFile | null>(null);
 
   // Each fresh preview starts with everything ticked, the modal is "delete
   // what you don't need", so the default is all of it. Keyed on `open` and
@@ -168,16 +177,16 @@ export function StorageOrphanCleanupDialog({
   useEffect(() => {
     if (!open || !preview.data) return;
     setSelected(new Set(files.map(idOf)));
-    setTab("all");
     setShowAll(false);
+    setPreviewFile(null);
   }, [open, scope, preview.data, files]);
 
-  // Closing and reopening must not carry the last tab or the stale ticks.
+  // Closing and reopening must not carry the last list state or the preview.
   useEffect(() => {
     if (open) return;
     setSelected(new Set());
-    setTab("all");
     setShowAll(false);
+    setPreviewFile(null);
   }, [open]);
 
   const selectedFiles = useMemo(
@@ -186,26 +195,17 @@ export function StorageOrphanCleanupDialog({
   );
   const selectedBytes = selectedFiles.reduce((sum, f) => sum + f.sizeBytes, 0);
 
-  const perBackend = useMemo(() => {
-    const count = (backend: StorageBackend) => files.filter((f) => f.backend === backend).length;
-    return { supabase: count("supabase"), b2: count("b2") };
-  }, [files]);
+  const shown = showAll ? files : files.slice(0, COLLAPSED_ROWS);
+  const hidden = files.length - shown.length;
 
-  const visible = useMemo(
-    () => (tab === "all" ? files : files.filter((f) => f.backend === tab)),
-    [files, tab],
-  );
-  const shown = showAll ? visible : visible.slice(0, COLLAPSED_ROWS);
-  const hidden = visible.length - shown.length;
-
-  const allVisibleTicked = visible.length > 0 && visible.every((f) => selected.has(idOf(f)));
-  const someVisibleTicked = !allVisibleTicked && visible.some((f) => selected.has(idOf(f)));
+  const allTicked = files.length > 0 && files.every((f) => selected.has(idOf(f)));
+  const someTicked = !allTicked && files.some((f) => selected.has(idOf(f)));
 
   const toggleAll = () => {
     setSelected((current) => {
       const next = new Set(current);
-      for (const file of visible) {
-        if (allVisibleTicked) next.delete(idOf(file));
+      for (const file of files) {
+        if (allTicked) next.delete(idOf(file));
         else next.add(idOf(file));
       }
       return next;
@@ -247,295 +247,294 @@ export function StorageOrphanCleanupDialog({
   const busy = deleteMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Clean up orphaned files</DialogTitle>
-          <DialogDescription>
-            These files are in storage, but no form points to them anymore. Review the list, then
-            delete what you don't need.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
+        <DialogContent className="max-w-3xl gap-0 p-0">
+          <div className="px-6 pb-1 pt-6">
+            <DialogHeader className="pr-8">
+              <DialogTitle className="text-xl font-semibold tracking-tight">
+                Clean up orphaned files
+              </DialogTitle>
+              <DialogDescription className="mt-1.5 text-sm leading-6">
+                These files are in storage, but no form or record points to them anymore. Review the
+                list, then delete what you don't need.
+              </DialogDescription>
+            </DialogHeader>
 
-        {/* ── Preview banner ─────────────────────────────────────────────── */}
-        <p className="flex items-start gap-2 rounded-lg border border-dashboard-accent/30 bg-dashboard-soft px-3.5 py-2.5 text-sm text-foreground">
-          <Eye className="mt-0.5 size-4 shrink-0 text-dashboard-accent" aria-hidden="true" />
-          <span>
-            <span className="font-medium">Preview only.</span> Nothing has been deleted yet. Files
-            uploaded in the last {graceLabel(preview.data?.graceSeconds ?? 0) || "a few minutes"}{" "}
-            are skipped. A profile picture still in use is never listed.
-          </span>
-        </p>
+            {/* ── Preview notice ─────────────────────────────────────────── */}
+            <p className="mt-4 flex items-start gap-2.5 text-sm leading-6">
+              <Eye className="mt-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="text-muted-foreground">
+                <span className="font-semibold text-foreground">Preview only.</span> Nothing has
+                been deleted yet. Files uploaded in the last{" "}
+                {preview.data ? graceLabel(preview.data.graceSeconds) : "few minutes"} are skipped,
+                and pictures still in use are never listed.
+              </span>
+            </p>
 
-        {/* ── One summary card per backend in scope ──────────────────────── */}
-        <div
-          className={cn("grid gap-3", scope === "everywhere" ? "sm:grid-cols-2" : "grid-cols-1")}
-        >
-          {(scope === "everywhere" || scope === "supabase") && (
-            <SummaryCard
-              usage={supabase}
-              title="Supabase Storage"
-              files={perBackend.supabase}
-              selectedBytes={selectedFiles
-                .filter((f) => f.backend === "supabase")
-                .reduce((sum, f) => sum + f.sizeBytes, 0)}
-            />
-          )}
-          {(scope === "everywhere" || scope === "b2") && (
-            <SummaryCard
-              usage={b2}
-              title="Backblaze B2"
-              files={perBackend.b2}
-              selectedBytes={selectedFiles
-                .filter((f) => f.backend === "b2")
-                .reduce((sum, f) => sum + f.sizeBytes, 0)}
-            />
-          )}
-        </div>
+            {/* ── Selection bar ──────────────────────────────────────────── */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+                <Checkbox
+                  checked={allTicked ? true : someTicked ? "indeterminate" : false}
+                  onCheckedChange={toggleAll}
+                  disabled={files.length === 0 || busy}
+                  className={TICK}
+                  aria-label="Select every orphaned file in this list"
+                />
+                <span>
+                  <span className="font-semibold text-foreground">
+                    {formatCount(selectedFiles.length)}
+                  </span>{" "}
+                  of {formatCount(files.length)} files selected
+                </span>
+              </label>
 
-        {/* ── Selection bar + backend tabs ───────────────────────────────── */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Checkbox
-              checked={allVisibleTicked ? true : someVisibleTicked ? "indeterminate" : false}
-              onCheckedChange={toggleAll}
-              disabled={visible.length === 0 || busy}
-              className={TICK}
-              aria-label="Select every orphaned file in this list"
-            />
-            <span>
-              {formatCount(selectedFiles.length)} of {formatCount(files.length)} files selected
-            </span>
-          </label>
-
-          {scope === "everywhere" && files.length > 0 ? (
-            <div className="flex items-center gap-1.5" role="tablist" aria-label="Storage">
-              {[
-                { key: "all" as const, label: `All ${formatCount(files.length)}` },
-                {
-                  key: "supabase" as const,
-                  label: `Supabase ${formatCount(perBackend.supabase)}`,
-                },
-                { key: "b2" as const, label: `Backblaze B2 ${formatCount(perBackend.b2)}` },
-              ]
-                .filter((entry) => entry.key === "all" || perBackend[entry.key] > 0)
-                .map((entry) => (
-                  <button
-                    key={entry.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === entry.key}
-                    onClick={() => {
-                      setTab(entry.key);
-                      setShowAll(false);
-                    }}
-                    className={cn(
-                      "cursor-pointer rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
-                      tab === entry.key
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-border text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {entry.label}
-                  </button>
-                ))}
+              {preview.data ? (
+                <p className="text-sm text-muted-foreground">
+                  Cut-off{" "}
+                  <span className="font-medium text-foreground">
+                    {cutOffLabel(preview.data.graceSeconds)}
+                  </span>
+                </p>
+              ) : null}
             </div>
-          ) : null}
-        </div>
+          </div>
 
-        {/* ── The list itself ────────────────────────────────────────────── */}
-        {preview.isPending ? (
-          <div className="flex items-center justify-center gap-2 rounded-lg border border-border py-10 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-            Listing orphaned files…
-          </div>
-        ) : preview.isError ? (
-          <div className="rounded-lg border border-border">
-            <ErrorStateFromError
-              error={preview.error}
-              at={preview.errorUpdatedAt ? new Date(preview.errorUpdatedAt) : null}
-            />
-          </div>
-        ) : files.length === 0 ? (
-          <p className="rounded-lg border border-border px-3.5 py-4 text-sm text-muted-foreground">
-            Nothing to clean up. Every stored file is linked to a form.
-          </p>
-        ) : (
-          <div
-            key={tab}
-            className="overflow-hidden rounded-lg border border-border motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong"
-          >
-            {/* Column heads, hidden on phones, where rows stack instead. */}
-            <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-3 py-2.5 text-xs font-medium text-muted-foreground sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,6rem)_minmax(0,11.5rem)_3.25rem_3.5rem]">
-              <span aria-hidden="true" />
-              <span>File</span>
-              <span className="hidden sm:block">Storage</span>
-              <span className="hidden sm:block">Why it's orphaned</span>
-              <span className="hidden sm:block">Uploaded</span>
-              <span className="text-right">Size</span>
+          {/* ── The list itself ──────────────────────────────────────────── */}
+          {preview.isPending ? (
+            <div className="mx-6 mt-4 mb-5 flex items-center justify-center gap-2 rounded-lg border border-border py-10 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Listing orphaned files…
             </div>
+          ) : preview.isError ? (
+            <div className="mx-6 mt-4 mb-5 rounded-lg border border-border">
+              <ErrorStateFromError
+                error={preview.error}
+                at={preview.errorUpdatedAt ? new Date(preview.errorUpdatedAt) : null}
+              />
+            </div>
+          ) : files.length === 0 ? (
+            <p className="mx-6 mt-4 mb-5 rounded-lg border border-border px-3.5 py-4 text-sm text-muted-foreground">
+              Nothing to clean up. Every stored file is linked to a form.
+            </p>
+          ) : (
+            <div key={scope} className="mt-4">
+              {/* Column heads, hidden on phones, where rows stack instead. */}
+              <div className="grid grid-cols-[1.15rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-6 pb-2 text-xs font-medium text-muted-foreground sm:grid-cols-[1.15rem_minmax(0,1fr)_6.5rem_4.75rem_4.25rem] md:grid-cols-[1.15rem_minmax(0,1fr)_6.5rem_minmax(0,10rem)_4.75rem_4.25rem]">
+                <span aria-hidden="true" />
+                <span>File</span>
+                <span className="hidden sm:block">Storage</span>
+                <span className="hidden md:block">Why it's orphaned</span>
+                <span className="hidden sm:block">Modified</span>
+                <span className="text-right">Size</span>
+              </div>
 
-            <ul className="max-h-[38vh] divide-y divide-border overflow-y-auto">
-              {shown.map((file) => {
-                const id = idOf(file);
-                const ticked = selected.has(id);
-                const { Icon, tone } = fileTile(file.key);
-                return (
-                  <li
-                    key={id}
-                    className={cn(
-                      "grid grid-cols-[1.25rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-sm transition-colors sm:grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,6rem)_minmax(0,11.5rem)_3.25rem_3.5rem] sm:py-3",
-                      // Ticked rows stay white, unticked dim: what is left
-                      // behind after the delete is visible without counting.
-                      ticked ? "hover:bg-muted/40" : "bg-muted/30 hover:bg-muted/50",
-                    )}
-                  >
-                    <Checkbox
-                      checked={ticked}
-                      onCheckedChange={() => toggle(id)}
-                      disabled={busy}
-                      className={TICK}
-                      aria-label={`Select ${baseName(file.key)} for deletion`}
-                    />
-                    <span className="flex min-w-0 items-start gap-2 sm:items-center sm:gap-2.5">
-                      <span
-                        className={cn(
-                          "flex size-6 shrink-0 items-center justify-center rounded-md border border-border sm:size-7",
-                          tone,
-                        )}
-                        aria-hidden="true"
-                      >
-                        <Icon className="size-3.5" aria-hidden="true" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium" title={file.key}>
-                          {baseName(file.key)}
-                        </span>
-                        {/* The reason and storage show under the name on phones. */}
-                        <span className="mt-0.5 block text-xs text-muted-foreground sm:hidden">
+              <ul className="max-h-[38vh] divide-y divide-border/70 overflow-y-auto">
+                {shown.map((file) => {
+                  const id = idOf(file);
+                  const ticked = selected.has(id);
+                  const { Icon, tone } = fileTile(file.key);
+                  const canPreview = isImage(file.key);
+                  return (
+                    <li
+                      key={id}
+                      className={cn(
+                        "grid grid-cols-[1.15rem_minmax(0,1fr)_auto] items-center gap-3 px-6 py-3 text-sm transition-colors sm:grid-cols-[1.15rem_minmax(0,1fr)_6.5rem_4.75rem_4.25rem] md:grid-cols-[1.15rem_minmax(0,1fr)_6.5rem_minmax(0,10rem)_4.75rem_4.25rem]",
+                        // Ticked rows stay white, unticked dim: what is left
+                        // behind after the delete is visible without counting.
+                        ticked ? "hover:bg-muted/40" : "bg-muted/30 hover:bg-muted/50",
+                      )}
+                    >
+                      <Checkbox
+                        checked={ticked}
+                        onCheckedChange={() => toggle(id)}
+                        disabled={busy}
+                        className={TICK}
+                        aria-label={`Select ${baseName(file.key)} for deletion`}
+                      />
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        {canPreview ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewFile(file)}
+                            disabled={busy}
+                            className={cn(
+                              "flex size-8 shrink-0 cursor-zoom-in items-center justify-center rounded-md border border-border transition-shadow hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-60",
+                              tone,
+                            )}
+                            aria-label={`Preview ${baseName(file.key)}`}
+                            title="Preview image"
+                          >
+                            {/* An eye, not a file-type glyph: the tile is a
+                                button that opens the picture, and the hover
+                                underline made that read two different ways. */}
+                            <Eye className="size-3.5" aria-hidden="true" />
+                          </button>
+                        ) : (
                           <span
                             className={cn(
-                              "mr-1.5 inline-block size-2 rounded-[3px] align-baseline",
-                              file.backend === "b2" ? "bg-logo" : "bg-foreground",
+                              "flex size-8 shrink-0 items-center justify-center rounded-md border border-border",
+                              tone,
                             )}
                             aria-hidden="true"
-                          />
-                          {BACKEND_LABEL[file.backend]} · {file.reason} ·{" "}
-                          {shortDate(file.lastModified)}
+                          >
+                            <Icon className="size-3.5" aria-hidden="true" />
+                          </span>
+                        )}
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium" title={file.key}>
+                            {baseName(file.key)}
+                          </span>
+                          {/* The reason and storage show under the name on phones. */}
+                          <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground sm:hidden">
+                            <BrandIcon backend={file.backend} />
+                            {BACKEND_LABEL[file.backend]} · {file.reason} ·{" "}
+                            {shortDate(file.lastModified)}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                    <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
-                      <span
-                        className={cn(
-                          "size-2 shrink-0 rounded-[3px]",
-                          file.backend === "b2" ? "bg-logo" : "bg-foreground",
-                        )}
-                        aria-hidden="true"
-                      />
-                      <span className="truncate">{BACKEND_LABEL[file.backend]}</span>
-                    </span>
-                    <span className="hidden min-w-0 sm:block">
-                      <span
-                        className="inline-block max-w-full truncate rounded-md border border-border bg-muted px-2 py-0.5 align-bottom text-xs text-muted-foreground"
-                        title={file.reason}
-                      >
-                        {file.reason}
+                      <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
+                        <BrandIcon backend={file.backend} />
+                        <span className="truncate">{BACKEND_LABEL[file.backend]}</span>
                       </span>
-                    </span>
-                    <span
-                      className="hidden text-xs text-muted-foreground sm:block"
-                      title={
-                        file.lastModified ? new Date(file.lastModified).toLocaleString() : undefined
-                      }
-                    >
-                      {shortDate(file.lastModified)}
-                    </span>
-                    <span className="text-right text-xs tabular-nums text-muted-foreground">
-                      {formatBytes(file.sizeBytes)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                      <span className="hidden min-w-0 md:block">
+                        <span
+                          className="inline-block max-w-full truncate rounded-md border border-border bg-muted px-2 py-0.5 align-bottom text-xs text-muted-foreground"
+                          title={file.reason}
+                        >
+                          {file.reason}
+                        </span>
+                      </span>
+                      <span
+                        className="hidden text-xs text-muted-foreground sm:block"
+                        title={
+                          file.lastModified
+                            ? new Date(file.lastModified).toLocaleString()
+                            : undefined
+                        }
+                      >
+                        {shortDate(file.lastModified)}
+                      </span>
+                      <span className="text-right text-xs tabular-nums text-muted-foreground">
+                        {formatBytes(file.sizeBytes)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
 
-            {hidden > 0 ? (
-              <button
-                type="button"
-                onClick={() => setShowAll(true)}
-                className="w-full cursor-pointer border-t border-border px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+              {hidden > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  className="w-full cursor-pointer border-t border-border px-6 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {plural(hidden, "more file")} in this list.{" "}
+                  <span className="font-medium underline underline-offset-2">Show all</span>
+                </button>
+              ) : null}
+            </div>
+          )}
+
+          <DialogFooter className="gap-3 border-t px-6 py-4 sm:justify-between">
+            <p className="max-w-sm text-xs leading-5 text-muted-foreground">
+              <span className="font-semibold text-foreground">Deleting is permanent.</span> Deleted
+              files can't be recovered. Untick any file you want to keep.
+            </p>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={busy || selectedFiles.length === 0}
+                onClick={() => deleteMutation.mutate()}
               >
-                {plural(hidden, "more file")} in this list.{" "}
-                <span className="font-medium underline underline-offset-2">Show all</span>
-              </button>
-            ) : null}
-          </div>
-        )}
+                {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+                Delete {plural(selectedFiles.length, "file")} ({formatBytes(selectedBytes)})
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter className="gap-3 sm:justify-between">
-          <p className="max-w-sm text-xs leading-5 text-muted-foreground">
-            <span className="font-medium text-foreground">Deleting is permanent.</span> Deleted
-            files can't be recovered. Untick any file you want to keep.
-          </p>
-          <div className="flex shrink-0 gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={busy || selectedFiles.length === 0}
-              onClick={() => deleteMutation.mutate()}
-            >
-              {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-              Delete {plural(selectedFiles.length, "file")} ({formatBytes(selectedBytes)})
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <OrphanPreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} />
+    </>
   );
 }
 
-/** One backend's card in the modal: its ring, and what deleting will free. */
-function SummaryCard({
-  usage,
-  title,
-  files,
-  selectedBytes,
+/**
+ * Full-size look at one orphaned image before it is deleted. The link is signed
+ * when the dialog opens (the preview list never carries URLs), and the API
+ * refuses to sign a file that has been claimed since the list was read.
+ */
+function OrphanPreviewDialog({
+  file,
+  onClose,
 }: {
-  usage: StorageBackendUsage;
-  title: string;
-  /** Orphaned files currently in the list for this backend. */
-  files: number;
-  /** Bytes ticked for deletion on this backend, drives the arrow below. */
-  selectedBytes: number;
+  file: OrphanedFile | null;
+  onClose: () => void;
 }) {
-  const usedPercent =
-    usage.limitBytes > 0 ? Math.min(100, (usage.usedBytes / usage.limitBytes) * 100) : 0;
-  const afterPercent =
-    usage.limitBytes > 0
-      ? Math.max(0, ((usage.usedBytes - selectedBytes) / usage.limitBytes) * 100)
-      : 0;
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      setError(null);
+      return;
+    }
+    let cancelled = false;
+    setUrl(null);
+    setError(null);
+    setLoading(true);
+    getStorageOrphanPreviewUrl({ key: file.key, backend: file.backend })
+      .then((result) => {
+        if (!cancelled) setUrl(result.url);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Could not open that image.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
 
   return (
-    <section className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
-      <UsageDonut usage={usage} size={72} />
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{title}</p>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          {plural(files, "file")}, {formatBytes(selectedBytes)} to delete
-        </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          <span className="font-medium tabular-nums text-foreground">
-            {Math.round(usedPercent)}%
-          </span>{" "}
-          full →{" "}
-          <span className="font-medium tabular-nums text-foreground">
-            {Math.round(afterPercent)}%
-          </span>{" "}
-          full
-        </p>
-      </div>
-    </section>
+    <Dialog open={file != null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="truncate text-base">
+            {file ? baseName(file.key) : "Image preview"}
+          </DialogTitle>
+          <DialogDescription>
+            {file
+              ? `${BACKEND_LABEL[file.backend]} · ${file.reason} · ${formatBytes(file.sizeBytes)}`
+              : null}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid min-h-64 place-items-center overflow-hidden rounded-lg border border-border bg-muted/40">
+          {loading ? (
+            <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
+          ) : error ? (
+            <p className="px-6 py-10 text-center text-sm text-muted-foreground">{error}</p>
+          ) : url ? (
+            <img
+              src={url}
+              alt={file ? baseName(file.key) : "Orphaned image"}
+              className="max-h-[68vh] w-auto max-w-full object-contain"
+            />
+          ) : null}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

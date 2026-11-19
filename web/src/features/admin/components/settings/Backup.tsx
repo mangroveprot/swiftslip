@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Loader2, RefreshCw, TriangleAlert, Upload } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { Check, ChevronDown, Copy, Loader2, RefreshCw, TriangleAlert, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   disconnectGoogleDrive,
@@ -27,7 +28,12 @@ import {
 import { formatDateTime } from "@swiftslip/shared/time";
 
 import { AdminClock } from "../AdminClock";
+import type { AdminSearch } from "../../lib/admin-search";
 import { backupOverviewQueryOptions } from "../../queries";
+
+/** Runs shown before the history asks; each "Show more" reveals one more batch. */
+const HISTORY_INITIAL = 4;
+const HISTORY_STEP = 4;
 
 /**
  * Admin Panel → Settings → Backup.
@@ -41,14 +47,16 @@ import { backupOverviewQueryOptions } from "../../queries";
  * Attachments are deliberately out of scope and the subtitle says so; 10 GB
  * through a free host is the whole month's bandwidth on one leg (BACKUP_GUIDE.md).
  *
- * Layout: a single narrow settings sheet, the way the owner's reference shows it
- * — header, then one section per subject with a hairline between them, each
- * answering "what is this, what is its state, what can I press".
+ * Layout: the owner's two-column settings sheet — header, then one section per
+ * subject with a hairline between them; the subject and its description on the
+ * left, the controls on the right, stacking into one column below `lg`.
  */
 export function Backup() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [running, setRunning] = useState(false);
   const [confirm, setConfirm] = useState<"disconnect" | "rotate" | null>(null);
+  const [visibleRuns, setVisibleRuns] = useState(HISTORY_INITIAL);
 
   const { data, error, isError, isFetching, refetch } = useQuery({
     ...backupOverviewQueryOptions(),
@@ -67,11 +75,15 @@ export function Backup() {
   }, [data]);
 
   // Google sends the browser back to /admin?backup=…; turn that into a toast
-  // once, then drop it so a reload does not repeat it.
+  // once, then drop it so a reload does not repeat it. The ref keeps StrictMode's
+  // double mount from toasting twice before the router has rewritten the URL.
+  const handshakeHandled = useRef(false);
   useEffect(() => {
+    if (handshakeHandled.current) return;
     const params = new URLSearchParams(window.location.search);
     const flag = params.get("backup");
     if (!flag) return;
+    handshakeHandled.current = true;
 
     if (flag === "connected") {
       const account = params.get("account");
@@ -82,14 +94,21 @@ export function Backup() {
       toast.error(params.get("reason") || "Google Drive could not be connected.");
     }
 
-    for (const key of ["backup", "reason", "account", "section"]) params.delete(key);
-    const query = params.toString();
-    window.history.replaceState(
-      {},
-      "",
-      `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
-    );
-  }, []);
+    // Drop Google's handshake keys, but keep `section=backup`: the admin is
+    // still on this page, and a refresh must land here rather than on the
+    // dashboard.
+    void navigate({
+      to: "/admin",
+      replace: true,
+      search: (previous): AdminSearch => {
+        const next = { ...(previous as AdminSearch) };
+        delete next.backup;
+        delete next.reason;
+        delete next.account;
+        return next;
+      },
+    });
+  }, [navigate]);
 
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["backup-overview"] });
   const onError = (problem: unknown) =>
@@ -176,7 +195,7 @@ export function Backup() {
 
   if (isError) {
     return (
-      <section className="mx-auto w-full max-w-4xl rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
+      <section className="mx-auto w-full max-w-6xl rounded-2xl border bg-card p-6 shadow-sm sm:p-10">
         <PageTitle as="h2">Backup</PageTitle>
         <ErrorStateFromError
           error={error}
@@ -202,6 +221,9 @@ export function Backup() {
     : null;
 
   const anyDatabase = data.databases.some((database) => database.configured);
+  const shownRuns = data.runs.slice(0, visibleRuns);
+  const hasMoreRuns = data.runs.length > visibleRuns;
+  const peekRun = hasMoreRuns ? data.runs[visibleRuns] : null;
 
   /** Why "Back up now" cannot run, in the order the Setup list fixes them. */
   const blockedBy = !data.oauthConfigured
@@ -281,12 +303,15 @@ export function Backup() {
         : "Unsaved changes"
       : lastSaved;
 
+  /** Drop the draft back to what is saved, so Cancel really cancels. */
+  const discard = () => setDraft({ enabled: settings.enabled, keep: String(settings.keepCount) });
+
   return (
-    <section className="mx-auto w-full max-w-4xl rounded-2xl border bg-card p-6 shadow-sm sm:p-8">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b pb-5">
+    <section className="mx-auto w-full max-w-6xl rounded-2xl border bg-card p-6 shadow-sm sm:p-10">
+      <header className="flex flex-wrap items-start justify-between gap-6 border-b pb-6">
         <div className="min-w-0 flex-1">
           <PageTitle as="h2">Backup</PageTitle>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          <p className="mt-2 max-w-[40rem] text-[15px] leading-7 text-muted-foreground">
             Saves a copy of every database you have configured to your Google Drive. Attachments are
             not included, because they are too large to copy through this server. The Storage page
             looks after those.
@@ -299,8 +324,8 @@ export function Backup() {
         <div className="mt-6 flex gap-3 rounded-lg border border-logo/30 bg-muted/40 p-4">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-logo" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-sm font-medium">The backup tables are missing</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            <p className="text-[15px] font-medium">The backup tables are missing</p>
+            <p className="mt-1 text-[15px] leading-7 text-muted-foreground">
               Run{" "}
               <code className="font-mono text-[0.9em]">api/drizzle/migrations/0043_backup.sql</code>{" "}
               in the Supabase SQL editor, then reload this page. Nothing is lost while it waits.
@@ -311,8 +336,8 @@ export function Backup() {
         <div className="mt-6 flex gap-3 rounded-lg border border-logo/30 bg-muted/40 p-4">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-logo" aria-hidden="true" />
           <div className="min-w-0">
-            <p className="text-sm font-medium">One more migration is needed</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            <p className="text-[15px] font-medium">One more migration is needed</p>
+            <p className="mt-1 text-[15px] leading-7 text-muted-foreground">
               Run{" "}
               <code className="font-mono text-[0.9em]">
                 api/drizzle/migrations/0044_backup_target.sql
@@ -333,12 +358,15 @@ export function Backup() {
                 : "A backup needs all of these. “Back up now” tells you which one is still missing."
             }
           >
-            <ul className="space-y-4">
+            <ul className="divide-y">
               {setup.map((row) => (
-                <li key={row.label} className="flex items-start justify-between gap-4">
+                <li
+                  key={row.label}
+                  className="flex items-start justify-between gap-6 py-4 first:pt-0 last:pb-0"
+                >
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold">{row.label}</p>
-                    <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{row.hint}</p>
+                    <p className="text-[15px] font-semibold">{row.label}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{row.hint}</p>
                   </div>
                   <Status tone={row.tone} label={row.status} />
                 </li>
@@ -362,13 +390,18 @@ export function Backup() {
                   <p className="truncate text-sm font-medium">
                     {drive.accountEmail ?? "Google Drive connected"}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Connected {formatDateTime(new Date(drive.connectedAt ?? Date.now()))}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    One dated folder per backup:{" "}
+                    <span className="font-mono text-foreground/80">
+                      {settings.folderName} / 2026-11-19 09-26-45 /
+                    </span>
                   </p>
                 </div>
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => setConfirm("disconnect")}
                   disabled={disconnectMutation.isPending}
                 >
@@ -379,7 +412,6 @@ export function Backup() {
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => connectMutation.mutate()}
                   disabled={!data.oauthConfigured || connectMutation.isPending}
                   title={data.oauthConfigured ? undefined : "Add the Google OAuth client first."}
@@ -390,7 +422,7 @@ export function Backup() {
                   Connect Google Drive
                 </Button>
                 {!data.oauthConfigured ? (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     Add the Google OAuth client first.
                   </span>
                 ) : null}
@@ -399,19 +431,19 @@ export function Backup() {
 
             {!data.oauthConfigured ? (
               <>
-                <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                <p className="mt-5 text-[15px] leading-7 text-muted-foreground">
                   To create the client, open Google Cloud, go to APIs &amp; Services, then
                   Credentials, and create an OAuth client of type{" "}
                   <span className="font-medium text-foreground">Web application</span>. Register
                   exactly this redirect URI:
                 </p>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-3 flex gap-2">
                   <Input
                     readOnly
                     value={data.googleRedirectUri}
                     onFocus={(event) => event.currentTarget.select()}
                     aria-label="OAuth redirect URI"
-                    className="h-8 bg-muted/50 font-mono text-[11px]"
+                    className="h-10 bg-muted/50 font-mono text-xs"
                   />
                   <CopyButton value={data.googleRedirectUri} />
                 </div>
@@ -432,19 +464,19 @@ export function Backup() {
                 aria-label="Allow the trigger link to start a backup"
               />
               <span className="min-w-0">
-                <span className="block text-sm font-medium">
+                <span className="block text-[15px] font-medium">
                   Allow the trigger link to start a backup
                 </span>
-                <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                <span className="mt-1 block text-sm leading-6 text-muted-foreground">
                   When this is off, the link replies “turned off” and does nothing. “Back up now”
                   always works.
                 </span>
               </span>
             </label>
 
-            <div className="mt-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <label htmlFor="backup-keep" className="text-sm font-medium">
+            <div className="mt-6">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <label htmlFor="backup-keep" className="text-[15px] font-medium">
                   Keep the latest
                 </label>
                 <Input
@@ -456,34 +488,40 @@ export function Backup() {
                   max={BACKUP_KEEP_MAX}
                   value={draft.keep}
                   onChange={(event) => setDraft({ ...draft, keep: event.target.value })}
-                  className="h-8 w-14 px-1 text-center text-sm tabular-nums"
+                  className="h-10 w-16 px-2 text-center text-[15px] tabular-nums"
                 />
-                <span className="text-sm font-medium">of each database</span>
+                <span className="text-[15px] font-medium">backups</span>
               </div>
               <p
                 className={cn(
-                  "mt-1 text-xs",
+                  "mt-2 text-sm leading-6",
                   keepValid ? "text-muted-foreground" : "font-medium text-destructive",
                 )}
               >
                 {keepValid
-                  ? "After each successful backup, older copies of each database are deleted."
+                  ? "Each backup is one dated folder in Drive; older folders are deleted after a successful run."
                   : `Enter a whole number between ${BACKUP_KEEP_MIN} and ${BACKUP_KEEP_MAX}.`}
               </p>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => saveMutation.mutate()}
                 disabled={!dirty || !keepValid || saveMutation.isPending}
               >
                 Save settings
               </Button>
+              <Button
+                variant="ghost"
+                onClick={() => discard()}
+                disabled={!dirty || saveMutation.isPending}
+              >
+                Cancel
+              </Button>
               <span
                 className={cn(
-                  "text-xs text-muted-foreground",
+                  "text-sm text-muted-foreground",
                   dirty && keepValid && !saveMutation.isPending && "font-medium text-foreground",
                 )}
               >
@@ -503,81 +541,98 @@ export function Backup() {
                 value={triggerUrl ?? "Generating…"}
                 onFocus={(event) => event.currentTarget.select()}
                 aria-label="Backup trigger link"
-                className="h-8 bg-muted/50 font-mono text-[11px]"
+                className="h-10 bg-muted/50 font-mono text-xs"
               />
               <CopyButton value={triggerUrl} />
             </div>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Paste it into cron-job.org, a GitHub Actions schedule or Render Cron Jobs. Weekly is
               enough for a database this size. All of them send a plain GET.
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => setConfirm("rotate")}
                 disabled={rotateMutation.isPending || !cronToken}
               >
                 <RefreshCw className="size-4" aria-hidden="true" />
                 New link
               </Button>
-              <span className="text-xs text-muted-foreground">The old link stops working.</span>
+              <span className="text-sm text-muted-foreground">The old link stops working.</span>
             </div>
           </Block>
 
-          {/* ── Recent backups ────────────────────────────────────────────── */}
-          <section className="pt-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <h3 className="text-[15px] font-semibold tracking-tight">Recent backups</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  The last {settings.keepCount} of each database are kept.
-                </p>
-              </div>
-              <div className="shrink-0 text-right">
-                <Button
-                  size="sm"
-                  className="bg-save text-save-foreground hover:bg-save-hover"
-                  onClick={() => runMutation.mutate()}
-                  disabled={!ready || running || runMutation.isPending}
-                  title={blockedBy ?? undefined}
-                >
-                  {running || runMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Upload className="size-4" aria-hidden="true" />
-                  )}
-                  {running || runMutation.isPending ? "Backing up…" : "Back up now"}
-                </Button>
-                {blockedBy ? (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">{blockedBy}</p>
-                ) : null}
-              </div>
+          {/* ── Recent backups ─────────────────────────────────────────────── */}
+          <section className="grid gap-x-10 gap-y-6 pt-8 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold tracking-tight">Recent backups</h3>
+              <p className="mt-1.5 text-[15px] leading-6 text-muted-foreground">Newest first.</p>
             </div>
 
-            {data.runs.length === 0 ? (
-              <p className="mt-4 max-w-[40ch] text-sm leading-6 text-muted-foreground">
-                No backups yet. The first one appears here after you connect Google Drive and press
-                Back up now.
-              </p>
-            ) : (
-              <table className="mt-4 w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-muted-foreground">
-                    <th className="w-[30%] pb-2 text-left font-normal">Date</th>
-                    <th className="w-[20%] pb-2 text-left font-normal">Database</th>
-                    <th className="w-[12%] pb-2 text-left font-normal">Size</th>
-                    <th className="w-[20%] pb-2 text-left font-normal">Started by</th>
-                    <th className="w-[18%] pb-2 text-right font-normal">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.runs.map((run) => (
-                    <RunRow key={run.id} run={run} />
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <p className="max-w-[32ch] text-[15px] leading-6 text-muted-foreground">
+                  The last {settings.keepCount} folders are kept.
+                </p>
+                <div className="shrink-0 text-right">
+                  <Button
+                    className="bg-save text-save-foreground hover:bg-save-hover"
+                    onClick={() => runMutation.mutate()}
+                    disabled={!ready || running || runMutation.isPending}
+                    title={blockedBy ?? undefined}
+                  >
+                    {running || runMutation.isPending ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Upload className="size-4" aria-hidden="true" />
+                    )}
+                    {running || runMutation.isPending ? "Backing up…" : "Back up now"}
+                  </Button>
+                  {blockedBy ? (
+                    <p className="mt-2 text-xs text-muted-foreground">{blockedBy}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              {data.runs.length === 0 ? (
+                <p className="mt-5 max-w-[46ch] text-[15px] leading-7 text-muted-foreground">
+                  No backups yet. The first one appears here after you connect Google Drive and
+                  press Back up now.
+                </p>
+              ) : (
+                <table className="mt-5 w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-sm text-muted-foreground">
+                      <th className="w-[26%] pb-3 text-left font-normal">Date</th>
+                      <th className="w-[22%] pb-3 text-left font-normal">Database</th>
+                      <th className="w-[14%] pb-3 text-left font-normal">Size</th>
+                      <th className="w-[20%] pb-3 text-left font-normal">Started by</th>
+                      <th className="w-[18%] pb-3 text-right font-normal">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shownRuns.map((run) => (
+                      <RunRow key={run.id} run={run} />
+                    ))}
+                    {peekRun ? <RunRow key={`peek-${peekRun.id}`} run={peekRun} peek /> : null}
+                  </tbody>
+                </table>
+              )}
+
+              {hasMoreRuns ? (
+                <div className="mt-3 flex justify-center">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    className="h-auto gap-1.5 px-0 py-0 text-sm font-medium text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    onClick={() => setVisibleRuns((count) => count + HISTORY_STEP)}
+                  >
+                    <ChevronDown className="size-4" aria-hidden="true" />
+                    Show more
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           </section>
         </>
       )}
@@ -616,14 +671,18 @@ const TONE = {
 /** The small "● Ready" on the right of a Setup row. */
 function Status({ tone, label }: { tone: string; label: string }) {
   return (
-    <span className="mt-1 inline-flex shrink-0 items-center gap-1.5 text-xs text-foreground/80">
+    <span className="mt-0.5 inline-flex shrink-0 items-center gap-2 text-sm text-foreground/80">
       <span className={cn("size-1.5 rounded-full", tone)} aria-hidden="true" />
       {label}
     </span>
   );
 }
 
-/** One section of the sheet: title, one line of context, then the control. */
+/**
+ * One section of the sheet: what this is on the left, what it does on the right.
+ * The two columns are the reference's own proportions; below `lg` they stack, so
+ * a phone reads it as one column without any horizontal squeeze.
+ */
 function Block({
   title,
   description,
@@ -634,10 +693,12 @@ function Block({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-b py-6">
-      <h3 className="text-[15px] font-semibold tracking-tight">{title}</h3>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
-      <div className="mt-4">{children}</div>
+    <section className="grid gap-x-10 gap-y-5 border-b py-8 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
+      <div className="min-w-0">
+        <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
+        <p className="mt-1.5 text-[15px] leading-6 text-muted-foreground">{description}</p>
+      </div>
+      <div className="min-w-0">{children}</div>
     </section>
   );
 }
@@ -661,7 +722,6 @@ function CopyButton({ value, label = "Copy" }: { value: string | null; label?: s
     <Button
       type="button"
       variant="outline"
-      size="sm"
       onClick={() => void copy()}
       disabled={!value}
       className="shrink-0"
@@ -700,32 +760,56 @@ function targetLabel(run: BackupRun): string {
   return target?.label ?? "SwiftSlip";
 }
 
-/** One line of the history: date, database, size, who started it, what happened. */
-function RunRow({ run }: { run: BackupRun }) {
+/**
+ * One line of the history: date, database, size, who started it, what happened.
+ *
+ * `peek` is the one extra run under the limit: 70% of a row's height with its
+ * bottom fading into the card, so the table visibly continues without printing
+ * the whole history. It is decorative — the Show more control is the action.
+ */
+function RunRow({ run, peek = false }: { run: BackupRun; peek?: boolean }) {
   const tone = RUN_TONE[run.status];
+  const pad = peek ? "py-2" : "py-4";
+  const fade: React.CSSProperties | undefined = peek
+    ? {
+        maskImage: "linear-gradient(to bottom, #000 68%, transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to bottom, #000 68%, transparent 100%)",
+      }
+    : undefined;
   return (
     <>
-      <tr className="align-top">
-        <td className="py-2.5 pr-3 text-[13px] tabular-nums">
-          {formatDateTime(new Date(run.startedAt))}
+      <tr
+        className={cn("align-top", !run.error && "border-b", peek && "opacity-60")}
+        style={run.error ? undefined : fade}
+        aria-hidden={peek || undefined}
+      >
+        <td className={cn(pad, "pr-3 tabular-nums")}>{formatDateTime(new Date(run.startedAt))}</td>
+        <td className={cn(pad, "pr-3")}>{targetLabel(run)}</td>
+        <td className={cn(pad, "pr-3 text-muted-foreground tabular-nums")}>
+          {run.sizeBytes === null
+            ? run.status === "failed"
+              ? "Not saved"
+              : "—"
+            : formatDumpSize(run.sizeBytes)}
         </td>
-        <td className="py-2.5 pr-3 text-[13px]">{targetLabel(run)}</td>
-        <td className="py-2.5 pr-3 text-[13px] text-muted-foreground tabular-nums">
-          {run.sizeBytes === null ? "—" : formatDumpSize(run.sizeBytes)}
-        </td>
-        <td className="py-2.5 pr-3 text-[13px]">
-          {run.trigger === "cron" ? "Trigger link" : "Back up now"}
-        </td>
-        <td className="py-2.5 text-right text-xs">
-          <span className="inline-flex items-center gap-1.5">
+        <td className={cn(pad, "pr-3")}>{run.trigger === "cron" ? "Trigger link" : "Manual"}</td>
+        <td className={cn(pad, "text-right text-sm")}>
+          <span className="inline-flex items-center gap-2">
             <span className={cn("size-1.5 rounded-full", tone.dot)} aria-hidden="true" />
             {tone.word}
           </span>
         </td>
       </tr>
       {run.error ? (
-        <tr>
-          <td colSpan={5} className="pb-2.5 text-xs leading-5 text-destructive">
+        <tr
+          className={cn("border-b", peek && "opacity-60")}
+          style={fade}
+          aria-hidden={peek || undefined}
+        >
+          <td
+            colSpan={5}
+            className={cn("text-sm leading-6 text-destructive", peek ? "py-2" : "pb-4")}
+          >
             {run.error}
           </td>
         </tr>
@@ -738,15 +822,15 @@ function RunRow({ run }: { run: BackupRun }) {
 function BackupSkeleton() {
   return (
     <section
-      className="mx-auto w-full max-w-4xl rounded-2xl border bg-card p-6 shadow-sm sm:p-8"
+      className="mx-auto w-full max-w-6xl rounded-2xl border bg-card p-6 shadow-sm sm:p-10"
       aria-busy="true"
       aria-label="Loading backup settings"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-5">
+      <div className="flex flex-wrap items-start justify-between gap-6 border-b pb-6">
         <div className="min-w-0 flex-1">
-          <div className="h-8 w-28 max-w-full animate-pulse rounded-md bg-muted" />
-          <div className="mt-3 h-4 w-full max-w-sm animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-4 w-full max-w-xs animate-pulse rounded bg-muted" />
+          <div className="h-9 w-32 max-w-full animate-pulse rounded-md bg-muted" />
+          <div className="mt-3 h-4 w-full max-w-lg animate-pulse rounded bg-muted" />
+          <div className="mt-2 h-4 w-full max-w-md animate-pulse rounded bg-muted" />
         </div>
         <div className="shrink-0 space-y-2">
           <div className="ml-auto h-5 w-20 animate-pulse rounded bg-muted" />
@@ -755,10 +839,18 @@ function BackupSkeleton() {
       </div>
 
       {[0, 1, 2, 3].map((block) => (
-        <div key={block} className="border-b py-6">
-          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-3.5 w-full max-w-sm animate-pulse rounded bg-muted" />
-          <div className="mt-4 h-8 w-full max-w-xs animate-pulse rounded-md bg-muted" />
+        <div
+          key={block}
+          className="grid gap-x-10 gap-y-5 border-b py-8 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]"
+        >
+          <div>
+            <div className="h-5 w-36 animate-pulse rounded bg-muted" />
+            <div className="mt-2.5 h-4 w-full max-w-[13rem] animate-pulse rounded bg-muted" />
+          </div>
+          <div className="space-y-3">
+            <div className="h-5 w-48 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-full max-w-sm animate-pulse rounded bg-muted" />
+          </div>
         </div>
       ))}
     </section>

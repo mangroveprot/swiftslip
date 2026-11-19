@@ -99,7 +99,11 @@ export function isEligible(type: RetentionFormType, row: RuleFields): boolean {
  */
 export function itemOf(
   type: RetentionFormType,
-  row: RuleFields & { id: string; created_at?: string | null },
+  row: RuleFields & {
+    id: string;
+    owner_id?: string | null;
+    created_at?: string | null;
+  },
   files: number,
 ): RetentionFormItem {
   const person =
@@ -113,6 +117,7 @@ export function itemOf(
   return {
     type,
     id: row.id,
+    ownerId: row.owner_id ?? null,
     label: person?.trim() || 'Untitled form',
     reference: type === 'dtr' ? row.emp_no?.trim() || null : null,
     date: filed ?? row.created_at ?? null,

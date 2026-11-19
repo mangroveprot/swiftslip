@@ -1,12 +1,12 @@
 # SwiftSlip Database Backup (Admin Panel → Settings → Backup)
 
-A gzipped `pg_dump` of **each database** — SwiftSlip and the RGC inventory — written into a folder
-in the admin's own Google Drive, started either by the **Back up now** button or by a **trigger
-link** you paste into any cron service.
+A gzipped `pg_dump` of **each database** — SwiftSlip and the RGC inventory — written into a dated
+folder in the admin's own Google Drive, started either by the **Back up now** button or by a
+**trigger link** you paste into any cron service.
 
-One press (or one cron hit) writes one file per database. No paid plan is involved anywhere: the
-dump runs on your own API server, the schedule is a free cron service fetching a URL, and Supabase
-only has to accept a normal Postgres connection.
+One press (or one cron hit) writes one folder holding one file per database. No paid plan is
+involved anywhere: the dump runs on your own API server, the schedule is a free cron service fetching
+a URL, and Supabase only has to accept a normal Postgres connection.
 
 ---
 
@@ -18,8 +18,8 @@ only has to accept a normal Postgres connection.
 | **Which two** | `SwiftSlip` (the Supabase project behind `SUPABASE_URL`) and `RGC inventory` (the separate database behind `RGC_INVENTORY_DATABASE_URL`). Either one may be left unset; the page then shows it as missing and the other still runs. |
 | **Not backed up** | The attachment files themselves. They live in the Supabase Storage bucket and the Backblaze B2 bucket (`STORAGE_GUIDE.md`), and a path in a restored row is only useful if the file still exists. |
 | **Why attachments are out** | They are gigabytes. Copying them through this host costs bandwidth on both legs and takes hours per run; on a Render **free** instance it is the exact traffic pattern Render reserves the right to suspend (`render.com/docs/free`, "Service-initiated traffic threshold"). A database dump is a few megabytes and costs nothing. Back the buckets up from a machine that is not the web host — see §7. |
-| **Where it goes** | `My Drive / SwiftSlip Backups / swiftslip-<UTC timestamp>.sql.gz` and `inventory-<UTC timestamp>.sql.gz` in the Google account you connect. |
-| **History** | Every dump is its own row in `backup_runs` — including a failure, which never hides the other database's success. |
+| **Where it goes** | One folder per run, `My Drive / SwiftSlip Backups / 2026-11-19 09-26-45 /`, holding `swiftslip-…sql.gz` and `inventory-…sql.gz` from that run. The folder is named with the run's local date and time. |
+| **History** | Every dump is its own row in `backup_runs` — including a failure, which never hides the other database's success. The page shows the newest four, one faded peek row, and a **Show more** link that reveals four at a time. |
 
 ## 2. One-time setup
 
@@ -99,8 +99,8 @@ client Alpine offers (18, then 17, then 16 as fallbacks).
 
 1. Admin Panel → **Settings → Backup** → **Connect Google Drive** → sign in → allow.
 2. You come back to the Backup page with the account address shown.
-3. Turn on **Accept runs from the trigger link**, choose how many copies of each database to keep,
-   **Save settings**.
+3. Turn on **Accept runs from the trigger link**, choose how many dated backup folders to keep,
+   **Save settings**. Unsaved changes can be dropped with **Cancel**.
 4. Copy the **Trigger link** into a cron service — [cron-job.org](https://cron-job.org), a GitHub
    Actions schedule, or Render Cron Jobs. Weekly is plenty:
 
@@ -112,9 +112,9 @@ client Alpine offers (18, then 17, then 16 as fallbacks).
 
 ## 3. How a run behaves
 
-- **One run, one file per database.** Every configured database is dumped in turn and uploaded to
-  the same folder. The next database starts only after the previous buffer has been released, so
-  the memory ceiling is `BACKUP_MAX_MB`, not twice that.
+- **One run, one dated folder.** Every configured database is dumped in turn and uploaded into that
+  run's folder. The next database starts only after the previous buffer has been released, so the
+  memory ceiling is `BACKUP_MAX_MB`, not twice that.
 - **Failures stay separate.** A wrong password on one database writes a `failed` row for that
   database and still backs up the other one. The page shows the reason under the row it belongs to.
 - **The response is immediate.** The link answers `202 {"started": true}` and the dumps continue in
@@ -123,9 +123,10 @@ client Alpine offers (18, then 17, then 16 as fallbacks).
 - **One run at a time.** A second trigger while one is in flight answers `409 BACKUP_IN_PROGRESS`.
 - **A run row is written before the work starts**, so a process killed mid-run (deploy, spin-down)
   leaves a `running` row. The next run closes anything still `running` after 30 minutes as failed.
-- **Retention is counted per database**: after a successful upload the oldest dumps beyond **Keep
-  the latest N of each database** are deleted. A failed sweep never turns a saved backup into a
-  failed one.
+- **Retention is counted per run folder**: after a successful upload the oldest run folders beyond
+  **Keep the latest N backups** are deleted, together with the dumps inside them. A failed sweep
+  never turns a saved backup into a failed one, and dumps written by older builds straight into the
+  root are left alone.
 - **Time and size limits**: 5 minutes per dump, `BACKUP_MAX_MB` of gzipped output each. Both are
   guards for a small host, not targets — each database is a few megabytes gzipped.
 - **Bandwidth**: one full run is a few MB (both files), so a weekly schedule is well under 100 MB a
@@ -138,7 +139,7 @@ The dump is plain SQL, so any `psql` can read it. `--clean --if-exists` is inclu
 by dropping the objects it is about to recreate.
 
 ```bash
-# Download the .sql.gz from the Drive folder, then:
+# Download the .sql.gz from its dated folder in Drive, then:
 gunzip -c swiftslip-2026-11-17T02-30-05Z.sql.gz > restore.sql
 
 # Restore into a NEW, empty Supabase project first — never straight over the live one.

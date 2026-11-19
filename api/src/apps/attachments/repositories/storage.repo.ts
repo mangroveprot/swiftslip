@@ -51,11 +51,16 @@ export class StorageRepository {
     if (error) throw new ErrorResponse('GENERAL_ERROR', error.message);
   }
 
-  /** Returns `null` when the object is already gone. */
-  async signedUrl(path: string): Promise<string | null> {
+  /**
+   * Returns `null` when the object is already gone. `downloadName` makes the
+   * link answer `Content-Disposition: attachment`, so it saves rather than
+   * opens (cross-origin `download` attributes are ignored by browsers).
+   */
+  async signedUrl(path: string, downloadName?: string): Promise<string | null> {
     const { data, error } = await this.bucket().createSignedUrl(
       path,
       URL_TTL_SECONDS,
+      downloadName ? { download: downloadName } : undefined,
     );
     return error || !data ? null : data.signedUrl;
   }

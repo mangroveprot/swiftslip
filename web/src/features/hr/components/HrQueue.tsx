@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUrlState } from "@/lib/use-url-state";
 import { cn } from "@/lib/utils";
 import { obReturnState, type ObHrStatus } from "@swiftslip/shared/hr";
 import type { HrObSummary } from "@swiftslip/shared/api-types";
@@ -18,7 +19,8 @@ type HrView = "queue" | "completed" | "rejected";
  * Which status tab is selected. Completed and Rejected are URL views linked
  * from the sidebar, not tab state.
  */
-type StatusTab = "all" | "waiting" | "onob" | "overdue" | "supervisor";
+export const HR_STATUS_TAB_KEYS = ["all", "waiting", "onob", "overdue", "supervisor"] as const;
+export type StatusTab = (typeof HR_STATUS_TAB_KEYS)[number];
 
 /** Queue order: what HR must act on first, completed last. */
 const STATUS_ORDER: ObHrStatus[] = [
@@ -165,7 +167,7 @@ export function HrQueue() {
   const view: HrView = viewParam === "completed" || viewParam === "rejected" ? viewParam : "queue";
   const navigate = useNavigate();
 
-  const [statusTab, setStatusTab] = useState<StatusTab>("all");
+  const [statusTab, setStatusTab] = useUrlState<StatusTab>("tab", HR_STATUS_TAB_KEYS, "all");
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("");
   const [supervisor, setSupervisor] = useState("");
@@ -346,9 +348,14 @@ export function HrQueue() {
               type="button"
               aria-pressed={active}
               onClick={() => {
-                setStatusTab(tab.key);
-                // A tab is only meaningful on the queue itself.
-                if (view !== "queue") void navigate({ to: "/hr", search: {} });
+                // A tab is only meaningful on the queue itself. Leaving
+                // Completed/Rejected is one navigation that keeps the chosen
+                // tab, not two that would race and drop it.
+                if (view !== "queue") {
+                  void navigate({ to: "/hr", replace: true, search: { tab: tab.key } });
+                } else {
+                  setStatusTab(tab.key);
+                }
               }}
               className={cn(
                 "-mb-px border-b-2 pt-1 pb-3 text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { validate } from '../../../common/shared';
 import {
+  storageOrphanPreviewUrlQuery,
   storageOrphansDeleteInput,
   storageOrphansInput,
   storageOrphansPreviewQuery,
@@ -26,6 +27,11 @@ router.get(
   '/orphans/preview',
   validate(storageOrphansPreviewQuery, 'query'),
   StorageController.previewOrphans,
+);
+router.get(
+  '/orphans/preview-url',
+  validate(storageOrphanPreviewUrlQuery, 'query'),
+  StorageController.previewOrphanUrl,
 );
 router.post(
   '/orphans/delete',

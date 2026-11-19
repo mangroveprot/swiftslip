@@ -1,4 +1,4 @@
-import { formatClock } from "@/lib/clock";
+import { formatClock } from "@swiftslip/shared/time";
 import type { OtEntry } from "@swiftslip/shared/types";
 
 /**

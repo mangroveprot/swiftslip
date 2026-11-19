@@ -2,7 +2,7 @@ import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import ImageModule from "docxtemplater-image-module-free";
 import { base64ToBytes, fitSignature, naturalSize, toBase64 } from "@/lib/signature";
-import { formatClock } from "@/lib/clock";
+import { formatClock } from "@swiftslip/shared/time";
 import { formatMonthDayYear } from "@swiftslip/shared/period";
 import type { OtEntry, OtForm } from "@swiftslip/shared/types";
 import { formatOtDateFiled, formatOtHours } from "./ot-line";

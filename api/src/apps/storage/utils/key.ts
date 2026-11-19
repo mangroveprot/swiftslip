@@ -24,6 +24,17 @@ const EXTENSIONS: Record<string, string> = {
 };
 
 /**
+ * Root for files owned by the RGC inventory app (showroom photos).
+ *
+ * They share the bucket and the admin's storage rule, but the *references*
+ * live in the RGC Postgres database, not in SwiftSlip's tables. The orphan
+ * scan therefore treats this whole prefix as foreign: never counted as an
+ * orphan and never deleted by SwiftSlip's cleanup (the inventory module
+ * removes its own objects when a photo or showroom goes).
+ */
+export const INVENTORY_MEDIA_ROOT = 'InventoryMedia';
+
+/**
  * A fresh bucket-root key: `{uuid}.{ext}` (STORAGE_GUIDE.md §4). The client's
  * filename never becomes the key, the database row keeps it as
  * `original_name`, for display only.

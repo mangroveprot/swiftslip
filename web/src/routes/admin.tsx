@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { AdminPanel } from "@/features/admin/components/AdminPanel";
+import { validateAdminSearch } from "@/features/admin/lib/admin-search";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { loadProfileForGate, needsOnboarding } from "@/features/profile/onboarding";
 import { pageTitle, seo } from "@/lib/seo";
@@ -11,6 +12,9 @@ import { pageTitle, seo } from "@/lib/seo";
  * the portal's sidebar no longer carries admin navigation.
  */
 export const Route = createFileRoute("/admin")({
+  // The panel's section and tabs live in the URL, so a refresh (or a copied
+  // link) returns to the same screen instead of the dashboard.
+  validateSearch: validateAdminSearch,
   beforeLoad: async ({ context }) => {
     const session = await context.queryClient.ensureQueryData({
       ...sessionQueryOptions(),

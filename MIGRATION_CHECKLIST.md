@@ -155,9 +155,12 @@ auto-fixed at the start of Phase 5). Still not exercised against the real RGC da
       a toast when only a refresh fails (2026-11-16, see `ACTIVITY_LOG.md`).
 - [x] `ErrorState` made centralisable before rolling it out beyond inventory: `onRetry`/`retrying`/
       `retryLabel` as the first-class retry (instead of a hand-built `primaryAction`),
-      `secondaryAction` renders **alongside** `details` instead of being dropped, `density="page"`
+      `secondaryAction` renders beside the filled action instead of being dropped, `density="page"`
       (`min-height: 100dvh`) for a route that could not load at all, and `announce={false}` to opt a
       re-rendering section out of `role="alert"` (2026-11-16, see `ACTIVITY_LOG.md`).
+- [x] **Changed 2026-11-19:** “Copy error details” moved out of the action row onto its own centred
+      line under the buttons (under the meta line when present), so an error never shows three
+      controls in a row; the copy behaviour and clipboard payload are unchanged.
 - [x] Error-state rollout beyond inventory: the admin storage orphan-cleanup dialog's failed preview
       renders the shared `ErrorStateFromError` (no retry — closing the dialog is the action), and the
       four inventory pages (Assets, Reports, Showrooms, Settings) were audited clean: no
@@ -170,6 +173,46 @@ auto-fixed at the start of Phase 5). Still not exercised against the real RGC da
       `RouteError`. Inventory's `InventoryErrorState` and `load-error.ts` (+ its test) are deleted;
       the retry button is withheld on 400/403/404/409 because retrying repeats the refusal, and a
       401 offers `Sign in` (sign-in is `/`) (2026-11-16, see `ACTIVITY_LOG.md`).
+- [x] **Changed 2026-11-19:** the showroom drawer’s three photo boxes show a wireframe skeleton — a
+      rounded tile, a title bar and two caption bars, not a spinner or a flat block — while the
+      signed links are fetched, with `aria-busy` on the box; closing the drawer mid-request clears
+      the loading flag so a reopen can’t inherit it.
+- [x] **Fixed 2026-11-19:** the showroom drawer’s Internet section repeated itself (heading “Internet”
+      directly above a label “Internet”); the heading is now the select’s accessible name via
+      `aria-labelledby`, with no duplicate visible label.
+- [x] **Changed 2026-11-19:** the Showroom and Asset drawers now share one field sheet
+      (`web/src/features/inventory/lib/drawer-styles.ts`): banner header untouched, each group a
+      faint (`border-border/40`) hairline-separated section with small dark labels, fields on `--field`, quiet bordered
+      Cancel, and named destructive buttons (**Delete showroom** / **Delete asset**). Notes lost
+      its `<h3><label>` wrapper and gained `aria-label`, and the asset's “Updated …” stamp moved
+      into the Notes section. No behavior, width or API changes; no image UI added.
+- [x] **Changed 2026-11-19:** Showroom photos. Three optional slots (`showroom`, `cctv`,
+      `acknowledge_form`) are staged under `InventoryMedia/staged/<account>/` and referenced from the
+      new RGC-table `showroom_photos` (cascading FK, one row per slot); saved pictures keep their
+      staged key, so the 24 h staging sweep skips every ref the database still points at. Save and the
+      picture rows share one transaction; cancel/replace delete staged objects best-effort. The board
+      thumbnail (table + phone card) uses the Showroom slot only. The drawer renders the two-up photo
+      cards from the supplied mock (label above, upload card, filename/size, underlined
+      Download/Replace/Remove, shared hint) and Photos now precedes Notes, which is last. The
+      Download link is signed as an attachment (`ResponseContentDisposition` on B2, `download` on
+      Supabase) so it saves under the original name; a draft downloads from its local object URL.
+      Uploads show a progress bar that runs to 90% fast, holds there until the server has stored
+      the picture, then shows 100% for a beat. Board thumbnails and
+      drawer pictures are clickable: a portaled lightbox shows the full photo (thumb first, signed
+      full URL fetched on open) and closes on backdrop/X/Escape without closing the drawer; the
+      board only signs the Showroom thumb, the full link is fetched on demand. Storage orphan
+      preview/cleanup classifies `InventoryMedia/` as inventory-owned and never deletes it.
+      Routes: `POST/DELETE /inventory/showrooms/photos/staged`,
+      `POST /inventory/showrooms/:id/photos/:slot` (store + attach in one call),
+      `GET /inventory/showrooms/:id/photos`, `DELETE /inventory/showrooms/:id/photos/:slot`;
+      new-showroom photos ride the create save (`undefined` untouched, `null` remove).
+- [x] **Fixed 2026-11-19:** an edit-mode photo used to be staged in storage but only attached when
+      the form was saved, so refreshing right after an upload lost the assignment and left the
+      bytes orphaned. Replace now posts the file to `POST /inventory/showrooms/:id/photos/:slot`,
+      which stores and writes the `showroom_photos` row in one request (on attach failure it
+      discards the bytes); Remove deletes the row/object immediately. A new showroom still stages,
+      because no id exists until create. Photo writes invalidate the showrooms query so the board
+      thumbnail updates without saving the form.
 
 Intentional changes in Phase 4 (do not "fix" back):
 - Settings mutations no longer return `{ ok:false, level, message }`. They fail with the standard error shape
@@ -222,6 +265,16 @@ Intentional changes in Phase 5 (do not "fix" back):
 - Build output is static `web/dist` (the Cloudflare/Nitro worker target is gone). Any static host works but must
   serve `index.html` for unknown paths. `@tanstack/devtools-vite` was dropped (no devtools UI was mounted).
 - Session expiry mid-use surfaces as a 401 `ApiError`; since Phase 6 a global handler sends the user to the login page.
+- [x] **Fixed 2026-11-19:** a refresh keeps the current page **and** its tab. Distinct screens were
+      already routes; the Admin Panel kept its section in `useState`, so `/admin` always came back to
+      the dashboard. `useUrlState()` (`web/src/lib/use-url-state.ts`) now puts the panel section, the
+      Activity logs / User management / App access tabs and the HR queue status tab in the search
+      string, replacing the history entry and dropping the param at its default. `validateAdminSearch()`
+      keeps the panel's own keys plus Google's `backup` / `reason` / `account` handshake; Backup clears
+      those through the router, so `section=backup` survives the toast. A route with its own
+      `validateSearch` must list the key or the router strips it (see `routes/hr/index.tsx`).
+      Screens that belong to an app with its own shell keep a copy under it: My Account is
+      `/admin/profile` and `/hr/profile`, never `/_app/profile`, so the sidebar does not jump apps.
 - [x] **Changed 2026-11-16:** a form's delete confirmation and success toast name it by its own date
       (`Deleted OB form dated 10/03/2026`, `Deleted DTR for 11/01/2026 - 11/15/2026`), not by the
       owner's name, which is identical on every row of a personal list. `web/src/lib/form-delete-copy.ts`
@@ -302,6 +355,17 @@ Manual, admin-only cleanup of forms older than N days, plus their storage files.
       action is **Preview and clean up** under a card titled "Clean up old forms", and the window
       it opens carries the same title. No API change, the safety is unchanged: that window is the
       only way to a cleanup and its button states the exact count it deletes.
+- [x] **Changed 2026-11-19:** the screen is now a settings sheet — a header with title/date, then
+      labelled rows (Retention rule, Form types, Clean up old forms, Last cleanup run) with the label
+      and description on the left and the control on the right. Saving is explicit through **Save
+      settings** (the previous 700 ms autosave is gone), the keep period is a preset dropdown with a
+      custom-days fallback, form types carry **Select all / Clear all**, and the preview button is
+      the green `success` action. Preview is gated on a saved, valid rule so the counts and the
+      delete agree. No API change.
+- [x] **Changed 2026-11-19:** the review window shows the owner's profile photo on each row (the
+      `RetentionFormItem` gained `ownerId`, filled by `itemOf()` from `owner_id`), and long lists
+      stop at 10 rows with a blurred, half-cut peek of the 11th and **Show more** (+10 each press).
+      No migration.
 - [ ] **Owner to run:** paste `0028_retention.sql` in the Supabase SQL Editor, then open
       Admin Panel → Settings → Data retention, press **Preview and clean up**, review the list and
       delete from that window. Not tested against the real database. **If `0028` was applied before
@@ -338,6 +402,31 @@ rule entirely and writes every attachment to Supabase. Deploy it before testing 
       `profiles.photo` paths too, `ownerIdOf()` understands the photo layout (so a leftover is
       labelled "Account deleted" / "Replaced by a newer photo", never "Form deleted"), and deleting
       an account now removes its photo as well.
+- [x] **Fixed 2026-11-19:** the same preview answered 400 “A value has the wrong format.” when the
+      bucket held an object whose owner segment is not a uuid
+      (`ProfilePhoto/e8271fd1-…-d76ss20de86bf6.png`): `users.id` is uuid-typed, so one malformed
+      `in (…)` value made Postgres fail the query (`22P02`). `existingUserIds()` now keeps only
+      uuid-shaped segments before querying; the rest read as “no account”, as they should.
+- [x] **Changed 2026-11-19:** the cleanup modal was rebuilt to the supplied mock: plain title and
+      description, a “Preview only” notice that names the grace window as “10 minutes” / “24 hours”,
+      a selection bar (“N of M files selected” + the cut-off moment), and one table with a tick,
+      a file tile, name, storage, orphan reason, modified date and size. Five rows show first, the
+      rest sit behind “Show all”. Images named by their extension get a tinted tile and open a
+      full-size preview dialog before deleting: `GET /admin/storage/orphans/preview-url` signs one
+      object on demand and refuses inventory-owned or newly referenced keys, so the list itself
+      never carries URLs.
+- [x] **Fixed 2026-11-19:** LIQ attachments were listed as orphans. The scan's form list was
+      hand-kept and had never been given `liq_forms`, so every Statement of Liquidation upload (and
+      its preview) read as unreferenced. The scan now derives its tables from the runtime
+      `ATTACHMENT_TABLES` in `api/src/apps/attachments/types` (the same list the upload routes use)
+      and its extras from `OTHER_ATTACHMENT_TABLES` via `hasOtherAttachments()`; `assertHasOthers()`
+      uses that guard too. Verified against live data: 0 of 4 LIQ rows unreferenced after the fix
+      (all 4 were before), one real orphan left (the malformed profile-photo key). Three LIQ rows
+      already point at deleted objects and need re-uploading.
+- [x] **Changed 2026-11-19:** the storage page and cleanup modal now use the vendors' own marks in
+      running text (`BrandIcon`: Supabase / Backblaze) instead of coloured squares — orphan Storage
+      column and its phone line, the rule sentence, and the capacity legend. A previewable orphan's
+      tile shows an eye (it opens the image) rather than a file-type glyph with a hover swap.
 - [x] Web: `api/storage.functions.ts`, `features/admin/components/settings/Storage.tsx`, `Storage`
       nav item in `AdminPanel.tsx` (replaced the "soon" row)
 - [x] Config: `SUPABASE_STORAGE_BUCKET`, `SUPABASE_STORAGE_LIMIT_MB`, `B2_STORAGE_LIMIT_MB`,
@@ -783,6 +872,10 @@ valid until it expired. A session is now a row, and the cookie only names it.
       has no revoke button on its row
 - [x] An administrator's password reset also deletes that account's sessions; deleting an account
       cascades
+- [x] **Changed 2026-11-19:** each Active sessions row now shows the person's profile photo (the
+      same `ProfileAvatar` fallback to initials, and the same batched `useUserPhotos` cache the other
+      admin lists use) at both the table and mobile layouts, so a row is recognisable at a glance
+      without reading the name
 - [x] `npm run typecheck`, `npm run lint`, `npm run test -w @swiftslip/web` (52/52) pass; sign-in and
       Active sessions rendered at 1440 and 390 against a local stub
 - [ ] **Owner to run:** paste `0042_sessions.sql` in the Supabase SQL Editor **before** deploying.
@@ -834,9 +927,15 @@ A gzipped `pg_dump` is a few MB, so it costs nothing and runs in seconds.
       uploads one file each: `swiftslip-…sql.gz` from `SUPABASE_DB_URL` and `inventory-…sql.gz` from
       `RGC_INVENTORY_DATABASE_URL` (reused — the stock pages already need it, so the second backup
       costs no extra secret). `0044_backup_target.sql` adds `backup_runs.target`, one row per
-      database, so a failure on one never hides the success of the other; retention is counted per
-      database and the sweep matches on the file-name prefix. Dumps run one after the other and each
-      buffer is released before the next, so `BACKUP_MAX_MB` stays the ceiling.
+      database, so a failure on one never hides the success of the other. Dumps run one after the
+      other and each buffer is released before the next, so `BACKUP_MAX_MB` stays the ceiling.
+- [x] **One dated folder per run, folder-level retention, and Cancel** (2026-11-19). A run writes
+      `SwiftSlip Backups/<YYYY-MM-DD HH-mm-ss>/` in the app's timezone on its first successful dump
+      and puts every database's dump inside it; an all-failed run leaves no empty folder. Retention
+      keeps the newest `keep_count` run folders and trashes older folders with their contents, so
+      "keep 14" is 14 runs — 14 copies of every database. Dumps old builds left in the root are not
+      touched. The settings sheet gained **Cancel**, which restores the saved enabled/keep values
+      instead of only hiding the Save button.
 - [ ] **Owner to run:** paste `0043_backup.sql` **and** `0044_backup_target.sql` in the Supabase SQL
       editor; add `SUPABASE_DB_URL` (session pooler, port 5432), `GOOGLE_OAUTH_CLIENT_ID` and
       `GOOGLE_OAUTH_CLIENT_SECRET` to the Render service; publish the OAuth consent screen and

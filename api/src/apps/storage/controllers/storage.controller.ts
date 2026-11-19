@@ -89,6 +89,28 @@ class StorageController {
     }
   }
 
+  static async previewOrphanUrl(req: Request, res: Response): Promise<void> {
+    try {
+      const actor: SessionUser = req.user as SessionUser;
+      const { key, backend } = req.query as {
+        key: string;
+        backend: StorageBackend;
+      };
+      const response = await StorageService.orphanPreviewUrl(
+        actor,
+        backend,
+        key,
+      );
+      if (response.success) {
+        ApiResponse.success(res, response);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      ApiResponse.error(res, error as ErrorResponseType);
+    }
+  }
+
   static async deleteOrphans(req: Request, res: Response): Promise<void> {
     try {
       const actor: SessionUser = req.user as SessionUser;

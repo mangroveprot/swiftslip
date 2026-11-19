@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { toast } from "@/lib/toast";
+import { useUrlState } from "@/lib/use-url-state";
 import { formatDate, formatDateTime } from "@swiftslip/shared/time";
 import {
   departmentForPosition,
@@ -99,6 +100,9 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "incomplete", label: "Incomplete" },
 ];
 
+/** The tab keys, in the order above, for URL validation. */
+const FILTER_KEYS: readonly Filter[] = FILTERS.map((tab) => tab.key);
+
 /**
  * User management for the admin panel: search the accounts, create one with its
  * unique ID number + password, then change its ID/role or reset its password.
@@ -122,7 +126,8 @@ export function UserManagement() {
   // so opening User management after App access costs no extra request.
   const photos = useUserPhotos((accounts ?? []).map((account) => account.id));
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  // The roster tab lives in the address bar, so refreshing the page keeps it.
+  const [filter, setFilter] = useUrlState<Filter>("role", FILTER_KEYS, "all");
   const [editing, setEditing] = useState<Account | "new" | null>(null);
   const [removing, setRemoving] = useState<Account | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);

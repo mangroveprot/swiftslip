@@ -76,7 +76,7 @@ export type ErrorStateProps = {
   retrying?: boolean;
   /** Filled-action label when `onRetry` is used. Defaults to "Try again". */
   retryLabel?: string;
-  /** Quiet action, e.g. Go back. Stays alongside Copy error details. */
+  /** Quiet action, e.g. Go back. Sits beside the filled action. */
   secondaryAction?: ErrorStateAction;
   /** Clipboard payload for the "Copy error details" action. */
   details?: string | null;
@@ -135,7 +135,7 @@ export function ErrorState({
       : undefined);
 
   const PrimaryIcon = primary?.icon;
-  const hasActions = Boolean(primary || secondaryAction || details);
+  const hasActions = Boolean(primary || secondaryAction);
 
   return (
     <div
@@ -177,20 +177,24 @@ export function ErrorState({
                 : secondaryAction.label}
             </button>
           ) : null}
-
-          {details ? (
-            <button type="button" className="error-state__details" onClick={copyDetails}>
-              {copyState === "copied"
-                ? "Copied"
-                : copyState === "failed"
-                  ? "Couldn't copy"
-                  : "Copy error details"}
-            </button>
-          ) : null}
         </div>
       ) : null}
 
       {meta ? <p className="error-state__meta">{meta}</p> : null}
+
+      {/* A utility, not a third action: its own quiet line under the buttons,
+          so the row never grows to three and the two real actions stay a pair. */}
+      {details ? (
+        <div className={cn("flex justify-center", hasActions ? "mt-1.5" : "mt-5")}>
+          <button type="button" className="error-state__details" onClick={copyDetails}>
+            {copyState === "copied"
+              ? "Copied"
+              : copyState === "failed"
+                ? "Couldn't copy"
+                : "Copy error details"}
+          </button>
+        </div>
+      ) : null}
 
       <span className="sr-only" role="status">
         {copyState === "copied" ? "Error details copied to the clipboard" : ""}

@@ -5,7 +5,12 @@ import type {
 import { RgcRepository } from '../../../core/engine';
 import { utcNow } from '../../../core/framework/databases/postgres';
 import { ErrorResponse } from '../../../common/shared';
-import type { ShowroomSeedRow } from '../types';
+import type {
+  ShowroomListRow,
+  ShowroomPhotoChange,
+  ShowroomPhotoRow,
+  ShowroomSeedRow,
+} from '../types';
 
 /**
  * The reference board's 18 showrooms, in the order the page showed them.
@@ -190,6 +195,34 @@ export class InventoryShowroomRepository extends RgcRepository {
           create unique index if not exists showrooms_name_unique
           on showrooms (lower(btrim(showroom_name)))`;
 
+        // One row per showroom per picture slot. Object refs only (a `b2:`
+        // prefix marks that backend), never URLs: signed links expire. The FK
+        // cascades so deleting a showroom cannot leave picture rows behind;
+        // the service removes the objects themselves.
+        await sql`
+          create table if not exists showroom_photos (
+            showroom_id integer not null
+              references showrooms(showroom_id) on delete cascade,
+            slot text not null,
+            photo_ref text not null,
+            thumb_ref text,
+            original_name text,
+            byte_size integer,
+            updated_at timestamp without time zone not null
+              default (now() at time zone 'utc'),
+            primary key (showroom_id, slot),
+            constraint showroom_photos_slot_check
+              check (slot in ('showroom','cctv','acknowledge_form'))
+          )`;
+        // Two display-only facts under the preview. Added separately so a
+        // table created by an earlier build picks them up too.
+        await sql`
+          alter table showroom_photos
+            add column if not exists original_name text`;
+        await sql`
+          alter table showroom_photos
+            add column if not exists byte_size integer`;
+
         // One key/value row now; a table (not a column on a showroom) so the
         // settings survive deletes and the owner can add more later.
         await sql`
@@ -228,22 +261,26 @@ export class InventoryShowroomRepository extends RgcRepository {
     return ready;
   }
 
-  /** Every showroom, alphabetical by name. */
-  findAll(): Promise<Showroom[]> {
+  /** Every showroom, alphabetical by name, with its board thumbnail ref. */
+  findAll(): Promise<ShowroomListRow[]> {
     return this.run(async (sql) => {
       await this.ensureReady();
-      return sql<Showroom[]>`
-        select showroom_id,
-               showroom_name,
-               cctv_installed,
-               cctv_connection,
-               cctv_note,
-               internet,
-               notes,
-               created_at::text as created_at,
-               updated_at::text as updated_at
+      return sql<ShowroomListRow[]>`
+        select showrooms.showroom_id,
+               showrooms.showroom_name,
+               showrooms.cctv_installed,
+               showrooms.cctv_connection,
+               showrooms.cctv_note,
+               showrooms.internet,
+               showrooms.notes,
+               showrooms.created_at::text as created_at,
+               showrooms.updated_at::text as updated_at,
+               photos.thumb_ref as photo_thumb_ref
         from showrooms
-        order by lower(btrim(showroom_name)) asc, showroom_id asc`;
+        left join showroom_photos photos
+          on photos.showroom_id = showrooms.showroom_id
+         and photos.slot = 'showroom'
+        order by lower(btrim(showrooms.showroom_name)) asc, showrooms.showroom_id asc`;
     });
   }
 
@@ -287,42 +324,144 @@ export class InventoryShowroomRepository extends RgcRepository {
     });
   }
 
-  /** Insert (`showroomId` null) or update one showroom; returns its id. */
-  save(showroomId: number | null, input: ShowroomSaveRequest): Promise<number> {
+  /**
+   * Insert (`showroomId` null) or update one showroom and its picture changes
+   * in ONE transaction: a failed photo row must not leave the form half saved.
+   * Returns the showroom id.
+   */
+  save(
+    showroomId: number | null,
+    input: ShowroomSaveRequest,
+    photoChanges: ShowroomPhotoChange[] = [],
+  ): Promise<number> {
     return this.run(async (sql) => {
       await this.ensureReady();
 
-      if (showroomId == null) {
-        const rows = await sql<[{ showroom_id: number }]>`
-          insert into showrooms
-            (showroom_name, cctv_installed, cctv_connection, cctv_note, internet, notes)
-          values
-            (${input.showroomName}, ${input.cctvInstalled}, ${input.cctvConnection},
-             ${input.cctvNote}, ${input.internet}, ${input.notes})
-          returning showroom_id`;
-        const id = rows[0]?.showroom_id;
-        if (id == null) {
-          throw new ErrorResponse('DATABASE_ERROR', 'Failed to save showroom.');
-        }
-        return id;
-      }
+      return sql.begin(async (tx) => {
+        let id: number;
 
-      const rows = await sql<[{ showroom_id: number }]>`
-        update showrooms set
-          showroom_name = ${input.showroomName},
-          cctv_installed = ${input.cctvInstalled},
-          cctv_connection = ${input.cctvConnection},
-          cctv_note = ${input.cctvNote},
-          internet = ${input.internet},
-          notes = ${input.notes},
-          updated_at = ${utcNow()}
+        if (showroomId == null) {
+          const rows = await tx<[{ showroom_id: number }]>`
+            insert into showrooms
+              (showroom_name, cctv_installed, cctv_connection, cctv_note, internet, notes)
+            values
+              (${input.showroomName}, ${input.cctvInstalled}, ${input.cctvConnection},
+               ${input.cctvNote}, ${input.internet}, ${input.notes})
+            returning showroom_id`;
+          const created = rows[0]?.showroom_id;
+          if (created == null) {
+            throw new ErrorResponse(
+              'DATABASE_ERROR',
+              'Failed to save showroom.',
+            );
+          }
+          id = created;
+        } else {
+          const rows = await tx<[{ showroom_id: number }]>`
+            update showrooms set
+              showroom_name = ${input.showroomName},
+              cctv_installed = ${input.cctvInstalled},
+              cctv_connection = ${input.cctvConnection},
+              cctv_note = ${input.cctvNote},
+              internet = ${input.internet},
+              notes = ${input.notes},
+              updated_at = ${utcNow()}
+            where showroom_id = ${showroomId}
+            returning showroom_id`;
+          const updated = rows[0]?.showroom_id;
+          if (updated == null) {
+            throw new ErrorResponse('NOT_FOUND_ERROR', 'Showroom not found.');
+          }
+          id = updated;
+        }
+
+        for (const change of photoChanges) {
+          if (change.photoRef === null) {
+            await tx`
+              delete from showroom_photos
+              where showroom_id = ${id} and slot = ${change.slot}`;
+            continue;
+          }
+          await tx`
+            insert into showroom_photos
+              (showroom_id, slot, photo_ref, thumb_ref, original_name, byte_size, updated_at)
+            values
+              (${id}, ${change.slot}, ${change.photoRef}, ${change.thumbRef},
+               ${change.filename}, ${change.byteSize}, ${utcNow()})
+            on conflict (showroom_id, slot) do update set
+              photo_ref = excluded.photo_ref,
+              thumb_ref = excluded.thumb_ref,
+              original_name = excluded.original_name,
+              byte_size = excluded.byte_size,
+              updated_at = excluded.updated_at`;
+        }
+
+        return id;
+      });
+    });
+  }
+
+  /**
+   * Write one picture row immediately (the drawer's edit-mode upload). A form
+   * save never touches photos on its own; this is the only path that sets one
+   * outside the create transaction, so a refresh right after an upload still
+   * finds the picture.
+   */
+  setPhoto(showroomId: number, change: ShowroomPhotoChange): Promise<void> {
+    return this.run(async (sql) => {
+      await this.ensureReady();
+      await sql`
+        insert into showroom_photos
+          (showroom_id, slot, photo_ref, thumb_ref, original_name, byte_size, updated_at)
+        values
+          (${showroomId}, ${change.slot}, ${change.photoRef}, ${change.thumbRef},
+           ${change.filename}, ${change.byteSize}, ${utcNow()})
+        on conflict (showroom_id, slot) do update set
+          photo_ref = excluded.photo_ref,
+          thumb_ref = excluded.thumb_ref,
+          original_name = excluded.original_name,
+          byte_size = excluded.byte_size,
+          updated_at = excluded.updated_at`;
+    });
+  }
+
+  /** The three picture rows for one showroom (absent slots are simply missing). */
+  findPhotos(showroomId: number): Promise<ShowroomPhotoRow[]> {
+    return this.run(async (sql) => {
+      await this.ensureReady();
+      return sql<ShowroomPhotoRow[]>`
+        select slot, photo_ref, thumb_ref, original_name, byte_size
+        from showroom_photos
         where showroom_id = ${showroomId}
-        returning showroom_id`;
-      const id = rows[0]?.showroom_id;
-      if (id == null) {
-        throw new ErrorResponse('NOT_FOUND_ERROR', 'Showroom not found.');
-      }
-      return id;
+        order by slot`;
+    });
+  }
+
+  /**
+   * Every ref the database currently points at, across all showrooms. The
+   * staging sweep needs this: saved pictures KEEP their staged key (nothing is
+   * moved or renamed after a save), so age alone cannot tell an abandoned
+   * upload from a live photo.
+   */
+  allPhotoRefs(): Promise<{ photo_ref: string; thumb_ref: string | null }[]> {
+    return this.run(async (sql) => {
+      await this.ensureReady();
+      return sql<{ photo_ref: string; thumb_ref: string | null }[]>`
+        select photo_ref, thumb_ref from showroom_photos`;
+    });
+  }
+
+  /** Remove one slot's row; returns how many were deleted. */
+  removePhoto(
+    showroomId: number,
+    slot: ShowroomPhotoRow['slot'],
+  ): Promise<number> {
+    return this.run(async (sql) => {
+      await this.ensureReady();
+      const result = await sql`
+        delete from showroom_photos
+        where showroom_id = ${showroomId} and slot = ${slot}`;
+      return result.count;
     });
   }
 

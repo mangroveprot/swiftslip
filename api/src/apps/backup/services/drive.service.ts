@@ -26,17 +26,6 @@ const UPLOAD_ENDPOINT = 'https://www.googleapis.com/upload/drive/v3/files';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const DUMP_MIME = 'application/gzip';
 
-/**
- * The prefix every dump of one database is named with: `swiftslip-`, `inventory-`.
- *
- * Retention is counted per database, so the sweep needs to tell the two apart.
- * SwiftSlip keeps the prefix it has always used, so files from before the second
- * database existed are still counted (and pruned) correctly.
- */
-export function dumpPrefix(targetId: string): string {
-  return `${targetId}-`;
-}
-
 /** One Drive call may not hang forever behind a proxy. */
 const TIMEOUT_MS = 60_000;
 
@@ -355,24 +344,85 @@ export async function uploadDump(
 }
 
 /**
- * Keep the newest `keep` dumps of ONE database, delete the rest.
+ * The per-run folder inside "SwiftSlip Backups": the run's local date and time.
  *
- * Runs after a successful upload, best effort: a failed sweep must never turn a
- * finished backup into a failed one, so the caller logs and moves on. Called
- * once per database, because "keep the latest 14" means 14 of each, not 14
- * files shared between them.
+ * `2026-11-19 09-26-45` — colons become dashes because Drive and Windows Explorer
+ * both handle them badly in a name, and year-first keeps the folders sorted the
+ * way they were made. Local time (the app's TIME_ZONE) on purpose: this is the
+ * name a person reads in Drive, next to the timestamps Drive itself shows.
  */
-export async function pruneDumps(
+export function runFolderName(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: config.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const part = (type: string) =>
+    parts.find((value) => value.type === type)?.value ?? '00';
+  // Some ICU builds report midnight as 24 under hour12:false.
+  const hour = part('hour') === '24' ? '00' : part('hour');
+  return `${part('year')}-${part('month')}-${part('day')} ${hour}-${part('minute')}-${part('second')}`;
+}
+
+/**
+ * One folder per run, e.g. `SwiftSlip Backups / 2026-11-19 09-26-45 /`.
+ *
+ * Created on the first successful dump of the run, so a run where every database
+ * failed leaves no empty folder behind.
+ */
+export async function createRunFolder(
   accessToken: string,
-  folderId: string,
+  parentId: string,
+  name: string,
+): Promise<string> {
+  const auth = { authorization: `Bearer ${accessToken}` };
+  const created = await googleFetch(
+    `${FILES_ENDPOINT}?fields=id&supportsAllDrives=true`,
+    {
+      method: 'POST',
+      headers: { ...auth, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        mimeType: FOLDER_MIME,
+        parents: [parentId],
+      }),
+    },
+  );
+  const body = (await readJson(created)) as unknown as { id?: string } | null;
+  if (!created.ok || !body?.id) {
+    throw new ErrorResponse(
+      'DRIVE_ERROR',
+      `Could not create the "${name}" folder in Google Drive: ${errorText(body as GoogleError | null, 'unknown error')}.`,
+    );
+  }
+  return body.id;
+}
+
+/**
+ * Keep the newest `keep` run folders under the backups root; delete the rest.
+ *
+ * Deleting a folder in Drive trashes it together with everything inside, so one
+ * call removes that run's dumps — that is the whole point of one folder per run.
+ * Best effort: a failed sweep must never turn a finished backup into a failed one.
+ *
+ * Only folders are swept. Dumps written by older builds straight into the root
+ * are left alone; deleting those is the admin's call, not a retention rule.
+ */
+export async function pruneRunFolders(
+  accessToken: string,
+  parentId: string,
   keep: number,
-  prefix: string,
 ): Promise<number> {
   const auth = { authorization: `Bearer ${accessToken}` };
   const query = [
-    `'${folderId}' in parents`,
+    `'${parentId}' in parents`,
+    `mimeType = '${FOLDER_MIME}'`,
     'trashed = false',
-    `name contains '${prefix}'`,
   ].join(' and ');
   const listed = await googleFetch(
     `${FILES_ENDPOINT}?q=${encodeURIComponent(query)}&orderBy=createdTime desc&pageSize=200&fields=files(id,name,createdTime)&supportsAllDrives=true`,
@@ -383,12 +433,12 @@ export async function pruneDumps(
   const body = (await readJson(listed)) as unknown as {
     files?: { id?: string }[];
   } | null;
-  const files = body?.files ?? [];
+  const folders = body?.files ?? [];
   let removed = 0;
-  for (const file of files.slice(Math.max(0, keep))) {
-    if (!file.id) continue;
+  for (const folder of folders.slice(Math.max(0, keep))) {
+    if (!folder.id) continue;
     const response = await googleFetch(
-      `${FILES_ENDPOINT}/${encodeURIComponent(file.id)}?supportsAllDrives=true`,
+      `${FILES_ENDPOINT}/${encodeURIComponent(folder.id)}?supportsAllDrives=true`,
       { method: 'DELETE', headers: auth },
     );
     if (response.ok) removed += 1;

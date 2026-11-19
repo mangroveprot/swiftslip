@@ -12,6 +12,7 @@ import type {
   AttachmentTarget,
   OtherAttachmentTable,
 } from '../types';
+import { hasOtherAttachments } from '../types';
 import { readOtherFiles, readThumbnail, readUpload } from '../utils';
 
 /** Cap on a form's additional supporting files. */
@@ -253,11 +254,7 @@ class AttachmentService {
   private assertHasOthers(
     table: AttachmentTable,
   ): asserts table is OtherAttachmentTable {
-    if (
-      table !== 'loa_forms' &&
-      table !== 'ot_forms' &&
-      table !== 'dtr_records'
-    ) {
+    if (!hasOtherAttachments(table)) {
       throw new ErrorResponse(
         'BAD_REQUEST',
         'This form has no additional files.',

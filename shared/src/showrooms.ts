@@ -12,6 +12,8 @@
  */
 import { z } from "zod";
 
+import { MAX_THUMB_BASE64, MAX_UPLOAD_BASE64 } from "./schemas";
+
 /* ------------------------------------------------------------------ rows - */
 
 /** Stored keys, not display labels (`Active`, `Needs request`, …). */
@@ -40,9 +42,117 @@ export type Showroom = {
   notes: string | null;
   created_at: string | null;
   updated_at: string | null;
+  /**
+   * Signed thumbnail URL of the **Showroom** slot photo, for the board row.
+   * Derived at read time (the database stores an object ref, never a URL);
+   * absent on rows that did not come through the list endpoint.
+   */
+  photo_thumb?: string | null;
 };
 
+/* ------------------------------------------------------- photo slots ---- */
+
+/**
+ * The three pictures a showroom carries. They are separate slots rather than a
+ * gallery because each one answers a different question: what the branch looks
+ * like, what CCTV was installed, and the signed acknowledgement form.
+ */
+export const showroomPhotoSlotSchema = z.enum(["showroom", "cctv", "acknowledge_form"]);
+
+export type ShowroomPhotoSlot = z.infer<typeof showroomPhotoSlotSchema>;
+
+/** Slot order and labels, shared by the drawer, the API and the docs. */
+export const SHOWROOM_PHOTO_SLOTS: ReadonlyArray<{
+  slot: ShowroomPhotoSlot;
+  label: string;
+}> = [
+  { slot: "showroom", label: "Showroom" },
+  { slot: "cctv", label: "CCTV" },
+  { slot: "acknowledge_form", label: "Acknowledge Form" },
+];
+
+export const SHOWROOM_PHOTO_LABELS: Record<ShowroomPhotoSlot, string> = {
+  showroom: "Showroom",
+  cctv: "CCTV",
+  acknowledge_form: "Acknowledge Form",
+};
+
+/** One slot's signed links; `url` is the full picture, `thumbUrl` the preview. */
+export type ShowroomPhotoUrls = {
+  url: string;
+  thumbUrl: string | null;
+  /**
+   * The same picture signed with `Content-Disposition: attachment`, so the
+   * Download link saves it under the original name instead of opening a tab.
+   * Null when the link could not be minted; the drawer then falls back to
+   * `url`.
+   */
+  downloadUrl: string | null;
+  /** Original filename and byte size, shown under the preview. */
+  filename: string | null;
+  byteSize: number | null;
+};
+
+/** All three slots for one showroom; a missing slot is null. */
+export type ShowroomPhotos = Record<ShowroomPhotoSlot, ShowroomPhotoUrls | null>;
+
 /* ------------------------------------------------------------- requests - */
+
+/**
+ * A staged upload, before the showroom exists. The server stores it under
+ * `InventoryMedia/staged/<account>/` and the save request points the slot at
+ * those refs; the object is never moved.
+ */
+export const showroomPhotoUploadInput = z.object({
+  filename: z.string().min(1).max(200),
+  contentType: z.string().min(1).max(150),
+  base64: z.string().min(1).max(MAX_UPLOAD_BASE64),
+  /** Optional WebP preview, uploaded beside the picture as `<uuid>.thumb.webp`. */
+  thumbBase64: z.string().min(1).max(MAX_THUMB_BASE64).optional(),
+});
+
+export type ShowroomPhotoUploadRequest = z.infer<typeof showroomPhotoUploadInput>;
+
+/** What `POST /inventory/showrooms/photos/staged` answers. */
+export type ShowroomPhotoUploadResult = {
+  photoRef: string;
+  thumbRef: string | null;
+  /** Display-only facts the drawer repeats under the preview. */
+  filename: string;
+  byteSize: number;
+};
+
+/** `DELETE /inventory/showrooms/photos/staged?ref=…` (cancelled add). */
+export const stagedShowroomPhotoQuery = z.object({
+  ref: z.string().min(1).max(600),
+});
+
+/** A staged ref plus its optional preview, as carried by the save request. */
+const showroomPhotoRefInput = z.object({
+  ref: z.string().trim().min(1).max(500),
+  thumbRef: z.string().trim().min(1).max(500).nullable().optional(),
+  /** Shown under the preview; never used to build a storage key. */
+  filename: z.string().trim().max(160).nullable().optional(),
+  byteSize: z.number().int().min(0).max(104_857_600).nullable().optional(),
+});
+
+/**
+ * Only the slots that changed travel with a save: `undefined` leaves a photo
+ * alone, `null` removes it, and `{ ref, thumbRef }` sets a staged upload.
+ */
+const showroomPhotoChangesInput = z.object({
+  showroom: showroomPhotoRefInput.nullable().optional(),
+  cctv: showroomPhotoRefInput.nullable().optional(),
+  acknowledge_form: showroomPhotoRefInput.nullable().optional(),
+});
+
+export type ShowroomPhotoChangeInput = z.infer<typeof showroomPhotoRefInput>;
+
+/** `/inventory/showrooms/:id/photos/:slot`. */
+export const showroomPhotoSlotParam = z.object({
+  id: z.coerce.number().int().positive(),
+  slot: showroomPhotoSlotSchema,
+});
 
 export const showroomSaveInput = z.object({
   showroomName: z.string().trim().min(1).max(120),
@@ -51,6 +161,11 @@ export const showroomSaveInput = z.object({
   cctvNote: z.string().trim().max(60).nullable(),
   internet: showroomInternetSchema,
   notes: z.string().trim().max(4000).nullable(),
+  /**
+   * Photo changes only. Omitted entirely when nothing visual moved, so an
+   * ordinary edit never touches the three picture rows.
+   */
+  photos: showroomPhotoChangesInput.optional(),
 });
 
 export type ShowroomSaveRequest = z.infer<typeof showroomSaveInput>;

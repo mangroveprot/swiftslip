@@ -977,6 +977,8 @@ export type RetentionSettingsDoc = RetentionSettings & {
 export type RetentionFormItem = {
   type: RetentionFormType;
   id: string;
+  /** The account that filed the form (`users.id`), for its photo; null on legacy rows. */
+  ownerId: string | null;
   /** Who the form is for; "Untitled form" when the row names no one. */
   label: string;
   /** Employee number, when the table has one. */
@@ -1183,6 +1185,18 @@ export type StorageOrphanPreview = {
   graceSeconds: number;
 };
 
+/**
+ * Signs one image in the cleanup list so the admin can see it before deleting.
+ * Only files the same scan still calls unreferenced are signed.
+ */
+export const storageOrphanPreviewUrlQuery = z.object({
+  key: z.string().min(1).max(1024),
+  backend: storageBackendSchema,
+});
+
+/** `GET /admin/storage/orphans/preview-url` answer. */
+export type StorageOrphanPreviewUrl = { url: string };
+
 /** Result of deleting specific orphaned files. */
 export type StorageOrphanDeleteResult = {
   backend: StorageBackend;
@@ -1224,7 +1238,11 @@ export type BackupDatabaseStatus = BackupTargetInfo & {
   configured: boolean;
 };
 
-/** How many finished dumps Drive keeps, PER database. Older ones are deleted. */
+/**
+ * How many finished backup folders Drive keeps. Each run writes ONE dated
+ * folder holding that run's dumps, so "keep 14" means 14 runs — and therefore
+ * 14 copies of every database. Older folders are deleted, contents and all.
+ */
 export const BACKUP_KEEP_MIN = 1;
 export const BACKUP_KEEP_MAX = 90;
 

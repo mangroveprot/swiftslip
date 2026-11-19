@@ -1,5 +1,10 @@
 import type {
   Showroom,
+  ShowroomPhotos,
+  ShowroomPhotoChangeInput,
+  ShowroomPhotoSlot,
+  ShowroomPhotoUploadRequest,
+  ShowroomPhotoUrls,
   ShowroomSaveRequest,
   ShowroomStock,
   ShowroomStockRequest,
@@ -8,11 +13,50 @@ import {
   cctvConnectionLabel,
   cctvInstalledLabel,
   internetLabel,
+  SHOWROOM_PHOTO_LABELS,
 } from '@swiftslip/shared/showrooms';
 import type { SessionUser } from '@swiftslip/shared/types';
 import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { ActivityLogService } from '../../activity-log';
+import FileStorageService from '../../storage/services/file-storage.service';
+import { parseRef } from '../../storage/utils/ref';
 import { InventoryShowroomRepository } from '../repositories';
+import type { ShowroomPhotoChange, ShowroomPhotoRow } from '../types';
+import InventoryPhotoService, {
+  isOwnedStagedRef,
+} from './inventory-photo.service';
+
+/** The order the drawer, the API and the docs all use for the three pictures. */
+const PHOTO_SLOTS: ShowroomPhotoSlot[] = [
+  'showroom',
+  'cctv',
+  'acknowledge_form',
+];
+
+/** Best-effort removal of stored objects; a missing object is not an error. */
+async function removeObjects(refs: (string | null)[]): Promise<void> {
+  const parsed = refs
+    .filter((ref): ref is string => Boolean(ref))
+    .map((ref) => parseRef(ref));
+  if (parsed.length === 0) return;
+  await FileStorageService.removeRefsQuietly(parsed);
+}
+
+/**
+ * Sign a stored ref, or null when the object/link is not available. With a
+ * `downloadName` the link answers as an attachment, so the browser saves it.
+ */
+async function signQuietly(
+  ref: string | null,
+  downloadName?: string,
+): Promise<string | null> {
+  if (!ref) return null;
+  try {
+    return await FileStorageService.signedUrlRef(ref, downloadName);
+  } catch {
+    return null;
+  }
+}
 
 /** "CCTV: Active (Offline) · Internet: Needs request" - the create/delete note. */
 function statusSummary(row: {
@@ -68,16 +112,58 @@ function describeChanges(before: Showroom, after: ShowroomSaveRequest): string {
     parts.push(afterNotes ? 'Notes updated' : 'Notes cleared');
   }
 
-  return parts.length ? parts.join(' · ') : 'Saved with no field changes';
+  return parts.join(' · ');
 }
 
 class InventoryShowroomService {
   private readonly repository = new InventoryShowroomRepository();
 
-  /** Every showroom plus nothing else: the page filters and searches client-side. */
+  /**
+   * Signed links for one stored picture row. A picture that cannot be signed
+   * is null rather than a broken link in an `<img>`.
+   */
+  private async signedPhotoUrls(
+    row: Pick<
+      ShowroomPhotoRow,
+      'photo_ref' | 'thumb_ref' | 'original_name' | 'byte_size'
+    >,
+    slot: ShowroomPhotoSlot,
+  ): Promise<ShowroomPhotoUrls | null> {
+    // The download link carries the original filename as an attachment; if
+    // signing it fails the plain link is still a usable fallback.
+    const [url, thumbUrl, downloadUrl] = await Promise.all([
+      signQuietly(row.photo_ref),
+      signQuietly(row.thumb_ref),
+      signQuietly(
+        row.photo_ref,
+        row.original_name?.trim() || `${slot}-photo.jpg`,
+      ),
+    ]);
+    return url
+      ? {
+          url,
+          thumbUrl: thumbUrl ?? url,
+          downloadUrl: downloadUrl ?? url,
+          filename: row.original_name,
+          byteSize: row.byte_size,
+        }
+      : null;
+  }
+
+  /**
+   * Every showroom plus its board thumbnail: one signed URL for the Showroom
+   * slot, minted here so the list never carries a stored URL (they expire).
+   * The other two pictures are fetched only when the drawer opens.
+   */
   async list(): Promise<ServiceResponse<Showroom>> {
     try {
-      const documents = await this.repository.findAll();
+      const rows = await this.repository.findAll();
+      const documents = await Promise.all(
+        rows.map(async ({ photo_thumb_ref, ...row }) => ({
+          ...row,
+          photo_thumb: await signQuietly(photo_thumb_ref),
+        })),
+      );
       return { success: true, documents };
     } catch (error) {
       return {
@@ -91,6 +177,92 @@ class InventoryShowroomService {
               ),
       };
     }
+  }
+
+  /**
+   * Turn the save's photo section into row changes. Only staged refs owned by
+   * this account are accepted, and a ref already attached to a showroom cannot
+   * be attached again (one object, one row; otherwise removing one picture
+   * would break the other).
+   */
+  private async photoChanges(
+    photos: ShowroomSaveRequest['photos'],
+    before: ShowroomPhotoRow[],
+    actorId: string,
+  ): Promise<ShowroomPhotoChange[]> {
+    if (!photos) return [];
+    const current = new Map(before.map((row) => [row.slot, row]));
+    const changes: ShowroomPhotoChange[] = [];
+
+    const usedRows = await this.repository.allPhotoRefs();
+    const used = new Set<string>();
+    for (const row of usedRows) {
+      for (const ref of [row.photo_ref, row.thumb_ref]) {
+        if (!ref) continue;
+        const parsed = parseRef(ref);
+        used.add(`${parsed.backend}:${parsed.key}`);
+      }
+    }
+
+    for (const slot of PHOTO_SLOTS) {
+      const value = photos[slot];
+      if (value === undefined) continue;
+      if (value === null) {
+        // Only a slot that actually has a row is worth a change (and an audit
+        // line); removing an already-empty slot is a no-op.
+        if (current.has(slot)) {
+          changes.push({
+            slot,
+            photoRef: null,
+            thumbRef: null,
+            filename: null,
+            byteSize: null,
+          });
+        }
+        continue;
+      }
+      // Same object already on the row: nothing to write.
+      if (current.get(slot)?.photo_ref === value.ref) continue;
+      if (
+        !isOwnedStagedRef(value.ref, actorId) ||
+        (value.thumbRef != null && !isOwnedStagedRef(value.thumbRef, actorId))
+      ) {
+        throw new ErrorResponse(
+          'BAD_REQUEST',
+          'That photo upload has expired. Pick the photo again.',
+        );
+      }
+      const parsed = parseRef(value.ref);
+      if (used.has(`${parsed.backend}:${parsed.key}`)) {
+        throw new ErrorResponse(
+          'BAD_REQUEST',
+          'That photo is already attached to another showroom.',
+        );
+      }
+      changes.push({
+        slot,
+        photoRef: value.ref,
+        thumbRef: value.thumbRef ?? null,
+        filename: value.filename?.trim() || null,
+        byteSize: value.byteSize ?? null,
+      });
+    }
+    return changes;
+  }
+
+  /** "CCTV photo added · Acknowledge Form photo replaced" for the audit line. */
+  private describePhotoChanges(
+    changes: ShowroomPhotoChange[],
+    before: ShowroomPhotoRow[],
+  ): string {
+    return changes
+      .map((change) => {
+        const label = SHOWROOM_PHOTO_LABELS[change.slot];
+        if (change.photoRef === null) return `${label} photo removed`;
+        const hadOne = before.some((row) => row.slot === change.slot);
+        return `${label} photo ${hadOne ? 'replaced' : 'added'}`;
+      })
+      .join(' · ');
   }
 
   /** Create (`showroomId` null) or update one showroom. */
@@ -116,18 +288,45 @@ class InventoryShowroomService {
 
       const before =
         showroomId == null ? null : await this.repository.findById(showroomId);
-      const saved = await this.repository.save(showroomId, input);
+      const beforePhotos =
+        showroomId == null ? [] : await this.repository.findPhotos(showroomId);
+
+      // `photos` never reaches the showroom columns; it is split out first.
+      const { photos, ...fields } = input;
+      const photoChanges = await this.photoChanges(
+        photos,
+        beforePhotos,
+        actor.id,
+      );
+      const saved = await this.repository.save(
+        showroomId,
+        fields,
+        photoChanges,
+      );
+
+      // The DB now points at the new refs; the superseded objects can go.
+      for (const change of photoChanges) {
+        const old = beforePhotos.find((row) => row.slot === change.slot);
+        if (old && old.photo_ref !== change.photoRef) {
+          await removeObjects([old.photo_ref, old.thumb_ref]);
+        }
+      }
+
+      const photoDetail = this.describePhotoChanges(photoChanges, beforePhotos);
+      const fieldDetail = before
+        ? describeChanges(before, input)
+        : statusSummary({
+            cctv_installed: input.cctvInstalled,
+            cctv_connection: input.cctvConnection,
+            internet: input.internet,
+          });
+      const detail =
+        [fieldDetail, photoDetail].filter(Boolean).join(' · ') || 'No changes';
 
       await ActivityLogService.logBy(actor, {
         action: before == null ? 'showroom.created' : 'showroom.updated',
         target: input.showroomName,
-        detail: before
-          ? describeChanges(before, input)
-          : statusSummary({
-              cctv_installed: input.cctvInstalled,
-              cctv_connection: input.cctvConnection,
-              internet: input.internet,
-            }),
+        detail,
       });
 
       return { success: true, document: { showroomId: saved } };
@@ -151,15 +350,238 @@ class InventoryShowroomService {
   ): Promise<ServiceResponse<{ deleted: number }>> {
     try {
       const before = await this.repository.findById(showroomId);
+      const photos = await this.repository.findPhotos(showroomId);
       const deleted = await this.repository.remove(showroomId);
       if (deleted === 0 || before == null) {
         throw new ErrorResponse('NOT_FOUND_ERROR', 'Showroom not found.');
       }
+      // The FK cascaded the picture rows away; the objects are ours to remove.
+      await removeObjects(
+        photos.flatMap((row) => [row.photo_ref, row.thumb_ref]),
+      );
       await ActivityLogService.logBy(actor, {
         action: 'showroom.deleted',
         target: before.showroom_name,
         detail: statusSummary(before),
       });
+      return { success: true, document: { deleted } };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /**
+   * Signed links for the three slots, fetched when the drawer opens. A slot
+   * with no row is null; a picture that cannot be signed is treated the same
+   * way rather than handed to an `<img>` as a broken link.
+   */
+  async getPhotos(
+    showroomId: number,
+  ): Promise<ServiceResponse<ShowroomPhotos>> {
+    try {
+      const showroom = await this.repository.findById(showroomId);
+      if (showroom == null) {
+        throw new ErrorResponse('NOT_FOUND_ERROR', 'Showroom not found.');
+      }
+      const rows = await this.repository.findPhotos(showroomId);
+      const bySlot = new Map(rows.map((row) => [row.slot, row]));
+      const document = {} as ShowroomPhotos;
+
+      for (const slot of PHOTO_SLOTS) {
+        const row = bySlot.get(slot);
+        document[slot] = row ? await this.signedPhotoUrls(row, slot) : null;
+      }
+
+      return { success: true, document };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /**
+   * Store one picked picture and attach it to an existing showroom **in one
+   * request**. The bytes and the row are written by the same call, so a
+   * refresh (or a closed tab) can never leave an upload in storage with no
+   * photo on the record — the gap the old stage-then-save flow had.
+   *
+   * A new showroom has no id yet, so its pictures still stage separately and
+   * ride the create request; cancelling that discards them.
+   */
+  async uploadPhoto(
+    actor: SessionUser,
+    showroomId: number,
+    slot: ShowroomPhotoSlot,
+    input: ShowroomPhotoUploadRequest,
+  ): Promise<ServiceResponse<ShowroomPhotos>> {
+    try {
+      const showroom = await this.repository.findById(showroomId);
+      if (showroom == null) {
+        throw new ErrorResponse('NOT_FOUND_ERROR', 'Showroom not found.');
+      }
+
+      const staged = await InventoryPhotoService.stage(actor, input);
+      if (!staged.success) throw staged.error;
+      const stored = staged.document;
+      if (!stored) {
+        throw new ErrorResponse(
+          'INTERNAL_SERVER_ERROR',
+          'The photo upload did not complete.',
+        );
+      }
+      const { photoRef, thumbRef, filename, byteSize } = stored;
+
+      const attached = await this.attachPhoto(actor, showroom, slot, {
+        ref: photoRef,
+        thumbRef,
+        filename,
+        byteSize,
+      });
+      if (!attached.success) {
+        // The bytes exist but no row points at them: drop them now instead of
+        // waiting for the 24 h staging sweep.
+        await InventoryPhotoService.discard(actor, photoRef);
+        throw attached.error;
+      }
+      return attached;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /** Attach refs that are already stored (the write half of `uploadPhoto`). */
+  private async attachPhoto(
+    actor: SessionUser,
+    showroom: Showroom,
+    slot: ShowroomPhotoSlot,
+    input: ShowroomPhotoChangeInput,
+  ): Promise<ServiceResponse<ShowroomPhotos>> {
+    try {
+      const showroomId = showroom.showroom_id;
+      const before =
+        (await this.repository.findPhotos(showroomId)).find(
+          (row) => row.slot === slot,
+        ) ?? null;
+
+      // Retry / double submit: the row already points at this object, so the
+      // call is a read, not a write (and it re-mints the signed links).
+      if (before?.photo_ref === input.ref) {
+        return await this.getPhotos(showroomId);
+      }
+
+      if (
+        !isOwnedStagedRef(input.ref, actor.id) ||
+        (input.thumbRef != null && !isOwnedStagedRef(input.thumbRef, actor.id))
+      ) {
+        throw new ErrorResponse(
+          'BAD_REQUEST',
+          'That photo upload has expired. Pick the photo again.',
+        );
+      }
+
+      // One object, one slot: attaching the same upload twice would make one
+      // Remove delete the other picture's bytes.
+      const { backend, key } = parseRef(input.ref);
+      const used = (await this.repository.allPhotoRefs()).some((row) =>
+        [row.photo_ref, row.thumb_ref].some((value) => {
+          if (!value) return false;
+          const parsed = parseRef(value);
+          return parsed.backend === backend && parsed.key === key;
+        }),
+      );
+      if (used) {
+        throw new ErrorResponse(
+          'BAD_REQUEST',
+          'That photo is already attached to another showroom.',
+        );
+      }
+
+      const change: ShowroomPhotoChange = {
+        slot,
+        photoRef: input.ref,
+        thumbRef: input.thumbRef ?? null,
+        filename: input.filename?.trim() || null,
+        byteSize: input.byteSize ?? null,
+      };
+      await this.repository.setPhoto(showroomId, change);
+
+      // The row now points at the new object; the superseded one can go.
+      if (before && before.photo_ref !== change.photoRef) {
+        await removeObjects([before.photo_ref, before.thumb_ref]);
+      }
+
+      await ActivityLogService.logBy(actor, {
+        action: 'showroom.updated',
+        target: showroom.showroom_name,
+        detail: `${SHOWROOM_PHOTO_LABELS[slot]} photo ${before ? 'replaced' : 'added'}`,
+      });
+
+      // Fresh links for all three slots, so the drawer can replace its state
+      // wholesale and the next open is identical to this one.
+      return await this.getPhotos(showroomId);
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /** Remove one picture (the drawer's "Remove"): the row goes, then the object. */
+  async deletePhoto(
+    actor: SessionUser,
+    showroomId: number,
+    slot: ShowroomPhotoSlot,
+  ): Promise<ServiceResponse<{ deleted: number }>> {
+    try {
+      const before = await this.repository.findById(showroomId);
+      if (before == null) {
+        throw new ErrorResponse('NOT_FOUND_ERROR', 'Showroom not found.');
+      }
+      const row = (await this.repository.findPhotos(showroomId)).find(
+        (photo) => photo.slot === slot,
+      );
+      const deleted = await this.repository.removePhoto(showroomId, slot);
+      if (row) {
+        await removeObjects([row.photo_ref, row.thumb_ref]);
+        await ActivityLogService.logBy(actor, {
+          action: 'showroom.updated',
+          target: before.showroom_name,
+          detail: `${SHOWROOM_PHOTO_LABELS[slot]} photo removed`,
+        });
+      }
       return { success: true, document: { deleted } };
     } catch (error) {
       return {

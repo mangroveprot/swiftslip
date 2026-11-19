@@ -43,3 +43,23 @@ export function BrandMark({ backend, className }: { backend: StorageBackend; cla
     </span>
   );
 }
+
+/**
+ * The bare mark, for inside a sentence, a table cell or a legend: same artwork
+ * as `BrandMark` without the paper tile, sized to sit on the text baseline.
+ * Decorative only — the storage name is always written beside it.
+ */
+export function BrandIcon({ backend, className }: { backend: StorageBackend; className?: string }) {
+  const brand = BRANDS[backend];
+
+  return (
+    <img
+      src={brand.src}
+      alt=""
+      width={brand.width}
+      height={brand.height}
+      aria-hidden="true"
+      className={cn("inline-block size-3.5 shrink-0 object-contain align-[-0.15em]", className)}
+    />
+  );
+}

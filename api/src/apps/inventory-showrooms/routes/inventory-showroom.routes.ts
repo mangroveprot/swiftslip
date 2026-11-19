@@ -2,8 +2,11 @@ import { Router } from 'express';
 import { validate } from '../../../common/shared';
 import {
   showroomIdParam,
+  showroomPhotoSlotParam,
+  showroomPhotoUploadInput,
   showroomSaveInput,
   showroomStockInput,
+  stagedShowroomPhotoQuery,
 } from '@swiftslip/shared/showrooms';
 import { authenticate } from '../../auth/middlewares';
 import { requireApp } from '../../access';
@@ -23,6 +26,18 @@ router.put(
   InventoryShowroomController.saveStock,
 );
 
+// Photo staging is also declared before `/:id` for the same reason.
+router.post(
+  '/photos/staged',
+  validate(showroomPhotoUploadInput),
+  InventoryShowroomController.stagePhoto,
+);
+router.delete(
+  '/photos/staged',
+  validate(stagedShowroomPhotoQuery, 'query'),
+  InventoryShowroomController.discardStagedPhoto,
+);
+
 router.post(
   '/',
   validate(showroomSaveInput),
@@ -33,6 +48,22 @@ router.put(
   validate(showroomIdParam, 'params'),
   validate(showroomSaveInput),
   InventoryShowroomController.update,
+);
+router.get(
+  '/:id/photos',
+  validate(showroomIdParam, 'params'),
+  InventoryShowroomController.photos,
+);
+router.post(
+  '/:id/photos/:slot',
+  validate(showroomPhotoSlotParam, 'params'),
+  validate(showroomPhotoUploadInput),
+  InventoryShowroomController.uploadPhoto,
+);
+router.delete(
+  '/:id/photos/:slot',
+  validate(showroomPhotoSlotParam, 'params'),
+  InventoryShowroomController.deletePhoto,
 );
 router.delete(
   '/:id',

@@ -110,7 +110,7 @@ function connectionEnv(url: string, envKey: string): NodeJS.ProcessEnv {
 /**
  * `swiftslip-2026-11-17T02-30-00Z.sql.gz` — sortable, no characters Drive
  * dislikes, and prefixed with the target id so the two dumps of one run never
- * collide and the retention sweep can tell them apart.
+ * collide and the admin can tell at a glance which folder row is which.
  */
 export function dumpFileName(targetId: string, now = new Date()): string {
   const stamp = now

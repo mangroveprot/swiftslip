@@ -273,6 +273,9 @@ export function InventoryShowroomsPage() {
         onClose={closeDrawer}
         onSave={handleSave}
         onDelete={requestDelete}
+        // Edit-mode photos are attached/removed immediately, so the board's
+        // thumbnail can change without a form save.
+        onPhotosChanged={() => qc.invalidateQueries({ queryKey: showroomsQueryOptions().queryKey })}
       />
 
       <ConfirmModal

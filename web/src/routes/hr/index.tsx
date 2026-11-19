@@ -1,17 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { HrQueue } from "@/features/hr/components/HrQueue";
+import { HrQueue, HR_STATUS_TAB_KEYS, type StatusTab } from "@/features/hr/components/HrQueue";
 import { pageTitle, seo } from "@/lib/seo";
 
 export const Route = createFileRoute("/hr/")({
   /**
    * The sidebar's Completed and Rejected rows are the same screen with a
    * filter, not second routes: one queue query, one cache entry, one place
-   * to maintain.
+   * to maintain. The status tab beside them is kept here too, so refreshing
+   * the queue stays on the tab the reviewer was reading.
    */
-  validateSearch: (search: Record<string, unknown>): { view?: "completed" | "rejected" } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { view?: "completed" | "rejected"; tab?: StatusTab } => {
     const view = search["view"];
-    return view === "completed" || view === "rejected" ? { view } : {};
+    const tab = search["tab"];
+    return {
+      ...(view === "completed" || view === "rejected" ? { view } : {}),
+      ...(typeof tab === "string" && (HR_STATUS_TAB_KEYS as readonly string[]).includes(tab)
+        ? { tab: tab as StatusTab }
+        : {}),
+    };
   },
   head: () =>
     seo({

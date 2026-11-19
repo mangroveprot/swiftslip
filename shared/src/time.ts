@@ -1,18 +1,48 @@
 /**
- * Formats a 24-hour "HH:MM" time string (as produced by <input type="time">)
- * into a friendly 12-hour clock, e.g. "13:30" -> "1:30 PM". Values that aren't
- * a valid HH:MM (including empty or legacy free text) are returned unchanged so
- * nothing is ever lost.
+ * The one clock format every form prints on its sheet.
+ *
+ * `"08:00" → "08:00am"`, `"17:30" → "05:30pm"`. Minutes are ALWAYS shown and
+ * the hour is always two digits, so the printed columns line up; noon and
+ * midnight stay unambiguous (`"12:00pm"` / `"12:00am"`); the suffix is
+ * lowercase to match the templates' own type.
+ *
+ * Why minutes always: the time pickers above these forms read `08:00 AM`, and a
+ * sheet that printed `08am` meant the same thing but read as a different value.
+ * EVERY form goes through here — COS schedule, OT hours, OB exit clearance and
+ * the HR rows that mirror them. A per-form copy of this rule is exactly what
+ * drifted before, so there is one implementation and no local variants.
+ */
+function clockParts(value: string): { hour: string; minute: string; suffix: "am" | "pm" } | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec((value ?? "").trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const minute = Number(m[2]);
+  if (!Number.isFinite(h) || h > 23 || minute > 59) return null;
+  return {
+    hour: String(h % 12 === 0 ? 12 : h % 12).padStart(2, "0"),
+    minute: String(minute).padStart(2, "0"),
+    suffix: h < 12 ? "am" : "pm",
+  };
+}
+
+/**
+ * A sheet clock, or `""` when the value is not a time. This is the strict half:
+ * the composed lines (COS schedule, OT hours) build their text from it, so a
+ * blank end must stay blank rather than print whatever was typed.
+ */
+export function formatClock(value: string): string {
+  const parts = clockParts(value);
+  return parts ? `${parts.hour}:${parts.minute}${parts.suffix}` : "";
+}
+
+/**
+ * The same clock, but text that is not an HH:MM is returned unchanged rather
+ * than blanked — OB rows stored before the time pickers can hold free text
+ * (`"10am"`, `"half day"`), and the preview must never lose what was typed.
  */
 export function formatTime12h(value: string): string {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!m) return value;
-  const h = Number(m[1]);
-  const min = Number(m[2]);
-  if (h > 23 || min > 59) return value;
-  const period = h < 12 ? "AM" : "PM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${m[2]} ${period}`;
+  const parts = clockParts(value);
+  return parts ? `${parts.hour}:${parts.minute}${parts.suffix}` : value;
 }
 
 /**

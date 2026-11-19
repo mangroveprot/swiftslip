@@ -23,12 +23,14 @@ import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { Input } from "@/components/ui/input";
+import { useUrlState } from "@/lib/use-url-state";
 import { ACTION_LABELS } from "@swiftslip/shared/activity";
-import { ACTIVITY_LOG_PAGE_SIZE, type ActivityLogActionFilter } from "@swiftslip/shared/schemas";
+import { ACTIVITY_LOG_PAGE_SIZE } from "@swiftslip/shared/schemas";
+import { ACTIVITY_LOG_TAB_KEYS, type ActivityLogTab } from "../lib/admin-search";
 import { activityLogCountsQueryOptions, activityLogsQueryOptions } from "../queries";
 import { useUserPhotos } from "../use-user-photos";
 
-type Filter = "all" | ActivityLogActionFilter;
+type Filter = "all" | ActivityLogTab;
 type Range = "today" | "7d" | "30d";
 
 type LogRow = {
@@ -43,13 +45,17 @@ type LogRow = {
   target: string | null;
 };
 
+const TAB_LABELS: Record<ActivityLogTab, string> = {
+  signin: "Sign-ins",
+  "signin-failed": "Failed sign-ins",
+  access: "Access changes",
+  accounts: "Account changes",
+  records: "Records",
+};
+
 const TABS: ReadonlyArray<{ key: Filter; label: string }> = [
   { key: "all", label: "All" },
-  { key: "signin", label: "Sign-ins" },
-  { key: "signin-failed", label: "Failed sign-ins" },
-  { key: "access", label: "Access changes" },
-  { key: "accounts", label: "Account changes" },
-  { key: "records", label: "Records" },
+  ...ACTIVITY_LOG_TAB_KEYS.map((key) => ({ key, label: TAB_LABELS[key] })),
 ];
 
 const RANGES: ReadonlyArray<{ key: Range; label: string }> = [
@@ -57,6 +63,9 @@ const RANGES: ReadonlyArray<{ key: Range; label: string }> = [
   { key: "7d", label: "7 days" },
   { key: "30d", label: "30 days" },
 ];
+
+/** The tab keys, in the order above, for URL validation. */
+const FILTER_KEYS: readonly Filter[] = ["all", ...ACTIVITY_LOG_TAB_KEYS];
 
 const APP_NAMES: Record<string, string> = {
   swiftslip: "SwiftSlip",
@@ -683,14 +692,12 @@ function ActivitySkeleton() {
  * changes, app-access changes, and record activity, newest first and grouped
  * by day. Rows past the 30-day retention window are removed by the database.
  */
-export function ActivityLogs({
-  initialFilter = "all",
-}: {
-  initialFilter?: Filter;
-} = {}) {
+export function ActivityLogs() {
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
-  const [filter, setFilter] = useState<Filter>(initialFilter);
+  // The selected tab is part of the address bar, so a refresh (or a dashboard
+  // link to failed sign-ins) comes back to the same slice of the log.
+  const [filter, setFilter] = useUrlState<Filter>("filter", FILTER_KEYS, "all");
   const [range, setRange] = useState<Range>("30d");
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());

@@ -1,10 +1,10 @@
 /**
  * Asset view/edit/add drawer.
  *
- * Plain form layout: a white header (title + helper + close), then always
- * visible labelled fields grouped into Asset, Location, Assignment, Desktop
- * kit and Notes. The "+ Add new …" options keep the quick-create flow.
- * Offline-sync bits are absent.
+ * Navy banner header (title + helper + close), then a scrolling body of
+ * hairline-separated sections — Asset, Location, Assignment, Desktop kit and
+ * Notes — built from the shared drawer styles. The "+ Add new …" options keep
+ * the quick-create flow. Offline-sync bits are absent.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -20,6 +20,15 @@ import type {
   InventoryStatusOption,
 } from "@swiftslip/shared/inventory";
 
+import {
+  CANCEL_BUTTON,
+  FIELD,
+  LABEL,
+  SECTION,
+  SECTION_TITLE,
+  SELECT,
+  SUB_LABEL,
+} from "../lib/drawer-styles";
 import {
   compareOrdinalIgnoreCase,
   formatFloorDisplay,
@@ -51,11 +60,6 @@ type ViewAssetDrawerProps = {
   createAssetType: (name: string, category: string) => Promise<number>;
 };
 
-const FIELD =
-  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus:border-[#ea6a2e] focus:ring-2 focus:ring-[#ea6a2e]/25 focus:outline-none";
-const SELECT = `${FIELD} pr-8`;
-const LABEL = "mb-1.5 block text-xs font-medium text-muted-foreground";
-const NEW_FIELD_LABEL = "mb-1 block text-[11px] font-medium text-muted-foreground";
 type FormState = {
   branchChoice: string;
   branchNewName: string;
@@ -510,9 +514,9 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
           </div>
         </header>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
-          <section>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Asset</h3>
+        <div className="flex-1 overflow-y-auto px-5 py-1">
+          <section className={SECTION}>
+            <h3 className={SECTION_TITLE}>Asset</h3>
             <div className="space-y-4">
               <div>
                 <label htmlFor="asset-item-id" className={LABEL}>
@@ -555,7 +559,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                 {form.typeChoice === "new" ? (
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <div>
-                      <label htmlFor="asset-new-type-name" className={NEW_FIELD_LABEL}>
+                      <label htmlFor="asset-new-type-name" className={SUB_LABEL}>
                         New type name
                       </label>
                       <input
@@ -570,7 +574,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       />
                     </div>
                     <div>
-                      <label htmlFor="asset-new-type-category" className={NEW_FIELD_LABEL}>
+                      <label htmlFor="asset-new-type-category" className={SUB_LABEL}>
                         Category
                       </label>
                       <select
@@ -660,8 +664,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
             </div>
           </section>
 
-          <section>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Location</h3>
+          <section className={SECTION}>
+            <h3 className={SECTION_TITLE}>Location</h3>
             <div className="space-y-4">
               <div>
                 <label htmlFor="asset-branch-choice" className={LABEL}>
@@ -750,8 +754,8 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
             </div>
           </section>
 
-          <section>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">Assignment</h3>
+          <section className={SECTION}>
+            <h3 className={SECTION_TITLE}>Assignment</h3>
             <div className="space-y-4">
               <div>
                 <label htmlFor="asset-assigned-to" className={LABEL}>
@@ -804,14 +808,14 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
           </section>
 
           {selectedTypeIsDesktop ? (
-            <section>
-              <h3 className="mb-3 text-sm font-semibold text-foreground">Desktop kit</h3>
+            <section className={SECTION}>
+              <h3 className={SECTION_TITLE}>Desktop kit</h3>
               <div className="space-y-4">
                 <div>
                   <span className={LABEL}>Monitor</span>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="asset-monitor-brand" className={NEW_FIELD_LABEL}>
+                      <label htmlFor="asset-monitor-brand" className={SUB_LABEL}>
                         Brand
                       </label>
                       <input
@@ -826,7 +830,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       />
                     </div>
                     <div>
-                      <label htmlFor="asset-monitor-serial" className={NEW_FIELD_LABEL}>
+                      <label htmlFor="asset-monitor-serial" className={SUB_LABEL}>
                         Serial
                       </label>
                       <input
@@ -847,7 +851,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                   <span className={LABEL}>Keyboard</span>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
-                      <label htmlFor="asset-keyboard-brand" className={NEW_FIELD_LABEL}>
+                      <label htmlFor="asset-keyboard-brand" className={SUB_LABEL}>
                         Brand
                       </label>
                       <input
@@ -862,7 +866,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                       />
                     </div>
                     <div>
-                      <label htmlFor="asset-keyboard-serial" className={NEW_FIELD_LABEL}>
+                      <label htmlFor="asset-keyboard-serial" className={SUB_LABEL}>
                         Serial
                       </label>
                       <input
@@ -898,25 +902,23 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
             </section>
           ) : null}
 
-          <section>
-            <h3 className="mb-3 text-sm font-semibold text-foreground">
-              <label htmlFor="asset-notes">Notes</label>
-            </h3>
+          <section className={SECTION}>
+            <h3 className={SECTION_TITLE}>Notes</h3>
             <textarea
               id="asset-notes"
               name="asset-notes"
               rows={3}
+              aria-label="Notes"
               className={`${FIELD} resize-none`}
               placeholder="Add a note…"
               maxLength={4000}
               value={form.notes}
               onChange={(e) => upd({ notes: e.target.value })}
             />
+            {!isAddMode && updatedLabel !== "—" ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">Updated {updatedLabel}</p>
+            ) : null}
           </section>
-
-          {!isAddMode && updatedLabel !== "—" ? (
-            <p className="text-[11px] text-muted-foreground">Updated {updatedLabel}</p>
-          ) : null}
         </div>
 
         <footer className="shrink-0 border-t border-border bg-card">
@@ -955,14 +957,14 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
                     d="M3 6h18M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6m2 0v13.5A1.5 1.5 0 0 1 16.5 21h-9A1.5 1.5 0 0 1 6 19.5V6h12ZM10 11v6M14 11v6"
                   />
                 </svg>
-                Delete
+                Delete asset
               </button>
             )}
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--inv-orange)] disabled:cursor-not-allowed disabled:opacity-50"
+                className={CANCEL_BUTTON}
                 onClick={cancelChanges}
                 disabled={saving}
               >

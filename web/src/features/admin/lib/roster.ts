@@ -20,7 +20,8 @@ export type RosterRow = {
 };
 
 /** Which tab is selected above the list. */
-export type RosterFilter = "all" | "admin" | "user" | "incomplete";
+export const ROSTER_FILTERS = ["all", "admin", "user", "incomplete"] as const;
+export type RosterFilter = (typeof ROSTER_FILTERS)[number];
 
 /**
  * The department a row shows: the one stored on the profile, or the one its

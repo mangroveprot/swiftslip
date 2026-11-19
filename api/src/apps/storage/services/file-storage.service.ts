@@ -45,15 +45,20 @@ export class FileStorageService {
     return toRef(backend, key);
   }
 
-  /** Return a short‑lived presigned GET URL for the object. */
+  /**
+   * Return a short‑lived presigned GET URL for the object. `downloadName`
+   * signs `Content-Disposition: attachment` into the link, for a Download
+   * button that must save the file rather than open it.
+   */
   async signedUrl(
     key: string,
     backend: StorageBackend,
+    downloadName?: string,
   ): Promise<string | null> {
     if (backend === 'b2') {
-      return this.b2.signedGetUrl(key);
+      return this.b2.signedGetUrl(key, downloadName);
     }
-    return this.supabase.signedUrl(key);
+    return this.supabase.signedUrl(key, downloadName);
   }
 
   /** Throws when the link cannot be made (used for the main attachment). */
@@ -73,9 +78,12 @@ export class FileStorageService {
   }
 
   /** Return a signed URL for a reference string (e.g. from DB). */
-  async signedUrlRef(ref: string): Promise<string | null> {
+  async signedUrlRef(
+    ref: string,
+    downloadName?: string,
+  ): Promise<string | null> {
     const r = parseRef(ref);
-    return this.signedUrl(r.key, r.backend);
+    return this.signedUrl(r.key, r.backend, downloadName);
   }
 
   /** Throws when the link cannot be made, for a reference string. */

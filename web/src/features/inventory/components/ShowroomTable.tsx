@@ -7,8 +7,9 @@
  * `@swiftslip/shared/showrooms` so the board, the header stats, the drawer and
  * the export can never disagree about what "Needs request" looks like.
  */
+import { useState } from "react";
 import type { CSSProperties } from "react";
-import { Download, PencilLine, Search } from "lucide-react";
+import { Download, PencilLine, Search, Store } from "lucide-react";
 
 import type { Showroom, ShowroomFilter } from "@swiftslip/shared/showrooms";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@swiftslip/shared/showrooms";
 
 import { ShowroomCard } from "./ShowroomCard";
+import { ShowroomPhotoDialog } from "./ShowroomPhotoDialog";
 
 type ShowroomTableProps = {
   showrooms: Showroom[];
@@ -52,6 +54,10 @@ export function ShowroomTable({
   canDownload,
   onEdit,
 }: ShowroomTableProps) {
+  // The board thumbnail opens this; the drawer's preview is separate so the
+  // row is never the ancestor of a portal.
+  const [preview, setPreview] = useState<Showroom | null>(null);
+
   const tabs: Array<{ key: ShowroomFilter; label: string; count: number }> = [
     { key: "all", label: "All", count: counts.all },
     { key: "needs_action", label: "Needs action", count: counts.needsAction },
@@ -121,6 +127,7 @@ export function ShowroomTable({
               showroom={showroom}
               index={index}
               onEdit={onEdit}
+              onPreview={setPreview}
             />
           ))
         )}
@@ -163,9 +170,33 @@ export function ShowroomTable({
                     style={{ "--row-i": Math.min(index, 12) } as CSSProperties}
                   >
                     <td className="showroom-table__td">
-                      <span className="showroom-table__name" title={showroom.showroom_name}>
-                        {showroom.showroom_name}
-                      </span>
+                      <div className="showroom-table__identity">
+                        {showroom.photo_thumb ? (
+                          <button
+                            type="button"
+                            className="showroom-table__thumb showroom-table__thumb--button"
+                            onClick={() => setPreview(showroom)}
+                            aria-label={`Preview ${showroom.showroom_name} photo`}
+                          >
+                            <img
+                              src={showroom.photo_thumb}
+                              alt=""
+                              loading="lazy"
+                              className="size-full object-cover"
+                            />
+                          </button>
+                        ) : (
+                          <span
+                            className="showroom-table__thumb showroom-table__thumb--empty"
+                            aria-hidden="true"
+                          >
+                            <Store className="size-4" />
+                          </span>
+                        )}
+                        <span className="showroom-table__name" title={showroom.showroom_name}>
+                          {showroom.showroom_name}
+                        </span>
+                      </div>
                     </td>
 
                     <td className="showroom-table__td">
@@ -219,6 +250,15 @@ export function ShowroomTable({
           Showing {showrooms.length} of {totalCount} showroom{totalCount === 1 ? "" : "s"}
         </span>
       </div>
+
+      <ShowroomPhotoDialog
+        isOpen={preview != null}
+        title={preview?.showroom_name ?? ""}
+        subtitle="Showroom photo"
+        src={preview?.photo_thumb ?? null}
+        showroomId={preview?.showroom_id}
+        onClose={() => setPreview(null)}
+      />
     </div>
   );
 }

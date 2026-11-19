@@ -13,6 +13,8 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -81,6 +83,10 @@
   --foreground: oklch(0.24 0.02 250);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.24 0.02 250);
+  /* Floating menus (Select, dropdowns, popovers) sit on the card surface, but
+     as their own token: a menu is opaque even when the card it covers is not. */
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.02 250);
   --primary: oklch(0.33 0.09 250);
   --primary-foreground: oklch(0.99 0.005 85);
   --secondary: oklch(0.93 0.012 85);
@@ -171,6 +177,8 @@
   --foreground: oklch(0.95 0.004 85);
   --card: oklch(0.235 0.004 250);
   --card-foreground: oklch(0.95 0.004 85);
+  --popover: oklch(0.235 0.004 250);
+  --popover-foreground: oklch(0.95 0.004 85);
   /* Cream primary: the dark twin of the light theme's warm ink. Buttons flip
      to dark text, which is the only readable pairing on a cream fill. */
   --primary: oklch(0.93 0.012 85);
@@ -1611,8 +1619,8 @@
            disabled:cursor-not-allowed disabled:opacity-60;
   }
 
-  /* Copy is a utility, not an action: quiet text, so two real buttons never sit
-     side by side in the block. */
+  /* Copy is a utility, not an action: quiet text on its own line under the
+     buttons, so the row keeps exactly two real buttons. */
   .error-state__details {
     @apply inline-flex h-9 cursor-pointer items-center justify-center rounded-md px-2
            text-[0.8125rem] font-medium text-muted-foreground transition-colors
@@ -2304,6 +2312,29 @@
     @apply px-3 py-2.5 align-middle;
   }
 
+  /* Showroom-slot thumbnail beside the name; the fallback is a store glyph. */
+  .showroom-table__identity {
+    @apply flex min-w-0 items-center gap-2.5;
+  }
+
+  .showroom-table__thumb {
+    @apply size-10 shrink-0 overflow-hidden rounded-md border;
+    border-color: var(--inv-line);
+    background-color: var(--field);
+  }
+
+  .showroom-table__thumb--button {
+    @apply cursor-zoom-in transition-shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--inv-orange)];
+  }
+
+  .showroom-table__thumb--button:hover {
+    box-shadow: 0 0 0 2px var(--inv-line);
+  }
+
+  .showroom-table__thumb--empty {
+    @apply grid place-items-center text-muted-foreground;
+  }
+
   .showroom-table__name {
     @apply inline-block max-w-full truncate font-medium text-foreground;
   }
@@ -2352,6 +2383,24 @@
 
   .showroom-card__head {
     @apply flex items-start justify-between gap-2;
+  }
+
+  .showroom-card__identity {
+    @apply flex min-w-0 flex-1 items-center gap-2.5;
+  }
+
+  .showroom-card__thumb {
+    @apply size-11 shrink-0 overflow-hidden rounded-md border;
+    border-color: var(--inv-line);
+    background-color: var(--field);
+  }
+
+  .showroom-card__thumb--button {
+    @apply cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--inv-orange)];
+  }
+
+  .showroom-card__thumb--empty {
+    @apply grid place-items-center text-muted-foreground;
   }
 
   .showroom-card__name {

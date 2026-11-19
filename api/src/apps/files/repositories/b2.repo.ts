@@ -12,6 +12,23 @@ import { config } from '../../../core/config';
 /** Presigned links are short-lived, per the storage guide (5 minutes). */
 const URL_TTL_SECONDS = 5 * 60;
 
+/**
+ * `attachment; filename="…"` for a presigned GET. The plain-ASCII fallback
+ * keeps old clients happy, `filename*` carries the real (possibly non-ASCII)
+ * name. Quotes, backslashes and control characters are not allowed inside the
+ * header, so they become underscores in the fallback.
+ */
+function contentDisposition(name: string): string {
+  const fallback = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_');
+  // RFC 5987 leaves `'`, `(`, `)` and `*` out of attr-char, and encodeURIComponent
+  // keeps them; encode them so a filename like "John's photo.png" stays valid.
+  const encoded = encodeURIComponent(name).replace(
+    /['()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
+}
+
 const toError = (error: unknown, action: string) =>
   new ErrorResponse(
     'GENERAL_ERROR',
@@ -76,12 +93,23 @@ export class B2Repository {
     }
   }
 
-  /** A 5-minute presigned GET URL for one object. */
-  async signedGetUrl(key: string): Promise<string> {
+  /**
+   * A 5-minute presigned GET URL for one object. `downloadName` bakes a
+   * `Content-Disposition: attachment` into the signature, so a plain link
+   * saves the file instead of opening it (cross-origin `download` attributes
+   * are ignored by browsers).
+   */
+  async signedGetUrl(key: string, downloadName?: string): Promise<string> {
     try {
       return await getSignedUrl(
         this.b2(),
-        new GetObjectCommand({ Bucket: this.bucket(), Key: key }),
+        new GetObjectCommand({
+          Bucket: this.bucket(),
+          Key: key,
+          ...(downloadName
+            ? { ResponseContentDisposition: contentDisposition(downloadName) }
+            : {}),
+        }),
         { expiresIn: URL_TTL_SECONDS },
       );
     } catch (error) {

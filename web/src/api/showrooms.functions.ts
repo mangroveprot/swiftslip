@@ -6,8 +6,12 @@ import type { z } from "zod";
 
 import { api, documentOf, documentsOf, seg } from "@/lib/api-client";
 import type {
-  showroomSaveInput,
+  showroomPhotoUploadInput,
   Showroom,
+  ShowroomPhotoSlot,
+  ShowroomPhotoUploadResult,
+  ShowroomPhotos,
+  showroomSaveInput,
   ShowroomStock,
   ShowroomStockRequest,
 } from "@swiftslip/shared/showrooms";
@@ -45,3 +49,56 @@ export const getShowroomStock = async () =>
 
 export const saveShowroomStock = async ({ cctvTotalUnits }: ShowroomStockRequest) =>
   documentOf(await api.put<ShowroomStock>("/inventory/showrooms/stock", { cctvTotalUnits }));
+
+/* -------------------------------------------------------------- photos - */
+
+/** Store one picture before its showroom is saved; the refs go into the save. */
+export const stageShowroomPhoto = async ({
+  data,
+}: {
+  data: z.input<typeof showroomPhotoUploadInput>;
+}) =>
+  documentOf(await api.post<ShowroomPhotoUploadResult>("/inventory/showrooms/photos/staged", data));
+
+/** Drop a staged picture (drawer cancelled, or it was replaced). */
+export const discardStagedShowroomPhoto = async ({ ref }: { ref: string }) => {
+  await api.delete("/inventory/showrooms/photos/staged", { ref });
+};
+
+/**
+ * Upload a picture and attach it to an existing showroom in one request, so
+ * nothing waits for the form's Save. Answers with fresh links for all slots.
+ */
+export const uploadShowroomPhoto = async ({
+  showroomId,
+  slot,
+  data,
+}: {
+  showroomId: number;
+  slot: ShowroomPhotoSlot;
+  data: z.input<typeof showroomPhotoUploadInput>;
+}) =>
+  documentOf(
+    await api.post<ShowroomPhotos>(
+      `/inventory/showrooms/${seg(showroomId)}/photos/${seg(slot)}`,
+      data,
+    ),
+  );
+
+/** Signed links for the three slots, fetched when the drawer opens. */
+export const getShowroomPhotos = async ({ showroomId }: { showroomId: number }) =>
+  documentOf(await api.get<ShowroomPhotos>(`/inventory/showrooms/${seg(showroomId)}/photos`));
+
+/** Remove one slot immediately. */
+export const deleteShowroomPhoto = async ({
+  showroomId,
+  slot,
+}: {
+  showroomId: number;
+  slot: ShowroomPhotoSlot;
+}) =>
+  documentOf(
+    await api.delete<{ deleted: number }>(
+      `/inventory/showrooms/${seg(showroomId)}/photos/${seg(slot)}`,
+    ),
+  );

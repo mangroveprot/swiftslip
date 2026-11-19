@@ -17,6 +17,7 @@ import { Route as HrRouteImport } from './routes/hr'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as RgcAssetInventoryRouteImport } from './routes/rgc-asset-inventory'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as AdminProfileRouteImport } from './routes/admin/profile'
 import { Route as HrIndexRouteImport } from './routes/hr/index'
 import { Route as HrProfileRouteImport } from './routes/hr/profile'
 import { Route as RgcAssetInventoryIndexRouteImport } from './routes/rgc-asset-inventory.index'
@@ -75,6 +76,11 @@ const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AppRoute,
+} as any)
+const AdminProfileRoute = AdminProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AdminRoute,
 } as any)
 const HrIndexRoute = HrIndexRouteImport.update({
   id: '/',
@@ -179,12 +185,13 @@ const HrObIdRoute = HrObIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/choose': typeof ChooseRoute
   '/hr': typeof HrRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/profile': typeof AppProfileRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/hr/profile': typeof HrProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
@@ -207,10 +214,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/choose': typeof ChooseRoute
   '/onboarding': typeof OnboardingRoute
   '/profile': typeof AppProfileRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/hr/profile': typeof HrProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
@@ -235,12 +243,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/choose': typeof ChooseRoute
   '/hr': typeof HrRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/rgc-asset-inventory': typeof RgcAssetInventoryRouteWithChildren
   '/_app/profile': typeof AppProfileRoute
+  '/admin/profile': typeof AdminProfileRoute
   '/hr/profile': typeof HrProfileRoute
   '/rgc-asset-inventory/reports': typeof RgcAssetInventoryReportsRoute
   '/rgc-asset-inventory/settings': typeof RgcAssetInventorySettingsRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/rgc-asset-inventory'
     | '/profile'
+    | '/admin/profile'
     | '/hr/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/choose'
     | '/onboarding'
     | '/profile'
+    | '/admin/profile'
     | '/hr/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/rgc-asset-inventory'
     | '/_app/profile'
+    | '/admin/profile'
     | '/hr/profile'
     | '/rgc-asset-inventory/reports'
     | '/rgc-asset-inventory/settings'
@@ -350,7 +362,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ChooseRoute: typeof ChooseRoute
   HrRoute: typeof HrRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
@@ -414,6 +426,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile'
       preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/admin/profile': {
+      id: '/admin/profile'
+      path: '/profile'
+      fullPath: '/admin/profile'
+      preLoaderRoute: typeof AdminProfileRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/hr/': {
       id: '/hr/'
@@ -585,6 +604,16 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface AdminRouteChildren {
+  AdminProfileRoute: typeof AdminProfileRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminProfileRoute: AdminProfileRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface HrRouteChildren {
   HrProfileRoute: typeof HrProfileRoute
   HrIndexRoute: typeof HrIndexRoute
@@ -619,7 +648,7 @@ const RgcAssetInventoryRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   ChooseRoute: ChooseRoute,
   HrRoute: HrRouteWithChildren,
   OnboardingRoute: OnboardingRoute,

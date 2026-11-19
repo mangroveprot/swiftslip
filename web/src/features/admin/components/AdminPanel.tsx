@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, Outlet, useMatchRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
@@ -45,34 +45,12 @@ import { DataRetention } from "./settings/DataRetention";
 import { Backup } from "./settings/Backup";
 import { Storage } from "./settings/Storage";
 import { UserManagement } from "./UserManagement";
-
-type Section =
-  "dashboard" | "users" | "access" | "sessions" | "logs" | "retention" | "storage" | "backup";
-
-const SECTIONS: Section[] = [
-  "dashboard",
-  "users",
-  "access",
-  "sessions",
-  "logs",
-  "retention",
-  "storage",
-  "backup",
-];
-
-/**
- * The section the address bar asks for, when it names a real one.
- *
- * Set by the server for a redirect that has to land on a specific page: the
- * Google Drive handshake returns to
- * `/admin?backup=connected&section=backup`, so the admin lands on the page the
- * toast is about instead of the dashboard.
- */
-function sectionFromAddress(): Section {
-  if (typeof window === "undefined") return "dashboard";
-  const wanted = new URLSearchParams(window.location.search).get("section");
-  return SECTIONS.find((section) => section === wanted) ?? "dashboard";
-}
+import {
+  ACTIVITY_LOG_TAB_KEYS,
+  type ActivityLogTab,
+  type AdminSearch,
+  type Section,
+} from "../lib/admin-search";
 
 /**
  * A nav row. `id` is the section it opens; a parent row (one with `children`)
@@ -125,14 +103,34 @@ export function AdminPanel() {
   // from the same cached profile the My Account page edits.
   const { data: profile } = useQuery(profileQueryOptions());
   const { logoPath, isRegasco } = useEmployerLogo();
-  const [section, setSection] = useState<Section>(sectionFromAddress);
-  const [logFilter, setLogFilter] = useState<ActivityLogActionFilter | "all">("all");
+  // The page lives in the address bar, so a refresh at
+  // `/admin?section=backup` stays on Backup instead of snapping back to the
+  // dashboard. Selecting a section replaces the entry: these are tabs of one
+  // page, not new pages in history.
+  const search = useSearch({ from: "/admin" });
+  const section: Section = search.section ?? "dashboard";
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  // My account is a child route (`/admin/profile`) so it keeps this panel's
+  // sidebar and mobile header. While it is open no section is current.
+  const matchRoute = useMatchRoute();
+  const onProfile = Boolean(matchRoute({ to: "/admin/profile" }));
 
   // A dashboard link can open Activity logs already narrowed to sign-ins.
-  const navigate = (next: Section, filter?: ActivityLogActionFilter) => {
-    if (next === "logs") setLogFilter(filter ?? "all");
-    setSection(next);
+  const go = (next: Section, filter?: ActivityLogActionFilter) => {
+    const nextSearch: AdminSearch = {};
+    if (next !== "dashboard") nextSearch.section = next;
+    // Only a log tab the page can render is carried over; an API-only filter
+    // with no tab (`showrooms`) is ignored instead of leaving the URL and the
+    // visible tab disagreeing.
+    if (
+      next === "logs" &&
+      filter &&
+      (ACTIVITY_LOG_TAB_KEYS as readonly string[]).includes(filter)
+    ) {
+      nextSearch.filter = filter as ActivityLogTab;
+    }
+    void navigate({ to: "/admin", replace: true, search: nextSearch });
   };
   // The session query is seeded by the route loader, but the query cache is not
   // available on the first client paint. Keep the footer's initial markup
@@ -143,8 +141,8 @@ export function AdminPanel() {
 
   const sidebar = (
     <AdminSidebar
-      section={section}
-      onSelect={(next) => navigate(next)}
+      section={onProfile ? null : section}
+      onSelect={(next) => go(next)}
       label={mounted ? session?.label : undefined}
       employer={mounted ? profile?.employer : undefined}
       position={mounted ? profile?.designation : undefined}
@@ -194,32 +192,37 @@ export function AdminPanel() {
       </MobileSidebarDrawer>
 
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-        <div
-          key={section}
-          // User management is a seven-column roster: a 5xl cap left most of a
-          // wide screen empty while the table squeezed itself into the middle.
-          // It now fills the panel; the reading-width cap stays on the prose
-          // screens. (The dashboard keeps its own slightly wider cap.)
-          className={`${section === "dashboard" ? "max-w-6xl" : section === "users" || section === "sessions" ? "max-w-none" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong`}
-        >
-          {section === "dashboard" ? (
-            <AdminDashboard onNavigate={navigate} />
-          ) : section === "users" ? (
-            <UserManagement />
-          ) : section === "access" ? (
-            <AppAccess />
-          ) : section === "sessions" ? (
-            <ActiveSessions />
-          ) : section === "retention" ? (
-            <DataRetention />
-          ) : section === "storage" ? (
-            <Storage />
-          ) : section === "backup" ? (
-            <Backup />
-          ) : (
-            <ActivityLogs initialFilter={logFilter} />
-          )}
-        </div>
+        {onProfile ? (
+          <Outlet />
+        ) : (
+          <div
+            key={section}
+            // User management is a seven-column roster: a 5xl cap left most of a
+            // wide screen empty while the table squeezed itself into the middle.
+            // It now fills the panel; the reading-width cap stays on the prose
+            // screens. (The dashboard and Backup keep their own slightly wider cap:
+            // Backup is a two-column sheet, so 5xl squeezed its right column.)
+            className={`${section === "dashboard" || section === "backup" ? "max-w-6xl" : section === "users" || section === "sessions" ? "max-w-none" : "max-w-5xl"} mx-auto space-y-6 px-4 py-8 md:px-8 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-[180ms] motion-safe:ease-strong`}
+          >
+            {section === "dashboard" ? (
+              <AdminDashboard onNavigate={go} />
+            ) : section === "users" ? (
+              <UserManagement />
+            ) : section === "access" ? (
+              <AppAccess />
+            ) : section === "sessions" ? (
+              <ActiveSessions />
+            ) : section === "retention" ? (
+              <DataRetention />
+            ) : section === "storage" ? (
+              <Storage />
+            ) : section === "backup" ? (
+              <Backup />
+            ) : (
+              <ActivityLogs />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -235,7 +238,8 @@ function AdminSidebar({
   photo,
   onNavigate,
 }: {
-  section: Section;
+  /** The current section, or null on the panel's own My account screen. */
+  section: Section | null;
   onSelect: (section: Section) => void;
   label?: string | undefined;
   employer?: Employer | undefined;
@@ -274,8 +278,9 @@ function AdminSidebar({
         // uses, falling back to whichever half is known.
         sublabel={accountCaption(employer, position)}
         // The identity block is the way into My Account (there is no Account
-        // nav row in this panel either).
-        to="/profile"
+        // nav row in this panel either). It is the panel's own copy, so the
+        // admin stays inside Admin Panel instead of jumping to SwiftSlip.
+        to="/admin/profile"
       >
         <Link to="/choose" onClick={onNavigate} className={SIDEBAR_ACTION_CLASS}>
           <LayoutGrid className="size-4" aria-hidden="true" />
@@ -289,7 +294,7 @@ function AdminSidebar({
 /** One nav row: a selectable section, or a dimmed "Soon" row that isn't. */
 function renderAdminRow(
   item: AdminItem,
-  section: Section,
+  section: Section | null,
   onSelect: (section: Section) => void,
   onNavigate?: (() => void) | undefined,
 ) {
@@ -321,7 +326,7 @@ function renderAdminRow(
 }
 
 /** True when this item, or anything under it, is the current section. */
-function isActiveSection(item: AdminItem, section: Section): boolean {
+function isActiveSection(item: AdminItem, section: Section | null): boolean {
   if (item.id === section) return true;
   return (item.children ?? []).some((child) => isActiveSection(child, section));
 }
@@ -340,7 +345,7 @@ function SettingsGroup({
   onNavigate,
 }: {
   item: AdminItem;
-  section: Section;
+  section: Section | null;
   onSelect: (section: Section) => void;
   onNavigate?: (() => void) | undefined;
 }) {

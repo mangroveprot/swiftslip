@@ -2,10 +2,31 @@ import { BaseRepository } from '../../../core/engine';
 import type { TableName } from '../../../core/engine';
 import type { StorageReference } from '@swiftslip/shared/schemas';
 import { isImagePath, thumbPathOf } from '@swiftslip/shared/attachment-files';
+import {
+  ATTACHMENT_TABLES,
+  hasOtherAttachments,
+} from '../../attachments/types';
 
 const PAGE = 1000;
 
-/** Form tables that carry `attachment_path` and `attachment_backend`. */
+/**
+ * `users.id` is a uuid column. A storage key is free text, and one segment is
+ * used as an owner id, so a hand-renamed (or otherwise malformed) object can
+ * carry a value that is not a uuid at all.
+ */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Form tables that carry `attachment_path` and `attachment_backend`, built from
+ * the same list the upload routes accept.
+ *
+ * This used to be a hand-kept list, which is how `liq_forms` (Statement of
+ * Liquidation) was missed: every LIQ attachment and its thumbnail read as
+ * unreferenced, so the cleanup offered a live form's file for deletion.
+ * `AttachmentTable` now has a runtime value and the upload guard uses it too,
+ * so a form cannot be uploadable without being scannable.
+ */
 const FORM_TABLES: {
   table: TableName;
   /** The main attachment column, approval slips live here. */
@@ -14,38 +35,12 @@ const FORM_TABLES: {
   backendCol: string;
   /** The jsonb sibling column holding extra attachments, when the table has one. */
   others: string | null;
-}[] = [
-  {
-    table: 'dtr_records' as TableName,
-    col: 'attachment_path',
-    backendCol: 'attachment_backend',
-    others: 'other_attachments',
-  },
-  {
-    table: 'ob_forms' as TableName,
-    col: 'attachment_path',
-    backendCol: 'attachment_backend',
-    others: null,
-  },
-  {
-    table: 'loa_forms' as TableName,
-    col: 'attachment_path',
-    backendCol: 'attachment_backend',
-    others: 'other_attachments',
-  },
-  {
-    table: 'cos_forms' as TableName,
-    col: 'attachment_path',
-    backendCol: 'attachment_backend',
-    others: null,
-  },
-  {
-    table: 'ot_forms' as TableName,
-    col: 'attachment_path',
-    backendCol: 'attachment_backend',
-    others: 'other_attachments',
-  },
-];
+}[] = ATTACHMENT_TABLES.map((table) => ({
+  table: table as TableName,
+  col: 'attachment_path',
+  backendCol: 'attachment_backend',
+  others: hasOtherAttachments(table) ? 'other_attachments' : null,
+}));
 
 /** Strip the internal `b2:` prefix from a stored path, if present. */
 function stripB2Prefix(path: string): string {
@@ -174,10 +169,15 @@ export class StorageReferenceRepository {
 
   /** Which of these user ids still have an account row. */
   async existingUserIds(ids: string[]): Promise<Set<string>> {
+    // Postgres casts every `in` value to the column's uuid type, so one
+    // malformed key segment would fail the whole query (22P02) and the orphan
+    // preview with it. Such a segment cannot name an account anyway: skipping
+    // it simply reads as "no account", which is what the caller reports.
+    const valid = ids.filter((id) => UUID_RE.test(id));
     const found = new Set<string>();
-    for (let i = 0; i < ids.length; i += PAGE) {
+    for (let i = 0; i < valid.length; i += PAGE) {
       const rows = await this.readPage('users' as TableName, 'id', 0, {
-        id: { in: ids.slice(i, i + PAGE) },
+        id: { in: valid.slice(i, i + PAGE) },
       });
       for (const row of rows) found.add(row.id as string);
     }
