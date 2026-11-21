@@ -307,7 +307,7 @@ export function LiqFormFields({
                   />
                   <Field
                     id={`liq-expense_description-${entry.idx}`}
-                    label="Description"
+                    label="Expenses"
                     value={entry.description}
                     disabled={!canEdit}
                     onChange={(description) => setEntry(index, { ...entry, description })}
