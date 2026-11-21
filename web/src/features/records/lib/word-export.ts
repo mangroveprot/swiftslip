@@ -132,6 +132,30 @@ function overlaySignature(xml: string, lineHeightEmu: number): string {
     : withAnchor.slice(0, paraStart) + spacer + withAnchor.slice(paraStart);
 }
 
+/**
+ * The blue "Approved via Viber" line the other paper forms print, as a Word
+ * paragraph: 10.5pt, #4472C4, centred under "Certified by:" — the same place
+ * and colour the on-screen sheet uses (`DtrPreview`).
+ */
+const VIBER_NOTE =
+  '<w:p><w:pPr><w:spacing w:after="0"/><w:ind w:right="1940"/><w:jc w:val="center"/></w:pPr>' +
+  '<w:r><w:rPr><w:color w:val="4472C4"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr>' +
+  '<w:t xml:space="preserve">Approved via Viber</w:t></w:r></w:p>';
+
+/**
+ * Drops the note in after the template's "Certified by:" line. The tokenized
+ * form has no slot for it, and the sentence is a fixed label, so inserting the
+ * paragraph is cheaper and safer than re-tokenizing the company's .docx.
+ */
+function addViberNote(xml: string): string {
+  const label = xml.indexOf("Certified by:");
+  if (label === -1) return xml;
+  const paragraphEnd = xml.indexOf("</w:p>", label);
+  if (paragraphEnd === -1) return xml;
+  const cut = paragraphEnd + "</w:p>".length;
+  return xml.slice(0, cut) + VIBER_NOTE + xml.slice(cut);
+}
+
 export async function downloadDtrWord({
   // `template` (title / column names / labels) lives in the tokenized template
   // itself, so the export doesn't reference it, but it's kept in the signature
@@ -140,12 +164,15 @@ export async function downloadDtrWord({
   header,
   days,
   entryFor,
+  approved = false,
   fileName,
 }: {
   template: DtrTemplate;
   header: DtrHeader;
   days: number[];
   entryFor: (day: number) => DtrEntry;
+  /** A DTR is approved once its approval file is attached, as on paper. */
+  approved?: boolean;
   fileName: string;
 }) {
   const res = await fetch(TEMPLATE_URL);
@@ -200,6 +227,14 @@ export async function downloadDtrWord({
     employee_signature: sigB64,
     certified_by: header.certified_by ?? "",
   });
+
+  // The paper form prints the blue note under "Certified by:" once the record
+  // has its approval attachment — same rule the sheet preview follows.
+  if (approved) {
+    const zip = doc.getZip();
+    const xml = zip.file("word/document.xml")!.asText();
+    zip.file("word/document.xml", addViberNote(xml));
+  }
 
   // Convert the inline signature to a floating overlay so it sits on top of the
   // printed name. Skipped when there is no signature: the placeholder is a 1×1

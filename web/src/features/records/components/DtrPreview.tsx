@@ -96,12 +96,15 @@ export function DtrPreview({
   header,
   days,
   entryFor,
+  approved = false,
   sheetId,
 }: {
   template: DtrTemplate;
   header: DtrHeader;
   days: number[];
   entryFor: (day: number) => DtrEntry;
+  /** A DTR has no approval flag: an attached file is the approval. */
+  approved?: boolean;
   /** DOM id for the sheet, only the inline editor copy carries one, so the
    *  full-view lightbox copy can never produce a duplicate id. */
   sheetId?: string;
@@ -226,6 +229,11 @@ export function DtrPreview({
           <p className="pt-[3px] text-center">{template.employee_signature_label}</p>
 
           <p className={CERT_MARGIN}>{template.certified_by_label}</p>
+          {approved ? (
+            <p className="text-center text-[10.5pt]" style={{ color: "#4472C4" }}>
+              Approved via Viber
+            </p>
+          ) : null}
           <p className="text-center font-medium">{header.certified_by}</p>
           <div className="mt-[0.2in] border-ink border-b" style={{ borderBottomWidth: RULE_W }} />
           <p className="pt-[3px]">{template.certifier_signature_label}</p>

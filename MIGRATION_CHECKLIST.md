@@ -1128,6 +1128,13 @@ like Inventory, but every route is guarded by `requireApp('showroom-updates')`, 
 - [x] History list trimmed (2026-11-21): the drawer shows the two newest entries, with the third
       rendered as an inert faded/blurred peek under a `Show more` control (same mask-fade idea as
       Recent backups). `Show more` reveals the rest in batches of 10; nothing is hidden permanently.
+- [x] DTR prints "Approved via Viber" (2026-11-21): a DTR counts as approved once its approval file
+      is attached (`ApprovedStamp`), and the sheet now says so the way the OT / Liquidation forms
+      do — a `#4472C4` "Approved via Viber" line under `certified_by_label`, above the certifier's
+      name. `DtrPreview` takes `approved`; `RecordEditor` passes `Boolean(data?.attachment)` to both
+      copies (inline + full view) and to the Word export, which inserts the same centred, 10.5 pt
+      blue paragraph after "Certified by:" in `document.xml` (the tokenized .docx has no slot for
+      it, so no re-tokenize).
 - [x] `web/src/lib/save-pdf.ts` — `PAPER_SHOWROOM_UPDATES` (A4 landscape, 8 mm) selected by the
       `sru-print-sheet` class.
 - [x] `npm run typecheck` and `npm run lint` pass (0 errors; 8 pre-existing `react-refresh`

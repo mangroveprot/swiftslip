@@ -459,6 +459,7 @@ function RecordEditorBody({
         header,
         days,
         entryFor: row,
+        approved: Boolean(data?.attachment),
         fileName: `${APP.name}_${header.name || "record"}_${MONTHS[header.month - 1]}_${header.year}.docx`,
       });
       toast.success("Word file downloaded", { id: toastId });
@@ -700,6 +701,7 @@ function RecordEditorBody({
               header={header}
               days={days}
               entryFor={row}
+              approved={Boolean(data?.attachment)}
             />
           </div>
           {/* The printable "other attachments", after everything else on paper.
@@ -717,7 +719,13 @@ function RecordEditorBody({
         onOpenChange={setPreviewOpen}
         title="Daily Time Record (full view)"
       >
-        <DtrPreview template={template} header={header} days={days} entryFor={row} />
+        <DtrPreview
+          template={template}
+          header={header}
+          days={days}
+          entryFor={row}
+          approved={Boolean(data?.attachment)}
+        />
       </PreviewLightbox>
 
       <BiometricImportDialog
