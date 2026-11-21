@@ -23,6 +23,7 @@ import { OrgOptionRoutes } from '../../apps/org-options';
 import { ProfileRoutes } from '../../apps/profile';
 import { RetentionRoutes } from '../../apps/retention';
 import { StorageRoutes } from '../../apps/storage';
+import { ShowroomUpdateRoutes } from '../../apps/showroom-updates';
 import { UpdatesRoutes } from '../../apps/updates';
 import { UserRoutes } from '../../apps/users';
 
@@ -58,6 +59,8 @@ router.use('/liquidation', LiquidationRoutes);
 router.use('/files', FileRoutes);
 router.use('/biometric-import', BiometricImportRoutes);
 router.use('/ai', AiRoutes);
+// Showroom Updates (separate RGC database, its own app grant).
+router.use('/showroom-updates', ShowroomUpdateRoutes);
 // Inventory (separate RGC database). Most specific prefixes first.
 router.use('/inventory/options', InventoryOptionRoutes);
 router.use('/inventory/reports', InventoryReportRoutes);

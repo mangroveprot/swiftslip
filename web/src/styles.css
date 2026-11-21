@@ -1384,6 +1384,47 @@
     size: A4 landscape;
     margin: 8mm;
   }
+
+  /* Showroom Updates: the board is an app screen, not a sheet. While its
+     summary sheet is mounted (portalled to <body> as `.sru-export-stage`),
+     a print — the Export menu's Print or Ctrl+P — must contain the sheet only,
+     so every other body child is dropped and the stage becomes the page. The
+     body is bound to the named `sru` page for the same reason as LOA/LIQ:
+     anything left in the default page group would open a blank sheet after. */
+  body:has(> .sru-export-stage) > :not(.sru-export-stage) {
+    display: none !important;
+  }
+
+  body:has(> .sru-export-stage) .sru-export-stage {
+    position: static !important;
+    left: auto !important;
+    width: auto !important;
+    z-index: auto !important;
+    pointer-events: auto !important;
+  }
+
+  body:has(.sru-export-stage),
+  .sru-print-sheet {
+    page: sru;
+  }
+
+  .sru-print-sheet,
+  .sru-print-sheet * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* A row is atomic on paper, like the PDF export's page cuts. */
+  .sru-print-sheet tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  @page sru {
+    size: A4 landscape;
+    margin: 8mm;
+  }
 }
 
 /* ==========================================================================

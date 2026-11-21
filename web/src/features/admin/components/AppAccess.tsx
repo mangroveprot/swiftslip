@@ -39,6 +39,7 @@ import { useUserPhotos } from "../use-user-photos";
 const APP_LABELS: Record<GrantableAppKey, string> = {
   swiftslip: "SwiftSlip",
   inventory: "Inventory",
+  "showroom-updates": "Showroom Updates",
   ticketing: "Ticketing",
   hr: "HR Approvals",
 };

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink, Store } from "lucide-react";
 import { useState } from "react";
 
 import { PageTitle } from "@/components/common/PageTitle";
@@ -256,6 +256,34 @@ export function AppChooser() {
                 </span>
                 <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
                   Open RGC Asset Inventory
+                  <ArrowRight
+                    className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Link>
+            </div>
+          ) : null}
+
+          {can("showroom-updates") ? (
+            <div
+              className={`${ENTRANCE_CLASS} motion-safe:[animation-delay:480ms] ${CARD_CELL_CLASS}`}
+            >
+              <Link to="/showroom-updates" className={CARD_CLASS}>
+                <span>
+                  <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-paper motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
+                    <Store className="size-5 text-primary" aria-hidden="true" />
+                  </span>
+                  <span className="mt-3 flex flex-wrap items-center gap-1.5">
+                    <span className="text-base font-semibold">Showroom Updates</span>
+                  </span>
+                  <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
+                    Keep the SR status board current: what each showroom still needs, who owns it
+                    and when it opens.
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-2 text-sm font-medium text-primary">
+                  Open Showroom Updates
                   <ArrowRight
                     className="size-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:translate-x-1.5"
                     aria-hidden="true"

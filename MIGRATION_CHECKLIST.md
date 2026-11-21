@@ -1053,3 +1053,87 @@ Known behaviour changes in Phase 2 (intentional, listed so nobody "fixes" them b
   **`0037_ob_resubmit.sql`** for the resubmit badge/history; without it the API's selects and the
   submit update reference missing columns, so it must be applied before deploying this code.
 - Sign-in failure delay and throttle numbers are unchanged (10 per ID / 20 per IP / 15 min, 250 ms).
+
+### Phase 10 — Showroom Updates app ✅ code done; migration + real-DB/browser test pending
+
+Its own grantable app (`showroom-updates`, `/showroom-updates`). The board lives in the RGC Postgres,
+like Inventory, but every route is guarded by `requireApp('showroom-updates')`, never `inventory`.
+
+- [x] `shared/src/showroom-updates.ts` — status / remarks / vehicle / responsible vocabularies, the
+      sheet palette, row + event + save types, option lists, filter/search/date helpers,
+      `totalActiveSr` (status `open`). Added to `APP_KEYS`, `GRANTABLE_APP_KEYS`, `APP_HOME`.
+- [x] `api/drizzle/migrations/0045_showroom_updates_app.sql` — widens the `app_access_rules` CHECK
+      with `showroom-updates` (no rule stored; default OFF, admins bypass).
+- [x] `api/src/apps/showroom-updates/**` — repository owns `showroom_updates` +
+      `showroom_update_events` (lazy create, transaction on save, 22-row seed, sheet numbering
+      1–18 / 20–23), service (diff → human labels, activity log `showroom_update.saved`),
+      controller, routes: `GET /`, `GET /:id/events`, `PUT /:id`, all
+      `authenticate, requireApp('showroom-updates')`. Mounted at `/api/showroom-updates`.
+- [x] Web: `api/showroom-updates.functions.ts`, `features/showroom-updates/**` (queries, page,
+      top bar, chips/toolbar, table, editable drawer + history, PDF sheet, Excel workbook),
+      `routes/showroom-updates.tsx` (guard on `session.apps`), chooser card, Admin Panel app label.
+- [x] Board re-skinned to the owner's reference (2026-11-20): app gradient behind the page, brand +
+      “Switch app” + a clickable identity chip that opens the shared account card, search / chip /
+      Export strip, then checkbox, No. (sortable), Showroom (+ location), Status, Requirements,
+      Action required, Responsible person, Open date, Vehicle and the `⋯` row menu. Remarks stays
+      in the drawer and both exports. The account card was extracted to
+      `web/src/components/layout/account-menu.tsx` and the sidebar footer now renders it too.
+- [x] Toolbar gained an orange `+ Add showroom` button (opens the drawer in create mode), and the
+      drawer now matches the Inventory showroom panel: banner header, Showroom / Status /
+      Requirements / Opening / History sections, Cancel + orange primary. Showroom name and location
+      are editable and audited; `POST /` appends the next `No.` in one transaction. The status chips
+      sit beside the search instead of centred, the active chip is a filled pill (no outline), and
+      the table's hairline rules are horizontal-only in the body, like the reference. The drawer's
+      fields are suggestion inputs instead of native selects: pick-only for the four vocabularies,
+      free text with suggestions for Requirements / Action required.
+- [x] Excel workbook matched to the owner's reference (2026-11-20): measured column widths, 30/18/24/15 pt
+      title/total/header/body rows, 7–10 pt body type, numeric `No.`, blank status cell, bold dates,
+      the narrow Vehicle cell and a full-board export's five reserved blank rows numbered 24–28
+      (filtered exports stop at their rows).
+- [x] Excel export made flexible (2026-11-21): text cells wrap and each row grows to its tallest
+      wrapped cell (per-cell font metrics, 16 pt floor), fixing both the `BODY_HEIGHT_TALL is not
+      defined` export crash (TS2552, constant now computed away) and the clipped Location/Action
+      text the owner circled. Responsible Person +1 unit / Vehicle −1 (total still 145).
+      `typecheck`/`lint`/`vite build` green; workbook read-back verified structurally (see
+      `ACTIVITY_LOG.md`).
+- [x] Excel export trailing rows removed (2026-11-21): the five reserved blank rows (24–28) are gone —
+      the workbook ends on the last showroom, `blankRows` is no longer a parameter, and page fitting
+      counts real rows only. Supersedes the "five reserved blank rows" clause above. `typecheck` /
+      `lint` / `vite build` green; read-back of a 20-row export has exactly 23 rows (title, total,
+      header + 20) and `printArea` `A1:J23`.
+- [x] Print action and Ctrl+P (2026-11-21): the Export menu gained `Print` (shared `printSheet`, closes
+      the dropdown first), and the hidden sheet is portalled to `<body>` so a print block can hide the
+      whole board and bind it to `@page sru` (A4 landscape, 8 mm, rows atomic). Headless-Chrome print
+      of a DOM-matching harness: one landscape page, sheet only, colours intact. Owner to confirm in
+      the live app.
+- [x] History crash fixed (2026-11-20): `changes` is written as real jsonb (`tx.json`), legacy
+      jsonb-string rows are repaired on the schema check, and repository + client + drawer fall back
+      to `[]` instead of calling `.map()` on a non-array.
+- [x] History restore (2026-11-21, extended same day): every edit entry offers `Restore previous
+      values`, including one that filled a previously blank cell (restoring then clears it back to
+      `—`); only the row's creation line offers nothing, recognised by `Showroom name` moving out of
+      `—` (no edit can blank a name). Labels and sheet dates map back to stored keys, the values are
+      staged in the form (not written) until Save changes, and the entry then reads "Restored. Press
+      Save changes to keep it." Rendered click verified (Status Open → Ready, Date open cleared,
+      Save enabled; the 3:19/3:22 PM "set to" entries from the owner's screenshot now restore to
+      blank).
+- [x] Bulk delete (2026-11-21): ticking rows reveals `UpdatesBulkBar` above the table (count,
+      `Clear selection`, red `Delete selected`, mirroring Inventory's bulk bar; actions grouped on
+      the left beside the count). Each row's `…` menu also ends with a destructive
+      `Delete showroom`, so one row and many share the same confirm + endpoint. It confirms through
+      the shared `ConfirmModal` (one row by name, many by count; history is called out because it
+      cascades), then `POST /api/showroom-updates/bulk-delete` deletes the ids in one statement,
+      writes one `showroom_update.deleted` activity line, invalidates the board and clears the
+      selection. `deleteShowroomUpdatesInput` lives in `shared/src/showroom-updates.ts`.
+- [x] History list trimmed (2026-11-21): the drawer shows the two newest entries, with the third
+      rendered as an inert faded/blurred peek under a `Show more` control (same mask-fade idea as
+      Recent backups). `Show more` reveals the rest in batches of 10; nothing is hidden permanently.
+- [x] `web/src/lib/save-pdf.ts` — `PAPER_SHOWROOM_UPDATES` (A4 landscape, 8 mm) selected by the
+      `sru-print-sheet` class.
+- [x] `npm run typecheck` and `npm run lint` pass (0 errors; 8 pre-existing `react-refresh`
+      warnings), `vite build` green, API boots with the route mounted.
+- [ ] **Owner to run:** paste `0045_showroom_updates_app.sql` in the Supabase SQL Editor (only needed
+      before granting the app), then grant it in Admin Panel → App access, open
+      `/showroom-updates`, edit a row, check its history, tick rows and delete them, and export
+      PDF + Excel. Not tested against the real RGC database or in a browser.
+

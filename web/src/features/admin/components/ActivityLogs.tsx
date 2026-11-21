@@ -70,6 +70,7 @@ const FILTER_KEYS: readonly Filter[] = ["all", ...ACTIVITY_LOG_TAB_KEYS];
 const APP_NAMES: Record<string, string> = {
   swiftslip: "SwiftSlip",
   inventory: "Inventory",
+  "showroom-updates": "Showroom Updates",
   ticketing: "Ticketing",
   hr: "HR Approvals",
 };

@@ -1,0 +1,314 @@
+/**
+ * The owner's exported sheet, transcribed from the HTML/CSS they supplied.
+ *
+ * Scoped under `.sru-sheet` so none of it leaks into the board, and sized in px
+ * (not `vw`) because this is captured by html2canvas at the A4-landscape
+ * content width, where `vw` would resolve against the browser window instead of
+ * the paper. Colours and type are the source's, verbatim.
+ */
+.sru-sheet {
+  --sru-gold: #f0a93c;
+  --sru-title: #1f3a6e;
+  --sru-plum: #3f2b46;
+  --sru-plum-2: #4a3552;
+  --sru-head-text: #f2b947;
+  --sru-grid: #7d7d7d;
+  --sru-open: #1e6a4d;
+  --sru-ready: #e4f0c8;
+  --sru-progress: #2c72b4;
+  --sru-pending: #c0504d;
+
+  width: 100%;
+  background: #fff;
+  color: #111;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+}
+
+.sru-sheet table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  background: #fff;
+  font-size: 10px;
+}
+
+/*
+ * Column widths, No. … Vehicle (10 columns, sums to 100%).
+ *
+ * Location, Showroom and the two text columns are wide enough that the longest
+ * real values ("Purok Bangus, National Highway, Brgy. Polo, Dapitan City, ZDN",
+ * "Mun. of Leon B. Postigo", "Lacking Contract of Lease", "Jimmy the Great",
+ * "READY TO LAUNCH") sit on ONE line, so rows stay an even single line tall as
+ * on the owner's sheet instead of some doubling in height. Only the long
+ * "Occupancy permit that is currently approve by OBO" and the hand-broken
+ * vehicle label take a second line. `!important` wins over any inline width the
+ * <col> elements carry.
+ */
+.sru-sheet col:nth-child(1) {
+  width: 3% !important;
+} /* No. */
+.sru-sheet col:nth-child(2) {
+  width: 12% !important;
+} /* Showroom */
+.sru-sheet col:nth-child(3) {
+  width: 29.5% !important;
+} /* Location */
+.sru-sheet col:nth-child(4) {
+  width: 5.5% !important;
+} /* Status */
+.sru-sheet col:nth-child(5) {
+  width: 12% !important;
+} /* Lacking Requirements */
+.sru-sheet col:nth-child(6) {
+  width: 12% !important;
+} /* Action Required */
+.sru-sheet col:nth-child(7) {
+  width: 7% !important;
+} /* Responsible Person */
+.sru-sheet col:nth-child(8) {
+  width: 7.5% !important;
+} /* Remarks */
+.sru-sheet col:nth-child(9) {
+  width: 6% !important;
+} /* Date Open */
+.sru-sheet col:nth-child(10) {
+  width: 5.5% !important;
+} /* Vehicle */
+
+.sru-sheet td,
+.sru-sheet th {
+  padding: 0.28em 0.4em;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/*
+ * One thin line between cells. html2canvas paints every cell's own borders,
+ * so with a border on all four sides each shared edge is drawn twice (and
+ * doubled again by the PDF's render scale), which is what made the grid look
+ * thick. Each cell therefore draws only its right and bottom edge, and the
+ * first column / header row add the outer left and top edge.
+ */
+.sru-sheet tbody td,
+.sru-sheet thead tr.sru-cols th {
+  border: 0;
+  border-right: 1px solid var(--sru-grid);
+  border-bottom: 1px solid var(--sru-grid);
+  vertical-align: middle;
+}
+
+.sru-sheet tbody td:first-child,
+.sru-sheet thead tr.sru-cols th:first-child {
+  border-left: 1px solid var(--sru-grid);
+}
+
+.sru-sheet thead tr.sru-cols th {
+  border-top: 1px solid var(--sru-grid);
+}
+
+/* Every data row at least one comfortable line tall, so the page reads evenly. */
+.sru-sheet tbody tr {
+  height: 2.3em;
+}
+
+.sru-sheet tr.sru-title td,
+.sru-sheet tr.sru-total td {
+  border: none;
+  padding: 0;
+}
+
+.sru-sheet tr.sru-title td.sru-bar {
+  background: var(--sru-gold);
+  color: var(--sru-title);
+  font:
+    700 22px/1.45 "Courier New",
+    Courier,
+    monospace;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 0.12em 0.3em;
+}
+
+.sru-sheet tr.sru-total td.sru-bar {
+  background: var(--sru-plum);
+  color: #fff;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0.28em;
+}
+
+.sru-sheet tr.sru-total td.sru-bar b {
+  color: #ffd34d;
+  font-size: 1.5em;
+  margin-left: 0.3em;
+}
+
+.sru-sheet tr.sru-cols th {
+  background: var(--sru-plum);
+  color: var(--sru-head-text);
+  font-weight: 600;
+  text-align: center;
+  border-color: #5b476a;
+  padding: 0.5em 0.3em;
+  line-height: 1.15;
+}
+
+.sru-sheet tr.sru-cols th,
+.sru-sheet tr.sru-cols th:first-child {
+  border-color: #5b476a;
+}
+
+.sru-sheet th.sru-side {
+  background: var(--sru-plum-2);
+  line-height: 1.1;
+}
+
+.sru-sheet td.sru-no {
+  text-align: center;
+  font-weight: 700;
+  background: #f7f7f7;
+  padding: 0.25em 0;
+}
+
+.sru-sheet td.sru-show,
+.sru-sheet td.sru-loc {
+  text-align: left;
+}
+
+.sru-sheet td.sru-c {
+  text-align: center;
+}
+
+.sru-sheet td.sru-status {
+  text-align: center;
+  padding: 0.3em 0.1em;
+  font-size: 0.82em;
+  letter-spacing: 0.04em;
+  color: #dff3ea;
+}
+
+.sru-sheet .sru-s-open {
+  background: var(--sru-open);
+}
+
+.sru-sheet .sru-s-ready {
+  background: var(--sru-ready);
+  color: #444 !important;
+  font-size: 1em !important;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.sru-sheet .sru-s-progress {
+  background: var(--sru-progress);
+  color: #d7e8f7 !important;
+}
+
+.sru-sheet .sru-s-pending {
+  background: var(--sru-pending);
+  color: #f5d6d4 !important;
+}
+
+.sru-sheet td.sru-person {
+  text-align: center;
+  font-size: 0.9em;
+  padding: 0.25em 0.2em;
+}
+
+.sru-sheet .sru-p-jimmy {
+  background: #fff;
+  color: #222;
+}
+
+.sru-sheet .sru-p-jonnah {
+  background: #f4c7c4;
+  color: #a8625d;
+}
+
+.sru-sheet .sru-p-maynard {
+  background: #1e6a4d;
+  color: #9fcbb7;
+}
+
+.sru-sheet .sru-p-jeanette {
+  background: #f6cf8f;
+  color: #3b3b3b;
+}
+
+.sru-sheet .sru-p-marvin {
+  background: #4a3a8e;
+  color: #a99bdc;
+}
+
+.sru-sheet .sru-p-ivanray {
+  background: #121212;
+  color: #8a8a8a;
+}
+
+.sru-sheet td.sru-remark {
+  text-align: center;
+  font-size: 0.85em;
+  font-weight: 700;
+  padding: 0.25em 0.2em;
+  color: #6a3515;
+}
+
+.sru-sheet .sru-r-op {
+  background: #f4b183;
+}
+
+.sru-sheet .sru-r-launch {
+  background: #2e8b57;
+  color: #5a1f12;
+}
+
+.sru-sheet .sru-r-ongoing {
+  background: #9dc3e6;
+  color: #fff;
+}
+
+.sru-sheet td.sru-date {
+  text-align: center;
+  font-weight: 600;
+  padding: 0.25em 0.2em;
+}
+
+.sru-sheet td.sru-veh {
+  text-align: center;
+  font-size: 0.74em;
+  font-weight: 700;
+  padding: 0.25em 0.15em;
+  color: #6a3515;
+  line-height: 1.1;
+}
+
+.sru-sheet .sru-v-side {
+  background: #f4b2a4;
+}
+
+.sru-sheet .sru-v-both {
+  background: #1f7a76;
+  color: #cdeeee;
+}
+
+.sru-sheet .sru-v-req {
+  background: #2f6fbf;
+  color: #b7d2f0;
+}
+
+.sru-sheet .sru-v-none {
+  background: #d5c6e4;
+  color: #5b4a72;
+}
+
+/* Laid out for real (html2canvas needs measurements) but never seen, and
+   never able to widen the page or start a scrollbar. */
+.sru-export-stage {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 281mm;
+  pointer-events: none;
+  z-index: -1;
+}

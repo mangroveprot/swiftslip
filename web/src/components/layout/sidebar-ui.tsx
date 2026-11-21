@@ -1,29 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowRightFromLine,
-  ChevronsUpDown,
-  Contrast,
-  Monitor,
-  Moon,
-  Sun,
-  User,
-} from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { BrandLockup } from "@/components/common/BrandLockup";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
-import { useSignOutFlow } from "@/components/common/SignOutButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useTheme } from "@/lib/use-theme";
-import { cn } from "@/lib/utils";
 
-import { InstallAppItem } from "./InstallAppItem";
-import { SIDEBAR_MENU_ITEM } from "./sidebar-classes";
+import { AccountMenuItems } from "./account-menu";
 
 /**
  * Building blocks shared by the SwiftSlip portal sidebar and the Admin
@@ -99,12 +86,6 @@ export function SidebarSoonBadge() {
   );
 }
 
-const THEME_LABEL = {
-  light: "Light",
-  dark: "Dark",
-  system: "System",
-} as const;
-
 /**
  * Footer pinned under the nav. Utility rows come first (Notifications / Switch
  * app), then the signed-in identity at the very bottom. That identity is one
@@ -140,13 +121,6 @@ export function SidebarFooter({
   signOutAccessName?: string | undefined;
   children: ReactNode;
 }) {
-  const { open: openSignOut, modal: signOutModal } = useSignOutFlow({
-    accessName: signOutAccessName,
-  });
-  const { preference, cycle } = useTheme();
-  const themeLabel = THEME_LABEL[preference];
-  const ThemeIcon = preference === "dark" ? Moon : preference === "system" ? Monitor : Sun;
-
   const identity = (
     <>
       <ProfileAvatar photo={photo} name={name} size={36} />
@@ -183,45 +157,10 @@ export function SidebarFooter({
             sideOffset={8}
             className="z-[80] w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg"
           >
-            {/* Theme first, then the account entries: it cycles in place on
-                select, no navigation, no nested menu. */}
-            <DropdownMenuItem
-              onSelect={cycle}
-              className={cn(SIDEBAR_MENU_ITEM, "flex items-center gap-2")}
-              aria-label={`Theme: ${themeLabel}. Click to change.`}
-            >
-              <Contrast className="size-4" aria-hidden="true" />
-              Theme
-              <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-                {themeLabel}
-                <ThemeIcon className="size-3.5" aria-hidden="true" />
-              </span>
-            </DropdownMenuItem>
-            {to ? (
-              <DropdownMenuItem asChild>
-                <Link to={to} className={cn("flex w-full items-center gap-2", SIDEBAR_MENU_ITEM)}>
-                  <User className="size-4" aria-hidden="true" />
-                  My account
-                </Link>
-              </DropdownMenuItem>
-            ) : null}
-            {/* No divider: Theme sits above My account, Install app is a quiet
-                utility row, and Sign out closes the card. */}
-            <InstallAppItem />
-            <DropdownMenuItem
-              onSelect={() => openSignOut()}
-              className={cn(
-                SIDEBAR_MENU_ITEM,
-                "text-destructive focus:bg-destructive/15 focus:text-destructive data-[highlighted]:bg-destructive/15 data-[highlighted]:text-destructive dark:focus:bg-destructive/15 dark:focus:text-destructive dark:data-[highlighted]:bg-destructive/15 dark:data-[highlighted]:text-destructive",
-              )}
-            >
-              <ArrowRightFromLine className="size-4" aria-hidden="true" />
-              Sign out
-            </DropdownMenuItem>
+            <AccountMenuItems to={to} accessName={signOutAccessName} />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {signOutModal}
     </footer>
   );
 }

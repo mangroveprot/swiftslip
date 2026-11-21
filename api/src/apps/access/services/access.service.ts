@@ -3,6 +3,7 @@ import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { HR_DEPARTMENT } from '@swiftslip/shared/hr';
 import { normalizePosition } from '@swiftslip/shared/org';
 import {
+  APP_KEYS,
   GRANTABLE_APP_KEYS,
   isExternalApp,
   type AppKey,
@@ -26,13 +27,12 @@ import {
   type Rule,
 } from '../utils';
 
-const EVERY_APP: AppKey[] = [
-  'admin',
-  'swiftslip',
-  'inventory',
-  'ticketing',
-  'hr',
-];
+/**
+ * What an administrator holds. Derived from `APP_KEYS`, never hand-listed: a
+ * forgotten key here means the admin who just built a new app cannot see its
+ * card in the chooser (which is exactly how `showroom-updates` went missing).
+ */
+const EVERY_APP: AppKey[] = [...APP_KEYS];
 
 export type OverviewPerson = {
   id: string;

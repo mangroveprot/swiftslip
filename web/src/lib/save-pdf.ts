@@ -97,6 +97,16 @@ const PAPER_LIQ: Paper = {
   centered: true,
 };
 
+/** `@page` for the Showroom Updates summary sheet: A4 landscape, 8mm sides. */
+const PAPER_SHOWROOM_UPDATES: Paper = {
+  top: 8,
+  right: 8,
+  bottom: 8,
+  left: 8,
+  orientation: "landscape",
+  centered: true,
+};
+
 /**
  * The print rules, re-applied to the stage. They are a copy of the
  * `@media print` block in `styles.css` (a media query cannot be switched on for
@@ -179,6 +189,7 @@ export interface PdfAttachment {
 /** The paper a form prints on, LOA and LIQ have their own pages. */
 function paperFor(element: HTMLElement): Paper {
   if (element.classList.contains("liq-print-sheet")) return PAPER_LIQ;
+  if (element.classList.contains("sru-print-sheet")) return PAPER_SHOWROOM_UPDATES;
   return element.classList.contains("loa-print-sheet") ? PAPER_LOA : PAPER_DEFAULT;
 }
 

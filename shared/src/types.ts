@@ -16,16 +16,29 @@ export type AccountPhoto = { id: string; photo: string };
 /**
  * The applications behind the "Where would you like to go?" chooser.
  *
- * `swiftslip`, `inventory`, `ticketing` and `hr` are GRANTABLE. `admin` is
- * deliberately excluded: the Admin Panel is gated on `role === "admin"` alone,
- * and admins also bypass every access rule, so an `admin` rule could never take
- * effect. Keeping it out of `GRANTABLE_APP_KEYS` means the admin UI can't offer
- * it.
+ * `swiftslip`, `inventory`, `showroom-updates`, `ticketing` and `hr` are
+ * GRANTABLE. `admin` is deliberately excluded: the Admin Panel is gated on
+ * `role === "admin"` alone, and admins also bypass every access rule, so an
+ * `admin` rule could never take effect. Keeping it out of `GRANTABLE_APP_KEYS`
+ * means the admin UI can't offer it.
  */
-export const APP_KEYS = ["admin", "swiftslip", "inventory", "ticketing", "hr"] as const;
+export const APP_KEYS = [
+  "admin",
+  "swiftslip",
+  "inventory",
+  "showroom-updates",
+  "ticketing",
+  "hr",
+] as const;
 export type AppKey = (typeof APP_KEYS)[number];
 
-export const GRANTABLE_APP_KEYS = ["swiftslip", "inventory", "ticketing", "hr"] as const;
+export const GRANTABLE_APP_KEYS = [
+  "swiftslip",
+  "inventory",
+  "showroom-updates",
+  "ticketing",
+  "hr",
+] as const;
 export type GrantableAppKey = (typeof GRANTABLE_APP_KEYS)[number];
 
 /** Apps this app hosts itself, each with a route and a server guard. */
@@ -36,6 +49,7 @@ export const APP_HOME = {
   admin: "/admin",
   swiftslip: "/records",
   inventory: "/rgc-asset-inventory",
+  "showroom-updates": "/showroom-updates",
   hr: "/hr",
 } as const satisfies Record<InternalAppKey, string>;
 

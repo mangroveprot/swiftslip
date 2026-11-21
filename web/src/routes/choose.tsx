@@ -37,7 +37,7 @@ export const Route = createFileRoute("/choose")({
     seo({
       title: pageTitle("Choose a screen"),
       description:
-        "Pick where to go: SwiftSlip, the Admin Panel, RGC Asset Inventory or the Regasco Ticketing System.",
+        "Pick where to go: SwiftSlip, the Admin Panel, RGC Asset Inventory, Showroom Updates or the Regasco Ticketing System.",
     }),
   component: AppChooser,
 });
