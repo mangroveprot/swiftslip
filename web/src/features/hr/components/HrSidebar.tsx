@@ -55,7 +55,7 @@ export function HrSidebar({
   const { data: queue } = useQuery(hrQueueQueryOptions());
   // Same cached profile the My Account page edits, position for the caption.
   const { data: profile } = useQuery(profileQueryOptions());
-  const photo = useProfilePhoto();
+  const { photo, crop } = useProfilePhoto();
   const apps = session?.apps;
 
   const completedView = view === "completed";
@@ -109,6 +109,7 @@ export function HrSidebar({
       <SidebarFooter
         name={session?.label ?? "HR"}
         photo={photo}
+        crop={crop}
         sublabel={accountCaption(profile?.employer, profile?.designation)}
         to="/hr/profile"
         signOutAccessName="the HR app"

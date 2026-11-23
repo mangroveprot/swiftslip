@@ -22,7 +22,7 @@ import type {
 import { formatDate } from "@swiftslip/shared/time";
 
 import { FORM_TYPE_ICONS, FORM_TYPE_LABELS } from "./form-types";
-import { useUserPhotos } from "../../use-user-photos";
+import { useUserPhotos } from "@/features/profile/use-user-photos";
 
 /** Rows shown before the faded peek; each "Show more" reveals another batch. */
 const VISIBLE_INITIAL = 10;

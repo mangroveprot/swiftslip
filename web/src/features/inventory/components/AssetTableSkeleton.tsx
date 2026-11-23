@@ -131,7 +131,6 @@ export function AssetTableSkeleton({ rows = 9, cards = 6 }: AssetTableSkeletonPr
 
             <span className="asset-card__actions">
               <Bar className="size-4" />
-              <Bar className="size-4" />
             </span>
           </div>
         ))}
@@ -167,7 +166,7 @@ export function AssetTableSkeleton({ rows = 9, cards = 6 }: AssetTableSkeletonPr
               <th className="asset-table__th w-[10%] hidden xl:table-cell">
                 <HeadBar className="h-2.5 w-14" />
               </th>
-              <th className="asset-table__th asset-table__th--actions w-[8.5rem] xl:w-[13%]">
+              <th className="asset-table__th asset-table__th--actions w-[5.5rem] xl:w-[7%]">
                 <HeadBar className="h-2.5 w-12" />
               </th>
             </tr>
@@ -200,7 +199,7 @@ export function AssetTableSkeleton({ rows = 9, cards = 6 }: AssetTableSkeletonPr
                   <CellBar className="h-3 w-14" />
                 </td>
                 <td className="asset-table__td asset-table__actions">
-                  <CellBar className="h-5 w-16" />
+                  <CellBar className="size-5" />
                 </td>
               </tr>
             ))}

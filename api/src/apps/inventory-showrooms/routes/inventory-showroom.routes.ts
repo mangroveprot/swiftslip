@@ -5,7 +5,6 @@ import {
   showroomPhotoSlotParam,
   showroomPhotoUploadInput,
   showroomSaveInput,
-  showroomStockInput,
   stagedShowroomPhotoQuery,
 } from '@swiftslip/shared/showrooms';
 import { authenticate } from '../../auth/middlewares';
@@ -18,13 +17,8 @@ router.use(authenticate, requireApp('inventory'));
 
 router.get('/', InventoryShowroomController.list);
 
-// Before `/:id`, or Express would try to read "stock" as an id.
-router.get('/stock', InventoryShowroomController.getStock);
-router.put(
-  '/stock',
-  validate(showroomStockInput),
-  InventoryShowroomController.saveStock,
-);
+// Before `/:id`, or Express would try to read "link-options" as an id.
+router.get('/link-options', InventoryShowroomController.linkOptions);
 
 // Photo staging is also declared before `/:id` for the same reason.
 router.post(

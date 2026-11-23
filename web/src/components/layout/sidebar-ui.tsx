@@ -4,13 +4,9 @@ import type { ReactNode } from "react";
 
 import { BrandLockup } from "@/components/common/BrandLockup";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import type { PhotoCrop } from "@swiftslip/shared/types";
 
-import { AccountMenuItems } from "./account-menu";
+import { AccountMenu } from "./account-menu";
 
 /**
  * Building blocks shared by the SwiftSlip portal sidebar and the Admin
@@ -107,6 +103,7 @@ export function SidebarSoonBadge() {
 export function SidebarFooter({
   name,
   photo,
+  crop,
   sublabel,
   to,
   signOutAccessName,
@@ -114,6 +111,8 @@ export function SidebarFooter({
 }: {
   name: string;
   photo?: string | undefined;
+  /** A GIF's framing; omitted for everything else, which is already square. */
+  crop?: PhotoCrop | undefined;
   sublabel?: ReactNode;
   /** The My Account route that the menu's first item opens. */
   to?: string | undefined;
@@ -123,7 +122,7 @@ export function SidebarFooter({
 }) {
   const identity = (
     <>
-      <ProfileAvatar photo={photo} name={name} size={36} />
+      <ProfileAvatar photo={photo} name={name} size={36} crop={crop} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold">{name}</span>
         {sublabel ? (
@@ -137,8 +136,13 @@ export function SidebarFooter({
     <footer className="shrink-0 border-t border-border px-2 py-3">
       <div className="space-y-0.5">{children}</div>
       <div className="mt-2 flex items-center px-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <AccountMenu
+          side="top"
+          align="start"
+          contentClassName="w-(--radix-dropdown-menu-trigger-width)"
+          to={to}
+          accessName={signOutAccessName}
+          trigger={
             <button
               type="button"
               aria-label={`${name}: open account menu`}
@@ -150,16 +154,8 @@ export function SidebarFooter({
                 aria-hidden="true"
               />
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="top"
-            align="start"
-            sideOffset={8}
-            className="z-[80] w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg"
-          >
-            <AccountMenuItems to={to} accessName={signOutAccessName} />
-          </DropdownMenuContent>
-        </DropdownMenu>
+          }
+        />
       </div>
     </footer>
   );

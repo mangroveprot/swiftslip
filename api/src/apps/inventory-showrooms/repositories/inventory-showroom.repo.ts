@@ -153,13 +153,6 @@ const SEED_ROWS: ShowroomSeedRow[] = [
  */
 let ready: Promise<void> | null = null;
 
-/**
- * The owner has the 18 seeded showrooms on CCTV plus 6 spare units, so a fresh
- * install starts at 24 devices. The card shows `available = total - installed`
- * and the owner edits this total when stock changes.
- */
-const DEFAULT_CCTV_TOTAL_UNITS = 24;
-
 /** Raw SQL for the RGC `showrooms` board. Nothing else may query it. */
 export class InventoryShowroomRepository extends RgcRepository {
   /**
@@ -195,6 +188,31 @@ export class InventoryShowroomRepository extends RgcRepository {
           create unique index if not exists showrooms_name_unique
           on showrooms (lower(btrim(showroom_name)))`;
 
+        // The link to the "Summary of SR Status and Updates" row. The Summary
+        // table lives in this same RGC database but is created by its own
+        // module, so the column is added here and the foreign key is attempted
+        // best-effort: when the Summary table does not exist yet the column
+        // still works, and the next process start adds the key.
+        await sql`
+          alter table showrooms
+            add column if not exists linked_update_id integer`;
+        await sql`
+          create unique index if not exists showrooms_linked_update_unique
+          on showrooms (linked_update_id)
+          where linked_update_id is not null`;
+        await sql`
+          do $$
+          begin
+            alter table showrooms
+              add constraint showrooms_linked_update_fk
+              foreign key (linked_update_id)
+              references showroom_updates(update_id)
+              on delete set null;
+          exception
+            when duplicate_object then null;
+            when undefined_table then null;
+          end $$`;
+
         // One row per showroom per picture slot. Object refs only (a `b2:`
         // prefix marks that backend), never URLs: signed links expire. The FK
         // cascades so deleting a showroom cannot leave picture rows behind;
@@ -222,20 +240,6 @@ export class InventoryShowroomRepository extends RgcRepository {
         await sql`
           alter table showroom_photos
             add column if not exists byte_size integer`;
-
-        // One key/value row now; a table (not a column on a showroom) so the
-        // settings survive deletes and the owner can add more later.
-        await sql`
-          create table if not exists showroom_settings (
-            setting_key text primary key,
-            setting_value integer not null,
-            updated_at timestamp without time zone not null
-              default (now() at time zone 'utc')
-          )`;
-        await sql`
-          insert into showroom_settings (setting_key, setting_value)
-          values ('cctv_total_units', ${DEFAULT_CCTV_TOTAL_UNITS})
-          on conflict (setting_key) do nothing`;
 
         const counts = await sql<
           [{ n: number }]
@@ -273,6 +277,7 @@ export class InventoryShowroomRepository extends RgcRepository {
                showrooms.cctv_note,
                showrooms.internet,
                showrooms.notes,
+               showrooms.linked_update_id,
                showrooms.created_at::text as created_at,
                showrooms.updated_at::text as updated_at,
                photos.thumb_ref as photo_thumb_ref
@@ -296,12 +301,36 @@ export class InventoryShowroomRepository extends RgcRepository {
                cctv_note,
                internet,
                notes,
+               linked_update_id,
                created_at::text as created_at,
                updated_at::text as updated_at
         from showrooms
         where showroom_id = ${showroomId}
         limit 1`;
       return rows[0] ?? null;
+    });
+  }
+
+  /** Every link currently set, so the picker can grey out rows already taken. */
+  findLinks(): Promise<
+    Array<{
+      linked_update_id: number;
+      showroom_id: number;
+      showroom_name: string;
+    }>
+  > {
+    return this.run(async (sql) => {
+      await this.ensureReady();
+      return sql<
+        Array<{
+          linked_update_id: number;
+          showroom_id: number;
+          showroom_name: string;
+        }>
+      >`
+        select linked_update_id, showroom_id, showroom_name
+        from showrooms
+        where linked_update_id is not null`;
     });
   }
 
@@ -343,10 +372,12 @@ export class InventoryShowroomRepository extends RgcRepository {
         if (showroomId == null) {
           const rows = await tx<[{ showroom_id: number }]>`
             insert into showrooms
-              (showroom_name, cctv_installed, cctv_connection, cctv_note, internet, notes)
+              (showroom_name, cctv_installed, cctv_connection, cctv_note, internet, notes,
+               linked_update_id)
             values
               (${input.showroomName}, ${input.cctvInstalled}, ${input.cctvConnection},
-               ${input.cctvNote}, ${input.internet}, ${input.notes})
+               ${input.cctvNote}, ${input.internet}, ${input.notes},
+               ${input.linkedUpdateId})
             returning showroom_id`;
           const created = rows[0]?.showroom_id;
           if (created == null) {
@@ -365,6 +396,7 @@ export class InventoryShowroomRepository extends RgcRepository {
               cctv_note = ${input.cctvNote},
               internet = ${input.internet},
               notes = ${input.notes},
+              linked_update_id = ${input.linkedUpdateId},
               updated_at = ${utcNow()}
             where showroom_id = ${showroomId}
             returning showroom_id`;
@@ -398,7 +430,7 @@ export class InventoryShowroomRepository extends RgcRepository {
 
         return id;
       });
-    });
+    }).catch((error: unknown) => this.linkConflict(error));
   }
 
   /**
@@ -475,37 +507,23 @@ export class InventoryShowroomRepository extends RgcRepository {
     });
   }
 
-  /** The owner's total CCTV units (installed + spare). */
-  getCctvTotalUnits(): Promise<number> {
-    return this.run(async (sql) => {
-      await this.ensureReady();
-      const rows = await sql<
-        [{ setting_value: number }]
-      >`select setting_value from showroom_settings
-        where setting_key = 'cctv_total_units'`;
-      return rows[0]?.setting_value ?? 0;
-    });
-  }
-
-  /** Create or overwrite the total; returns what was stored. */
-  setCctvTotalUnits(units: number): Promise<number> {
-    return this.run(async (sql) => {
-      await this.ensureReady();
-      const rows = await sql<[{ setting_value: number }]>`
-        insert into showroom_settings (setting_key, setting_value, updated_at)
-        values ('cctv_total_units', ${units}, ${utcNow()})
-        on conflict (setting_key) do update
-          set setting_value = excluded.setting_value,
-              updated_at = excluded.updated_at
-        returning setting_value`;
-      const saved = rows[0]?.setting_value;
-      if (saved == null) {
-        throw new ErrorResponse(
-          'DATABASE_ERROR',
-          'Failed to save the CCTV total.',
-        );
-      }
-      return saved;
-    });
+  /**
+   * One Summary row can feed one inventory showroom: the unique index is the
+   * real guard, and this turns its violation into the sentence the drawer
+   * shows instead of the generic "value already used".
+   */
+  private linkConflict(error: unknown): never {
+    const original =
+      error instanceof ErrorResponse ? error.originalError : undefined;
+    if (
+      (original as { constraint?: string } | undefined)?.constraint ===
+      'showrooms_linked_update_unique'
+    ) {
+      throw new ErrorResponse(
+        'UNIQUE_FIELD_ERROR',
+        'That SwiftSlip showroom is already linked to another showroom.',
+      );
+    }
+    throw error;
   }
 }

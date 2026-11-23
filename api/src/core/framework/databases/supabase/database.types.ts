@@ -291,6 +291,9 @@ export type Database = {
           employer: number;
           full_name: string;
           photo: string;
+          photo_x: number;
+          photo_y: number;
+          photo_zoom: number;
           signature: string;
           supervisor: string;
           updated_at: string;
@@ -304,6 +307,9 @@ export type Database = {
           employer?: number;
           full_name?: string;
           photo?: string;
+          photo_x?: number;
+          photo_y?: number;
+          photo_zoom?: number;
           signature?: string;
           supervisor?: string;
           updated_at?: string;
@@ -317,6 +323,9 @@ export type Database = {
           employer?: number;
           full_name?: string;
           photo?: string;
+          photo_x?: number;
+          photo_y?: number;
+          photo_zoom?: number;
           signature?: string;
           supervisor?: string;
           updated_at?: string;

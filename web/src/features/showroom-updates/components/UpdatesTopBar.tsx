@@ -13,12 +13,7 @@ import { ChevronDown, LayoutGrid } from "lucide-react";
 
 import { BrandLockup } from "@/components/common/BrandLockup";
 import { ProfileAvatar } from "@/components/common/ProfileAvatar";
-import { AccountMenuItems } from "@/components/layout/account-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AccountMenu } from "@/components/layout/account-menu";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { profileQueryOptions } from "@/features/profile/queries";
@@ -27,7 +22,7 @@ export function UpdatesTopBar() {
   const navigate = useNavigate();
   const { data: session } = useQuery(sessionQueryOptions());
   const { data: profile } = useQuery(profileQueryOptions());
-  const photo = useProfilePhoto();
+  const { photo, crop } = useProfilePhoto();
 
   const employer = profile?.employer === 0 ? "Regasco" : "Mindbridge";
   const role = profile?.designation?.trim();
@@ -53,18 +48,26 @@ export function UpdatesTopBar() {
         </button>
 
         {session?.label ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <AccountMenu
+            to="/profile"
+            trigger={
               <button
                 type="button"
                 aria-label={`${session.label}: open account menu`}
                 className="group flex h-9 items-center gap-2 rounded-lg border border-border bg-card pr-2 pl-1 shadow-xs transition-colors hover:bg-secondary/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring data-[state=open]:bg-secondary/60 sm:h-10 sm:gap-2.5 sm:pr-2.5"
               >
-                <ProfileAvatar photo={photo} name={session.label} size={26} className="sm:hidden" />
+                <ProfileAvatar
+                  photo={photo}
+                  name={session.label}
+                  size={26}
+                  crop={crop}
+                  className="sm:hidden"
+                />
                 <ProfileAvatar
                   photo={photo}
                   name={session.label}
                   size={32}
+                  crop={crop}
                   className="hidden sm:flex"
                 />
                 <span className="hidden min-w-0 flex-col items-start leading-tight sm:flex">
@@ -86,16 +89,8 @@ export function UpdatesTopBar() {
                   aria-hidden="true"
                 />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              side="bottom"
-              align="end"
-              sideOffset={8}
-              className="z-[80] min-w-56 rounded-xl border border-border bg-card p-1.5 text-card-foreground shadow-lg"
-            >
-              <AccountMenuItems to="/profile" />
-            </DropdownMenuContent>
-          </DropdownMenu>
+            }
+          />
         ) : null}
       </div>
     </header>

@@ -8,16 +8,22 @@ import { api, documentOf, documentsOf, seg } from "@/lib/api-client";
 import type {
   showroomPhotoUploadInput,
   Showroom,
+  ShowroomLinkOption,
   ShowroomPhotoSlot,
   ShowroomPhotoUploadResult,
   ShowroomPhotos,
   showroomSaveInput,
-  ShowroomStock,
-  ShowroomStockRequest,
 } from "@swiftslip/shared/showrooms";
 
 export const getShowrooms = async () =>
   documentsOf(await api.get<Showroom>("/inventory/showrooms"));
+
+/**
+ * The drawer's link picker: every row of the "Summary of SR Status and
+ * Updates" board, with the inventory showroom already following it.
+ */
+export const getShowroomLinkOptions = async () =>
+  documentsOf(await api.get<ShowroomLinkOption>("/inventory/showrooms/link-options"));
 
 /** Create (`showroomId` null) or edit one showroom. */
 export const saveShowroom = async ({
@@ -42,13 +48,6 @@ export const deleteShowroom = async ({ showroomId }: { showroomId: number }) => 
   );
   return { ok: true as const, ...result };
 };
-
-/** The owner's total CCTV units, shown as "available" on the summary card. */
-export const getShowroomStock = async () =>
-  documentOf(await api.get<ShowroomStock>("/inventory/showrooms/stock"));
-
-export const saveShowroomStock = async ({ cctvTotalUnits }: ShowroomStockRequest) =>
-  documentOf(await api.put<ShowroomStock>("/inventory/showrooms/stock", { cctvTotalUnits }));
 
 /* -------------------------------------------------------------- photos - */
 

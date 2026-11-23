@@ -17,6 +17,8 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, History, Loader2, Undo2, X } from "lucide-react";
 
+import { ProfileHoverCard } from "@/components/common/ProfileHoverCard";
+import { useUserPhotos } from "@/features/profile/use-user-photos";
 import type {
   ShowroomUpdate,
   ShowroomUpdateChange,
@@ -37,6 +39,7 @@ import {
 
 import { showroomUpdateEventsQueryOptions } from "../queries";
 import { ComboBox, SuggestionInput } from "./ComboBox";
+import { LocationMapLink } from "./LocationMapLink";
 
 /* The field sheet, kept identical to `features/inventory/lib/drawer-styles` so
  * the two drawers cannot drift apart visually. */
@@ -51,6 +54,8 @@ const CANCEL_BUTTON =
 type Draft = {
   showroomName: string;
   location: string;
+  mapUrl: string;
+  mapLabel: string;
   status: string;
   requirements: string;
   actionRequired: string;
@@ -64,6 +69,8 @@ function draftOf(row: ShowroomUpdate | null): Draft {
   return {
     showroomName: row?.showroom_name ?? "",
     location: row?.location ?? "",
+    mapUrl: row?.map_url ?? "",
+    mapLabel: row?.map_label ?? "",
     status: row?.status ?? "",
     requirements: row?.requirements ?? "",
     actionRequired: row?.action_required ?? "",
@@ -86,6 +93,8 @@ function requestOf(draft: Draft): ShowroomUpdateSaveRequest {
     remarks: (draft.remarks || null) as ShowroomUpdateRemarks | null,
     openDate: draft.openDate || null,
     vehicle: (draft.vehicle || null) as ShowroomUpdateVehicle | null,
+    mapUrl: text(draft.mapUrl),
+    mapLabel: text(draft.mapLabel),
   };
 }
 
@@ -170,6 +179,8 @@ const DRAFT_OPTIONS: Record<
 const HISTORY_FIELD: Record<string, keyof Draft> = {
   "Showroom name": "showroomName",
   Location: "location",
+  "Map link": "mapUrl",
+  "Map label": "mapLabel",
   Status: "status",
   Requirements: "requirements",
   "Action required": "actionRequired",
@@ -320,10 +331,11 @@ function DrawerBody({
     if (!isCreate) panelRef.current?.focus();
   }, [isCreate]);
 
-  // Escape closes the drawer.
+  // Escape closes the drawer, unless a field's own popover (the Location map
+  // pin) already claimed the key and cancelled it.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !event.defaultPrevented) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -441,15 +453,15 @@ function DrawerBody({
                 <label htmlFor="sru-location" className={LABEL}>
                   Location
                 </label>
-                <input
-                  id="sru-location"
-                  type="text"
-                  maxLength={240}
-                  className={FIELD}
-                  placeholder="e.g. Brgy. Poblacion, Roxas, ZDN"
-                  aria-required="true"
+                <LocationMapLink
+                  inputId="sru-location"
                   value={draft.location}
-                  onChange={(event) => upd({ location: event.target.value })}
+                  onValueChange={(location) => upd({ location })}
+                  inputClassName={FIELD}
+                  placeholder="e.g. Brgy. Poblacion, Roxas, ZDN"
+                  mapUrl={draft.mapUrl}
+                  mapLabel={draft.mapLabel}
+                  onMapChange={(mapUrl, mapLabel) => upd({ mapUrl, mapLabel })}
                 />
               </div>
             </div>
@@ -658,6 +670,11 @@ function HistoryList({
   onRestore: (event: ShowroomUpdateEvent) => void;
 }) {
   const [visible, setVisible] = useState(HISTORY_INITIAL);
+  // One batch for the lines on screen: the actor's face beside their name, from
+  // the shared `["user-photos", …]` cache. A deleted account has no id and an
+  // account without a photo simply misses from the map, so both fall back to
+  // initials inside `ProfileHoverCard`.
+  const photos = useUserPhotos(events.map((event) => event.actor_id));
 
   if (loading) {
     return <p className="text-xs text-muted-foreground">Loading history…</p>;
@@ -677,6 +694,7 @@ function HistoryList({
           <HistoryEntry
             key={event.event_id}
             event={event}
+            photo={event.actor_id ? photos[event.actor_id] : undefined}
             restored={restoredEventId === event.event_id}
             onRestore={onRestore}
           />
@@ -685,6 +703,7 @@ function HistoryList({
           <HistoryEntry
             key={`peek-${peek.event_id}`}
             event={peek}
+            photo={peek.actor_id ? photos[peek.actor_id] : undefined}
             restored={false}
             peek
             onRestore={onRestore}
@@ -710,11 +729,14 @@ function HistoryList({
 /** One audit line. `peek` renders the next entry as a faded, inert teaser. */
 function HistoryEntry({
   event,
+  photo,
   restored,
   peek = false,
   onRestore,
 }: {
   event: ShowroomUpdateEvent;
+  /** The actor's photo from the drawer's batch; missing means draw initials. */
+  photo?: string | undefined;
   restored: boolean;
   peek?: boolean;
   onRestore: (event: ShowroomUpdateEvent) => void;
@@ -742,8 +764,16 @@ function HistoryEntry({
       style={fade}
       aria-hidden={peek || undefined}
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="truncate text-sm font-semibold text-foreground">{event.actor_label}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ProfileHoverCard
+            userId={event.actor_id}
+            photo={photo}
+            name={event.actor_label}
+            size={20}
+          />
+          <p className="truncate text-sm font-semibold text-foreground">{event.actor_label}</p>
+        </div>
         <time className="shrink-0 text-xs text-muted-foreground" dateTime={event.created_at}>
           {eventTime(event.created_at)}
         </time>
@@ -753,7 +783,7 @@ function HistoryEntry({
           {changes.map((change, index) => (
             <li
               key={`${event.event_id}-${index}`}
-              className="text-[12.5px] leading-5 text-muted-foreground"
+              className="text-[12.5px] leading-5 break-words text-muted-foreground"
             >
               <ChangeSentence change={change} />
             </li>

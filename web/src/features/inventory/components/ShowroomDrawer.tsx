@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import type {
@@ -44,6 +45,8 @@ import { fileToBase64 } from "@/lib/file";
 import { CANCEL_BUTTON, FIELD, LABEL, SECTION, SECTION_TITLE, SELECT } from "../lib/drawer-styles";
 import { isBlank } from "../lib/helpers";
 import { buildShowroomPhotoChanges, type PhotoRefDraft } from "../lib/showroom-photo-changes";
+import { showroomLinkOptionsQueryOptions } from "../queries";
+import { ShowroomLinkPicker } from "./ShowroomLinkPicker";
 import { ShowroomPhotoDialog } from "./ShowroomPhotoDialog";
 import { ShowroomPhotoField, type ShowroomPhotoPreview } from "./ShowroomPhotoField";
 
@@ -70,6 +73,8 @@ type FormState = {
   cctvNote: string;
   internet: string;
   notes: string;
+  /** The Summary row this showroom follows, or null when unlinked. */
+  linkedUpdateId: number | null;
 };
 
 /** A picture uploaded before the record exists, with its local preview. */
@@ -101,6 +106,7 @@ const EMPTY_FORM: FormState = {
   cctvNote: "",
   internet: "not_recorded",
   notes: "",
+  linkedUpdateId: null,
 };
 
 /** Shallow equality over the form's string fields (edit-dirty check). */
@@ -123,6 +129,12 @@ export function ShowroomDrawer(props: ShowroomDrawerProps) {
   const savingRef = useRef(false);
 
   const isAddMode = mode === "add";
+
+  // Only fetched while the drawer is open; the board never needs it.
+  const linkOptions = useQuery({
+    ...showroomLinkOptionsQueryOptions(),
+    enabled: isOpen,
+  });
 
   const [photos, setPhotos] = useState<ShowroomPhotos | null>(null);
   const [photosLoading, setPhotosLoading] = useState(false);
@@ -181,6 +193,9 @@ export function ShowroomDrawer(props: ShowroomDrawerProps) {
             cctvNote: showroom.cctv_note ?? "",
             internet: showroom.internet,
             notes: showroom.notes ?? "",
+            // A stored id whose Summary row is gone reads as "not linked":
+            // there is nothing to show or keep, and the next save clears it.
+            linkedUpdateId: showroom.link == null ? null : showroom.linked_update_id,
           };
 
     setForm(next);
@@ -554,6 +569,7 @@ export function ShowroomDrawer(props: ShowroomDrawerProps) {
         cctvNote: isBlank(form.cctvNote) ? null : form.cctvNote.trim(),
         internet: form.internet as ShowroomSaveRequest["internet"],
         notes: isBlank(form.notes) ? null : form.notes.trim(),
+        linkedUpdateId: form.linkedUpdateId,
         ...(photos ? { photos } : {}),
       };
       await onSave(isAddMode ? null : (showroom?.showroom_id ?? null), request);
@@ -601,7 +617,13 @@ export function ShowroomDrawer(props: ShowroomDrawerProps) {
               >
                 {isAddMode ? "Add showroom" : "Edit showroom"}
               </h2>
-              <p className="mt-0.5 text-xs text-white/75">CCTV and internet status</p>
+              <p className="mt-0.5 text-xs text-white/75">
+                {isAddMode
+                  ? "New showroom"
+                  : `${showroom?.showroom_name ?? "Showroom"}, ${
+                      form.linkedUpdateId == null ? "not linked" : "linked"
+                    }`}
+              </p>
             </div>
             <button
               type="button"
@@ -644,6 +666,22 @@ export function ShowroomDrawer(props: ShowroomDrawerProps) {
                   autoFocus={isAddMode}
                 />
               </div>
+            </div>
+          </section>
+
+          <section className={SECTION}>
+            <h3 className={SECTION_TITLE}>Opening info</h3>
+            <div className="space-y-3">
+              <span className={LABEL}>Linked SwiftSlip showroom</span>
+              <ShowroomLinkPicker
+                options={linkOptions.data ?? []}
+                loading={linkOptions.isLoading}
+                value={form.linkedUpdateId}
+                showroomId={showroom?.showroom_id ?? null}
+                fallback={showroom?.link ?? null}
+                showroomName={form.name}
+                onChange={(updateId) => upd({ linkedUpdateId: updateId })}
+              />
             </div>
           </section>
 

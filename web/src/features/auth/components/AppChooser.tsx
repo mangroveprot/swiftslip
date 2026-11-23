@@ -74,7 +74,7 @@ export function AppChooser() {
   const { data: session } = useQuery(sessionQueryOptions());
   // The chooser is the first screen after sign-in, so the face here is what
   // makes "Signed in as …" read as a person rather than a string.
-  const photo = useProfilePhoto();
+  const { photo, crop } = useProfilePhoto();
   // The SwiftSlip card carries the employee's own company mark: Regasco
   // employees see the Regasco wordmark, everyone else the Mindbridge logo.
   const { data: profile } = useQuery(profileQueryOptions());
@@ -109,7 +109,7 @@ export function AppChooser() {
               className="inline-flex items-center gap-2 text-muted-foreground"
               title={session.label}
             >
-              <ProfileAvatar photo={photo} name={session.label} size={24} />
+              <ProfileAvatar photo={photo} name={session.label} size={24} crop={crop} />
               <span className="hidden max-w-[10rem] truncate sm:inline">{session.label}</span>
             </span>
           ) : null}

@@ -3,13 +3,27 @@
  * phone card list and the desktop table. The page owns fetching, filtering and
  * searching, so this only renders what it is given and reports edits back.
  *
+ * The Showroom cell prints the location the linked "Summary of SR Status and
+ * Updates" row carries, under the inventory name, exactly like the supplied
+ * column mock. Status and Action required are that row's own values; a linked
+ * row with a blank cell reads "Not recorded", and an unlinked showroom reads
+ * "Not recorded" in Status with an inline "Link showroom" action.
+ *
  * Column labels, dot tones and tab grouping all come from
- * `@swiftslip/shared/showrooms` so the board, the header stats, the drawer and
- * the export can never disagree about what "Needs request" looks like.
+ * `@swiftslip/shared/showrooms` so the board, the drawer and the export can
+ * never disagree about what "Not recorded" looks like.
  */
 import { useState } from "react";
 import type { CSSProperties } from "react";
-import { Download, PencilLine, Search, Store } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  Link2,
+  MoreHorizontal,
+  PencilLine,
+  Search,
+  Trash2,
+} from "lucide-react";
 
 import type { Showroom, ShowroomFilter } from "@swiftslip/shared/showrooms";
 import {
@@ -19,7 +33,19 @@ import {
   cctvInstalledTone,
   internetLabel,
   internetTone,
+  showroomInitials,
+  showroomLinkActionLabel,
+  showroomLinkStatusLabel,
+  showroomUpdateStatusTone,
 } from "@swiftslip/shared/showrooms";
+import { isHttpUrl } from "@swiftslip/shared/showroom-updates";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { ShowroomCard } from "./ShowroomCard";
 import { ShowroomPhotoDialog } from "./ShowroomPhotoDialog";
@@ -36,10 +62,59 @@ type ShowroomTableProps = {
   downloading: boolean;
   canDownload: boolean;
   onEdit: (showroom: Showroom) => void;
+  onDelete: (showroom: Showroom) => void;
 };
 
 const EMPTY_FILTER = "No showrooms match this filter.";
 const EMPTY_ALL = "No showrooms yet.";
+
+function RowMenu({
+  showroom,
+  onEdit,
+  onDelete,
+}: {
+  showroom: Showroom;
+  onEdit: (showroom: Showroom) => void;
+  onDelete: (showroom: Showroom) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="row-menu__trigger"
+          aria-label={`Actions for ${showroom.showroom_name}`}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <MoreHorizontal className="size-4" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onSelect={() => onEdit(showroom)}>
+          {showroom.link ? (
+            <>
+              <PencilLine className="size-4" aria-hidden="true" />
+              Edit details
+            </>
+          ) : (
+            <>
+              <Link2 className="size-4" aria-hidden="true" />
+              Link showroom
+            </>
+          )}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => onDelete(showroom)}
+          className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+        >
+          <Trash2 className="size-4" aria-hidden="true" />
+          Delete showroom
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function ShowroomTable({
   showrooms,
@@ -53,6 +128,7 @@ export function ShowroomTable({
   downloading,
   canDownload,
   onEdit,
+  onDelete,
 }: ShowroomTableProps) {
   // The board thumbnail opens this; the drawer's preview is separate so the
   // row is never the ancestor of a portal.
@@ -138,21 +214,30 @@ export function ShowroomTable({
           <thead>
             <tr className="showroom-table__head">
               <th className="showroom-table__th">Showroom</th>
+              <th className="showroom-table__th">Status</th>
+              <th className="showroom-table__th">Action required</th>
               <th className="showroom-table__th">CCTV</th>
               <th className="showroom-table__th">Internet</th>
-              <th className="showroom-table__th showroom-table__th--actions">Actions</th>
+              <th className="showroom-table__th showroom-table__th--actions">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {showrooms.length === 0 ? (
               <tr>
-                <td colSpan={4} className="showroom-table__td">
+                <td colSpan={6} className="showroom-table__td">
                   <p>{emptyMessage}</p>
                 </td>
               </tr>
             ) : (
               showrooms.map((showroom, index) => {
                 const note = showroom.cctv_note?.trim() ?? "";
+                const location = showroom.link?.location?.trim() ?? "";
+                const mapUrl =
+                  showroom.link?.map_url && isHttpUrl(showroom.link.map_url)
+                    ? showroom.link.map_url
+                    : "";
                 // The instalment state only shows when it isn't simply "yes":
                 // a showroom without working CCTV should never read "Offline".
                 const settled = showroom.cctv_installed !== "active";
@@ -163,11 +248,15 @@ export function ShowroomTable({
                   ? cctvInstalledTone(showroom.cctv_installed)
                   : cctvConnectionTone(showroom.cctv_connection);
                 const netTone = internetTone(showroom.internet);
+                const statusTone = showroomUpdateStatusTone(showroom.link?.status ?? null);
+                const statusLabel = showroomLinkStatusLabel(showroom.link);
+                const actionLabel = showroomLinkActionLabel(showroom.link);
                 return (
                   <tr
                     key={showroom.showroom_id}
-                    className="showroom-table__row asset-row-fade-in-right"
+                    className="showroom-table__row asset-row-fade-in-right cursor-pointer"
                     style={{ "--row-i": Math.min(index, 12) } as CSSProperties}
+                    onClick={() => onEdit(showroom)}
                   >
                     <td className="showroom-table__td">
                       <div className="showroom-table__identity">
@@ -175,7 +264,10 @@ export function ShowroomTable({
                           <button
                             type="button"
                             className="showroom-table__thumb showroom-table__thumb--button"
-                            onClick={() => setPreview(showroom)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPreview(showroom);
+                            }}
                             aria-label={`Preview ${showroom.showroom_name} photo`}
                           >
                             <img
@@ -190,13 +282,67 @@ export function ShowroomTable({
                             className="showroom-table__thumb showroom-table__thumb--empty"
                             aria-hidden="true"
                           >
-                            <Store className="size-4" />
+                            {showroomInitials(showroom.showroom_name)}
                           </span>
                         )}
-                        <span className="showroom-table__name" title={showroom.showroom_name}>
-                          {showroom.showroom_name}
+                        <span className="showroom-table__identity-text">
+                          <span className="showroom-table__name" title={showroom.showroom_name}>
+                            {showroom.showroom_name}
+                          </span>
+                          {location !== "" &&
+                            (mapUrl ? (
+                              <a
+                                href={mapUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                                title="Open in Google Maps"
+                                className="group/loc flex w-fit max-w-full items-center gap-0.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                              >
+                                <span className="min-w-0 truncate group-hover/loc:underline group-hover/loc:underline-offset-2">
+                                  {location}
+                                </span>
+                                <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+                              </a>
+                            ) : (
+                              <span className="showroom-table__location" title={location}>
+                                {location}
+                              </span>
+                            ))}
                         </span>
                       </div>
+                    </td>
+
+                    <td className="showroom-table__td">
+                      <span
+                        className={
+                          showroom.link ? "showroom-table__value" : "showroom-table__muted"
+                        }
+                      >
+                        {statusTone !== "none" && (
+                          <span className={`showroom-dot showroom-dot--${statusTone}`} />
+                        )}
+                        {statusLabel}
+                      </span>
+                    </td>
+
+                    <td className="showroom-table__td">
+                      {showroom.link ? (
+                        <span className="showroom-table__action-text" title={actionLabel}>
+                          {actionLabel}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="showroom-link-action"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onEdit(showroom);
+                          }}
+                        >
+                          Link showroom
+                        </button>
+                      )}
                     </td>
 
                     <td className="showroom-table__td">
@@ -226,16 +372,7 @@ export function ShowroomTable({
                       className="showroom-table__td showroom-table__actions"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button
-                        type="button"
-                        className="row-action"
-                        aria-label={`Edit ${showroom.showroom_name}`}
-                        title={`Edit ${showroom.showroom_name}`}
-                        onClick={() => onEdit(showroom)}
-                      >
-                        <PencilLine className="size-4" aria-hidden="true" />
-                        Edit
-                      </button>
+                      <RowMenu showroom={showroom} onEdit={onEdit} onDelete={onDelete} />
                     </td>
                   </tr>
                 );

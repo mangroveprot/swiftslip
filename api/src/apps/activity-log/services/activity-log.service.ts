@@ -71,6 +71,7 @@ const FEED_ACTIONS: Record<ActivityLogFeed, string[]> = {
     'user.created',
     'user.updated',
     'user.deleted',
+    'profile.updated',
     'access.updated',
     'org.updated',
   ],
@@ -81,7 +82,7 @@ const ACTION_GROUPS: Record<ActivityLogActionFilter, string[]> = {
   signin: ['signin.success'],
   'signin-failed': ['signin.failed'],
   access: ['access.updated'],
-  accounts: ['user.created', 'user.updated', 'user.deleted'],
+  accounts: ['user.created', 'user.updated', 'user.deleted', 'profile.updated'],
   records: [...FORM_ACTIONS, 'org.updated'],
   showrooms: SHOWROOM_ACTIONS,
 };

@@ -6,13 +6,17 @@
  * stays out of the main bundle until the owner clicks Download Excel.
  *
  * Labels come from `@swiftslip/shared/showrooms`, so the sheet says exactly
- * what the board says ("Needs request", "Not recorded", …).
+ * what the board says ("Needs request", "Not recorded", …). Status and Action
+ * required are the linked Summary row's own values; the inventory never writes
+ * them.
  */
-import type { Showroom, ShowroomCctvSummary } from "@swiftslip/shared/showrooms";
+import type { Showroom } from "@swiftslip/shared/showrooms";
 import {
   cctvConnectionLabel,
   cctvInstalledLabel,
   internetLabel,
+  showroomLinkActionLabel,
+  showroomLinkStatusLabel,
 } from "@swiftslip/shared/showrooms";
 
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -22,9 +26,8 @@ const NAVY = "FF0F1B4D";
 const WHITE = "FFFFFFFF";
 const MUTED = "FF6B7280";
 const LINE = "FFE6E7DF";
-const SOFT = "FFEDEFF6";
 
-const COLUMN_WIDTHS = [28, 16, 30, 18, 44];
+const COLUMN_WIDTHS = [28, 26, 16, 26, 18, 18, 16, 40];
 
 const MONTHS = [
   "Jan",
@@ -41,6 +44,17 @@ const MONTHS = [
   "Dec",
 ] as const;
 
+const HEADER = [
+  "Showroom",
+  "Location",
+  "Status",
+  "Action required",
+  "CCTV installed",
+  "CCTV connection",
+  "Internet",
+  "Notes",
+];
+
 function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
@@ -52,35 +66,23 @@ export function buildShowroomFileName(now: Date = new Date()): string {
   return `REGASCO_showrooms_${date}_${time}.xlsx`;
 }
 
-/** Header row + one row per showroom, in the sheet's column order. */
+/** Header row + one row per showroom, in the board's column order. */
 export function showroomSheetRows(rows: Showroom[]): string[][] {
-  const header = ["Showroom", "CCTV installed", "CCTV connection", "Internet", "Notes"];
   const body = rows.map((row) => {
     const note = row.cctv_note?.trim() ?? "";
     const connection = cctvConnectionLabel(row.cctv_connection);
     return [
       row.showroom_name,
+      row.link?.location ?? "",
+      showroomLinkStatusLabel(row.link),
+      showroomLinkActionLabel(row.link),
       cctvInstalledLabel(row.cctv_installed),
       note === "" ? connection : `${connection} (${note})`,
       internetLabel(row.internet),
       row.notes ?? "",
     ];
   });
-  return [header, ...body];
-}
-
-/**
- * The numbers from the navy header, written above the table: owned units,
- * installed showrooms and the spare stock that makes up the difference. The
- * arithmetic comes from `showroomCctvSummary`, never recomputed here.
- */
-export function showroomSummaryRows(
-  summary: ShowroomCctvSummary,
-): [Array<string | number>, Array<string | number>] {
-  return [
-    ["Total units", "CCTV installed", "Units available"],
-    [summary.totalUnits, summary.installed, summary.available],
-  ];
+  return [HEADER, ...body];
 }
 
 /** "14 Nov 2026, 2:06 PM" — the stamp under the title. */
@@ -97,7 +99,6 @@ function formatStamp(now: Date): string {
 /** Builds the workbook and triggers a browser download (the page toasts on success). */
 export async function downloadShowroomsWorkbook(
   rows: Showroom[],
-  summary: ShowroomCctvSummary,
   fileName: string,
   now: Date = new Date(),
 ): Promise<void> {
@@ -108,53 +109,33 @@ export async function downloadShowroomsWorkbook(
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Showrooms", {
-    views: [{ state: "frozen", ySplit: 6 }],
+    views: [{ state: "frozen", ySplit: 4 }],
   });
 
   sheet.columns = COLUMN_WIDTHS.map((width) => ({ width }));
 
   // Row 1-3: title + branch + stamp.
-  sheet.mergeCells("A1:E1");
+  sheet.mergeCells("A1:H1");
   const title = sheet.getCell("A1");
-  title.value = "RGC Showroom CCTV & Internet Status";
+  title.value = "RGC Showroom Status, CCTV & Internet";
   title.font = { bold: true, size: 14, color: { argb: WHITE } };
   title.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
   title.alignment = { vertical: "middle", horizontal: "left" };
   sheet.getRow(1).height = 26;
 
-  sheet.mergeCells("A2:E2");
+  sheet.mergeCells("A2:H2");
   const branch = sheet.getCell("A2");
   branch.value = "All branches";
   branch.font = { size: 10, color: { argb: MUTED } };
 
-  sheet.mergeCells("A3:E3");
+  sheet.mergeCells("A3:H3");
   const stamp = sheet.getCell("A3");
   stamp.value = formatStamp(now);
   stamp.font = { size: 10, color: { argb: MUTED } };
 
-  // Rows 4-5: the header numbers (total units / installed / available), so a
-  // printed sheet carries the same stock picture as the screen.
-  const [summaryLabels, summaryValues] = showroomSummaryRows(summary);
-  const summaryLabelRow = sheet.getRow(4);
-  summaryLabelRow.values = summaryLabels;
-  summaryLabelRow.eachCell((cell) => {
-    cell.font = { bold: true, size: 10, color: { argb: MUTED } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: SOFT } };
-    cell.alignment = { vertical: "middle", horizontal: "left" };
-  });
-
-  const summaryValueRow = sheet.getRow(5);
-  summaryValueRow.values = summaryValues;
-  summaryValueRow.height = 20;
-  summaryValueRow.eachCell((cell) => {
-    cell.font = { bold: true, size: 12, color: { argb: NAVY } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: SOFT } };
-    cell.alignment = { vertical: "middle", horizontal: "left" };
-  });
-
-  // Row 6: header.
-  const headerRow = sheet.getRow(6);
-  headerRow.values = ["Showroom", "CCTV installed", "CCTV connection", "Internet", "Notes"];
+  // Row 4: header.
+  const headerRow = sheet.getRow(4);
+  headerRow.values = HEADER;
   headerRow.height = 22;
   headerRow.eachCell((cell) => {
     cell.font = { bold: true, color: { argb: WHITE } };
@@ -162,7 +143,7 @@ export async function downloadShowroomsWorkbook(
     cell.alignment = { vertical: "middle", horizontal: "left" };
   });
 
-  // Rows 7+: the rows on screen.
+  // Rows 5+: the rows on screen.
   for (const values of showroomSheetRows(rows).slice(1)) {
     const row = sheet.addRow(values);
     row.eachCell((cell) => {
@@ -171,7 +152,7 @@ export async function downloadShowroomsWorkbook(
     });
   }
 
-  sheet.autoFilter = { from: "A6", to: "E6" };
+  sheet.autoFilter = { from: "A4", to: "H4" };
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: XLSX_MIME });

@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { TextField } from "@/components/common/FormField";
 import { OrgSelect } from "@/components/common/OrgSelect";
 import { PageTitle } from "@/components/common/PageTitle";
-import { ProfileAvatar } from "@/components/common/ProfileAvatar";
+import { ProfileHoverCard } from "@/components/common/ProfileHoverCard";
 import { OrgOptionDialogs, type OrgActionRequest } from "./OrgOptionDialogs";
 import {
   Dialog,
@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { profileQueryOptions } from "@/features/profile/queries";
+import { useUserPhotos } from "@/features/profile/use-user-photos";
 import { toast } from "@/lib/toast";
 import { useUrlState } from "@/lib/use-url-state";
 import { formatDate, formatDateTime } from "@swiftslip/shared/time";
@@ -38,7 +39,6 @@ import {
 import type { Role } from "@swiftslip/shared/types";
 import { accessCodesQueryOptions, orgOptionsQueryOptions } from "../queries";
 import { displayDepartment, isIncomplete, sortUsers, type RosterFilter } from "../lib/roster";
-import { useUserPhotos } from "../use-user-photos";
 import { PASSWORD_MIN_LENGTH } from "@swiftslip/shared/schemas";
 
 type Account = {
@@ -334,11 +334,13 @@ export function UserManagement() {
                       <td className="py-5 pr-4 align-middle">
                         <div className="flex items-center gap-3">
                           {a.full_name ? (
-                            <ProfileAvatar
+                            <ProfileHoverCard
+                              userId={a.id}
                               photo={photos[a.id]}
                               name={a.full_name}
                               size={40}
                               className="shrink-0"
+                              profileTo="/admin/profile"
                             />
                           ) : (
                             <span
@@ -475,11 +477,13 @@ export function UserManagement() {
                 <div key={a.id} className="border-b py-4">
                   <div className="flex min-w-0 items-start gap-3">
                     {a.full_name ? (
-                      <ProfileAvatar
+                      <ProfileHoverCard
+                        userId={a.id}
                         photo={photos[a.id]}
                         name={a.full_name}
                         size={36}
                         className="shrink-0"
+                        profileTo="/admin/profile"
                       />
                     ) : (
                       <span

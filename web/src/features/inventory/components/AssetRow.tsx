@@ -4,11 +4,11 @@
  */
 import { memo } from "react";
 import type { CSSProperties } from "react";
-import { PencilLine, Trash2 } from "lucide-react";
 
 import type { InventoryAsset } from "@swiftslip/shared/inventory";
 
 import { isBlank } from "../lib/helpers";
+import { AssetActionsMenu } from "./AssetActionsMenu";
 
 type AssetRowProps = {
   asset: InventoryAsset;
@@ -93,26 +93,7 @@ export const AssetRow = memo(function AssetRow({
       </td>
 
       <td className="asset-table__td asset-table__actions" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-start gap-1">
-          <button
-            type="button"
-            aria-label="Edit"
-            className="row-action"
-            onClick={() => onEdit(asset)}
-          >
-            <PencilLine className="size-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">Edit</span>
-          </button>
-          <button
-            type="button"
-            aria-label="Delete"
-            className="row-action row-action--danger"
-            onClick={() => onDelete(asset)}
-          >
-            <Trash2 className="size-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">Delete</span>
-          </button>
-        </div>
+        <AssetActionsMenu asset={asset} onEdit={onEdit} onDelete={onDelete} />
       </td>
     </tr>
   );

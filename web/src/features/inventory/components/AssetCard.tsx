@@ -1,15 +1,15 @@
 /**
  * Phone-width asset row. Below `md` the table becomes this flat row: the
  * checkbox, item ID with `type · assigned` and the department under it, the
- * status and condition stacked, then the edit/delete icons at the right edge.
+ * status and condition stacked, then the `…` menu at the right edge.
  */
 import { memo } from "react";
 import type { CSSProperties } from "react";
-import { PencilLine, Trash2 } from "lucide-react";
 
 import type { InventoryAsset } from "@swiftslip/shared/inventory";
 
 import { isBlank } from "../lib/helpers";
+import { AssetActionsMenu } from "./AssetActionsMenu";
 
 type AssetCardProps = {
   asset: InventoryAsset;
@@ -82,24 +82,7 @@ export const AssetCard = memo(function AssetCard({
       </div>
 
       <div className="asset-card__actions" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          aria-label="Edit"
-          title="Edit"
-          className="row-action asset-card__action"
-          onClick={() => onEdit(asset)}
-        >
-          <PencilLine className="size-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          aria-label="Delete"
-          title="Delete"
-          className="row-action row-action--danger asset-card__action"
-          onClick={() => onDelete(asset)}
-        >
-          <Trash2 className="size-4" aria-hidden="true" />
-        </button>
+        <AssetActionsMenu asset={asset} onEdit={onEdit} onDelete={onDelete} />
       </div>
     </div>
   );

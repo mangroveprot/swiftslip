@@ -37,6 +37,7 @@ import { useProfilePhoto } from "@/features/profile/use-profile-photo";
 import { cn } from "@/lib/utils";
 import type { Employer } from "@swiftslip/shared/org";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
+import type { PhotoCrop } from "@swiftslip/shared/types";
 import { ActiveSessions } from "./ActiveSessions";
 import { ActivityLogs } from "./ActivityLogs";
 import { AdminDashboard } from "./AdminDashboard";
@@ -98,7 +99,7 @@ export function AdminPanel() {
   const { data: session } = useQuery(sessionQueryOptions());
   // The same photo the portal's sidebar shows, one cache entry, so moving
   // between the panel and the app never re-fetches it.
-  const photo = useProfilePhoto();
+  const { photo, crop } = useProfilePhoto();
   // Position and employer for the footer caption ("Mindbridge - IT Support"),
   // from the same cached profile the My Account page edits.
   const { data: profile } = useQuery(profileQueryOptions());
@@ -147,6 +148,7 @@ export function AdminPanel() {
       employer={mounted ? profile?.employer : undefined}
       position={mounted ? profile?.designation : undefined}
       photo={mounted ? photo : undefined}
+      crop={mounted ? crop : undefined}
       onNavigate={() => setMenuOpen(false)}
     />
   );
@@ -236,6 +238,7 @@ function AdminSidebar({
   employer,
   position,
   photo,
+  crop,
   onNavigate,
 }: {
   /** The current section, or null on the panel's own My account screen. */
@@ -245,6 +248,7 @@ function AdminSidebar({
   employer?: Employer | undefined;
   position?: string | undefined;
   photo?: string | undefined;
+  crop?: PhotoCrop | undefined;
   onNavigate?: () => void;
 }) {
   return (
@@ -274,6 +278,7 @@ function AdminSidebar({
       <SidebarFooter
         name={label || "Administrator"}
         photo={photo}
+        crop={crop}
         // "Employer - Position" under the name, the same caption every sidebar
         // uses, falling back to whichever half is known.
         sublabel={accountCaption(employer, position)}

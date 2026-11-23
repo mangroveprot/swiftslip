@@ -39,6 +39,6 @@ export type ShowroomPhotoChange = {
 };
 
 /** `showrooms` plus the join's raw thumbnail ref (signed into a URL later). */
-export type ShowroomListRow = Omit<Showroom, 'photo_thumb'> & {
+export type ShowroomListRow = Omit<Showroom, 'photo_thumb' | 'link'> & {
   photo_thumb_ref: string | null;
 };

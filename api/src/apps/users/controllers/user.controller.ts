@@ -35,6 +35,20 @@ class UserController {
     }
   }
 
+  /** `GET /users/:id/card`, the hover card on a face in a list. */
+  static async card(req: Request, res: Response): Promise<void> {
+    try {
+      const response = await UserService.card(req.params.id as string);
+      if (response.success) {
+        ApiResponse.success(res, response);
+      } else {
+        throw response;
+      }
+    } catch (error) {
+      ApiResponse.error(res, error as ErrorResponseType);
+    }
+  }
+
   static async create(req: Request, res: Response): Promise<void> {
     try {
       const response = await UserService.createAccount(

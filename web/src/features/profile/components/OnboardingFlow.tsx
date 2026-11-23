@@ -9,9 +9,12 @@ import { ProfileAvatar } from "@/components/common/ProfileAvatar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { orgOptionsQueryOptions } from "@/features/admin/queries";
 import {
+  IDENTITY_CROP,
+  isAnimatedGif,
   MAX_PHOTO_BYTES,
   MAX_PHOTO_MB,
   PHOTO_ACCEPT,
+  readFileDataUrl,
   readPhotoFile,
   type PhotoSource,
 } from "@/lib/photo";
@@ -23,7 +26,7 @@ import {
   normalizePosition,
   positionsUnder,
 } from "@swiftslip/shared/org";
-import type { EmployeeProfile, SessionUser } from "@swiftslip/shared/types";
+import type { EmployeeProfile, PhotoCrop, SessionUser } from "@swiftslip/shared/types";
 import {
   clearOnboardingStep,
   markOnboardingSeen,
@@ -44,6 +47,7 @@ const empty: EmployeeProfile = {
   employer: 1,
   signature: "",
   photo: "",
+  photo_crop: IDENTITY_CROP,
   supervisor: "",
 };
 
@@ -78,6 +82,8 @@ export function OnboardingFlow({ session }: { session: SessionUser }) {
   const [departmentInvalid, setDepartmentInvalid] = useState(false);
   const [positionInvalid, setPositionInvalid] = useState(false);
   const [cropSource, setCropSource] = useState<PhotoSource | null>(null);
+  /** A GIF waiting in the cropper: uploaded as picked, framed by CSS. */
+  const [motion, setMotion] = useState<{ dataUrl: string; source: PhotoSource } | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   // Steps this visit already saved. Skip leaves those alone and only throws
@@ -126,28 +132,51 @@ export function OnboardingFlow({ session }: { session: SessionUser }) {
       toast.error(`That photo is over ${MAX_PHOTO_MB} MB. Pick a smaller one.`);
       return;
     }
+    // Same rule as My profile: a GIF keeps its frames, so it is shown live in
+    // the cropper and only the framing is saved.
+    if (isAnimatedGif(file)) {
+      try {
+        const [dataUrl, source] = await Promise.all([readFileDataUrl(file), readPhotoFile(file)]);
+        if (!source) {
+          toast.error("That GIF couldn't be read. Try picking it again.");
+          return;
+        }
+        setMotion({ dataUrl, source });
+        setCropSource(null);
+        setCropOpen(true);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "That file couldn't be read.");
+      }
+      return;
+    }
     const source = await readPhotoFile(file);
     if (!source) {
       toast.error("That file couldn't be read as an image.");
       return;
     }
+    setMotion(null);
     setCropSource(source);
     setCropOpen(true);
   }
 
-  async function applyPhoto(photo: string) {
+  async function applyPhoto(photo: string, crop: PhotoCrop = IDENTITY_CROP) {
     setCropOpen(false);
     setCropSource(null);
-    const previous = form.photo;
-    setForm((current) => ({ ...current, photo }));
+    setMotion(null);
+    const previous = { photo: form.photo, photo_crop: form.photo_crop };
+    setForm((current) => ({ ...current, photo, photo_crop: crop }));
     setBusy(true);
     try {
-      const saved = await saveMyPhoto({ data: { photo } });
-      setForm((current) => ({ ...current, photo: saved.photo }));
+      const saved = await saveMyPhoto({ data: { photo, crop } });
+      setForm((current) => ({
+        ...current,
+        photo: saved.photo,
+        photo_crop: saved.photo_crop,
+      }));
       await qc.invalidateQueries({ queryKey: profileQueryOptions().queryKey });
       await qc.invalidateQueries({ queryKey: ["user-photos"] });
     } catch (e) {
-      setForm((current) => ({ ...current, photo: previous }));
+      setForm((current) => ({ ...current, ...previous }));
       toast.error(e instanceof Error ? e.message : "That photo could not be saved.");
     } finally {
       setBusy(false);
@@ -319,12 +348,15 @@ export function OnboardingFlow({ session }: { session: SessionUser }) {
 
       <PhotoCropDialog
         open={cropOpen}
-        source={cropSource}
+        source={motion?.source ?? cropSource}
+        motionUrl={motion?.dataUrl}
         onCancel={() => {
           setCropOpen(false);
           setCropSource(null);
+          setMotion(null);
         }}
         onUse={(dataUrl) => void applyPhoto(dataUrl)}
+        onUseCrop={(crop) => void applyPhoto(motion?.dataUrl ?? "", crop)}
       />
     </main>
   );
@@ -392,7 +424,12 @@ function NameStep({
         className="mt-5 flex items-center gap-3 rounded-lg border border-dashed border-border px-3 py-2 text-sm transition-colors hover:bg-muted disabled:opacity-50"
       >
         {form.photo ? (
-          <ProfileAvatar photo={form.photo} name={form.full_name || keyNo} size={36} />
+          <ProfileAvatar
+            photo={form.photo}
+            name={form.full_name || keyNo}
+            size={36}
+            crop={form.photo_crop}
+          />
         ) : (
           <span className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <ImagePlus className="size-4" aria-hidden="true" />

@@ -1778,15 +1778,16 @@
            text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground;
   }
 
-  .row-action--danger {
-    @apply hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400;
+  /* The board's row menu: an icon-only trigger, same quiet hover as a row action. */
+  .row-menu__trigger {
+    @apply flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground
+           transition-colors hover:bg-secondary hover:text-foreground;
   }
 
   /* Keyboard focus, one idiom for every custom control in the inventory */
   .stat-tab:focus-visible,
   .row-action:focus-visible,
-  .showroom-stats__stat:focus-visible,
-  .showroom-stats__action:focus-visible,
+  .row-menu__trigger:focus-visible,
   .showroom-download:focus-visible,
   .sidebar-branch:focus-visible,
   .sidebar-footer__action:focus-visible,
@@ -2036,7 +2037,7 @@
   /* --- Phone layout: flat asset rows --------------------------------------
      Below `md` there is no room for eight columns, so the table gives way to
      one row per asset: checkbox, ID with `type · assigned` and the department
-     beneath it, status over condition, then the edit/delete icons. */
+     beneath it, status over condition, then the `…` menu. */
   .asset-table__mobile-bar {
     @apply flex items-center border-y px-4 py-2.5 text-xs;
     border-color: var(--inv-line);
@@ -2108,10 +2109,6 @@
     @apply -mr-1 flex shrink-0 items-center gap-0.5;
   }
 
-  .asset-card__action {
-    @apply p-2;
-  }
-
   .asset-card__empty {
     @apply px-4 py-12 text-center;
   }
@@ -2132,78 +2129,27 @@
     @apply flex-1 justify-center;
   }
 
-  /* --- Showrooms header stats ---------------------------------------------
-     The three numbers live in the navy banner beside the page title, like the
-     reference: installed / units available / not available, over the coverage
-     line. Installed and not-available are filter toggles on the board. */
-  .showroom-stats {
-    @apply flex shrink-0 flex-col gap-1 sm:items-end;
+  /* --- Showrooms page header ----------------------------------------------
+     Quiet on purpose: title, subtitle and the clock sit on the page, and the
+     board below carries the colour and the numbers. */
+  .showroom-page-header__title {
+    @apply text-2xl font-semibold tracking-tight text-foreground sm:text-3xl;
   }
 
-  .showroom-stats__row {
-    @apply flex items-stretch gap-2 sm:gap-4;
+  .showroom-page-header__subtitle {
+    @apply mt-1 text-sm text-muted-foreground md:text-base;
   }
 
-  .showroom-stats__stat {
-    @apply flex min-w-0 flex-1 cursor-pointer flex-col items-start rounded-lg px-2 py-1 text-left
-           text-white transition-colors hover:bg-white/10 sm:flex-none sm:items-end sm:px-3;
+  .showroom-page-header__clock {
+    @apply hidden shrink-0 flex-col items-end leading-tight sm:flex;
   }
 
-  .showroom-stats__stat--active {
-    @apply bg-white/10;
-    box-shadow: inset 0 -2px 0 var(--inv-orange);
+  .showroom-page-header__date {
+    @apply text-xs text-muted-foreground;
   }
 
-  .showroom-stats__value {
-    @apply flex items-center gap-1.5 text-2xl font-bold leading-none tabular-nums md:text-3xl;
-  }
-
-  .showroom-stats__pencil {
-    @apply size-3.5 shrink-0 text-white/60;
-  }
-
-  .showroom-stats__label {
-    @apply mt-1 text-[0.7rem] font-medium leading-tight text-white/85 md:text-xs;
-  }
-
-  .showroom-stats__caption {
-    @apply text-[0.7rem] text-white/70 sm:text-right;
-  }
-
-  /* Editing the total replaces the caption line, so the banner height holds. */
-  .showroom-stats__editor {
-    @apply flex flex-wrap items-center gap-x-2 gap-y-1.5 sm:justify-end;
-  }
-
-  .showroom-stats__field {
-    @apply inline-flex items-center gap-1.5;
-  }
-
-  .showroom-stats__field-label {
-    @apply text-[0.7rem] text-white/80;
-  }
-
-  .showroom-stats__input {
-    @apply w-16 rounded-md border border-white/30 bg-white/10 px-1.5 py-0.5 text-sm font-semibold
-           tabular-nums text-white;
-  }
-
-  .showroom-stats__input:focus {
-    @apply border-white/70 outline-none;
-  }
-
-  .showroom-stats__field-hint {
-    @apply text-[0.65rem] text-white/60;
-  }
-
-  .showroom-stats__action {
-    @apply cursor-pointer rounded-md px-1.5 py-0.5 text-xs font-medium text-white/85
-           transition-colors hover:bg-white/10 hover:text-white
-           disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent;
-  }
-
-  .showroom-stats__action--save {
-    @apply font-semibold text-white;
+  .showroom-page-header__time {
+    @apply mt-0.5 text-sm font-semibold tabular-nums text-foreground;
   }
 
   /* --- Showrooms board -----------------------------------------------------
@@ -2286,6 +2232,11 @@
     background-color: #16a34a;
   }
 
+  /* Ready wears the Summary board's blue, not the green "Open" dot. */
+  .showroom-dot--info {
+    background-color: #3b82f6;
+  }
+
   .showroom-dot--progress {
     background-color: #d97706;
   }
@@ -2307,19 +2258,27 @@
   }
 
   .showroom-table th:nth-child(1) {
-    width: 32%;
+    width: 26%;
   }
 
   .showroom-table th:nth-child(2) {
-    width: 30%;
+    width: 12%;
   }
 
   .showroom-table th:nth-child(3) {
-    width: 23%;
+    width: 24%;
   }
 
   .showroom-table th:nth-child(4) {
+    width: 18%;
+  }
+
+  .showroom-table th:nth-child(5) {
     width: 15%;
+  }
+
+  .showroom-table th:nth-child(6) {
+    width: 5%;
   }
 
   .showroom-table__head {
@@ -2353,14 +2312,17 @@
     @apply px-3 py-2.5 align-middle;
   }
 
-  /* Showroom-slot thumbnail beside the name; the fallback is a store glyph. */
+  /* Showroom-slot thumbnail beside the name; no photo falls back to initials. */
   .showroom-table__identity {
     @apply flex min-w-0 items-center gap-2.5;
   }
 
+  .showroom-table__identity-text {
+    @apply flex min-w-0 flex-1 flex-col leading-tight;
+  }
+
   .showroom-table__thumb {
-    @apply size-10 shrink-0 overflow-hidden rounded-md border;
-    border-color: var(--inv-line);
+    @apply size-7 shrink-0 overflow-hidden rounded-md;
     background-color: var(--field);
   }
 
@@ -2372,8 +2334,10 @@
     box-shadow: 0 0 0 2px var(--inv-line);
   }
 
+  /* No picture: the mock's soft gray tile with the showroom's two letters. */
   .showroom-table__thumb--empty {
-    @apply grid place-items-center text-muted-foreground;
+    @apply grid place-items-center text-[0.625rem] font-semibold leading-none text-muted-foreground;
+    background-image: linear-gradient(135deg, var(--secondary), var(--border));
   }
 
   .showroom-table__name {
@@ -2391,6 +2355,32 @@
 
   .showroom-table__note {
     @apply truncate text-muted-foreground;
+  }
+
+  .showroom-table__muted {
+    @apply text-muted-foreground;
+  }
+
+  /* The linked Summary row's location, under the name, as in the column mock. */
+  .showroom-table__location {
+    @apply block max-w-full truncate text-xs text-muted-foreground;
+  }
+
+  /* Action required is free text from SwiftSlip: one line, title carries the rest. */
+  .showroom-table__action-text {
+    @apply block max-w-full truncate text-foreground;
+  }
+
+  /* An unlinked row links itself from the Action required cell, as in the mock. */
+  .showroom-link-action {
+    @apply inline-flex cursor-pointer text-left font-medium text-foreground underline
+           decoration-foreground/40 underline-offset-4 transition-colors
+           hover:decoration-foreground;
+  }
+
+  .showroom-link-action:focus-visible {
+    outline: 2px solid var(--inv-orange);
+    outline-offset: 2px;
   }
 
   .showroom-table__actions {
@@ -2430,9 +2420,12 @@
     @apply flex min-w-0 flex-1 items-center gap-2.5;
   }
 
+  .showroom-card__identity-text {
+    @apply flex min-w-0 flex-1 flex-col leading-tight;
+  }
+
   .showroom-card__thumb {
-    @apply size-11 shrink-0 overflow-hidden rounded-md border;
-    border-color: var(--inv-line);
+    @apply size-9 shrink-0 overflow-hidden rounded-md;
     background-color: var(--field);
   }
 
@@ -2440,12 +2433,18 @@
     @apply cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--inv-orange)];
   }
 
+  /* No picture: the same soft gray tile and initials as the table. */
   .showroom-card__thumb--empty {
-    @apply grid place-items-center text-muted-foreground;
+    @apply grid place-items-center text-[0.6875rem] font-semibold leading-none text-muted-foreground;
+    background-image: linear-gradient(135deg, var(--secondary), var(--border));
   }
 
   .showroom-card__name {
     @apply min-w-0 truncate text-sm font-semibold leading-5 text-foreground;
+  }
+
+  .showroom-card__location {
+    @apply min-w-0 truncate text-xs leading-4 text-muted-foreground;
   }
 
   .showroom-card__action {
@@ -2472,8 +2471,145 @@
     @apply text-muted-foreground;
   }
 
+  .showroom-card__muted {
+    @apply text-muted-foreground;
+  }
+
   .showroom-card__empty {
     @apply px-4 py-12 text-center text-sm text-muted-foreground;
+  }
+
+  /* --- Drawer: "Linked SwiftSlip showroom" picker -------------------------
+     A field-shaped trigger, a floating search list, and the read-only Status /
+     Action required block underneath. The list keeps taken rows visible (and
+     greyed) so the owner can see where a row already went. */
+  .showroom-link {
+    @apply relative;
+  }
+
+  .showroom-link__field {
+    @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border bg-card
+           px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-secondary/40;
+    border-color: var(--input);
+  }
+
+  .showroom-link__field:focus-visible {
+    outline: 2px solid var(--inv-orange);
+    outline-offset: 2px;
+  }
+
+  .showroom-link__placeholder {
+    @apply text-muted-foreground;
+  }
+
+  .showroom-link__selected {
+    @apply truncate font-medium;
+  }
+
+  .showroom-link__chevron {
+    @apply size-4 shrink-0 text-muted-foreground transition-transform;
+  }
+
+  .showroom-link__chevron--open {
+    transform: rotate(180deg);
+  }
+
+  .showroom-link__menu {
+    @apply absolute inset-x-0 top-[calc(100%+0.375rem)] z-20 overflow-hidden rounded-lg border
+           bg-popover shadow-lg;
+    border-color: var(--inv-line);
+  }
+
+  .showroom-link__search {
+    @apply flex items-center gap-2 border-b px-3 py-2;
+    border-color: var(--inv-line);
+  }
+
+  .showroom-link__search-icon {
+    @apply size-4 shrink-0 text-muted-foreground;
+  }
+
+  .showroom-link__search input {
+    @apply w-full bg-transparent text-sm text-foreground outline-none
+           placeholder:text-muted-foreground;
+  }
+
+  .showroom-link__list {
+    @apply max-h-64 overflow-y-auto py-1;
+  }
+
+  .showroom-link__option {
+    @apply flex w-full cursor-pointer flex-col gap-0.5 px-3 py-2 text-left transition-colors
+           hover:bg-secondary;
+  }
+
+  .showroom-link__option--disabled {
+    @apply cursor-not-allowed opacity-55 hover:bg-transparent;
+  }
+
+  .showroom-link__option-name {
+    @apply truncate text-sm font-semibold text-foreground;
+  }
+
+  .showroom-link__option-meta {
+    @apply truncate text-xs text-muted-foreground;
+  }
+
+  .showroom-link__empty {
+    @apply px-3 py-4 text-center text-xs text-muted-foreground;
+  }
+
+  .showroom-link__hint {
+    @apply mt-2 space-y-1 text-xs text-muted-foreground;
+  }
+
+  .showroom-link__suggestion {
+    @apply flex flex-wrap items-center gap-1.5 text-foreground/80;
+  }
+
+  .showroom-link__suggestion-name {
+    @apply font-medium text-foreground;
+  }
+
+  .showroom-link__use {
+    @apply cursor-pointer font-medium text-foreground underline underline-offset-4
+           transition-colors hover:text-brand;
+  }
+
+  .showroom-link__readonly {
+    @apply mt-3 space-y-1.5;
+  }
+
+  .showroom-link__readonly-row {
+    @apply flex items-center justify-between gap-3 text-sm;
+  }
+
+  .showroom-link__readonly-label {
+    @apply text-muted-foreground;
+  }
+
+  .showroom-link__readonly-value {
+    @apply inline-flex items-center gap-1.5 font-medium text-foreground;
+  }
+
+  .showroom-link__readonly-value--wrap {
+    @apply min-w-0 flex-1 justify-end text-right leading-5;
+  }
+
+  .showroom-link__footnote {
+    @apply mt-1 text-xs leading-5 text-muted-foreground;
+  }
+
+  .showroom-link__unlink {
+    @apply cursor-pointer font-medium text-foreground underline underline-offset-4
+           transition-colors hover:text-brand;
+  }
+
+  .showroom-link__use:focus-visible,
+  .showroom-link__unlink:focus-visible,
+  .showroom-link__option:focus-visible {
+    outline: 2px solid var(--inv-orange);
+    outline-offset: 2px;
   }
 
   /* Flat navy rail: no photo, no orange chrome; one orange action accent */
@@ -2696,20 +2832,7 @@
   }
 
   /* Showrooms: the board stops stretching and the four tabs split it evenly
-     (label over count). The header stats stack under the title on a phone. */
-  .showroom-stats {
-    align-items: stretch;
-  }
-
-  .showroom-stats__stat {
-    padding-left: 0.35rem;
-    padding-right: 0.35rem;
-  }
-
-  .showroom-stats__label {
-    font-size: 0.65rem;
-  }
-
+     (label over count). */
   .showroom-board {
     flex: none;
   }

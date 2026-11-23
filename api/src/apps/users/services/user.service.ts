@@ -4,7 +4,12 @@ import { PasswordService } from '../../../common/shared/services/password.servic
 import { logger } from '../../../common/shared/services';
 import { PASSWORD_MIN_LENGTH } from '@swiftslip/shared/schemas';
 import { employerLabel, type Employer } from '@swiftslip/shared/org';
-import type { AccountPhoto, Role, SessionUser } from '@swiftslip/shared/types';
+import type {
+  AccountPhoto,
+  ProfileCard,
+  Role,
+  SessionUser,
+} from '@swiftslip/shared/types';
 import { ProfileRepository } from '../../profile/repositories';
 import { photoUrl, removePhoto } from '../../profile/services/photo-storage';
 import { ActivityLogRepository } from '../../activity-log/repositories';
@@ -79,8 +84,8 @@ class UserService extends BaseService<'users', UserRepository> {
   }
 
   /**
-   * Profile photos for a batch of account ids, what the admin lists call to
-   * put a face beside a name.
+   * Profile photos for a batch of account ids, what the lists call to put a
+   * face beside a name.
    *
    * Only ids that actually have a photo come back: the caller draws initials
    * for the rest, so "not in the answer" is the normal case, not an error.
@@ -111,6 +116,61 @@ class UserService extends BaseService<'users', UserRepository> {
       const documents = resolved.filter((row) => row.photo);
 
       return { success: true, documents, total: documents.length };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /**
+   * One person's directory card, the five lines a list shows when a face is
+   * hovered. It answers for ANY account id, so the scoping is the router's
+   * `authenticate` (any signed-in employee), not the caller's own row. The
+   * signature and the rest of the profile are deliberately not read.
+   */
+  async card(id: string): Promise<ServiceResponse<ProfileCard>> {
+    try {
+      const account = await this.repository.findOne({ id });
+      if (!account) {
+        throw new ErrorResponse(
+          'NOT_FOUND_ERROR',
+          'That account no longer exists.',
+        );
+      }
+      const profile = await this.profiles.findOne(
+        { access_code_id: id },
+        {
+          // Not `*`: the photo is the only large value needed, and the
+          // signature has no place on a card.
+          select:
+            'full_name,area,department,designation,employer,photo,photo_zoom,photo_x,photo_y',
+        },
+      );
+      const document: ProfileCard = {
+        id: account.id,
+        employee_id: account.id_number,
+        role: account.role as Role,
+        full_name: profile?.full_name ?? '',
+        position: profile?.designation ?? '',
+        department: profile?.department ?? '',
+        designation: profile?.area ?? '',
+        employer: (profile?.employer ?? 1) as Employer,
+        photo: await photoUrl(profile?.photo ?? ''),
+        photo_crop: {
+          zoom: profile?.photo_zoom ?? 1,
+          x: profile?.photo_x ?? 0,
+          y: profile?.photo_y ?? 0,
+        },
+      };
+      return { success: true, document };
     } catch (error) {
       return {
         success: false,
@@ -218,7 +278,7 @@ class UserService extends BaseService<'users', UserRepository> {
         'access_code_id',
       );
 
-      await this.logChange(actor, 'user.created', idNumber, input, false);
+      await this.logChange(actor, 'user.created', idNumber, input);
       return { success: true };
     } catch (error) {
       return {
@@ -249,6 +309,7 @@ class UserService extends BaseService<'users', UserRepository> {
           'That account no longer exists.',
         );
       }
+      const idChanged = idNumber !== existing.id_number;
 
       // Don't let the last administrator be demoted, it would lock everyone out.
       if (
@@ -296,15 +357,21 @@ class UserService extends BaseService<'users', UserRepository> {
       }
 
       if (
+        idChanged ||
         input.designation !== undefined ||
         input.department !== undefined ||
         input.position !== undefined ||
         input.employer !== undefined
       ) {
-        await this.writeProfileDetails(id, input);
+        // The employee number mirrors the sign-in ID, so an ID edit here is
+        // also written to the profile (and vice versa from My Account).
+        await this.writeProfileDetails(id, input, idNumber);
       }
 
-      await this.logChange(actor, 'user.updated', idNumber, input, true);
+      await this.logChange(actor, 'user.updated', idNumber, input, {
+        idNumber: existing.id_number,
+        role: existing.role as Role,
+      });
       return { success: true };
     } catch (error) {
       return {
@@ -405,11 +472,19 @@ class UserService extends BaseService<'users', UserRepository> {
    * fields actually supplied change, an edit that touches just the role must
    * not wipe a Designation the employee typed under "My Account".
    */
-  private async writeProfileDetails(id: string, input: AccountInput) {
+  private async writeProfileDetails(
+    id: string,
+    input: AccountInput,
+    idNumber: string,
+  ) {
     const existing = await this.profiles.findOne({ access_code_id: id });
     await this.profiles.upsert(
       {
         access_code_id: id,
+        // My Account keeps the two in step from its side; this is the admin
+        // side of the same rule, so no profile can hold a second employee
+        // number that disagrees with the login ID.
+        emp_no: idNumber,
         area: input.designation ?? existing?.area ?? '',
         department: input.department ?? existing?.department ?? '',
         designation: input.position ?? existing?.designation ?? '',
@@ -424,14 +499,19 @@ class UserService extends BaseService<'users', UserRepository> {
     action: 'user.created' | 'user.updated',
     idNumber: string,
     input: AccountInput,
-    isEdit: boolean,
+    previous?: { idNumber: string; role: Role },
   ) {
     return ActivityLogService.logBy(actor, {
       action,
       target: idNumber,
       detail: [
-        `role: ${input.role}`,
-        isEdit && input.password ? 'password reset' : null,
+        previous && previous.idNumber !== idNumber
+          ? `ID number: ${previous.idNumber} → ${idNumber}`
+          : null,
+        previous && previous.role !== input.role
+          ? `role: ${previous.role} → ${input.role}`
+          : `role: ${input.role}`,
+        previous && input.password ? 'password reset' : null,
         input.designation ? `designation: ${input.designation}` : null,
         input.department ? `department: ${input.department}` : null,
         input.position ? `position: ${input.position}` : null,

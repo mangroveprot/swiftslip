@@ -8,10 +8,17 @@
  * row menu. Remarks lives in the drawer and in both exports.
  */
 import { useEffect, useRef } from "react";
-import { ChevronsUpDown, History, MoreHorizontal, PencilLine, Trash2 } from "lucide-react";
+import {
+  ChevronsUpDown,
+  ExternalLink,
+  History,
+  MoreHorizontal,
+  PencilLine,
+  Trash2,
+} from "lucide-react";
 
 import type { ShowroomUpdate } from "@swiftslip/shared/showroom-updates";
-import { showroomUpdateBoardDate } from "@swiftslip/shared/showroom-updates";
+import { isHttpUrl, showroomUpdateBoardDate } from "@swiftslip/shared/showroom-updates";
 
 import {
   DropdownMenu,
@@ -145,42 +152,67 @@ export function UpdatesTable({
         {rows.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-muted-foreground">{emptyMessage}</p>
         ) : (
-          rows.map((row) => (
-            <div key={row.update_id} className="flex items-start gap-3 px-4 py-3">
-              <input
-                type="checkbox"
-                className={`${CHECKBOX_CLASS} mt-1`}
-                aria-label={`Select ${row.showroom_name}`}
-                checked={selected.has(row.update_id)}
-                onChange={() => onToggleRow(row.update_id)}
-              />
-              <button
-                type="button"
-                className="flex min-w-0 flex-1 flex-col gap-1.5 text-left focus-visible:outline-none"
-                onClick={() => onEdit(row)}
-              >
-                <span className="flex items-start justify-between gap-3">
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">
-                      {row.showroom_name}
+          rows.map((row) => {
+            const mapUrl = row.map_url && isHttpUrl(row.map_url) ? row.map_url : "";
+            return (
+              <div key={row.update_id} className="flex items-start gap-3 px-4 py-3">
+                <input
+                  type="checkbox"
+                  className={`${CHECKBOX_CLASS} mt-1`}
+                  aria-label={`Select ${row.showroom_name}`}
+                  checked={selected.has(row.update_id)}
+                  onChange={() => onToggleRow(row.update_id)}
+                />
+                <div
+                  className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1.5"
+                  onClick={() => onEdit(row)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onEdit(row);
+                        }}
+                        className="block max-w-full truncate rounded-sm text-left text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        {row.showroom_name}
+                      </button>
+                      {mapUrl ? (
+                        <a
+                          href={mapUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          title="Open in Google Maps"
+                          className="group/loc mt-0.5 flex w-fit max-w-full items-center gap-0.5 rounded-sm text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
+                          <span className="min-w-0 truncate group-hover/loc:underline group-hover/loc:underline-offset-2">
+                            {row.location}
+                          </span>
+                          <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+                        </a>
+                      ) : (
+                        <span className="mt-0.5 block max-w-full truncate text-xs text-muted-foreground">
+                          {row.location}
+                        </span>
+                      )}
+                    </div>
+                    <StatusPill status={row.status} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span className="text-[11px] font-semibold tracking-wide text-foreground/70">
+                      No. {row.sr_no}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                      {row.location}
-                    </span>
-                  </span>
-                  <StatusPill status={row.status} />
-                </span>
-                <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span className="text-[11px] font-semibold tracking-wide text-foreground/70">
-                    No. {row.sr_no}
-                  </span>
-                  <PersonCell person={row.responsible_person} />
-                  <span>{showroomUpdateBoardDate(row.open_date)}</span>
-                  <VehicleTag vehicle={row.vehicle} />
-                </span>
-              </button>
-            </div>
-          ))
+                    <PersonCell person={row.responsible_person} />
+                    <span>{showroomUpdateBoardDate(row.open_date)}</span>
+                    <VehicleTag vehicle={row.vehicle} />
+                  </div>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -247,6 +279,7 @@ export function UpdatesTable({
             ) : (
               rows.map((row) => {
                 const isSelected = selected.has(row.update_id);
+                const mapUrl = row.map_url && isHttpUrl(row.map_url) ? row.map_url : "";
                 return (
                   <tr
                     key={row.update_id}
@@ -281,12 +314,29 @@ export function UpdatesTable({
                       >
                         {row.showroom_name}
                       </span>
-                      <span
-                        className="mt-0.5 block max-w-[20rem] truncate text-[12px] text-muted-foreground"
-                        title={row.location}
-                      >
-                        {row.location}
-                      </span>
+                      {mapUrl ? (
+                        <a
+                          href={mapUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                          title="Open in Google Maps"
+                          className="group/loc mt-0.5 flex w-fit max-w-[20rem] items-center gap-0.5 rounded-sm text-[12px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
+                          <span className="min-w-0 truncate group-hover/loc:underline group-hover/loc:underline-offset-2">
+                            {row.location}
+                          </span>
+                          <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+                        </a>
+                      ) : (
+                        <span
+                          className="mt-0.5 block max-w-[20rem] truncate text-[12px] text-muted-foreground"
+                          title={row.location}
+                        >
+                          {row.location}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-3">
                       <StatusPill status={row.status} />

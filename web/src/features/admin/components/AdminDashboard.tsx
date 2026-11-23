@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/chart";
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
-import { ProfileAvatar } from "@/components/common/ProfileAvatar";
+import { ProfileHoverCard } from "@/components/common/ProfileHoverCard";
+import { useUserPhotos } from "@/features/profile/use-user-photos";
 import { FORM_TYPES, type FormEvent, type FormKind } from "@swiftslip/shared/forms";
 import { ACTION_LABELS } from "@swiftslip/shared/activity";
 import type { ActivityLogActionFilter } from "@swiftslip/shared/schemas";
@@ -26,7 +27,6 @@ import {
   type ChartGranularity,
 } from "../dashboard-data";
 import { activityFeedQueryOptions, adminStatsQueryOptions } from "../queries";
-import { useUserPhotos } from "../use-user-photos";
 import { AdminClock } from "./AdminClock";
 
 const chartConfig = {
@@ -512,6 +512,8 @@ function activityVerb(action: string) {
       return "updated an account";
     case "user.deleted":
       return "removed an account";
+    case "profile.updated":
+      return "updated their profile";
     case "access.updated":
       return "changed app access";
     case "org.updated":
@@ -537,6 +539,10 @@ function activitySecondary(
   // new value ("swiftslip · department: Finance · granted").
   if (row.action === "access.updated" || row.action === "org.updated") {
     return [compact(row.target), compact(row.detail)].filter(Boolean).join(" · ");
+  }
+
+  if (row.action === "profile.updated") {
+    return compact(row.detail);
   }
 
   const target = compact(row.target);
@@ -784,11 +790,13 @@ function LatestActivityPanel({
             return (
               <li key={row.id} className="flex items-start justify-between gap-4 py-3.5">
                 <div className="flex min-w-0 items-start gap-2">
-                  <ProfileAvatar
+                  <ProfileHoverCard
+                    userId={row.actor_id}
                     photo={photos[row.actor_id ?? ""]}
                     name={actorName(row)}
                     size={20}
                     className="mt-px"
+                    profileTo="/admin/profile"
                   />
                   <div className="min-w-0">
                     <p className="text-sm leading-5">
@@ -942,11 +950,13 @@ function SecurityPanel({
                 className="flex items-start justify-between gap-4 py-3.5"
               >
                 <div className="flex min-w-0 items-start gap-2">
-                  <ProfileAvatar
+                  <ProfileHoverCard
+                    userId={item.latest.actor_id}
                     photo={photos[item.latest.actor_id ?? ""]}
                     name={securityActorLabel(item.latest)}
                     size={20}
                     className="mt-px"
+                    profileTo="/admin/profile"
                   />
                   <div className="min-w-0">
                     {item.kind === "signin" ? (

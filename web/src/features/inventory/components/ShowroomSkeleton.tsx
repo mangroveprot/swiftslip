@@ -1,11 +1,9 @@
 /**
- * Loading placeholders for the Showrooms screen: the three header numbers that
- * sit in the navy banner, and the board (status tabs, search + download
- * toolbar, phone cards, desktop table, footer).
+ * Loading placeholder for the Showrooms screen: the board (status tabs, search
+ * + download toolbar, phone cards, desktop table, footer).
  *
- * Both reuse the real classes, so the banner and the card keep their exact
- * height and the page does not jump when the rows arrive. Bars in the banner
- * are white-on-navy, not the neutral card tint.
+ * It reuses the real classes, so the card keeps its exact height and the page
+ * does not jump when the rows arrive.
  */
 import { Download, Search } from "lucide-react";
 
@@ -15,7 +13,6 @@ const TABS: Array<{ label: string; width: string }> = [
   { label: "In progress", width: "w-16" },
   { label: "Online", width: "w-10" },
 ];
-const STATS = ["CCTV installed", "Units available", "Not available"];
 
 function Bar({ className = "" }: { className?: string }) {
   return <span className={`asset-skeleton ${className}`} aria-hidden="true" />;
@@ -27,22 +24,6 @@ function CellBar({ className }: { className: string }) {
     <span className="flex h-5 items-center">
       <Bar className={className} />
     </span>
-  );
-}
-
-export function ShowroomStatsSkeleton() {
-  return (
-    <div className="showroom-stats" role="status" aria-label="Loading showroom totals">
-      <div className="showroom-stats__row" aria-hidden="true">
-        {STATS.map((label) => (
-          <div key={label} className="showroom-stats__stat">
-            <Bar className="h-6 w-8 bg-white/25" />
-            <Bar className="mt-1.5 h-2.5 w-20 bg-white/20" />
-          </div>
-        ))}
-      </div>
-      <Bar className="mt-1 h-2.5 w-40 bg-white/20" />
-    </div>
   );
 }
 
@@ -82,10 +63,16 @@ export function ShowroomBoardSkeleton({ rows = 9, cards = 5 }: { rows?: number; 
         {Array.from({ length: cards }, (_, index) => (
           <div key={index} className="showroom-card pointer-events-none">
             <div className="showroom-card__head">
-              <Bar className="h-4 w-28" />
+              <span className="showroom-card__identity">
+                <Bar className="size-9 shrink-0 rounded-md" />
+                <span className="showroom-card__identity-text">
+                  <Bar className="h-3.5 w-28" />
+                  <Bar className="mt-1 h-2.5 w-20" />
+                </span>
+              </span>
               <Bar className="size-4" />
             </div>
-            {[0, 1].map((row) => (
+            {[0, 1, 2, 3].map((row) => (
               <div key={row} className="showroom-card__row">
                 <span className="showroom-card__label">
                   <span className="flex h-[1.35rem] items-center">
@@ -107,25 +94,41 @@ export function ShowroomBoardSkeleton({ rows = 9, cards = 5 }: { rows?: number; 
           <thead>
             <tr className="showroom-table__head">
               <th className="showroom-table__th">Showroom</th>
+              <th className="showroom-table__th">Status</th>
+              <th className="showroom-table__th">Action required</th>
               <th className="showroom-table__th">CCTV</th>
               <th className="showroom-table__th">Internet</th>
-              <th className="showroom-table__th showroom-table__th--actions">Actions</th>
+              <th className="showroom-table__th showroom-table__th--actions">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: rows }, (_, index) => (
               <tr key={index} className="showroom-table__row">
                 <td className="showroom-table__td">
-                  <CellBar className="h-3.5 w-32" />
+                  <span className="showroom-table__identity">
+                    <Bar className="size-7 shrink-0 rounded-md" />
+                    <span className="showroom-table__identity-text">
+                      <Bar className="h-3.5 w-32" />
+                      <Bar className="mt-1 h-3 w-24" />
+                    </span>
+                  </span>
                 </td>
                 <td className="showroom-table__td">
-                  <CellBar className="h-3.5 w-28" />
+                  <CellBar className="h-3.5 w-16" />
+                </td>
+                <td className="showroom-table__td">
+                  <CellBar className="h-3.5 w-24" />
                 </td>
                 <td className="showroom-table__td">
                   <CellBar className="h-3.5 w-20" />
                 </td>
+                <td className="showroom-table__td">
+                  <CellBar className="h-3.5 w-16" />
+                </td>
                 <td className="showroom-table__td showroom-table__actions">
-                  <CellBar className="h-3.5 w-12" />
+                  <CellBar className="h-3.5 w-6" />
                 </td>
               </tr>
             ))}

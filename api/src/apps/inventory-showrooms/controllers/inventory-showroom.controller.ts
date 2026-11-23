@@ -3,7 +3,6 @@ import type {
   ShowroomPhotoSlot,
   ShowroomPhotoUploadRequest,
   ShowroomSaveRequest,
-  ShowroomStockRequest,
 } from '@swiftslip/shared/showrooms';
 import type { SessionUser } from '@swiftslip/shared/types';
 import { ApiResponse, ErrorResponseType } from '../../../common/shared';
@@ -74,25 +73,10 @@ class InventoryShowroomController {
     }
   }
 
-  static async getStock(req: Request, res: Response): Promise<void> {
+  /** `GET /link-options`: the Summary rows the drawer's picker offers. */
+  static async linkOptions(req: Request, res: Response): Promise<void> {
     try {
-      const response = await InventoryShowroomService.getStock();
-      if (response.success) {
-        ApiResponse.success(res, response);
-      } else {
-        throw response;
-      }
-    } catch (error) {
-      ApiResponse.error(res, error as ErrorResponseType);
-    }
-  }
-
-  static async saveStock(req: Request, res: Response): Promise<void> {
-    try {
-      const response = await InventoryShowroomService.saveStock(
-        req.user as SessionUser,
-        req.body as ShowroomStockRequest,
-      );
+      const response = await InventoryShowroomService.linkOptions();
       if (response.success) {
         ApiResponse.success(res, response);
       } else {

@@ -62,6 +62,14 @@ export type ShowroomUpdate = {
   /** ISO `YYYY-MM-DD`, or null while the showroom is not open yet. */
   open_date: string | null;
   vehicle: ShowroomUpdateVehicle | null;
+  /**
+   * The Google Maps link pinned to `location`, or null when no pin is set.
+   * Stored beside the address rather than derived from it: a search by name is
+   * ambiguous, and the link the owner saved is the exact pin they chose.
+   */
+  map_url: string | null;
+  /** What the pin is called in the chip/menu; null reads as "Google Maps". */
+  map_label: string | null;
   /** Last edit's actor, shown in the drawer footer. */
   updated_by: string | null;
   updated_at: string | null;
@@ -87,6 +95,18 @@ export type ShowroomUpdateChange = {
 /* --------------------------------------------------------------- writing - */
 
 /**
+ * A web link, and nothing else: the map pin must never hold `javascript:`.
+ *
+ * Deliberately a regex, not `new URL`: `shared/` compiles without the DOM or
+ * Node lib, and this only needs to answer "http(s) with a host and no spaces".
+ */
+const HTTP_URL = /^https?:\/\/[^\s/?#]+(\/[^\s]*)?$/i;
+
+export function isHttpUrl(value: string): boolean {
+  return HTTP_URL.test(value.trim());
+}
+
+/**
  * The drawer's save payload. Everything is nullable because a row may be
  * intentionally cleared (Jimenez has no status yet). The two identity cells are
  * editable too, so a misspelled place can be fixed from the board.
@@ -105,6 +125,18 @@ export const showroomUpdateSaveInput = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.")
     .nullable(),
   vehicle: showroomUpdateVehicleSchema.nullable(),
+  /** A Google Maps link for the location, or null when no pin is set. */
+  mapUrl: z
+    .string()
+    .trim()
+    .max(2048)
+    .nullable()
+    .refine(
+      (value) => value == null || isHttpUrl(value),
+      "Use a full link starting with https://.",
+    ),
+  /** Optional name for the pin; a blank label reads as "Google Maps". */
+  mapLabel: z.string().trim().max(60).nullable(),
 });
 export type ShowroomUpdateSaveRequest = z.infer<typeof showroomUpdateSaveInput>;
 

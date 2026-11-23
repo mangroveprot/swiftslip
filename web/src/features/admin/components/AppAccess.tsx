@@ -32,9 +32,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useUserPhotos } from "@/features/profile/use-user-photos";
 import { GRANTABLE_APP_KEYS, type GrantableAppKey, type RuleScope } from "@swiftslip/shared/types";
 import { ACCESS_TABS, type AccessTab } from "../lib/admin-search";
-import { useUserPhotos } from "../use-user-photos";
 
 const APP_LABELS: Record<GrantableAppKey, string> = {
   swiftslip: "SwiftSlip",

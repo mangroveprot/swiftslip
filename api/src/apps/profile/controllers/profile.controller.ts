@@ -22,7 +22,7 @@ class ProfileController {
   static async saveMine(req: Request, res: Response): Promise<void> {
     try {
       const response = await ProfileService.saveMine(
-        (req.user as SessionUser).id,
+        req.user as SessionUser,
         req.body,
       );
       if (response.success) {
@@ -35,12 +35,13 @@ class ProfileController {
     }
   }
 
-  /** `{ photo }` only, what "Use photo" and "Remove photo" send. */
+  /** `{ photo, crop }`, what "Use photo" and "Remove photo" send. */
   static async savePhoto(req: Request, res: Response): Promise<void> {
     try {
       const response = await ProfileService.savePhoto(
-        (req.user as SessionUser).id,
+        req.user as SessionUser,
         req.body.photo,
+        req.body.crop,
       );
       if (response.success) {
         ApiResponse.success(res, response);

@@ -2,34 +2,38 @@
  * Showrooms page.
  *
  * The CCTV / internet status board that sits beside Assets: one row per
- * showroom, grouped into All / Needs action / In progress / Online tabs, with
- * the installed stock summarized in the navy header. The header numbers are
- * also filters (click "CCTV installed" or "Not available"), and searching is
- * client-side over the one list payload, like the assets page.
+ * showroom, grouped into All / Needs action / In progress / Online tabs.
+ * Status and Action required are read from the row each showroom is linked to
+ * in the "Summary of SR Status and Updates" app; the inventory only edits the
+ * CCTV / internet facts and the link itself.
+ *
+ * The header is deliberately quiet (title, subtitle, date/time) so the board
+ * carries the colour, and searching is client-side over the one list payload,
+ * like the assets page.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Menu } from "lucide-react";
 
 import { ConfirmModal } from "@/components/common/ConfirmModal";
-import { deleteShowroom, saveShowroom, saveShowroomStock } from "@/api/showrooms.functions";
+import { deleteShowroom, saveShowroom } from "@/api/showrooms.functions";
 import { toast } from "@/lib/toast";
 import type { Showroom, ShowroomFilter, ShowroomSaveRequest } from "@swiftslip/shared/showrooms";
 import {
   matchesShowroomFilter,
-  showroomCctvSummary,
   showroomInProgress,
   showroomNeedsAction,
   showroomOnline,
 } from "@swiftslip/shared/showrooms";
+import { formatDate, formatTime } from "@swiftslip/shared/time";
 
 import type { ShowroomDrawerMode } from "../components/ShowroomDrawer";
 import { ShowroomDrawer } from "../components/ShowroomDrawer";
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
-import { ShowroomBoardSkeleton, ShowroomStatsSkeleton } from "../components/ShowroomSkeleton";
-import { ShowroomStats } from "../components/ShowroomStats";
+import { ShowroomBoardSkeleton } from "../components/ShowroomSkeleton";
 import { ShowroomTable } from "../components/ShowroomTable";
 import { buildShowroomFileName, downloadShowroomsWorkbook } from "../lib/showroom-export";
-import { showroomsQueryOptions, showroomStockQueryOptions } from "../queries";
+import { showroomLinkOptionsQueryOptions, showroomsQueryOptions } from "../queries";
 import { useInventoryShell } from "../shell-context";
 
 function messageOf(err: unknown): string {
@@ -41,18 +45,6 @@ export function InventoryShowroomsPage() {
   const qc = useQueryClient();
   const { data, isLoading, isError, error, errorUpdatedAt, isFetching, refetch } =
     useQuery(showroomsQueryOptions());
-  const {
-    data: stock,
-    isLoading: stockLoading,
-    isError: stockError,
-    error: stockErrorObj,
-    errorUpdatedAt: stockErrorUpdatedAt,
-    isFetching: stockFetching,
-    refetch: refetchStock,
-  } = useQuery(showroomStockQueryOptions());
-
-  /** The board shows one failure; the first query to fail owns its timestamp. */
-  const failedAt = errorUpdatedAt > 0 ? errorUpdatedAt : stockErrorUpdatedAt;
 
   const showToast = useCallback(
     (message: string, level: "success" | "error" | "warning" | "info" = "success") =>
@@ -66,6 +58,13 @@ export function InventoryShowroomsPage() {
   const [searchText, setSearchText] = useState("");
   const [downloading, setDownloading] = useState(false);
   const downloadingRef = useRef(false);
+
+  // Header clock, down to the minute like every other board.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [drawer, setDrawer] = useState<{
     open: boolean;
@@ -99,12 +98,6 @@ export function InventoryShowroomsPage() {
     );
   }, [showrooms, filter, searchText]);
 
-  /** Same numbers as the banner; the Excel summary block reuses them. */
-  const cctvSummary = useMemo(
-    () => showroomCctvSummary(showrooms, stock?.cctvTotalUnits ?? 0),
-    [showrooms, stock],
-  );
-
   /* ------------------------------------------------------- events - */
 
   // Sidebar "Add showroom" jumps here and opens the drawer.
@@ -125,7 +118,11 @@ export function InventoryShowroomsPage() {
   const handleSave = async (showroomId: number | null, req: ShowroomSaveRequest) => {
     try {
       await saveShowroom({ showroomId, data: req });
-      await qc.invalidateQueries({ queryKey: showroomsQueryOptions().queryKey });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: showroomsQueryOptions().queryKey }),
+        // The picker's "Linked to …" labels moved with this save.
+        qc.invalidateQueries({ queryKey: showroomLinkOptionsQueryOptions().queryKey }),
+      ]);
       closeDrawer();
       showToast(showroomId == null ? "Showroom added" : "Your changes have been saved.");
     } catch (err) {
@@ -150,7 +147,10 @@ export function InventoryShowroomsPage() {
     setDeleting(true);
     try {
       await deleteShowroom({ showroomId: pendingDelete.showroom_id });
-      await qc.invalidateQueries({ queryKey: showroomsQueryOptions().queryKey });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: showroomsQueryOptions().queryKey }),
+        qc.invalidateQueries({ queryKey: showroomLinkOptionsQueryOptions().queryKey }),
+      ]);
       setPendingDelete(null);
       showToast("Showroom deleted");
     } catch (err) {
@@ -166,9 +166,8 @@ export function InventoryShowroomsPage() {
     downloadingRef.current = true;
     setDownloading(true);
     try {
-      // The sheet mirrors what is on screen: active tab + search. Its summary
-      // block mirrors the header, so it describes every showroom, not the tab.
-      await downloadShowroomsWorkbook(visible, cctvSummary, buildShowroomFileName());
+      // The sheet mirrors what is on screen: active tab + search.
+      await downloadShowroomsWorkbook(visible, buildShowroomFileName());
       showToast("Excel saved");
     } catch (err) {
       showToast(`Failed to build the Excel file: ${messageOf(err)}`, "error");
@@ -178,74 +177,48 @@ export function InventoryShowroomsPage() {
     }
   };
 
-  /**
-   * The summary card's one editable number. Resolves false so the card keeps
-   * its editor open (and the typed value) when the API refuses the save.
-   */
-  const saveTotalUnits = async (units: number) => {
-    try {
-      const saved = await saveShowroomStock({ cctvTotalUnits: units });
-      qc.setQueryData(showroomStockQueryOptions().queryKey, saved);
-      showToast("Total CCTV units updated");
-      return true;
-    } catch (err) {
-      showToast(`Failed to save the CCTV total: ${messageOf(err)}`, "error");
-      return false;
-    }
-  };
-
   /* ------------------------------------------------------- render - */
 
   return (
     <>
       <div className="flex flex-col flex-1 min-h-0 gap-3 md:gap-4">
-        <header className="asset-inventory-header shrink-0 px-4 md:px-6 pt-4 pb-4 md:pt-6 md:pb-5">
-          <div className="relative z-[1] flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between min-w-0">
-            <div className="flex items-center gap-3 min-w-0 sm:pb-1">
+        <header className="showroom-page-header shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-start gap-3">
               <button
                 type="button"
-                className="lg:hidden text-white/80 hover:text-white"
+                className="mt-0.5 -ml-1 shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--inv-orange)] lg:hidden"
                 onClick={() => shell.openSidebar()}
                 aria-label="Open menu"
               >
-                ☰
+                <Menu className="size-5" aria-hidden="true" />
               </button>
-              <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white tracking-tight">
-                  Showrooms
-                </span>
-                <span className="text-sm md:text-lg text-white/80 truncate mt-1">
+              <div className="min-w-0">
+                <h1 className="showroom-page-header__title">Showrooms</h1>
+                <p className="showroom-page-header__subtitle">
                   CCTV and internet status · All branches
-                </span>
+                </p>
               </div>
             </div>
 
-            {isLoading || stockLoading ? (
-              <ShowroomStatsSkeleton />
-            ) : !isError && !stockError ? (
-              <ShowroomStats
-                showrooms={showrooms}
-                totalUnits={stock?.cctvTotalUnits ?? 0}
-                filter={filter}
-                onFilterChange={setFilter}
-                onSaveTotal={saveTotalUnits}
-              />
-            ) : null}
+            <div className="showroom-page-header__clock">
+              <span className="showroom-page-header__date">{formatDate(now)}</span>
+              <span className="showroom-page-header__time">{formatTime(now)}</span>
+            </div>
           </div>
         </header>
 
-        {isLoading || stockLoading ? (
+        {isLoading ? (
           <ShowroomBoardSkeleton />
-        ) : isError || stockError ? (
+        ) : isError ? (
           <div className="showroom-board">
             <ErrorStateFromError
               className="flex-1 justify-center"
-              error={error ?? stockErrorObj}
-              at={failedAt > 0 ? new Date(failedAt) : null}
-              retrying={isFetching || stockFetching}
+              error={error}
+              at={errorUpdatedAt > 0 ? new Date(errorUpdatedAt) : null}
+              retrying={isFetching}
               onRetry={() => {
                 void refetch();
-                void refetchStock();
               }}
             />
           </div>
@@ -262,6 +235,7 @@ export function InventoryShowroomsPage() {
             downloading={downloading}
             canDownload={visible.length > 0}
             onEdit={openEdit}
+            onDelete={requestDelete}
           />
         )}
       </div>

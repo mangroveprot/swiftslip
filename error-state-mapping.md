@@ -69,7 +69,7 @@ Notes that matter when you write the map:
 | `VALIDATION_ERROR` | 400 | the inputs | `suggestions` carries `"entries.3.date: Date is required."`; the user needs the field marked, not a page. Fallback only: a summary block "3 fields need attention" when paths cannot be mapped. |
 | `REQUIRED_FIELD_MISSING` | 400 | the inputs, + reveal the section | `ObEditor.tsx:602` already does this and is the model to keep. |
 | `UNIQUE_FIELD_ERROR` | 409 | the input | `UserManagement.tsx:777` already sets `idError` and returns focus. The one code with a working field treatment today. |
-| `PAYLOAD_TOO_LARGE` | 413 | the file picker / upload row | 4 different ceilings (15 MB body, 10 MB attachment, 2 MB photo, 200 KB thumb). The user is mid-dialog; a page block would close the context they need. |
+| `PAYLOAD_TOO_LARGE` | 413 | the file picker / upload row | 4 different ceilings (15 MB body, 10 MB attachment, 5 MB photo, 200 KB thumb). The user is mid-dialog; a page block would close the context they need. |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | the file picker / upload row | Same: the picker must stay open so they can pick another file. |
 | `RETENTION_DISABLED` | 400 | inline banner on the settings card | The page is fine; one control is not ready. |
 | `IN_USE_ERROR` | 409 | inline message on the row / list | The row is still there. Replace the row's message, not the list. |

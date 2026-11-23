@@ -1,13 +1,12 @@
 import type {
   Showroom,
+  ShowroomLinkOption,
   ShowroomPhotos,
   ShowroomPhotoChangeInput,
   ShowroomPhotoSlot,
   ShowroomPhotoUploadRequest,
   ShowroomPhotoUrls,
   ShowroomSaveRequest,
-  ShowroomStock,
-  ShowroomStockRequest,
 } from '@swiftslip/shared/showrooms';
 import {
   cctvConnectionLabel,
@@ -20,6 +19,7 @@ import { ErrorResponse, ServiceResponse } from '../../../common/shared';
 import { ActivityLogService } from '../../activity-log';
 import FileStorageService from '../../storage/services/file-storage.service';
 import { parseRef } from '../../storage/utils/ref';
+import { ShowroomUpdateRepository } from '../../showroom-updates/repositories';
 import { InventoryShowroomRepository } from '../repositories';
 import type { ShowroomPhotoChange, ShowroomPhotoRow } from '../types';
 import InventoryPhotoService, {
@@ -117,6 +117,11 @@ function describeChanges(before: Showroom, after: ShowroomSaveRequest): string {
 
 class InventoryShowroomService {
   private readonly repository = new InventoryShowroomRepository();
+  /**
+   * The Summary of SR Status and Updates owns the status / action-required
+   * columns; this service only reads the row a showroom follows.
+   */
+  private readonly updates = new ShowroomUpdateRepository();
 
   /**
    * Signed links for one stored picture row. A picture that cannot be signed
@@ -154,16 +159,71 @@ class InventoryShowroomService {
    * Every showroom plus its board thumbnail: one signed URL for the Showroom
    * slot, minted here so the list never carries a stored URL (they expire).
    * The other two pictures are fetched only when the drawer opens.
+   *
+   * A linked showroom also carries the Summary row it follows, so Status and
+   * Action required are printed from the Summary and never copied into this
+   * table.
    */
   async list(): Promise<ServiceResponse<Showroom>> {
     try {
       const rows = await this.repository.findAll();
+      const links = await this.updates.findLinksByIds(
+        rows
+          .map((row) => row.linked_update_id)
+          .filter((id): id is number => id != null),
+      );
+      const byId = new Map(links.map((link) => [link.update_id, link]));
       const documents = await Promise.all(
         rows.map(async ({ photo_thumb_ref, ...row }) => ({
           ...row,
+          link:
+            row.linked_update_id == null
+              ? null
+              : (byId.get(row.linked_update_id) ?? null),
           photo_thumb: await signQuietly(photo_thumb_ref),
         })),
       );
+      return { success: true, documents };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /**
+   * The drawer's "Linked SwiftSlip showroom" picker: every Summary row, with
+   * the inventory showroom already following it (null when the row is free).
+   */
+  async linkOptions(): Promise<ServiceResponse<ShowroomLinkOption>> {
+    try {
+      const [updates, links] = await Promise.all([
+        this.updates.findAll(),
+        this.repository.findLinks(),
+      ]);
+      const linkedTo = new Map(
+        links.map((link) => [link.linked_update_id, link]),
+      );
+      const documents: ShowroomLinkOption[] = updates.map((row) => {
+        const taken = linkedTo.get(row.update_id);
+        return {
+          update_id: row.update_id,
+          showroom_name: row.showroom_name,
+          location: row.location,
+          status: row.status,
+          action_required: row.action_required,
+          map_url: row.map_url,
+          linked_to: taken?.showroom_name ?? null,
+          linked_to_id: taken?.showroom_id ?? null,
+        };
+      });
       return { success: true, documents };
     } catch (error) {
       return {
@@ -288,6 +348,20 @@ class InventoryShowroomService {
 
       const before =
         showroomId == null ? null : await this.repository.findById(showroomId);
+
+      // A link always points at a row that exists right now: the picker is fed
+      // from the Summary board, so a stale id means the row was deleted.
+      const linkTarget =
+        input.linkedUpdateId == null
+          ? null
+          : await this.updates.findById(input.linkedUpdateId);
+      if (input.linkedUpdateId != null && linkTarget == null) {
+        throw new ErrorResponse(
+          'NOT_FOUND_ERROR',
+          'That showroom is no longer on the SwiftSlip Summary.',
+        );
+      }
+
       const beforePhotos =
         showroomId == null ? [] : await this.repository.findPhotos(showroomId);
 
@@ -320,8 +394,15 @@ class InventoryShowroomService {
             cctv_connection: input.cctvConnection,
             internet: input.internet,
           });
+      const linkDetail =
+        (before?.linked_update_id ?? null) === input.linkedUpdateId
+          ? ''
+          : input.linkedUpdateId == null
+            ? 'Unlinked from SwiftSlip'
+            : `Linked to ${linkTarget?.showroom_name ?? 'SwiftSlip'}`;
       const detail =
-        [fieldDetail, photoDetail].filter(Boolean).join(' · ') || 'No changes';
+        [fieldDetail, photoDetail, linkDetail].filter(Boolean).join(' · ') ||
+        'No changes';
 
       await ActivityLogService.logBy(actor, {
         action: before == null ? 'showroom.created' : 'showroom.updated',
@@ -583,57 +664,6 @@ class InventoryShowroomService {
         });
       }
       return { success: true, document: { deleted } };
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof ErrorResponse
-            ? error
-            : new ErrorResponse(
-                'INTERNAL_SERVER_ERROR',
-                (error as Error).message,
-              ),
-      };
-    }
-  }
-
-  /** The one editable number in the header card: total CCTV units. */
-  async getStock(): Promise<ServiceResponse<ShowroomStock>> {
-    try {
-      const cctvTotalUnits = await this.repository.getCctvTotalUnits();
-      return { success: true, document: { cctvTotalUnits } };
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof ErrorResponse
-            ? error
-            : new ErrorResponse(
-                'INTERNAL_SERVER_ERROR',
-                (error as Error).message,
-              ),
-      };
-    }
-  }
-
-  async saveStock(
-    actor: SessionUser,
-    input: ShowroomStockRequest,
-  ): Promise<ServiceResponse<ShowroomStock>> {
-    try {
-      const before = await this.repository.getCctvTotalUnits();
-      const cctvTotalUnits = await this.repository.setCctvTotalUnits(
-        input.cctvTotalUnits,
-      );
-      await ActivityLogService.logBy(actor, {
-        action: 'showroom.stock_updated',
-        target: 'CCTV units',
-        detail:
-          before === cctvTotalUnits
-            ? `Stayed at ${cctvTotalUnits} units`
-            : `${before} → ${cctvTotalUnits} units`,
-      });
-      return { success: true, document: { cctvTotalUnits } };
     } catch (error) {
       return {
         success: false,

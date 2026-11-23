@@ -25,6 +25,7 @@ export type ActivityAction =
   | 'user.created'
   | 'user.updated'
   | 'user.deleted'
+  | 'profile.updated'
   | 'access.updated'
   | 'org.updated'
   | 'asset.created'

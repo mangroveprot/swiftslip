@@ -752,6 +752,32 @@ export type LoaChatReply = {
   form?: Partial<LoaForm>;
 };
 
+/**
+ * Ceiling for a profile photo, in bytes of the file itself.
+ *
+ * A cropped still is ~15 KB, so this number exists for the animated GIF that
+ * is stored exactly as it was picked. It is deliberately about size only: a
+ * GIF is displayed at 96 px by CSS, so its pixel dimensions are not worth
+ * policing, but the free-tier bucket and its egress are.
+ *
+ * One limit, three places that enforce it:
+ * - this file (`PROFILE_PHOTO_DATA_URL_MAX`, below) rejects an oversized body
+ *   before anything is decoded;
+ * - `api/src/apps/profile/services/photo-storage.ts` checks the decoded bytes;
+ * - `web/src/lib/photo.ts` (`MAX_PHOTO_MB`) checks the picked file, and its
+ *   unit test keeps that number equal to this one.
+ */
+export const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * The same limit measured the way zod sees it: a `data:` URL is the bytes in
+ * base64 (4 characters per 3 bytes, so ≈ 7.0 M for 5 MiB) plus the
+ * `data:image/gif;base64,` prefix. Rounded up so the server check, not this
+ * string length, is what rejects a file at the edge of the limit, and still
+ * well under the API's 15 MB JSON body ceiling.
+ */
+export const PROFILE_PHOTO_DATA_URL_MAX = 7_100_000;
+
 export const employeeProfileSchema = z.object({
   emp_no: z.string(),
   full_name: z.string(),
@@ -763,13 +789,24 @@ export const employeeProfileSchema = z.object({
   // self-service profile save can never overwrite the company an admin set,
   // while `GET /profile/me` still returns it for branding.
   signature: z.string().default(""),
-  /**
-   * 256 × 256 data URL. The cap is a guard, not a target: the cropper exports
-   * WebP at roughly 15 KB (≈ 20 000 base64 chars), so anything near this
-   * ceiling came from something other than this form.
-   */
-  photo: z.string().max(600_000, "That photo is too large. Try a smaller one.").default(""),
+  /** A 256 × 256 data URL, or an animated GIF stored exactly as picked. */
+  photo: z
+    .string()
+    .max(PROFILE_PHOTO_DATA_URL_MAX, "That photo is too large. Try a smaller one.")
+    .default(""),
   supervisor: z.string().default(""),
+});
+
+/**
+ * The framing a GIF keeps, `EmployeeProfile.photo_crop`. `zoom` is bounded by
+ * the cropper (1–3); `x` / `y` are fractions of the circle's diameter and only
+ * depend on the picture's aspect ratio, so they are checked for being real
+ * numbers rather than for a range a panorama could legitimately exceed.
+ */
+export const photoCropSchema = z.object({
+  zoom: z.number().min(1).max(3),
+  x: z.number().finite(),
+  y: z.number().finite(),
 });
 
 /**
@@ -780,7 +817,12 @@ export const employeeProfileSchema = z.object({
  * would silently commit whatever else they were half-way through typing.
  */
 export const profilePhotoInput = z.object({
-  photo: z.string().max(600_000, "That photo is too large. Try a smaller one.").default(""),
+  photo: z
+    .string()
+    .max(PROFILE_PHOTO_DATA_URL_MAX, "That photo is too large. Try a smaller one.")
+    .default(""),
+  /** Only sent for a GIF, which is stored uncropped; absent means "centred". */
+  crop: photoCropSchema.optional(),
 });
 
 // ── Accounts (admin) ─────────────────────────────────────────────────────────

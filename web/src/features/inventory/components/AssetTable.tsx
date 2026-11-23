@@ -211,7 +211,7 @@ export const AssetTable = memo(function AssetTable({
               <th className="asset-table__th w-[7%] hidden xl:table-cell">Cubicle</th>
               <th className="asset-table__th w-[15%] md:w-[14%] xl:w-[9%]">Status</th>
               <th className="asset-table__th w-[10%] hidden xl:table-cell">Condition</th>
-              <th className="asset-table__th asset-table__th--actions w-[8.5rem] xl:w-[13%]">
+              <th className="asset-table__th asset-table__th--actions w-[5.5rem] xl:w-[7%]">
                 Actions
               </th>
             </tr>

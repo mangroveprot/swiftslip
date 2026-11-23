@@ -81,6 +81,26 @@ export function isExternalApp(app: AppKey): app is ExternalAppKey {
 export const RULE_SCOPES = ["user", "department", "position"] as const;
 export type RuleScope = (typeof RULE_SCOPES)[number];
 
+/**
+ * How a photo is framed inside its circle.
+ *
+ * A cropped still is baked into its 256 × 256 export, so it is always the
+ * identity. An animated GIF is stored exactly as uploaded — cropping it would
+ * keep one frame and freeze it — so its framing travels in these three numbers
+ * and is applied with CSS wherever the face is drawn.
+ *
+ * `x` / `y` are the centre of the visible window as a fraction of the circle's
+ * diameter, so the same crop reads identically at 96 px in the profile card,
+ * 36 px in the sidebar and 20 px in an activity row.
+ */
+export type PhotoCrop = {
+  /** 1 fills the circle; 3 is the cropper's limit. */
+  zoom: number;
+  /** Visible window centre, fraction of the diameter; 0 is the middle. */
+  x: number;
+  y: number;
+};
+
 export type EmployeeProfile = {
   emp_no: string;
   full_name: string;
@@ -110,11 +130,50 @@ export type EmployeeProfile = {
    */
   photo: string;
   /**
+   * How `photo` is framed inside its circle. The identity (1, 0, 0) for every
+   * still and for every photo saved before GIFs; a GIF keeps its animation and
+   * carries its framing here instead of inside the file.
+   */
+  photo_crop: PhotoCrop;
+  /**
    * Supervisor / Department Head, auto-filled into a new form's approver field
    * (`certified_by` on a DTR record, `approved_by` on the OB / LOA / COS / OT
    * forms). Forms keep their own editable copy; this is only the auto-fill source.
    */
   supervisor: string;
+};
+
+/**
+ * One person as the hover card in the admin lists shows them,
+ * `GET /api/users/:id/card`.
+ *
+ * Deliberately smaller than `EmployeeProfile`: no signature, no full row, only
+ * the five lines the card prints plus the face. The wording follows the profile
+ * form: `designation` is the office / branch (`profiles.area`), while
+ * `position` is the job title (`profiles.designation`).
+ */
+export type ProfileCard = {
+  /** The account id, what the list already holds for its avatar. */
+  id: string;
+  /** The sign-in ID, also the employee number, `users.id_number`. */
+  employee_id: string;
+  role: Role;
+  full_name: string;
+  /** Job title, `profiles.designation` ("HR Associate"). */
+  position: string;
+  /** The department the position belongs to, `profiles.department`. */
+  department: string;
+  /** Office / branch, `profiles.area` (the card's "Designation" line). */
+  designation: string;
+  /** The company the person works for, `profiles.employer` (0 = Regasco, 1 = Mindbridge). */
+  employer: Employer;
+  /**
+   * The photo as a signed URL; "" when the person has none. The card draws
+   * initials in that case, exactly like every other avatar.
+   */
+  photo: string;
+  /** Framing for a GIF; the identity fills the circle for a still. */
+  photo_crop: PhotoCrop;
 };
 
 export type DtrEntry = {

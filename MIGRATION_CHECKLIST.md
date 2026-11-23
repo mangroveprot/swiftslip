@@ -213,6 +213,67 @@ auto-fixed at the start of Phase 5). Still not exercised against the real RGC da
       discards the bytes); Remove deletes the row/object immediately. A new showroom still stages,
       because no id exists until create. Photo writes invalidate the showrooms query so the board
       thumbnail updates without saving the form.
+- [x] **Changed 2026-11-23:** Showrooms follows the supplied board mock. Navy stats banner
+      replaced by a light header (title, subtitle, clock); table columns are Showroom / Status /
+      Action required / CCTV / Internet / `…` menu, with the phone cards carrying the same facts.
+      Status and Action required are read live from the showroom's linked "Summary of SR Status and
+      Updates" row — the Summary app is unchanged. The link is `showrooms.linked_update_id`
+      (nullable, partial unique, best-effort FK `on delete set null`), chosen in the drawer's new
+      **Opening info** picker (search, "Use this" suggestion, taken rows greyed, Unlink). The
+      Showroom cell shows the linked row's location under the name and a two-letter tile when there
+      is no photo. Unlinked rows read "Not recorded" in Status, with an underlined "Link showroom"
+      in Action required; `…` offers the same. `GET /inventory/showrooms/link-options` added;
+      `GET/PUT /inventory/showrooms/stock`, `showroom_settings`, `ShowroomStats` and the Excel stock
+      summary block are removed. Excel now exports Location + Status + Action required. In the Status
+      column Ready uses the Summary board's blue dot (`#3b82f6`), while Open stays green. When the
+      linked row also has a saved Google Maps pin, its location under the showroom name is a link
+      with the same external-link icon as the Showroom Updates board; `ShowroomLink` now carries
+      `map_url`, read through `to_jsonb(...) ->> 'map_url'` so a database that has not yet grown the
+      column still answers. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-23:** Assets uses the same `…` row menu as Showrooms. **Edit asset** and
+      **Delete asset** live in the menu; the inline table buttons and phone icons are gone, and the
+      Actions column is narrower. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-23:** My profile's **Emp No.** is now **Employee ID** (plain line in the
+      summary card, no bordered chip), and it is the same value as the login ID. Saving a changed ID
+      updates `users.id_number` after a confirmation dialog (blank or duplicate IDs are refused); an
+      admin ID edit updates `profiles.emp_no`. Profile and photo changes write a `profile.updated`
+      audit row with the changed fields, and admin account edits log ID-number/role changes as
+      old → new. No schema change. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-23:** My profile's identity card follows the reference: name, position on its
+      own line, `department · office` under it, `Employee ID: …` below, and a circular pencil badge on
+      the avatar instead of the "✎ Edit" pill. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-23:** profile photos accept **GIF** and keep it animated. A GIF goes through
+      the same crop dialog, but that step cannot draw it (one canvas frame would freeze it): the
+      dialog previews the animated file and records zoom + pan, and the file is stored byte-for-byte
+      (the API's regex/extension map gained `image/gif`). The framing lives in three new profile
+      columns — `photo_zoom`, `photo_x`, `photo_y`, added by
+      `api/drizzle/migrations/0046_profile_photo_crop.sql`, defaulting to (1, 0, 0) so old photos
+      render unchanged — and is applied with `cropStyle` (`translate/scale`) on top of
+      `object-cover` in every avatar that passes it (profile card, onboarding, sidebar/admin/HR
+      footers, app chooser, updates bar). Bulk lists (`GET /users/photos`) stay centred. Still
+      images stay 256 px WebP baked with the identity crop. One limit, 5 MB: defined once in
+      `shared/src/schemas.ts` (`PROFILE_PHOTO_MAX_BYTES`, plus `PROFILE_PHOTO_DATA_URL_MAX` for the
+      zod string cap — the old 600 000-char cap silently refused anything over ~450 KB), enforced
+      in `api/.../photo-storage.ts` and mirrored by `MAX_PHOTO_MB` in `web/src/lib/photo.ts`, with a
+      unit test keeping the two equal. No pixel cap. `photoUrl()` now caches the signed link for
+      50 min so the browser caches the image; upload/remove drops it. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-23:** hovering a face in the Admin Panel (Dashboard's Latest activity and
+      Sign-ins lists, Activity logs, User management, Active sessions) opens that person's
+      directory card: photo, name, position, then Role · Department · Designation · Employee ID ·
+      Employer, with "(you)" on the viewer's own card and a small caret joining
+      the card to the face it describes. One component,
+      `web/src/components/common/ProfileHoverCard.tsx`, decides own/other from the session and
+      draws initials when there is no photo. The data is one directory read,
+      `GET /api/users/:id/card` → `ProfileCard` (`shared/src/types.ts`, no schema change), fetched
+      only when a card opens and cached for five minutes; a deleted account shows the fallback
+      line instead of a card. Directory reads (`/:id/card` and `/photos`) answer any signed-in
+      employee, not only admins, because Showroom Updates history draws the same faces; listing,
+      creating, editing and deleting accounts stay admin-only. The Employer line is
+      `profiles.employer` (0 = Regasco, 1 = Mindbridge)
+      through `employerLabel()`, not a stored string. The trigger also stops `touchstart` at the
+      face so Radix's (already-refused) touch cancel never reaches React's passive root listener,
+      which is what produced Chrome's "Unable to preventDefault" message on every tap. See
+      `ACTIVITY_LOG.md`.
 
 Intentional changes in Phase 4 (do not "fix" back):
 - Settings mutations no longer return `{ ok:false, level, message }`. They fail with the standard error shape
@@ -967,6 +1028,7 @@ A gzipped `pg_dump` is a few MB, so it costs nothing and runs in seconds.
 | GET | `/auth/session` | public | – | `SessionUser & {apps}` or none when signed out |
 | POST | `/auth/change-password` | user | `changePasswordInput` | – |
 | GET | `/users` | admin | – | `documents`: accounts + profile details |
+| GET | `/users/:id/card` | admin | – | `ProfileCard` (hover card on a face) |
 | POST | `/users` | admin | `createUserInput` | – |
 | PATCH | `/users/:id` | admin | `updateUserInput` | – |
 | DELETE | `/users/:id` | admin | – | – |
@@ -1139,6 +1201,23 @@ like Inventory, but every route is guarded by `requireApp('showroom-updates')`, 
       `sru-print-sheet` class.
 - [x] `npm run typecheck` and `npm run lint` pass (0 errors; 8 pre-existing `react-refresh`
       warnings), `vite build` green, API boots with the route mounted.
+- [x] **Changed 2026-11-23:** every history line in the row drawer now opens with the actor's
+      face, the same hover card as the Admin Panel lists (20 px, initials when there is no photo).
+      Photos come from the shared `["user-photos", …]` batch (`useUserPhotos`, moved from
+      `features/admin` to `features/profile` so a non-admin app can use it); the card read is
+      `GET /api/users/:id/card`. `/users/photos` and `/users/:id/card` now answer any signed-in
+      employee, because this history is shown to every holder of the app; the rest of `/users`
+      stays admin-only. Reusing the existing event `actor_id`, so no migration. See
+      `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-23:** the Location field carries an optional Google Maps link — a pin in
+       the input opens a "Map link" form (URL + label, default "Google Maps"); once saved the tinted
+       pin opens `Google Maps` / edit / remove, everything stages in the drawer until Save changes,
+       and the address itself becomes an underlined link (pencil beside the pin returns the field to
+       typing; blur or Esc restores the link). The board's location line is the same link, with a
+       small external-link icon after the text, opening in a new tab without opening the drawer.
+       Stored as `map_url` + `map_label`, created by the repository's forward-compatible
+       `alter table … add column if not exists` (no runner for the RGC database); both are audited
+       and restorable. Only `http(s)` links pass `isHttpUrl()`. See `ACTIVITY_LOG.md`.
 - [ ] **Owner to run:** paste `0045_showroom_updates_app.sql` in the Supabase SQL Editor (only needed
       before granting the app), then grant it in Admin Panel → App access, open
       `/showroom-updates`, edit a row, check its history, tick rows and delete them, and export

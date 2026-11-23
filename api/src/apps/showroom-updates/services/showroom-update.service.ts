@@ -42,6 +42,8 @@ function describeChanges(
     asText(after.showroomName),
   );
   add('Location', asText(before.location), asText(after.location));
+  add('Map link', asText(before.map_url), asText(after.mapUrl));
+  add('Map label', asText(before.map_label), asText(after.mapLabel));
   add(
     'Status',
     showroomUpdateStatusMeta(before.status)?.label ?? EMPTY,
@@ -90,6 +92,8 @@ const BLANK_ROW: ShowroomUpdate = {
   remarks: null,
   open_date: null,
   vehicle: null,
+  map_url: null,
+  map_label: null,
   updated_by: null,
   updated_at: null,
 };
@@ -101,6 +105,8 @@ function normalized(
     ...input,
     requirements: input.requirements?.trim() || null,
     actionRequired: input.actionRequired?.trim() || null,
+    mapUrl: input.mapUrl?.trim() || null,
+    mapLabel: input.mapLabel?.trim() || null,
   };
 }
 

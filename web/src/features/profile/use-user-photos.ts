@@ -6,14 +6,14 @@ import { getUserPhotos } from "@/api/access-codes.functions";
 /**
  * Profile photos for a batch of account ids, as a plain `id → data URL` map.
  *
- * The admin lists all know which people they are about to draw, so they ask
- * once for that whole set instead of one request per row. The query key is the
- * sorted id set, which means two screens showing the same people share one
- * cache entry, and switching tabs (or opening a log page you just left) costs
- * nothing while it is fresh.
+ * The lists all know which people they are about to draw, so they ask once for
+ * that whole set instead of one request per row. The query key is the sorted id
+ * set, which means two screens showing the same people share one cache entry,
+ * and switching tabs (or opening a log page you just left) costs nothing while
+ * it is fresh.
  *
- * A missing id is normal, that person has no photo, so callers hand the
- * result straight to `<ProfileAvatar>`, which falls back to initials.
+ * A missing id is normal, that person has no photo, so callers hand the result
+ * straight to `<ProfileAvatar>`, which falls back to initials.
  */
 export function useUserPhotos(ids: Array<string | null | undefined>): Record<string, string> {
   const key = [...new Set(ids.filter((id): id is string => !!id))].sort().join(",");

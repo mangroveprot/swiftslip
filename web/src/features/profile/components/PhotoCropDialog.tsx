@@ -9,12 +9,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { PhotoCrop } from "@swiftslip/shared/types";
+
 import {
   clampOffset,
+  cropStyle,
   drawPhoto,
   exportPhoto,
   PHOTO_MAX_ZOOM,
   PHOTO_VIEWPORT,
+  toCrop,
   type PhotoOffset,
   type PhotoSource,
 } from "@/lib/photo";
@@ -22,25 +26,35 @@ import {
 /**
  * "Adjust your photo", the crop step between picking a file and saving it.
  *
- * The circle is drawn with a real canvas fed by the same `drawPhoto` the
- * export uses, so the framing on screen is the framing that gets saved; a CSS
- * `object-fit`/`transform` preview would drift from the exported file the
- * moment the maths changed.
+ * For a still, the circle is drawn with a real canvas fed by the same
+ * `drawPhoto` the export uses, so the framing on screen is the framing that
+ * gets saved; a CSS `object-fit`/`transform` preview would drift from the
+ * exported file the moment the maths changed.
  *
- * Everything is expressed in preview pixels. The output is the same picture at
- * 256 px, which keeps the drag and zoom feel identical to the result.
+ * A GIF cannot be drawn at all without losing its animation, so it is shown as
+ * the animated `<img>` it will become, framed by `cropStyle` — the very helper
+ * every avatar uses. Confirming then saves the framing (`PhotoCrop`) instead of
+ * pixels, and the file reaches the API exactly as it was picked.
+ *
+ * Everything is expressed in preview pixels; the stored crop is normalised by
+ * the viewport so it reads the same at 240 px and 20 px.
  */
 export function PhotoCropDialog({
   open,
   source,
+  motionUrl,
   onCancel,
   onUse,
+  onUseCrop,
 }: {
   open: boolean;
   /** The decoded file being framed; null until one is picked. */
   source: PhotoSource | null;
+  /** Animated preview of a GIF; when set, confirming saves the crop only. */
+  motionUrl?: string | null | undefined;
   onCancel: () => void;
   onUse: (dataUrl: string) => void;
+  onUseCrop: (crop: PhotoCrop) => void;
 }) {
   /**
    * The canvas lives in state, not a ref, because Radix mounts the dialog's
@@ -66,12 +80,14 @@ export function PhotoCropDialog({
     setOffset({ x: 0, y: 0 });
     setError(null);
     dragRef.current = null;
-  }, [open, source]);
+  }, [open, source, motionUrl]);
 
   // Paint the preview. Redrawn on every drag frame and zoom tick, a 240 px
-  // canvas is cheap enough that throttling would only add lag.
+  // canvas is cheap enough that throttling would only add lag. A GIF has no
+  // canvas: it is a live <img> framed by `cropStyle`, because drawing it here
+  // would leave one frozen frame.
   useLayoutEffect(() => {
-    if (!canvas || !source) return;
+    if (!canvas || !source || motionUrl) return;
 
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = PHOTO_VIEWPORT * dpr;
@@ -81,7 +97,7 @@ export function PhotoCropDialog({
     if (!ctx) return;
 
     drawPhoto(ctx, source, PHOTO_VIEWPORT, zoom, offset, PHOTO_VIEWPORT * dpr);
-  }, [canvas, source, zoom, offset]);
+  }, [canvas, source, zoom, offset, motionUrl]);
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!source) return;
@@ -115,6 +131,11 @@ export function PhotoCropDialog({
   };
 
   const onConfirm = () => {
+    // A GIF keeps its bytes: only where the circle sits is sent to the API.
+    if (motionUrl) {
+      onUseCrop(toCrop(PHOTO_VIEWPORT, zoom, offset));
+      return;
+    }
     if (!source) return;
     try {
       onUse(exportPhoto(source, PHOTO_VIEWPORT, zoom, offset));
@@ -132,7 +153,9 @@ export function PhotoCropDialog({
         <DialogHeader>
           <DialogTitle>Adjust your photo</DialogTitle>
           <DialogDescription>
-            Drag to move it. The circle is what people will see.
+            {motionUrl
+              ? "Drag to move it. The circle is what people will see, and the GIF keeps moving."
+              : "Drag to move it. The circle is what people will see."}
           </DialogDescription>
         </DialogHeader>
 
@@ -147,11 +170,20 @@ export function PhotoCropDialog({
             className="relative cursor-grab touch-none overflow-hidden rounded-full border border-border bg-muted active:cursor-grabbing"
             style={{ width: PHOTO_VIEWPORT, height: PHOTO_VIEWPORT }}
           >
-            <canvas
-              ref={setCanvas}
-              style={{ width: PHOTO_VIEWPORT, height: PHOTO_VIEWPORT }}
-              className="block select-none"
-            />
+            {motionUrl ? (
+              <img
+                src={motionUrl}
+                alt=""
+                className="size-full object-cover"
+                style={cropStyle(toCrop(PHOTO_VIEWPORT, zoom, offset))}
+              />
+            ) : (
+              <canvas
+                ref={setCanvas}
+                style={{ width: PHOTO_VIEWPORT, height: PHOTO_VIEWPORT }}
+                className="block select-none"
+              />
+            )}
             {/* A soft inner ring so the circle edge reads on a light photo. */}
             <span
               className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-inset ring-black/10"
@@ -177,7 +209,9 @@ export function PhotoCropDialog({
             className="w-full accent-primary"
           />
           <p className="text-center text-xs text-muted-foreground">
-            Saved as a 256 × 256 px square.
+            {motionUrl
+              ? "Saved as the original GIF, with this framing."
+              : "Saved as a 256 × 256 px square."}
           </p>
           {error ? (
             <p role="alert" className="text-center text-xs font-medium text-destructive">

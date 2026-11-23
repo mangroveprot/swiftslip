@@ -21,14 +21,14 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
-import { ProfileAvatar } from "@/components/common/ProfileAvatar";
+import { ProfileHoverCard } from "@/components/common/ProfileHoverCard";
 import { Input } from "@/components/ui/input";
+import { useUserPhotos } from "@/features/profile/use-user-photos";
 import { useUrlState } from "@/lib/use-url-state";
 import { ACTION_LABELS } from "@swiftslip/shared/activity";
 import { ACTIVITY_LOG_PAGE_SIZE } from "@swiftslip/shared/schemas";
 import { ACTIVITY_LOG_TAB_KEYS, type ActivityLogTab } from "../lib/admin-search";
 import { activityLogCountsQueryOptions, activityLogsQueryOptions } from "../queries";
-import { useUserPhotos } from "../use-user-photos";
 
 type Filter = "all" | ActivityLogTab;
 type Range = "today" | "7d" | "30d";
@@ -166,8 +166,12 @@ function formatAccountDetail(detail: string | null) {
       const key = part.slice(0, index).trim();
       const value = part.slice(index + 1).trim();
       if (key === "role") {
-        const role = value === "user" ? "Staff" : value === "admin" ? "Administrator" : value;
-        return `Role: ${role}`;
+        const roleName = (value: string) =>
+          value === "user" ? "Staff" : value === "admin" ? "Administrator" : value;
+        return `Role: ${value
+          .split("→")
+          .map((part) => roleName(part.trim()))
+          .join(" → ")}`;
       }
       if (key === "designation") return `Designation: ${value}`;
       if (key === "department") return `Department: ${value}`;
@@ -200,6 +204,8 @@ function secondaryFor(row: LogRow) {
       return null;
     case "user.updated":
       return formatAccountDetail(row.detail) || null;
+    case "profile.updated":
+      return row.detail || null;
     case "attachment.uploaded":
     case "attachment.removed":
     case "ob.created":
@@ -265,6 +271,8 @@ function entryMain(row: LogRow): ReactNode {
           {actor} updated the account for <Target value={row.target} />
         </>
       );
+    case "profile.updated":
+      return <>{actor} updated their profile</>;
     case "user.deleted":
       return (
         <>
@@ -421,6 +429,7 @@ function iconFor(action: string): LucideIcon {
     case "user.created":
     case "user.updated":
     case "user.deleted":
+    case "profile.updated":
       return UserRound;
     case "attachment.uploaded":
     case "attachment.removed":
@@ -576,7 +585,14 @@ function EntryRow({ row, photo }: { row: LogRow; photo?: string | undefined }) {
         shared a left edge, the misalignment this replaces.
       */}
       <div className="flex items-start gap-2">
-        <ProfileAvatar photo={photo} name={actorName(row)} size={20} className="mt-px" />
+        <ProfileHoverCard
+          userId={row.actor_id}
+          photo={photo}
+          name={actorName(row)}
+          size={20}
+          className="mt-px"
+          profileTo="/admin/profile"
+        />
         <div className="min-w-0">
           <p className="text-sm leading-5">{entryMain(row)}</p>
           {secondary ? (
@@ -634,7 +650,14 @@ function AccessGroupRow({
       }
     >
       <div className="flex items-start gap-2">
-        <ProfileAvatar photo={photo} name={actorName(newest)} size={20} className="mt-px" />
+        <ProfileHoverCard
+          userId={newest.actor_id}
+          photo={photo}
+          name={actorName(newest)}
+          size={20}
+          className="mt-px"
+          profileTo="/admin/profile"
+        />
         <div className="min-w-0">
           <p className="text-sm leading-5">
             <span className="font-medium text-foreground">{actorName(newest)}</span> changed app

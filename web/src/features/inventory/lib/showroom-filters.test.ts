@@ -14,6 +14,8 @@ function showroom(overrides: Partial<Showroom> = {}): Showroom {
     notes: null,
     created_at: null,
     updated_at: null,
+    linked_update_id: null,
+    link: null,
     ...overrides,
   };
 }

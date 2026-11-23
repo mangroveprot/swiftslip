@@ -297,6 +297,8 @@ const COLUMNS = `
   remarks,
   open_date::text as open_date,
   vehicle,
+  map_url,
+  map_label,
   updated_by,
   updated_at::text as updated_at
 `;
@@ -365,6 +367,8 @@ export class ShowroomUpdateRepository extends RgcRepository {
             remarks text,
             open_date date,
             vehicle text,
+            map_url text,
+            map_label text,
             updated_by text,
             created_at timestamp without time zone not null
               default (now() at time zone 'utc'),
@@ -385,6 +389,14 @@ export class ShowroomUpdateRepository extends RgcRepository {
         await sql`
           create unique index if not exists showroom_updates_name_unique
           on showroom_updates (lower(btrim(showroom_name)))`;
+
+        // The map pin arrived after the file was created; `create table if not
+        // exists` above cannot add columns to an existing board, so widen it
+        // here (idempotent, runs on every boot).
+        await sql`
+          alter table showroom_updates
+            add column if not exists map_url text,
+            add column if not exists map_label text`;
 
         // One audit row per save. The FK cascades, so a removed showroom cannot
         // leave history behind.
@@ -461,6 +473,51 @@ export class ShowroomUpdateRepository extends RgcRepository {
   }
 
   /**
+   * The columns the inventory board mirrors for its linked showrooms. Read-only
+   * and guarded by `to_regclass`: the Summary tables are created lazily, so the
+   * inventory board must still answer when this board was never opened.
+   */
+  findLinksByIds(
+    ids: number[],
+  ): Promise<
+    Array<
+      Pick<
+        ShowroomUpdate,
+        | 'update_id'
+        | 'showroom_name'
+        | 'location'
+        | 'status'
+        | 'action_required'
+        | 'map_url'
+      >
+    >
+  > {
+    if (ids.length === 0) return Promise.resolve([]);
+    return this.run(async (sql) => {
+      const exists = await sql<[{ ok: boolean }]>`
+        select to_regclass('showroom_updates') is not null as ok`;
+      if (!exists[0]?.ok) return [];
+      return sql<
+        Array<
+          Pick<
+            ShowroomUpdate,
+            | 'update_id'
+            | 'showroom_name'
+            | 'location'
+            | 'status'
+            | 'action_required'
+            | 'map_url'
+          >
+        >
+      >`
+        select update_id, showroom_name, location, status, action_required,
+               to_jsonb(showroom_updates) ->> 'map_url' as map_url
+        from showroom_updates
+        where update_id = any(${ids})`;
+    });
+  }
+
+  /**
    * Write one edit and its audit line in one transaction, so a save can never
    * land without a history entry (or the reverse).
    */
@@ -484,6 +541,8 @@ export class ShowroomUpdateRepository extends RgcRepository {
             remarks = ${input.remarks},
             open_date = ${input.openDate},
             vehicle = ${input.vehicle},
+            map_url = ${input.mapUrl},
+            map_label = ${input.mapLabel},
             updated_by = ${actor.label},
             updated_at = ${utcNow()}
           where update_id = ${updateId}
@@ -524,12 +583,13 @@ export class ShowroomUpdateRepository extends RgcRepository {
           insert into showroom_updates
             (sr_no, showroom_name, location, status, requirements,
              action_required, responsible_person, remarks, open_date, vehicle,
-             updated_by, updated_at)
+             map_url, map_label, updated_by, updated_at)
           values
             (${nextNo}, ${input.showroomName}, ${input.location}, ${input.status},
              ${input.requirements}, ${input.actionRequired},
              ${input.responsiblePerson}, ${input.remarks}, ${input.openDate},
-             ${input.vehicle}, ${actor.label}, ${utcNow()})
+             ${input.vehicle}, ${input.mapUrl}, ${input.mapLabel},
+             ${actor.label}, ${utcNow()})
           returning ${tx.unsafe(COLUMNS)}`;
         const created = rows[0];
         if (!created) {

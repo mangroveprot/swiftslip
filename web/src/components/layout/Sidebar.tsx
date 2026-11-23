@@ -43,8 +43,8 @@ export function Sidebar({
   const sublabel = label && label !== caption ? caption : undefined;
   // The profile photo, if one has been set, one cached entry shared by every
   // screen that shows a face. The footer falls back to initials while it
-  // loads, so this never blocks paint.
-  const photo = useProfilePhoto();
+  // loads, so this never blocks paint; `crop` keeps a GIF's framing.
+  const { photo, crop } = useProfilePhoto();
 
   return (
     <SidebarShell>
@@ -87,7 +87,7 @@ export function Sidebar({
 
       {/* The identity block IS the account entry: clicking it opens My
           Account, which is why the old "Account" nav row is gone. */}
-      <SidebarFooter name={name} photo={photo} sublabel={sublabel} to="/profile">
+      <SidebarFooter name={name} photo={photo} crop={crop} sublabel={sublabel} to="/profile">
         <NotificationBell variant="row" inDrawer={inDrawer} onNavigate={onNavigate} />
         {/* Shown when there is more than one app to move between. Keyed on the
             resolved grants rather than the role: a staff account given the

@@ -1,9 +1,9 @@
 import type { z } from "zod";
 
-import { api, documentsOf, seg } from "@/lib/api-client";
+import { api, documentOf, documentsOf, seg } from "@/lib/api-client";
 import type { AccountListItem } from "@swiftslip/shared/api-types";
 import type { changePasswordInput, idInput, upsertCodeInput } from "@swiftslip/shared/schemas";
-import type { AccountPhoto } from "@swiftslip/shared/types";
+import type { AccountPhoto, ProfileCard } from "@swiftslip/shared/types";
 
 export const listCodes = async () => documentsOf(await api.get<AccountListItem>("/users"));
 
@@ -18,6 +18,16 @@ export const getUserPhotos = async (ids: string[]) =>
   ids.length === 0
     ? []
     : documentsOf(await api.get<AccountPhoto>("/users/photos", { ids: ids.join(",") }));
+
+/**
+ * One person's directory card, what the hover card on a face asks for.
+ * Directory data, not account administration: any signed-in employee may read
+ * it, because the Showroom Updates history shows the same card outside the
+ * Admin Panel. The caller fetches it when the face is hovered, not in the batch
+ * the list already loads.
+ */
+export const getProfileCard = async (id: string) =>
+  documentOf(await api.get<ProfileCard>(`/users/${seg(id)}/card`));
 
 /** Create (no `id`) or edit (with `id`) an account. Blank password keeps the current one. */
 export const upsertCode = async ({ data }: { data: z.input<typeof upsertCodeInput> }) => {

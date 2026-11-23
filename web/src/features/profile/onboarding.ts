@@ -59,10 +59,26 @@ export function profileGaps(
   };
 }
 
-/** Profile for the sign-in gate. A failed read must not trap the welcome. */
+/**
+ * Profile for the sign-in gate.
+ *
+ * The gate must never hold a navigation hostage. Once the query exists this
+ * reads whatever the cache has *right now*: on a slow connection the chooser's
+ * own profile request can still be in flight when a card is clicked, and
+ * awaiting it kept the chooser on screen — no new page, no skeleton — for as
+ * long as that request took. A missing profile then just skips the welcome for
+ * this one navigation; it is a nudge, not a security boundary, and `/choose`
+ * (the screen every sign-in passes through) is where the welcome is decided.
+ *
+ * The first read on a cold load has no query at all, so that one still fetches;
+ * otherwise a first-time visitor would never be offered the welcome. A failed
+ * read never traps it either.
+ */
 export async function loadProfileForGate(
   queryClient: QueryClient,
 ): Promise<EmployeeProfile | undefined> {
+  const state = queryClient.getQueryState<EmployeeProfile>(profileQueryOptions().queryKey);
+  if (state) return state.data;
   try {
     return await queryClient.ensureQueryData(profileQueryOptions());
   } catch {

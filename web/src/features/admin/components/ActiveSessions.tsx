@@ -6,15 +6,15 @@ import { revokeSessionFn } from "@/api/admin.functions";
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { PageTitle } from "@/components/common/PageTitle";
-import { ProfileAvatar } from "@/components/common/ProfileAvatar";
+import { ProfileHoverCard } from "@/components/common/ProfileHoverCard";
 import { Input } from "@/components/ui/input";
+import { useUserPhotos } from "@/features/profile/use-user-photos";
 import { plural } from "@/lib/format";
 import { friendlyError, toast } from "@/lib/toast";
 import type { ActiveSession } from "@swiftslip/shared/api-types";
 import { formatDateTime, relativeTime } from "@swiftslip/shared/time";
 import { describeDevice } from "../lib/device";
 import { activeSessionsQueryOptions } from "../queries";
-import { useUserPhotos } from "../use-user-photos";
 
 /**
  * Active sessions: one row per device that is signed in right now.
@@ -155,11 +155,13 @@ export function ActiveSessions() {
                   <tr key={row.id} className="border-b last:border-b-0">
                     <td className="py-4 pr-4 align-middle">
                       <div className="flex items-center gap-3">
-                        <ProfileAvatar
+                        <ProfileHoverCard
+                          userId={row.userId}
                           photo={photos[row.userId]}
                           name={row.name}
                           size={32}
                           className="shrink-0"
+                          profileTo="/admin/profile"
                         />
                         <div className="min-w-0">
                           <p className="flex items-baseline gap-2">
@@ -233,11 +235,13 @@ export function ActiveSessions() {
               <div key={row.id} className="border-b py-4 last:border-b-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
-                    <ProfileAvatar
+                    <ProfileHoverCard
+                      userId={row.userId}
                       photo={photos[row.userId]}
                       name={row.name}
                       size={36}
                       className="shrink-0"
+                      profileTo="/admin/profile"
                     />
                     <div className="min-w-0">
                       <p className="flex items-baseline gap-2">

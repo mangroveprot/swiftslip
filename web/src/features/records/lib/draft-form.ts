@@ -22,6 +22,7 @@ export const EMPTY_PROFILE: EmployeeProfile = {
   employer: 1,
   signature: "",
   photo: "",
+  photo_crop: { zoom: 1, x: 0, y: 0 },
   supervisor: "",
 };
 

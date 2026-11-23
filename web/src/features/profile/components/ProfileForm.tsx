@@ -3,6 +3,7 @@ import { Pencil, Trash2, Upload } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { saveMyProfile, saveMyPhoto } from "@/api/profile.functions";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -17,9 +18,12 @@ import { SignatureField } from "@/features/records/components/SignaturePad";
 import { OrgSelect } from "@/components/common/OrgSelect";
 import { PageTitle } from "@/components/common/PageTitle";
 import {
+  IDENTITY_CROP,
+  isAnimatedGif,
   MAX_PHOTO_BYTES,
   MAX_PHOTO_MB,
   PHOTO_ACCEPT,
+  readFileDataUrl,
   readPhotoFile,
   type PhotoSource,
 } from "@/lib/photo";
@@ -30,9 +34,10 @@ import {
   normalizePosition,
   positionsUnder,
 } from "@swiftslip/shared/org";
-import type { EmployeeProfile } from "@swiftslip/shared/types";
+import type { EmployeeProfile, PhotoCrop } from "@swiftslip/shared/types";
 import { orgOptionsQueryOptions } from "@/features/admin/queries";
 import { profileQueryOptions } from "../queries";
+import { idNumberChangeNotice } from "../lib/id-number";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { PhotoCropDialog } from "./PhotoCropDialog";
 
@@ -45,6 +50,7 @@ const empty: EmployeeProfile = {
   employer: 1,
   signature: "",
   photo: "",
+  photo_crop: IDENTITY_CROP,
   supervisor: "",
 };
 
@@ -52,8 +58,14 @@ const FIELDS: Array<{
   key: "emp_no" | "full_name" | "supervisor";
   label: string;
   placeholder?: string;
+  hint?: string;
 }> = [
-  { key: "emp_no", label: "Emp No.", placeholder: "e.g. 2024-0113" },
+  {
+    key: "emp_no",
+    label: "Employee ID",
+    placeholder: "e.g. 2024-0113",
+    hint: "Also your sign-in ID.",
+  },
   { key: "full_name", label: "Full name", placeholder: "Juan Dela Cruz" },
   {
     key: "supervisor",
@@ -87,7 +99,15 @@ export function ProfileForm() {
   const [positionInvalid, setPositionInvalid] = useState(false);
   /** The picked file, decoded and waiting in the crop dialog. */
   const [cropSource, setCropSource] = useState<PhotoSource | null>(null);
+  /**
+   * A GIF waiting in the crop dialog: the bytes that will be uploaded exactly
+   * as picked, plus its dimensions for the drag clamps. The dialog previews it
+   * live, because a canvas would freeze the animation.
+   */
+  const [motion, setMotion] = useState<{ dataUrl: string; source: PhotoSource } | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
+  /** Open while a save would change the ID used to sign in. */
+  const [idConfirmOpen, setIdConfirmOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -140,7 +160,10 @@ export function ProfileForm() {
       ? [...baseDepartments, impliedDepartment]
       : baseDepartments;
 
-  async function onSave() {
+  // The warning shown before Save if the sign-in ID is about to change.
+  const pendingIdNotice = idNumberChangeNotice(original.emp_no, form.emp_no);
+
+  function onSave() {
     // Refuse rather than store an empty value: choosing "Others…" and hitting
     // Save with nothing typed would wipe the employee's org fields.
     if (deptInvalid) {
@@ -155,7 +178,21 @@ export function ProfileForm() {
       toast.error("Please specify the position, or pick one from the list.");
       return;
     }
+    if (!form.emp_no.trim()) {
+      toast.error("Enter your Employee ID. It is also the ID you sign in with.");
+      return;
+    }
+    // The ID is now the login ID. Say so before the account row moves, rather
+    // than letting the next sign-in be the first the user hears of it.
+    if (pendingIdNotice) {
+      setIdConfirmOpen(true);
+      return;
+    }
+    void persistProfile();
+  }
 
+  async function persistProfile() {
+    const previousId = original.emp_no;
     setBusy(true);
     try {
       const saved = await saveMyProfile({ data: form });
@@ -166,7 +203,14 @@ export function ProfileForm() {
       // new photo would otherwise take up to its 5-minute staleTime to show up
       // beside your own name in the activity log.
       await qc.invalidateQueries({ queryKey: ["user-photos"] });
-      toast.success("Profile saved");
+      // The session carries the login ID too; refresh it when that changed so
+      // the rest of the app sees the new number straight away.
+      if (saved.emp_no !== previousId) {
+        await qc.invalidateQueries({ queryKey: ["session"] });
+        toast.success(`Profile saved. Sign in with ${saved.emp_no} next time.`);
+      } else {
+        toast.success("Profile saved");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed.");
     } finally {
@@ -180,11 +224,30 @@ export function ProfileForm() {
       toast.error(`That photo is over ${MAX_PHOTO_MB} MB. Pick a smaller one.`);
       return;
     }
+    // A GIF is never drawn on a canvas — that would keep one frame and freeze
+    // it — so it arrives at the cropper as a live preview and leaves as the
+    // same bytes plus the framing the user chose.
+    if (isAnimatedGif(file)) {
+      try {
+        const [dataUrl, source] = await Promise.all([readFileDataUrl(file), readPhotoFile(file)]);
+        if (!source) {
+          toast.error("That GIF couldn't be read. Try picking it again.");
+          return;
+        }
+        setMotion({ dataUrl, source });
+        setCropSource(null);
+        setCropOpen(true);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "That file couldn't be read.");
+      }
+      return;
+    }
     const source = await readPhotoFile(file);
     if (!source) {
       toast.error("That file couldn't be read as an image.");
       return;
     }
+    setMotion(null);
     setCropSource(source);
     setCropOpen(true);
   }
@@ -199,25 +262,36 @@ export function ProfileForm() {
    * the circle changes the instant the cropper closes, and rolled back if the
    * request fails.
    */
-  async function applyPhoto(photo: string) {
+  async function applyPhoto(photo: string, crop: PhotoCrop = IDENTITY_CROP) {
     setCropOpen(false);
     setCropSource(null);
+    setMotion(null);
 
-    const previous = form.photo;
-    setForm((current) => ({ ...current, photo }));
+    const previous = { photo: form.photo, photo_crop: form.photo_crop };
+    // A GIF shows the chosen framing straight away, still animated, because it
+    // is the same `<img>` with the same `cropStyle` the cropper previewed.
+    setForm((current) => ({ ...current, photo, photo_crop: crop }));
     setBusy(true);
     try {
-      const saved = await saveMyPhoto({ data: { photo } });
-      setForm((current) => ({ ...current, photo: saved.photo }));
+      const saved = await saveMyPhoto({ data: { photo, crop } });
+      setForm((current) => ({
+        ...current,
+        photo: saved.photo,
+        photo_crop: saved.photo_crop,
+      }));
       // `original` follows, so the photo alone never leaves the form dirty.
-      setOriginal((current) => ({ ...current, photo: saved.photo }));
+      setOriginal((current) => ({
+        ...current,
+        photo: saved.photo,
+        photo_crop: saved.photo_crop,
+      }));
       await qc.invalidateQueries({ queryKey: profileQueryOptions().queryKey });
       // The admin lists cache photos by account id, refresh them so the new
       // face appears beside this person's name straight away.
       await qc.invalidateQueries({ queryKey: ["user-photos"] });
       toast.success(photo ? "Photo updated" : "Photo removed");
     } catch (e) {
-      setForm((current) => ({ ...current, photo: previous }));
+      setForm((current) => ({ ...current, ...previous }));
       toast.error(e instanceof Error ? e.message : "That photo could not be saved.");
     } finally {
       setBusy(false);
@@ -225,7 +299,12 @@ export function ProfileForm() {
   }
 
   const displayName = form.full_name.trim() || session?.label || "Your name";
-  const roleLine = [form.designation, form.department].filter(Boolean).join(" · ");
+  // The reference reads top to bottom: position, then department · office,
+  // then the ID. Each gap is its own answer, so one missing field does not
+  // drag the others onto a placeholder line.
+  const positionLine = form.designation.trim() || "Add your position";
+  const officeLine =
+    [form.department, form.area].filter(Boolean).join(" · ") || "Add your department and office";
 
   return (
     <main className="mx-auto max-w-xl space-y-6 px-6 py-10">
@@ -236,8 +315,8 @@ export function ProfileForm() {
             My profile
           </PageTitle>
           <p className="mt-2 text-sm text-muted-foreground">
-            These details and your signature fill in automatically whenever you create a new time
-            record or form. Your supervisor pre-fills the approver field on each one.
+            Your details and signature are filled in automatically on every new time record or form.
+            The approver field is pre-filled with your supervisor.
           </p>
         </div>
         {session ? (
@@ -254,16 +333,17 @@ export function ProfileForm() {
       <section className="rounded-xl border bg-card p-4 shadow-sm">
         <div className="flex items-start gap-4">
           {/*
-            The Edit pill hangs off the bottom edge of the circle, so the
-            wrapper reserves that height itself, the card's padding alone
-            would leave the pill floating inside the avatar instead of
-            straddling its edge the way the reference shows.
+            The pencil badge sits on the avatar's lower-right edge, like the
+            reference, so it reads as part of the photo rather than as a second
+            button in the card. The badge may hang a few pixels outside the
+            circle; the card's own padding keeps it off the border.
           */}
-          <div className="relative shrink-0 pb-3">
+          <div className="relative shrink-0">
             <ProfileAvatar
               photo={form.photo}
               name={displayName}
               size={96}
+              crop={form.photo_crop}
               className="ring-1 ring-border"
             />
 
@@ -272,10 +352,11 @@ export function ProfileForm() {
                 <button
                   type="button"
                   disabled={busy}
-                  className="absolute bottom-0 left-1/2 inline-flex -translate-x-1/2 cursor-pointer items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Change profile photo"
+                  title="Change profile photo"
+                  className="absolute -right-1 -bottom-1 inline-flex size-8 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Pencil className="size-3" aria-hidden="true" />
-                  Edit
+                  <Pencil className="size-3.5" aria-hidden="true" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56 bg-card text-foreground">
@@ -297,7 +378,7 @@ export function ProfileForm() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <p className="px-2 py-1.5 text-xs leading-relaxed text-muted-foreground">
-                  JPG, PNG or WebP, up to {MAX_PHOTO_MB} MB.
+                  JPG, PNG, GIF or WebP, up to {MAX_PHOTO_MB} MB.
                 </p>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -320,18 +401,12 @@ export function ProfileForm() {
           </div>
 
           <div className="min-w-0 flex-1 pt-1">
-            <p className="truncate text-xl font-bold tracking-tight">{displayName}</p>
-            <p className="mt-1 truncate text-sm text-muted-foreground">
-              {roleLine || "Add your position and department"}
-            </p>
-            <p className="truncate text-sm text-muted-foreground">
-              {form.area || "Add the office you report to"}
-            </p>
+            <p className="truncate text-xl font-bold tracking-tight sm:text-2xl">{displayName}</p>
+            <p className="mt-2 truncate text-sm font-medium">{positionLine}</p>
+            <p className="mt-1 truncate text-sm text-muted-foreground">{officeLine}</p>
             {form.emp_no ? (
-              <p className="mt-2">
-                <span className="inline-flex rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                  Emp No. {form.emp_no}
-                </span>
+              <p className="mt-1 truncate text-sm text-muted-foreground">
+                Employee ID: {form.emp_no}
               </p>
             ) : null}
           </div>
@@ -356,6 +431,7 @@ export function ProfileForm() {
               key={f.key}
               label={f.label}
               placeholder={f.placeholder}
+              hint={f.hint}
               value={form[f.key]}
               onChange={(v) => setForm({ ...form, [f.key]: v })}
             />
@@ -436,16 +512,36 @@ export function ProfileForm() {
 
       <ChangePasswordForm />
 
+      {/* The employee number is the login ID now. Ask before Save commits it. */}
+      <ConfirmDialog
+        open={idConfirmOpen}
+        onOpenChange={setIdConfirmOpen}
+        title="Change your Employee ID?"
+        description={pendingIdNotice ?? ""}
+        confirmLabel="Use new Employee ID"
+        cancelLabel="Keep current"
+        destructive={false}
+        busy={busy}
+        onConfirm={() => {
+          setIdConfirmOpen(false);
+          void persistProfile();
+        }}
+      />
+
       {/* Framing happens on the photo only. Confirming saves it straight away,
-          so there is nothing to remember to press afterwards. */}
+          so there is nothing to remember to press afterwards. A GIF is framed
+          live and keeps its bytes, so the animation survives the crop. */}
       <PhotoCropDialog
         open={cropOpen}
-        source={cropSource}
+        source={motion?.source ?? cropSource}
+        motionUrl={motion?.dataUrl}
         onCancel={() => {
           setCropOpen(false);
           setCropSource(null);
+          setMotion(null);
         }}
         onUse={(dataUrl) => void applyPhoto(dataUrl)}
+        onUseCrop={(crop) => void applyPhoto(motion?.dataUrl ?? "", crop)}
       />
     </main>
   );
@@ -456,11 +552,13 @@ function Field({
   value,
   onChange,
   placeholder,
+  hint,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string | undefined;
+  hint?: string | undefined;
 }) {
   // Three of these render side by side, so the id has to be unique per instance.
   const fieldId = useId().replace(/:/g, "");
@@ -479,6 +577,7 @@ function Field({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
+      {hint ? <span className="mt-1 block text-xs text-muted-foreground">{hint}</span> : null}
     </label>
   );
 }

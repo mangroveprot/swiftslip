@@ -88,6 +88,8 @@ different code. `suggestions` defaults to `[]` (`response.ts:12`).
 | Module | Route | Code | HTTP | Message (exact) | Trigger condition | File:line |
 | --- | --- | --- | --- | --- | --- | --- |
 | users | `GET /api/users` | `INTERNAL_SERVER_ERROR` | 500 | raw `error.message` | List query throws | `apps/users/services/user.service.ts:117` |
+| users | `GET /api/users/:id/card` | `NOT_FOUND_ERROR` | 404 | `That account no longer exists.` | Account row gone (e.g. a deleted actor in an old log page) | `apps/users/services/user.service.ts:143` |
+| users | `GET /api/users/:id/card` | `INTERNAL_SERVER_ERROR` | 500 | raw `error.message` | Card read throws | `apps/users/services/user.service.ts:180` |
 | users | `GET /api/users/photos` | `INTERNAL_SERVER_ERROR` | 500 | raw `error.message` | Photo lookup throws | `apps/users/services/user.service.ts:226` |
 | users | `POST /api/users` | `INTERNAL_SERVER_ERROR` | 500 | raw `error.message` | Create throws | `apps/users/services/user.service.ts:181` |
 | users | `POST /api/users`, `PATCH /api/users/:id` | `VALIDATION_ERROR` | 400 | `Password must be at least 4 characters.` | `password` missing on create (required) or too short on either | `apps/users/services/user.service.ts:354` |
@@ -108,8 +110,8 @@ different code. `suggestions` defaults to `[]` (`response.ts:12`).
 | --- | --- | --- | --- | --- | --- | --- |
 | profile | `GET /api/profile/me` | `INTERNAL_SERVER_ERROR` | 500 | raw `error.message` | Read throws | `apps/profile/services/profile.service.ts:53` |
 | profile | `PUT /api/profile/me` | `INTERNAL_SERVER_ERROR` | 500 | raw `error.message` | Write throws | `apps/profile/services/profile.service.ts:103` |
-| profile | `PUT /api/profile/me`, `PUT /api/profile/me/photo` | `VALIDATION_ERROR` | 400 | `That photo could not be read. Pick a JPG, PNG or WebP image.` | `photo` is not a `data:image/…;base64,…` URL | `apps/profile/services/photo-storage.ts:73` |
-| profile | `PUT /api/profile/me`, `PUT /api/profile/me/photo` | `PAYLOAD_TOO_LARGE` | 413 | `That photo is too large.` | Decoded photo over `PROFILE_PHOTO_MAX_BYTES` (2 MB) | `apps/profile/services/photo-storage.ts:84` |
+| profile | `PUT /api/profile/me`, `PUT /api/profile/me/photo` | `VALIDATION_ERROR` | 400 | `That photo could not be read. Pick a JPG, PNG, GIF or WebP image.` | `photo` is not a `data:image/…;base64,…` URL | `apps/profile/services/photo-storage.ts:113` |
+| profile | `PUT /api/profile/me`, `PUT /api/profile/me/photo` | `PAYLOAD_TOO_LARGE` | 413 | `That photo is too large.` | Decoded photo over `PROFILE_PHOTO_MAX_BYTES` (5 MB, `shared/src/schemas.ts`) | `apps/profile/services/photo-storage.ts:122` |
 | profile | `PUT /api/profile/me/photo` | `INTERNAL_SERVER_ERROR` | 500 | raw `error.message` | Upload or row update throws | `apps/profile/services/profile.service.ts:178` |
 
 ---
@@ -437,7 +439,7 @@ Nine kinds are enough to drive the whole web error layer. Each row maps 1:1 to a
 | 1 | **Sign in again** | `UNAUTHORIZED` | 401 | Redirect to `/sign-in`, keep the intended path | Only 3 throw sites, but they cover every guarded route |
 | 2 | **No permission** | `FORBIDDEN` | 403 | "You don't have access to this app" panel, not a toast | Covers admin guard, app grant, and the file-proxy host check — three very different causes behind one code |
 | 3 | **Fix a field** | `VALIDATION_ERROR`, `REQUIRED_FIELD_MISSING`, `BAD_REQUEST` | 400 | Inline highlight + focus the first bad field; `suggestions` carries the paths/labels | `BAD_REQUEST` is overloaded: also used for business refusals (see #5) |
-| 4 | **Upload rejected** | `UNSUPPORTED_MEDIA_TYPE`, `PAYLOAD_TOO_LARGE` | 415 / 413 | Stay in the file picker, name the limit | Three different size limits (15 MB body, 10 MB attachment, 2 MB photo, 200 KB thumb) |
+| 4 | **Upload rejected** | `UNSUPPORTED_MEDIA_TYPE`, `PAYLOAD_TOO_LARGE` | 415 / 413 | Stay in the file picker, name the limit | Three different size limits (15 MB body, 10 MB attachment, 5 MB photo, 200 KB thumb) |
 | 5 | **Business rule refusal** | `FORM_LOCKED`, `IN_USE_ERROR`, `REFERENCED_ERROR`, `RETENTION_DISABLED`, `CLEANUP_IN_PROGRESS`, part of `BAD_REQUEST` | 400 / 409 | Toast with the sentence as written; the message *is* the instruction | This is the bucket that most needs exact copy, and where the inconsistencies cluster |
 | 6 | **Gone or stale** | `NOT_FOUND_ERROR` | 404 | "This was removed" + refresh the list | Four different sentence styles for the same situation (Appendix A, finding 5) |
 | 7 | **Slow down** | `TOO_MANY_REQUESTS` | 429 | Countdown, disable the button | Three unrelated causes: IP limiter, sign-in throttle, AI quota |
@@ -563,7 +565,7 @@ constraint`. It should be a 500 (a bug) or a 400 with a friendly field name.
 | --- | --- | --- |
 | 15 MB JSON body | `The request is too large.` | no |
 | 10 MB attachment | `Attachments must be 10 MB or smaller.` | yes (hard-coded in `upload.ts:3`; independent of the configurable `MAX_UPLOAD_MB`) |
-| 2 MB profile photo | `That photo is too large.` | no |
+| 5 MB profile photo | `That photo is too large.` | no |
 | 200 KB thumbnail | `That preview is too large.` | no |
 
 The attachment limit is a literal `10 * 1024 * 1024` in `upload.ts:3`, separate from `MAX_UPLOAD_MB`

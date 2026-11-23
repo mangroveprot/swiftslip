@@ -13,6 +13,8 @@
 import { z } from "zod";
 
 import { MAX_THUMB_BASE64, MAX_UPLOAD_BASE64 } from "./schemas";
+import type { ShowroomUpdateStatus } from "./showroom-updates";
+import { showroomUpdateStatusMeta } from "./showroom-updates";
 
 /* ------------------------------------------------------------------ rows - */
 
@@ -43,11 +45,48 @@ export type Showroom = {
   created_at: string | null;
   updated_at: string | null;
   /**
+   * The "Summary of SR Status and Updates" row this showroom follows. Status
+   * and Action required are READ from that row; the inventory only edits the
+   * CCTV / internet facts. Null when the showroom is not linked yet.
+   */
+  linked_update_id: number | null;
+  /**
+   * Live copy of the linked Summary row, filled at read time (never stored).
+   * Null when there is no link, or when the Summary row was deleted.
+   */
+  link: ShowroomLink | null;
+  /**
    * Signed thumbnail URL of the **Showroom** slot photo, for the board row.
    * Derived at read time (the database stores an object ref, never a URL);
    * absent on rows that did not come through the list endpoint.
    */
   photo_thumb?: string | null;
+};
+
+/**
+ * The linked Summary row, as the inventory board reads it. Deliberately only
+ * the columns the board prints: the inventory never writes any of them.
+ */
+export type ShowroomLink = {
+  update_id: number;
+  showroom_name: string;
+  location: string;
+  status: ShowroomUpdateStatus | null;
+  action_required: string | null;
+  /** The Summary row's saved Google Maps pin, or null when it has none. */
+  map_url: string | null;
+};
+
+/**
+ * One row of the drawer's "Linked SwiftSlip showroom" picker. `linked_to` names
+ * the inventory showroom already following this row (null when free), so the
+ * picker can grey out a row that belongs to someone else. `linked_to_id` is the
+ * same fact as an id, so the current showroom can recognise its own link
+ * without comparing names.
+ */
+export type ShowroomLinkOption = ShowroomLink & {
+  linked_to: string | null;
+  linked_to_id: number | null;
 };
 
 /* ------------------------------------------------------- photo slots ---- */
@@ -162,6 +201,11 @@ export const showroomSaveInput = z.object({
   internet: showroomInternetSchema,
   notes: z.string().trim().max(4000).nullable(),
   /**
+   * The Summary row this showroom follows, or null to unlink. Always stated:
+   * the drawer knows both states, so an omitted value would only hide intent.
+   */
+  linkedUpdateId: z.number().int().positive().nullable(),
+  /**
    * Photo changes only. Omitted entirely when nothing visual moved, so an
    * ordinary edit never touches the three picture rows.
    */
@@ -172,19 +216,10 @@ export type ShowroomSaveRequest = z.infer<typeof showroomSaveInput>;
 
 export const showroomIdParam = z.object({ id: z.coerce.number().int().positive() });
 
-/** One number the owner maintains: every CCTV unit they own, installed or spare. */
-export const showroomStockInput = z.object({
-  cctvTotalUnits: z.number().int().min(0).max(100_000),
-});
-
-export type ShowroomStockRequest = z.infer<typeof showroomStockInput>;
-
-export type ShowroomStock = { cctvTotalUnits: number };
-
 /* --------------------------------------------------------------- labels - */
 
-/** Green / amber / red / no-dot, the legend's three groups plus "unknown". */
-export type ShowroomTone = "good" | "progress" | "bad" | "none";
+/** Green / blue / amber / red / no-dot, the board's tone scale. */
+export type ShowroomTone = "good" | "info" | "progress" | "bad" | "none";
 
 type Option<T extends string> = { value: T; label: string; tone: ShowroomTone };
 
@@ -286,53 +321,93 @@ export function matchesShowroomFilter(row: ShowroomStatuses, filter: ShowroomFil
   return true;
 }
 
-/* -------------------------------------------------------------- summary - */
+/* ----------------------------------------------------------------- link - */
 
-/** The header card's numbers: stock plus the CCTV connection breakdown. */
-export type ShowroomCctvSummary = {
-  /** The owner's editable count of every CCTV unit they own. */
-  totalUnits: number;
-  /** Showrooms whose CCTV is marked installed (`active`). */
-  installed: number;
-  /** Units not installed yet: `totalUnits - installed`, never below zero. */
-  available: number;
-  /** Installed but marked offline. */
-  offline: number;
-  /** Installed but connection not recorded. */
-  notRecorded: number;
-  /** Installed but not online: `offline + notRecorded`. */
-  notAvailable: number;
-  /** Installed share of `totalUnits`, 0–100, rounded. */
-  installedPercent: number;
-};
+/**
+ * Words that say where a row sits in the sheet rather than which place it is.
+ * "Mun. of Polanco" and "Polanco SR" both fold to "polanco", which is how the
+ * drawer suggests a match without the owner typing anything.
+ */
+const LINK_NAME_NOISE = new Set([
+  "mun",
+  "municipality",
+  "city",
+  "of",
+  "sr",
+  "showroom",
+  "brgy",
+  "barangay",
+  "additional",
+  "warehouse",
+]);
 
-export function showroomCctvSummary(
-  rows: readonly Showroom[],
-  totalUnits: number,
-): ShowroomCctvSummary {
-  let installed = 0;
-  let online = 0;
-  let offline = 0;
-  let notRecorded = 0;
+/**
+ * The identifying words of a showroom name: accents folded, lowercase, and the
+ * sheet's own filler ("Mun.", "City", "SR", "Brgy.") removed.
+ */
+export function showroomNameKey(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(" ")
+    .filter((word) => word !== "" && !LINK_NAME_NOISE.has(word))
+    .join(" ");
+}
 
-  for (const row of rows) {
-    // "Not installed" and "Not recorded" installs are outside the ratio: the
-    // card answers "of the units we own, how many are out in showrooms".
-    if (row.cctv_installed !== "active") continue;
-    installed += 1;
-    if (row.cctv_connection === "online") online += 1;
-    else if (row.cctv_connection === "offline") offline += 1;
-    else notRecorded += 1;
-  }
+/**
+ * The one suggestion the drawer offers for an unlinked showroom: a free Summary
+ * row whose identifying words match exactly. Rows already linked to another
+ * showroom are never suggested.
+ */
+export function suggestShowroomLink(
+  showroomName: string,
+  options: readonly ShowroomLinkOption[],
+): ShowroomLinkOption | null {
+  const key = showroomNameKey(showroomName);
+  if (key === "") return null;
+  return (
+    options.find(
+      (option) => option.linked_to == null && showroomNameKey(option.showroom_name) === key,
+    ) ?? null
+  );
+}
 
-  return {
-    totalUnits,
-    installed,
-    available: Math.max(totalUnits - installed, 0),
-    offline,
-    notRecorded,
-    notAvailable: installed - online,
-    installedPercent:
-      totalUnits === 0 ? 0 : Math.min(100, Math.round((installed / totalUnits) * 100)),
-  };
+/** The board's dot colour for a Summary status, on the same tone scale. */
+export function showroomUpdateStatusTone(status: ShowroomUpdateStatus | null): ShowroomTone {
+  // Open is green, Ready is the Summary board's blue; In progress and Pending
+  // keep the warmer tones the inventory already uses.
+  if (status === "open") return "good";
+  if (status === "ready") return "info";
+  if (status === "in_progress") return "progress";
+  if (status === "pending") return "bad";
+  return "none";
+}
+
+/**
+ * The Status cell, in the board's own words: no linked row, or a linked row
+ * without a status, reads "Not recorded" — the same placeholder the CCTV and
+ * Internet columns use — while a linked row prints the Summary's chip label.
+ */
+export function showroomLinkStatusLabel(link: ShowroomLink | null): string {
+  if (!link) return "Not recorded";
+  return showroomUpdateStatusMeta(link.status)?.chipLabel ?? "Not recorded";
+}
+
+/** The Action required cell: the Summary's free text, or "Not recorded" when blank. */
+export function showroomLinkActionLabel(link: ShowroomLink | null): string {
+  if (!link) return "Not recorded";
+  return link.action_required?.trim() ? link.action_required : "Not recorded";
+}
+
+/**
+ * The two-letter monogram shown in the board's photo tile when a showroom has
+ * no picture, exactly like the supplied mock ("Calamba SR" → "Ca", "Polanco SR"
+ * → "Po"). It is the first two characters of the name, not word initials.
+ */
+export function showroomInitials(name: string): string {
+  const letters = Array.from(name.trim()).slice(0, 2).join("");
+  if (letters === "") return "";
+  return letters.charAt(0).toUpperCase() + letters.slice(1).toLowerCase();
 }

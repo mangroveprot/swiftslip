@@ -1,14 +1,23 @@
+import type { PhotoCrop } from "@swiftslip/shared/types";
+
 /**
  * The profile photo, decoded, framed and exported in the browser.
  *
- * The stored image is always one 256 × 256 square (the sentence under the
+ * A still image is stored as one 256 × 256 square (the sentence under the
  * cropper says so). The circle the user drags inside is only how it is
  * DISPLAYED: the square is kept whole so the same file can be shown as a
  * circle in the sidebar, a rounded square on a printed form, or a 32 px tile
  * in an admin list without re-cropping.
  *
- * Preview and export share `drawPhoto`, so what the cropper shows is exactly
- * what gets saved, the only difference is the canvas size.
+ * An animated GIF cannot be treated that way: painting it onto a canvas keeps
+ * a single frame, so the file is stored exactly as the user picked it and the
+ * framing is sent alongside it as three numbers (`PhotoCrop`). `cropStyle`
+ * turns those numbers into the same crop for an `<img>`, which is what the
+ * cropper previews and what every avatar renders.
+ *
+ * Preview and export share `drawPhoto`, so for a still what the cropper shows
+ * is exactly what gets saved, the only difference is the canvas size; for a
+ * GIF the preview and the avatar share `cropStyle` instead.
  */
 
 /** The stored square. */
@@ -21,11 +30,18 @@ export const PHOTO_VIEWPORT = 240;
 export const PHOTO_MAX_ZOOM = 3;
 
 /**
- * What the menu under the Edit pill promises. The picker's `accept` narrows
- * the OS dialog, and the size check catches the rest, a 40 MP phone photo is
+ * What the menu under the avatar promises. The picker's `accept` narrows the
+ * OS dialog, and the size check catches the rest, a 40 MP phone photo is
  * 12 MB and there is no reason to decode it just to throw it away.
+ *
+ * Five megabytes: an animated GIF is uploaded as-is, so this is both the
+ * picked-file limit and the wire size of the largest thing that reaches the
+ * API. It is a copy of `PROFILE_PHOTO_MAX_BYTES` in `shared/src/schemas.ts`
+ * (the constant is kept out of this module so the shell's avatar does not pull
+ * the schemas into the initial bundle); `photo.test.ts` fails if the two
+ * disagree.
  */
-export const PHOTO_ACCEPT = "image/jpeg,image/png,image/webp";
+export const PHOTO_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 export const MAX_PHOTO_MB = 5;
 export const MAX_PHOTO_BYTES = MAX_PHOTO_MB * 1024 * 1024;
 
@@ -44,6 +60,33 @@ export type PhotoSource = {
 };
 
 export type PhotoOffset = { x: number; y: number };
+
+/** No zoom, no pan: the picture centred and filling the circle. */
+export const IDENTITY_CROP: PhotoCrop = { zoom: 1, x: 0, y: 0 };
+
+/**
+ * The cropper's preview-space framing, as the size-independent numbers stored
+ * on the profile. `viewport` cancels out, which is the whole point: a pan of 24
+ * px in a 240 px circle is the same crop as 9.6 px in the 96 px card.
+ */
+export function toCrop(viewport: number, zoom: number, offset: PhotoOffset): PhotoCrop {
+  return { zoom, x: offset.x / viewport, y: offset.y / viewport };
+}
+
+/**
+ * The same framing for an `<img>` that fills a circle. `object-cover` is the
+ * zoom-1 baseline, and the offsets are fractions of the element's own size, so
+ * this reads identically at 20 px and at 240 px. `translate` before `scale`
+ * is intentional: CSS applies the right-most function first, so the pan is in
+ * unscaled units, matching the cropper's model.
+ */
+export function cropStyle(crop: PhotoCrop | undefined): { transform: string } | undefined {
+  if (!crop) return undefined;
+  if (crop.zoom === 1 && crop.x === 0 && crop.y === 0) return undefined;
+  return {
+    transform: `translate(${crop.x * 100}%, ${crop.y * 100}%) scale(${crop.zoom})`,
+  };
+}
 
 /** Decode a picked file, or null when the browser cannot read it. */
 export async function readPhotoFile(file: File): Promise<PhotoSource | null> {
@@ -69,6 +112,29 @@ export async function readPhotoFile(file: File): Promise<PhotoSource | null> {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/**
+ * True for a GIF, whose frames must never go through `drawPhoto`: one frame on
+ * a canvas would be a still. The file is uploaded as picked and the cropper
+ * only records where to look (`toCrop`), so it keeps moving everywhere.
+ */
+export function isAnimatedGif(file: File): boolean {
+  return file.type === "image/gif";
+}
+
+/** A picked file as the `data:` URL the photo endpoint expects. */
+export function readFileDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("That file couldn't be read as an image."));
+    };
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("That file couldn't be read as an image."));
+    reader.readAsDataURL(file);
+  });
 }
 
 /**

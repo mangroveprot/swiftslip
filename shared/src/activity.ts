@@ -27,6 +27,7 @@ export const ACTION_LABELS: Record<string, string> = {
   "user.created": "Account created",
   "user.updated": "Account updated",
   "user.deleted": "Account removed",
+  "profile.updated": "Profile updated",
   "access.updated": "App access changed",
   "org.updated": "Org list changed",
   "asset.created": "Asset created",
