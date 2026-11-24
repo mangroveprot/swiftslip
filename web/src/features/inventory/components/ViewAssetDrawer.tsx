@@ -20,6 +20,7 @@ import type {
   InventoryStatusOption,
 } from "@swiftslip/shared/inventory";
 
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import {
   CANCEL_BUTTON,
   FIELD,
@@ -235,6 +236,9 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
   }, [isOpen, onClose]);
 
   const panelRef = useRef<HTMLElement | null>(null);
+
+  // The board behind must not scroll while the drawer is open.
+  useScrollLock(isOpen);
 
   // Keep Tab inside the drawer while it is open.
   const trapFocus = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -514,7 +518,7 @@ export function ViewAssetDrawer(props: ViewAssetDrawerProps) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 py-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-1">
           <section className={SECTION}>
             <h3 className={SECTION_TITLE}>Asset</h3>
             <div className="space-y-4">

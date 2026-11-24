@@ -134,11 +134,13 @@ export function UserManagement() {
 
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: accessCodesQueryOptions().queryKey });
-    // The admin may have just edited their own account (employer, position,
-    // name). Refresh the cached profile so the sidebar caption and every
-    // employer-aware logo switch immediately instead of waiting out its
-    // five-minute staleTime.
+    // The admin may have just edited their own account (ID number, employer,
+    // position, name). Refresh the cached profile so the sidebar caption and
+    // every employer-aware logo switch immediately instead of waiting out its
+    // five-minute staleTime, and the session so a renamed ID is not shown from
+    // the old copy in the sidebar/chooser.
     void qc.invalidateQueries({ queryKey: profileQueryOptions().queryKey });
+    void qc.invalidateQueries({ queryKey: sessionQueryOptions().queryKey });
   };
 
   const all = accounts ?? [];

@@ -73,6 +73,10 @@ export function AppShell({ session, children }: { session: SessionUser; children
 
       <div
         key={page}
+        // The page's only scroller, so an open drawer can freeze it
+        // (`lib/use-scroll-lock`): a fixed overlay does not stop the wheel
+        // over its backdrop from rolling the board underneath.
+        data-app-scroller
         className="min-h-0 min-w-0 flex-1 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300 motion-safe:ease-out print:overflow-visible"
       >
         {children}

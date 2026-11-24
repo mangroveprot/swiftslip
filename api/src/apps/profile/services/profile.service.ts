@@ -84,7 +84,16 @@ class ProfileService extends BaseService<'profiles', ProfileRepository> {
   async getMine(userId: string): Promise<ServiceResponse<EmployeeProfile>> {
     try {
       const row = await this.repository.findOne({ access_code_id: userId });
-      return { success: true, document: await this.withPhoto(row) };
+      const profile = await this.withPhoto(row);
+      // The Employee ID is one value with two homes: `users.id_number` (what
+      // sign-in and User management read) and `profiles.emp_no` (the copy this
+      // page saves). A rename that only reached one of them made the two
+      // screens disagree, so the account row is authoritative here and the
+      // profile page always shows the ID the person actually signs in with.
+      const account = await this.users.findOne({ id: userId });
+      const idNumber = account?.id_number?.trim();
+      if (idNumber) profile.emp_no = idNumber;
+      return { success: true, document: profile };
     } catch (error) {
       return {
         success: false,

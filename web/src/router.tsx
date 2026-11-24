@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { RoutePending } from "@/components/common/RoutePending";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { setUnauthorizedHandler } from "@/lib/api-client";
 import { toast } from "@/lib/toast";
@@ -28,6 +29,13 @@ export const getRouter = () => {
     // or focuses a link, so the click itself doesn't have to wait for it.
     defaultPreload: "intent",
     defaultPreloadStaleTime: 30_000,
+    // Routes are code-split: the click has to fetch that app's chunk, and on a
+    // slow link nothing used to render until it arrived, so the old screen just
+    // sat there. Show the page skeleton soon after a navigation starts (120 ms
+    // keeps fast ones from flashing it) and hold it briefly so it never blinks.
+    defaultPendingComponent: RoutePending,
+    defaultPendingMs: 120,
+    defaultPendingMinMs: 300,
   });
 
   // An expired cookie must not leave a page stuck on an error toast: drop the

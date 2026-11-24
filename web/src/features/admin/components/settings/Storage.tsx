@@ -642,9 +642,12 @@ function CapacityBar({
         )}
       </div>
 
-      {/* 0 · the switch point · the limit, each sitting under its own mark. */}
+      {/* The switch point and the limit, each sitting under its own mark. No
+          "0" at the left: it landed exactly under the small green "used now"
+          fill and read as that fill's value ("Supabase is 1 %, why does the
+          bar say 0?"). The legend below starts there anyway, so it says what
+          the green is. */}
       <div className="relative h-4 text-xs text-muted-foreground">
-        <span className="absolute top-0 left-0">0</span>
         {switchAt === null || switchBytes === null ? null : (
           <span
             className={cn(

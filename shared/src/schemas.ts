@@ -779,7 +779,9 @@ export const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 export const PROFILE_PHOTO_DATA_URL_MAX = 7_100_000;
 
 export const employeeProfileSchema = z.object({
-  emp_no: z.string(),
+  // The Employee ID is the sign-in ID, and the sign-in form caps that at 64
+  // characters; saving a longer one here would lock the person out.
+  emp_no: z.string().trim().max(64, "An Employee ID can be at most 64 characters."),
   full_name: z.string(),
   designation: z.string(),
   area: z.string(),

@@ -132,7 +132,10 @@ export function InventoryLayout() {
         <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Phones/tablets scroll the page itself, with a fixed viewport the
               header + stat cards left the table with no visible rows. */}
-          <main className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden md:overflow-hidden p-3 sm:p-4 md:p-6">
+          <main
+            data-app-scroller
+            className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden md:overflow-hidden p-3 sm:p-4 md:p-6"
+          >
             <div className="page-enter flex flex-col flex-1 min-h-0" key={pathname}>
               <Outlet />
             </div>

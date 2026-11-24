@@ -19,6 +19,7 @@ import { ChevronDown, History, Loader2, Undo2, X } from "lucide-react";
 
 import { ProfileHoverCard } from "@/components/common/ProfileHoverCard";
 import { useUserPhotos } from "@/features/profile/use-user-photos";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import type {
   ShowroomUpdate,
   ShowroomUpdateChange,
@@ -331,6 +332,10 @@ function DrawerBody({
     if (!isCreate) panelRef.current?.focus();
   }, [isCreate]);
 
+  // The board behind must not scroll while the drawer is open: scrolling the
+  // form used to carry on into the table the moment it reached its end.
+  useScrollLock();
+
   // Escape closes the drawer, unless a field's own popover (the Location map
   // pin) already claimed the key and cancelled it.
   useEffect(() => {
@@ -428,7 +433,7 @@ function DrawerBody({
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 py-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-1">
           <section className={SECTION}>
             <h3 className={SECTION_TITLE}>Showroom</h3>
             <div className="space-y-4">

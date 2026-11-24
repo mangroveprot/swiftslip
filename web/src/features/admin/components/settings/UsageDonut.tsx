@@ -21,9 +21,13 @@ const GAP = 1.5;
  * Pure SVG, no chart library: it prints, scales and themes (the stroke classes
  * resolve to the palette tokens) for free. The centre label scales with the
  * ring, full "60% full" on the page's cards, a bare "1%" inside the smaller
- * cleanup-modal copies, so a nearly-empty ring still says its number. Every
- * non-zero slice also keeps a visible minimum arc, so the ring shows green the
- * moment anything is stored instead of reading as empty at 1 %.
+ * cleanup-modal copies, and "less than 1%" while a few bytes are stored but the
+ * percentage would round to zero.
+ *
+ * Every arc is its true share of the ring. They used to be lifted to a minimum
+ * arc so that 1 % still showed a green dot; on a nearly empty backend the ring
+ * then read as partly full while the centre said 1 % (or 0 %), so the slices
+ * are honest now and the free space stays visibly free.
  */
 export function UsageDonut({
   usage,
@@ -56,35 +60,24 @@ export function UsageDonut({
     usage.limitBytes > 0
       ? Math.min(100, Math.round((usage.usedBytes / usage.limitBytes) * 100))
       : 0;
+  /** Something is stored, even if the percentage would round to zero. */
+  const belowOne = usage.usedBytes > 0 && percent === 0;
+  const percentText = belowOne ? "<1%" : `${percent}%`;
 
   /**
-   * A slice of 1 % on a 72 px ring is barely 2 px long, and the hairline gap
-   * eats what is left, the ring read as empty grey beside a "1 % full" label.
-   * So every non-zero slice is lifted to a floor of 0.6 stroke-widths (about a
-   * green dot you can actually see), and "free" absorbs the difference, which
-   * keeps the ring closing exactly on the circumference.
+   * Slice lengths, true to scale, minus a hairline gap so neighbouring slices
+   * stay legible. A backend whose usage rounds to 0 % paints no green at all:
+   * a dot there read as "some of it is used" beside a "0 % full" label.
    */
-  const minArc = Math.max(3, stroke * 0.6);
   const rawLengths = parts.map((part) =>
-    part.bytes > 0 ? (part.bytes / total) * circumference : 0,
+    part.bytes > 0 && percent > 0 ? (part.bytes / total) * circumference : 0,
   );
-  let usedLengths = rawLengths
-    .slice(0, 3)
-    .map((length) => (length > 0 ? Math.max(minArc, length - GAP) : 0));
+  const usedLengths = rawLengths.slice(0, 3).map((length) => (length > GAP ? length - GAP : 0));
   const usedCount = usedLengths.filter((length) => length > 0).length;
-  let usedTotal = usedLengths.reduce((sum, length) => sum + length, 0);
-
-  // Nearly full: the floors would overflow the ring, so scale the used arcs
-  // back into the room left once their gaps are paid for.
-  const usedBudget = Math.max(0, circumference - usedCount * GAP);
-  if (usedTotal > usedBudget) {
-    const scale = usedBudget / usedTotal;
-    usedLengths = usedLengths.map((length) => length * scale);
-    usedTotal = usedBudget;
-  }
+  const usedTotal = usedLengths.reduce((sum, length) => sum + length, 0);
 
   // Free is whatever is left, including on an empty backend, where it is the
-  // whole ring, so 0 % still paints a full grey track and no green at all.
+  // whole ring, so an empty backend paints a full grey track and no green.
   const freeLength = Math.max(0, circumference - usedTotal - usedCount * GAP);
   const lengths = [...usedLengths, freeLength];
 
@@ -104,7 +97,9 @@ export function UsageDonut({
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         role="img"
-        aria-label={`${usage.backend === "b2" ? "Backblaze B2" : "Supabase Storage"} is ${percent}% full`}
+        aria-label={`${usage.backend === "b2" ? "Backblaze B2" : "Supabase Storage"} is ${
+          belowOne ? "less than 1" : percent
+        }% full`}
       >
         <circle
           cx={size / 2}
@@ -140,7 +135,7 @@ export function UsageDonut({
               compact ? "text-[11px]" : "text-xl",
             )}
           >
-            {percent}%
+            {percentText}
           </span>
           {compact ? null : (
             <span className="mt-1 text-[10px] leading-none font-medium text-muted-foreground">

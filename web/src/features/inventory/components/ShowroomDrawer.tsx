@@ -41,6 +41,7 @@ import {
   prepareAttachment,
 } from "@/lib/attachment-upload";
 import { fileToBase64 } from "@/lib/file";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 
 import { CANCEL_BUTTON, FIELD, LABEL, SECTION, SECTION_TITLE, SELECT } from "../lib/drawer-styles";
 import { isBlank } from "../lib/helpers";
@@ -306,6 +307,9 @@ export function ShowroomDrawer(props: ShowroomDrawerProps) {
   }, [isOpen, onClose, discardDraftPhotos, photoPreview]);
 
   const panelRef = useRef<HTMLElement | null>(null);
+
+  // The board behind must not scroll while the drawer is open.
+  useScrollLock(isOpen);
 
   // Keep Tab inside the drawer while it is open.
   const trapFocus = (event: ReactKeyboardEvent<HTMLElement>) => {
@@ -645,7 +649,7 @@ export function ShowroomDrawer(props: ShowroomDrawerProps) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-5 py-1">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-1">
           <section className={SECTION}>
             <h3 className={SECTION_TITLE}>Showroom</h3>
             <div className="space-y-4">
