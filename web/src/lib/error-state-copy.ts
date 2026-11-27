@@ -1,8 +1,9 @@
 /**
- * Turns a failed request into the copy the shared `ErrorState` shows: the glyph,
- * a plain-language title and one sentence, whether a retry could change the
+ * Turns a failed request into the copy the shared `ErrorState` shows: a
+ * plain-language title and one sentence, whether a retry could change the
  * outcome, the `Error 503 · …` footer, and the full payload behind
- * "Copy error details".
+ * "Copy error details". The illustration is the same for every cause, so this
+ * map only decides words and policy.
  *
  * The API's own message is deliberately kept out of the visible copy — it is
  * written for developers ("Set RGC_INVENTORY_DATABASE_URL…", Postgres
@@ -26,8 +27,6 @@
  * refusal, so `ErrorStateFromError` withholds the button instead of offering an
  * action that cannot succeed.
  */
-import type { LucideIcon } from "lucide-react";
-import { CircleAlert, CloudOff, Lock, SearchX, ShieldOff, Timer, WifiOff } from "lucide-react";
 import { formatDate, formatTime } from "@swiftslip/shared/time";
 
 import { ApiError } from "@/lib/api-client";
@@ -36,7 +35,6 @@ export type ErrorStateInfo = {
   /** 0 for a failed fetch, null when the failure never reached the API. */
   statusCode: number | null;
   code: string | null;
-  icon: LucideIcon;
   title: string;
   description: string;
   /** True when trying again could plausibly succeed. */
@@ -62,19 +60,17 @@ const WITHOUT_META = new Set([401, 403, 404]);
 const PLAIN_VALIDATION = new Set(["Validation error", "The request contains invalid data."]);
 
 const GENERIC = {
-  icon: CircleAlert,
   title: "Something went wrong",
   description:
     "We couldn't load this page. Try again, and if the problem continues, contact your system administrator.",
   retry: true,
 };
 
-type Copy = Pick<ErrorStateInfo, "icon" | "title" | "description" | "retry">;
+type Copy = Pick<ErrorStateInfo, "title" | "description" | "retry">;
 
 function copyFor(status: number | null, code: string | null, message: string): Copy {
   if (status === 0) {
     return {
-      icon: WifiOff,
       title: "Can't reach the server",
       description: "Check your connection, then try again.",
       retry: true,
@@ -82,7 +78,6 @@ function copyFor(status: number | null, code: string | null, message: string): C
   }
   if (status === 401) {
     return {
-      icon: Lock,
       title: "You've been signed out",
       description: "For your security, sign in again to keep working.",
       retry: false,
@@ -90,7 +85,6 @@ function copyFor(status: number | null, code: string | null, message: string): C
   }
   if (status === 403) {
     return {
-      icon: ShieldOff,
       title: "You don't have access to this page",
       description: "Ask your system administrator to give you access.",
       retry: false,
@@ -98,7 +92,6 @@ function copyFor(status: number | null, code: string | null, message: string): C
   }
   if (status === 404) {
     return {
-      icon: SearchX,
       title: "We can't find this page",
       description: "It may have been deleted, or the link is out of date.",
       retry: false,
@@ -108,7 +101,6 @@ function copyFor(status: number | null, code: string | null, message: string): C
     // A business refusal explains itself; keep the server's sentence.
     if (code === "FORM_LOCKED") {
       return {
-        icon: Lock,
         title: "This form is with HR",
         description:
           message || "It can no longer be edited. Ask HR to reject it if it needs changes.",
@@ -116,7 +108,6 @@ function copyFor(status: number | null, code: string | null, message: string): C
       };
     }
     return {
-      icon: Lock,
       title: "This can't be done right now",
       description: message || "Something else is using this. Try again in a moment.",
       retry: false,
@@ -124,7 +115,6 @@ function copyFor(status: number | null, code: string | null, message: string): C
   }
   if (status === 413 || status === 415) {
     return {
-      icon: CircleAlert,
       title: "That file wasn't accepted",
       description: message || "Pick a different file and try again.",
       retry: false,
@@ -132,20 +122,18 @@ function copyFor(status: number | null, code: string | null, message: string): C
   }
   if (status === 429) {
     return {
-      icon: Timer,
       title: "Too many requests",
       description: "Please wait a moment, then try again.",
       retry: true,
     };
   }
-  // A service that is down still reads as the generic failure; only the glyph
-  // is specific (a cloud), so the words stay the ones people already know.
+  // A service that is down still reads as the generic failure, so the words
+  // stay the ones people already know.
   if (status === 503) {
-    return { ...GENERIC, icon: CloudOff };
+    return GENERIC;
   }
   if (status === 400 && PLAIN_VALIDATION.has(message)) {
     return {
-      icon: CircleAlert,
       title: "That didn't work",
       description: "Check the details and try again.",
       retry: false,
@@ -153,7 +141,6 @@ function copyFor(status: number | null, code: string | null, message: string): C
   }
   if (status === 400) {
     return {
-      icon: CircleAlert,
       title: "That didn't work",
       description: message || "Check the details and try again.",
       retry: false,

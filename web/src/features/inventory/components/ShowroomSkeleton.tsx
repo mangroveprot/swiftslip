@@ -1,9 +1,11 @@
 /**
- * Loading placeholder for the Showrooms screen: the board (status tabs, search
- * + download toolbar, phone cards, desktop table, footer).
+ * Loading placeholders for the Showrooms screen: the three header numbers that
+ * sit in the navy banner, and the board (status tabs, search + download
+ * toolbar, phone cards, desktop table, footer).
  *
- * It reuses the real classes, so the card keeps its exact height and the page
- * does not jump when the rows arrive.
+ * Both reuse the real classes, so the banner and the card keep their exact
+ * height and the page does not jump when the rows arrive. Bars in the banner
+ * are white-on-navy, not the neutral card tint.
  */
 import { Download, Search } from "lucide-react";
 
@@ -13,6 +15,7 @@ const TABS: Array<{ label: string; width: string }> = [
   { label: "In progress", width: "w-16" },
   { label: "Online", width: "w-10" },
 ];
+const STATS = ["CCTV installed", "Units available", "Not available"];
 
 function Bar({ className = "" }: { className?: string }) {
   return <span className={`asset-skeleton ${className}`} aria-hidden="true" />;
@@ -24,6 +27,22 @@ function CellBar({ className }: { className: string }) {
     <span className="flex h-5 items-center">
       <Bar className={className} />
     </span>
+  );
+}
+
+export function ShowroomStatsSkeleton() {
+  return (
+    <div className="showroom-stats" role="status" aria-label="Loading showroom totals">
+      <div className="showroom-stats__row" aria-hidden="true">
+        {STATS.map((label) => (
+          <div key={label} className="showroom-stats__stat">
+            <Bar className="h-6 w-8 bg-white/25" />
+            <Bar className="mt-1.5 h-2.5 w-20 bg-white/20" />
+          </div>
+        ))}
+      </div>
+      <Bar className="mt-1 h-2.5 w-40 bg-white/20" />
+    </div>
   );
 }
 

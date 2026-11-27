@@ -1,7 +1,8 @@
 /**
  * The shared `ErrorState`, wired to a failed request: it turns the error into
- * copy through `describeErrorState`, picks the glyph from the status, and only
- * offers `Try again` when trying again could actually change the outcome.
+ * copy through `describeErrorState` and only offers `Try again` when trying
+ * again could actually change the outcome. The illustration is the same for
+ * every status.
  *
  * This is the one call every screen makes:
  *
@@ -70,7 +71,6 @@ export function ErrorStateFromError({
 
   return (
     <ErrorState
-      icon={info.icon}
       title={title ?? info.title}
       description={description ?? info.description}
       density={density ?? "section"}

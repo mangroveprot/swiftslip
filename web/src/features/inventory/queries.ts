@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 
 import { getInventoryData, getManagedOptions, getReportDocument } from "@/api/inventory.functions";
-import { getShowroomLinkOptions, getShowrooms } from "@/api/showrooms.functions";
+import { getShowroomLinkOptions, getShowrooms, getShowroomStock } from "@/api/showrooms.functions";
 
 /** Everything the inventory shell + assets page need (loaded once, filtered client-side). */
 export const inventoryQueryOptions = () =>
@@ -39,6 +39,17 @@ export const showroomsQueryOptions = () =>
     queryFn: () => getShowrooms(),
     retry: false,
     staleTime: 0,
+  });
+
+/**
+ * The header card's stock number. Its key sits under `["inventory"]`, so the
+ * same invalidations that refresh the board refresh it too.
+ */
+export const showroomStockQueryOptions = () =>
+  queryOptions({
+    queryKey: ["inventory", "showrooms", "stock"],
+    queryFn: () => getShowroomStock(),
+    retry: false,
   });
 
 /** The drawer's "Linked SwiftSlip showroom" picker: every Summary row. */

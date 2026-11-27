@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { useUserPhotos } from "@/features/profile/use-user-photos";
 import { GRANTABLE_APP_KEYS, type GrantableAppKey, type RuleScope } from "@swiftslip/shared/types";
 import { ACCESS_TABS, type AccessTab } from "../lib/admin-search";
+import { AdminAccessSkeleton } from "./AdminSkeletons";
 
 const APP_LABELS: Record<GrantableAppKey, string> = {
   swiftslip: "SwiftSlip",
@@ -285,7 +286,7 @@ export function AppAccess() {
           at={overview.errorUpdatedAt ? new Date(overview.errorUpdatedAt) : null}
         />
       ) : overview.isLoading || !data ? (
-        <AccessSkeleton />
+        <AdminAccessSkeleton />
       ) : (
         <div className="mt-5 grid gap-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-0">
           <aside className="min-w-0 lg:pr-6">
@@ -1028,28 +1029,5 @@ function AddRuleDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function AccessSkeleton() {
-  return (
-    <div className="mt-5 grid gap-6 lg:grid-cols-[290px_minmax(0,1fr)] lg:gap-0" aria-hidden="true">
-      <div className="lg:pr-6">
-        <div className="h-9 border-b bg-muted/40" />
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="space-y-2 border-b py-3">
-            <div className="h-3.5 w-32 animate-pulse rounded bg-muted" />
-            <div className="h-3 w-20 animate-pulse rounded bg-muted/70" />
-          </div>
-        ))}
-      </div>
-      <div className="space-y-4 lg:border-l lg:pl-6">
-        <div className="h-7 w-40 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-64 animate-pulse rounded bg-muted/70" />
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-lg bg-muted/60" />
-        ))}
-      </div>
-    </div>
   );
 }

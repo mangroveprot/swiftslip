@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils";
 
 function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("animate-pulse rounded-md bg-primary/10", className)} {...props} />;
+  // `foreground`, not `muted`: in dark mode `--muted` sits a hair above
+  // `--card`, so a muted bar was invisible on the card it was drawn on.
+  return <div className={cn("animate-pulse rounded-md bg-foreground/20", className)} {...props} />;
 }
 
 export { Skeleton };

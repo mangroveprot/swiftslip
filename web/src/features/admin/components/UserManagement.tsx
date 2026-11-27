@@ -39,6 +39,7 @@ import {
 import type { Role } from "@swiftslip/shared/types";
 import { accessCodesQueryOptions, orgOptionsQueryOptions } from "../queries";
 import { displayDepartment, isIncomplete, sortUsers, type RosterFilter } from "../lib/roster";
+import { AdminUsersSkeleton } from "./AdminSkeletons";
 import { PASSWORD_MIN_LENGTH } from "@swiftslip/shared/schemas";
 
 type Account = {
@@ -276,17 +277,7 @@ export function UserManagement() {
         <div className="mt-3 border-t" />
 
         {isLoading ? (
-          <div aria-label="Loading accounts">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 border-b py-5">
-                <div className="size-10 shrink-0 animate-pulse rounded-full bg-muted" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="h-3.5 w-40 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-28 animate-pulse rounded bg-muted/70" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <AdminUsersSkeleton />
         ) : list.length === 0 ? (
           <div
             key={`empty:${filter}`}

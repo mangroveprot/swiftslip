@@ -147,6 +147,13 @@ const SEED_ROWS: ShowroomSeedRow[] = [
 ];
 
 /**
+ * Seed for the one editable number in the header card: the reference install
+ * starts at 24 devices. The card shows `available = total - installed` and the
+ * owner edits this total when stock changes.
+ */
+const DEFAULT_CCTV_TOTAL_UNITS = 24;
+
+/**
  * Set while the table is being created/seeded, so concurrent first requests
  * wait for one DDL pass instead of racing it. Cleared on failure so the next
  * request retries.
@@ -240,6 +247,20 @@ export class InventoryShowroomRepository extends RgcRepository {
         await sql`
           alter table showroom_photos
             add column if not exists byte_size integer`;
+
+        // One key/value row now; a table (not a column on a showroom) so the
+        // settings survive deletes and the owner can add more later.
+        await sql`
+          create table if not exists showroom_settings (
+            setting_key text primary key,
+            setting_value integer not null,
+            updated_at timestamp without time zone not null
+              default (now() at time zone 'utc')
+          )`;
+        await sql`
+          insert into showroom_settings (setting_key, setting_value)
+          values ('cctv_total_units', ${DEFAULT_CCTV_TOTAL_UNITS})
+          on conflict (setting_key) do nothing`;
 
         const counts = await sql<
           [{ n: number }]
@@ -504,6 +525,40 @@ export class InventoryShowroomRepository extends RgcRepository {
       const result = await sql`
         delete from showrooms where showroom_id = ${showroomId}`;
       return result.count;
+    });
+  }
+
+  /** The owner's total CCTV units (installed + spare). */
+  getCctvTotalUnits(): Promise<number> {
+    return this.run(async (sql) => {
+      await this.ensureReady();
+      const rows = await sql<
+        [{ setting_value: number }]
+      >`select setting_value from showroom_settings
+        where setting_key = 'cctv_total_units'`;
+      return rows[0]?.setting_value ?? 0;
+    });
+  }
+
+  /** Create or overwrite the total; returns what was stored. */
+  setCctvTotalUnits(units: number): Promise<number> {
+    return this.run(async (sql) => {
+      await this.ensureReady();
+      const rows = await sql<[{ setting_value: number }]>`
+        insert into showroom_settings (setting_key, setting_value, updated_at)
+        values ('cctv_total_units', ${units}, ${utcNow()})
+        on conflict (setting_key) do update
+          set setting_value = excluded.setting_value,
+              updated_at = excluded.updated_at
+        returning setting_value`;
+      const saved = rows[0]?.setting_value;
+      if (saved == null) {
+        throw new ErrorResponse(
+          'DATABASE_ERROR',
+          'Failed to save the CCTV total.',
+        );
+      }
+      return saved;
     });
   }
 

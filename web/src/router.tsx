@@ -31,8 +31,9 @@ export const getRouter = () => {
     defaultPreloadStaleTime: 30_000,
     // Routes are code-split: the click has to fetch that app's chunk, and on a
     // slow link nothing used to render until it arrived, so the old screen just
-    // sat there. Show the page skeleton soon after a navigation starts (120 ms
-    // keeps fast ones from flashing it) and hold it briefly so it never blinks.
+    // sat there. Show the neutral "Opening…" state soon after a navigation
+    // starts (120 ms keeps fast ones from flashing it) and hold it briefly so
+    // it never blinks.
     defaultPendingComponent: RoutePending,
     defaultPendingMs: 120,
     defaultPendingMinMs: 300,

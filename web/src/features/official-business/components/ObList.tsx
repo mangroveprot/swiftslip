@@ -20,7 +20,6 @@ import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { PageTitle } from "@/components/common/PageTitle";
 import { ResubmitBadge } from "@/components/common/ResubmitBadge";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { profileQueryOptions } from "@/features/profile/queries";
 import { newDraftId } from "@/lib/draft";
 import { formDeleteCopy, obSubject } from "@/lib/form-delete-copy";
@@ -34,6 +33,7 @@ import {
   type PlaceFacet,
 } from "../lib/places";
 import { obFormsQueryOptions } from "../queries";
+import { CARD_BORDER, ObListSkeleton, PlaceListSkeleton } from "./ObListSkeletons";
 
 type ObRow = {
   id: string;
@@ -77,12 +77,6 @@ const PLACE_LIMIT = 8;
 const FILTER_ACTIVE = "bg-dashboard-soft text-dashboard-accent";
 const FILTER_ACTIVE_ROW = "bg-dashboard-soft";
 const FILTER_ACCENT = "accent-dashboard-accent";
-
-/* One neutral box for every status: the status colour now lives only in the
-   folder tab, so the grid reads as a quiet grey deck instead of four brightly
-   outlined boxes. A touch stronger than `--border` so it stays visible on the
-   cream dashboard surface; dark mode gets the same grey lifted for contrast. */
-const CARD_BORDER = "border-[#c9cec8] dark:border-[#4a514b]";
 
 export function ObList() {
   const navigate = useNavigate();
@@ -614,46 +608,6 @@ function NoMatches({ onClear }: { onClear: () => void }) {
       <button type="button" className="btn btn-outline mt-4" onClick={onClear}>
         Clear filters
       </button>
-    </div>
-  );
-}
-
-function ObListSkeleton() {
-  return (
-    <div className="mt-5 grid grid-cols-1 gap-8 @2xl:grid-cols-2" aria-label="Loading forms">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <div key={index} className="flex flex-col items-start">
-          <Skeleton className="relative z-10 -mb-px h-7 w-28 rounded-t-lg" />
-          <div
-            className={cn(
-              "w-full flex-1 rounded-xl rounded-tl-none border bg-card p-5",
-              CARD_BORDER,
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-20" />
-              </div>
-              <Skeleton className="h-7 w-32" />
-            </div>
-            <Skeleton className="mt-4 h-3 w-3/4" />
-            <Skeleton className="mt-2 h-3 w-1/2" />
-            <Skeleton className="mt-2 h-3 w-2/3" />
-            <Skeleton className="mt-4 h-3 w-1/3" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PlaceListSkeleton() {
-  return (
-    <div className="mt-3 space-y-2" aria-label="Loading destinations">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <Skeleton key={index} className="h-6 w-full" />
-      ))}
     </div>
   );
 }

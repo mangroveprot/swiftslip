@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, ExternalLink, Store } from "lucide-react";
+import { ArrowRight, ExternalLink, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 import { PageTitle } from "@/components/common/PageTitle";
@@ -14,6 +14,7 @@ import { APP } from "@/config/app";
 import type { AppKey } from "@swiftslip/shared/types";
 import { EXTERNAL_APPS } from "@swiftslip/shared/types";
 import { sessionQueryOptions } from "../queries";
+import { ChristmasLights } from "./ChristmasLights";
 
 /** Shared card chrome: lifts and zooms smoothly on hover (no motion if reduced).
  *  The 0.3s transition itself comes from `.zoom-card` in `styles.css`, a Tailwind
@@ -84,13 +85,18 @@ export function AppChooser() {
   const can = (key: AppKey) => apps.includes(key);
 
   return (
-    <main className="relative flex min-h-dvh flex-col justify-center px-4 py-20 md:px-8 md:py-24">
+    <main className="relative flex min-h-dvh flex-col justify-center px-4 pt-32 pb-20 sm:pt-36 md:px-8 md:py-24">
+      {/* Seasonal garland over the header. Absolute and pointer-transparent, so
+          it decorates without touching the layout: the header only moves down
+          to hang beneath the bulbs. */}
+      <ChristmasLights />
+
       {/* On a phone the header has four things to hold (brand, theme, face,
           sign out). At full size they are wider than the screen, so the word
           and button used to run under each other. Below `sm` the lockup steps
           down and the sign-out label gives way to its icon; from `sm` up the
           original sizes return. */}
-      <header className="absolute inset-x-0 top-0 mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-4 sm:gap-4 sm:px-8 sm:py-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
+      <header className="absolute inset-x-0 top-12 mx-auto flex w-full max-w-4xl items-center justify-between gap-3 px-4 py-4 sm:top-14 sm:gap-4 sm:px-8 sm:py-6 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
         <BrandLockup
           className="min-w-0 gap-2 sm:gap-3"
           imageClassName="h-8 sm:h-11"
@@ -148,10 +154,14 @@ export function AppChooser() {
                           : "h-5 w-auto object-contain"
                       }
                     />
-                    {/* Corner badge, mirrors the "Admin" pill the admin panel header
-                      puts next to this same logo, so the two read as the same surface. */}
-                    <span className="absolute -bottom-1.5 -right-1.5 rounded-full border border-dashboard-accent/40 bg-background px-1.5 text-[9px] font-bold uppercase leading-4 tracking-wide text-dashboard-accent">
-                      Admin
+                    {/* Corner mark: a shield instead of the old "Admin" word
+                        pill. The card's own title already names the app, so the
+                        corner only has to read as "admin" at a glance. The navy
+                        is the Mindbridge mark's own (#14325c), kept literal so
+                        it stays navy on the paper tile in both themes, like the
+                        Showroom Updates illustration. */}
+                    <span className="absolute -bottom-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full border-2 border-paper bg-[#14325c] text-paper shadow-sm">
+                      <ShieldCheck className="size-3" aria-hidden="true" />
                     </span>
                   </span>
                   <span className="mt-3 block text-base font-semibold">Admin Panel</span>
@@ -272,7 +282,17 @@ export function AppChooser() {
               <Link to="/showroom-updates" className={CARD_CLASS}>
                 <span>
                   <span className="flex h-11 w-11 items-center justify-center rounded-lg border bg-paper motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:scale-110">
-                    <Store className="size-5 text-primary" aria-hidden="true" />
+                    {/* The mark brings its own colours, so unlike the old line
+                        icon it does not follow `text-primary`; that turns cream
+                        in dark mode and all but disappeared on this paper tile.
+                        The tile itself stays paper in both themes (the HRA mark
+                        and the printable sheets follow the same rule), which is
+                        what lets one full-colour illustration serve both. */}
+                    <img
+                      src="/brands/showroom-updates.svg"
+                      alt=""
+                      className="h-8 w-8 object-contain"
+                    />
                   </span>
                   <span className="mt-3 flex flex-wrap items-center gap-1.5">
                     <span className="text-base font-semibold">Showroom Updates</span>

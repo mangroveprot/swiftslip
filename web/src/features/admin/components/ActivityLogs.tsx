@@ -29,6 +29,7 @@ import { ACTION_LABELS } from "@swiftslip/shared/activity";
 import { ACTIVITY_LOG_PAGE_SIZE } from "@swiftslip/shared/schemas";
 import { ACTIVITY_LOG_TAB_KEYS, type ActivityLogTab } from "../lib/admin-search";
 import { activityLogCountsQueryOptions, activityLogsQueryOptions } from "../queries";
+import { AdminLogsSkeleton } from "./AdminSkeletons";
 
 type Filter = "all" | ActivityLogTab;
 type Range = "today" | "7d" | "30d";
@@ -686,31 +687,6 @@ function AccessGroupRow({
   );
 }
 
-function ActivitySkeleton() {
-  return (
-    <div className="mt-5" role="status" aria-label="Loading activity logs">
-      <div className="h-3 w-14 animate-pulse rounded bg-muted" />
-      <div className="mt-2">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="grid grid-cols-[3.5rem_1.75rem_minmax(0,1fr)] items-start gap-x-3 border-b py-3.5 sm:grid-cols-[4.5rem_1.75rem_minmax(0,1fr)_auto]"
-          >
-            <div className="mt-1 h-3 w-10 animate-pulse rounded bg-muted" />
-            <div className="size-7 animate-pulse rounded-full bg-muted" />
-            <div className="space-y-2">
-              <div
-                className={`h-3.5 animate-pulse rounded bg-muted ${i % 2 ? "w-2/3" : "w-4/5"}`}
-              />
-              <div className="h-3 w-1/3 animate-pulse rounded bg-muted/70" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Admin-panel "Activity logs": sign-ins (including rejected attempts), account
  * changes, app-access changes, and record activity, newest first and grouped
@@ -879,7 +855,7 @@ export function ActivityLogs() {
       <div ref={listTopRef} className="scroll-mt-4" />
 
       {pageQuery.isLoading ? (
-        <ActivitySkeleton />
+        <AdminLogsSkeleton />
       ) : pageQuery.isError ? (
         <ErrorStateFromError
           error={pageQuery.error}

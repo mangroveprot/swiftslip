@@ -16,7 +16,7 @@ export function UpdatesSkeleton() {
             <tr className="divide-x divide-border/50 border-b border-border/60">
               {WIDTHS.map((width, index) => (
                 <th key={index} className="px-3 py-3 text-left">
-                  <span className={`block h-2.5 rounded bg-muted ${width}`} />
+                  <span className={`block h-2.5 rounded bg-foreground/20 ${width}`} />
                 </th>
               ))}
               <th className="px-2 py-3" />
@@ -28,12 +28,12 @@ export function UpdatesSkeleton() {
                 {WIDTHS.map((width, column) => (
                   <td key={column} className="px-3 py-3.5">
                     <span
-                      className={`block h-3 rounded bg-muted ${width} ${
+                      className={`block h-3 rounded bg-foreground/20 ${width} ${
                         column === 2 ? "h-3.5" : ""
                       }`}
                     />
                     {column === 2 ? (
-                      <span className="mt-1.5 block h-2.5 w-40 rounded bg-muted/80" />
+                      <span className="mt-1.5 block h-2.5 w-40 rounded bg-foreground/10" />
                     ) : null}
                   </td>
                 ))}
@@ -49,14 +49,14 @@ export function UpdatesSkeleton() {
           <div key={row} className="flex flex-col gap-2 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1.5">
-                <span className="block h-3.5 w-2/5 rounded bg-muted" />
-                <span className="block h-2.5 w-3/4 rounded bg-muted" />
+                <span className="block h-3.5 w-2/5 rounded bg-foreground/20" />
+                <span className="block h-2.5 w-3/4 rounded bg-foreground/20" />
               </div>
-              <span className="h-5 w-16 rounded-md bg-muted" />
+              <span className="h-5 w-16 rounded-md bg-foreground/20" />
             </div>
             <div className="flex gap-3">
-              <span className="h-2.5 w-20 rounded bg-muted" />
-              <span className="h-2.5 w-16 rounded bg-muted" />
+              <span className="h-2.5 w-20 rounded bg-foreground/20" />
+              <span className="h-2.5 w-16 rounded bg-foreground/20" />
             </div>
           </div>
         ))}

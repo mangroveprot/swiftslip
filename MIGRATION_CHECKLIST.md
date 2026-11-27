@@ -239,6 +239,67 @@ auto-fixed at the start of Phase 5). Still not exercised against the real RGC da
       admin ID edit updates `profiles.emp_no`. Profile and photo changes write a `profile.updated`
       audit row with the changed fields, and admin account edits log ID-number/role changes as
       old → new. No schema change. See `ACTIVITY_LOG.md`.
+- [x] **Fixed 2026-11-27:** the Admin Panel's loading states. The dashboard's "Forms filed"
+      placeholder is now a bar-chart skeleton (eight bars, dashed grid, axis ticks, week labels,
+      caption line) instead of one solid block, and "By form type" reserves the same five rows in
+      the same grid as the loaded list. Every skeleton bar in the panel (dashboard, user
+      management, app access, active sessions, activity logs, storage, backup, retention) uses
+      `bg-foreground/20` instead of `bg-muted`, which was invisible in dark mode (0.275 vs a
+      0.235 card) and faint in light. See `ACTIVITY_LOG.md`.
+- [x] **Fixed 2026-11-27:** the router's global pending fallback (`RoutePending`) no longer draws a
+      header + card + toolbar + table rows. That shape is what the owner saw on `/records/sad` and
+      read as the Showroom Updates board opening on every form. It is now a centred spinner and
+      "Opening…" with the same status announcement; `/choose` keeps its own picker-shaped
+      `AppChooserSkeleton`. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-27 (later the same day):** that spinner is replaced by page-shaped
+      skeletons. `RoutePending` is path-aware: it draws the destination's own skeleton inside the
+      app's chrome — portal sidebar + list/editor, Admin Panel sections with their real titles and
+      toolbars, HR queue/detail, the REGASCO inventory board, Showroom Updates, profile, onboarding,
+      login and the chooser — and draws the shell only while the layout route itself is still
+      pending, so in-app navigations never flash it. Settings skeletons are shared from
+      `AdminSkeletons.tsx`, and every skeleton bar is `bg-foreground/20` (`/10` for secondary
+      lines) so it reads in dark mode. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-27:** every shared error screen now uses one supplied illustration (a glum
+      machine with a tear) instead of a status-specific lucide glyph on a grey tile. The mark sits
+      bare on the page — no tile, border or background — and the copy, actions, timestamp and
+      "Copy error details" stay exactly as they were. The `icon` field is gone from
+      `error-state-copy.ts`; `ErrorStateArt` owns the SVG. See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-27:** the Showrooms board has its navy stats banner back, matching the
+      owner's reference: wave image, white title/subtitle, the three right-aligned numbers
+      (CCTV installed / Units available / Not available) and the "N of N CCTV installed (N%)"
+      coverage line. Installed and Not available still double as board filters; the stock number
+      opens its one-field editor. Restores `ShowroomStats`, `ShowroomStatsSkeleton`, the shared
+      `showroomCctvSummary` + `showroomStockInput`/`ShowroomStock`, and the
+      `GET/PUT /inventory/showrooms/stock` routes with the `showroom_settings` table. See
+      `ACTIVITY_LOG.md`.
+- [x] **Fixed 2026-11-27:** the app chooser has its own pending screen. The router's generic
+      `RoutePending` is table-shaped, so while `/choose` resolved (chunk, session re-check,
+      profile gate) the owner saw what looked like the whole Showroom Updates board on the
+      picker. `AppChooserSkeleton` mirrors the real page and `routes/choose.tsx` sets it as
+      `pendingComponent`. **Revised the same day:** it now reserves the full six-card grid
+      (the picker only opens when there is a choice, and up to six apps can be granted) with the
+      same paper icon tiles, outlined Sign out button and title/subtitle widths as the loaded
+      page, so nothing jumps on arrival; its bars use `bg-foreground/20` instead of `bg-muted`,
+      which was invisible in dark mode (0.275 vs 0.235) and nearly so on the mint gradient.
+      See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-27:** the chooser carries a Christmas garland above its header — the
+      supplied 1358×52 artwork (dotted wire, twenty tilted bulbs with glass teardrop, filament,
+      silver screw base and navy collar) in `ChristmasLights.tsx`, with the glass stepping through
+      the six supplied colours every 0.6 s from a staggered start (`.xmas-bulb` in `styles.css`,
+      off under reduced motion). Full-bleed, `aria-hidden`, pointer-transparent, cropped at the
+      middle on phones and stretched from 1100 px up; the wire uses `currentColor` so it survives
+      dark mode. `AppChooserSkeleton` mounts the same strip, so the pending screen does not pop.
+      See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-27:** the Admin Panel card in the chooser shows a navy shield badge on
+      the logo tile's corner instead of the "Admin" word pill, matching the owner's reference.
+      The card title already names the app, so the corner only carries the role mark. See
+      `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-24:** the Showroom Updates chooser card shows the supplied shopfront
+      illustration (`web/public/brands/showroom-updates.svg`, metadata stripped) at 32 px in its
+      44 px paper tile, instead of the lucide `Store` line icon. The old icon inherited
+      `text-primary` (cream in dark mode) on the paper-white tile and nearly vanished; the
+      full-colour mark carries its own ink, so one asset is legible in both themes. See
+      `ACTIVITY_LOG.md`.
 - [x] **Fixed 2026-11-24:** the Storage rings and the switch ruler no longer draw usage they do not
       have: ring slices are true to scale (1 % is a hairline tick, under 0.5 % paints nothing and the
       centre says "<1%"), and the ruler's "0" start label — which sat under the green "used now" fill

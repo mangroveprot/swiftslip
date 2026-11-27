@@ -216,6 +216,15 @@ export type ShowroomSaveRequest = z.infer<typeof showroomSaveInput>;
 
 export const showroomIdParam = z.object({ id: z.coerce.number().int().positive() });
 
+/** One number the owner maintains: every CCTV unit they own, installed or spare. */
+export const showroomStockInput = z.object({
+  cctvTotalUnits: z.number().int().min(0).max(100_000),
+});
+
+export type ShowroomStockRequest = z.infer<typeof showroomStockInput>;
+
+export type ShowroomStock = { cctvTotalUnits: number };
+
 /* --------------------------------------------------------------- labels - */
 
 /** Green / blue / amber / red / no-dot, the board's tone scale. */
@@ -319,6 +328,57 @@ export function matchesShowroomFilter(row: ShowroomStatuses, filter: ShowroomFil
     return row.cctv_installed === "active" && row.cctv_connection !== "online";
   }
   return true;
+}
+
+/* -------------------------------------------------------------- summary - */
+
+/** The header card's numbers: stock plus the CCTV connection breakdown. */
+export type ShowroomCctvSummary = {
+  /** The owner's editable count of every CCTV unit they own. */
+  totalUnits: number;
+  /** Showrooms whose CCTV is marked installed (`active`). */
+  installed: number;
+  /** Units not installed yet: `totalUnits - installed`, never below zero. */
+  available: number;
+  /** Installed but marked offline. */
+  offline: number;
+  /** Installed but connection not recorded. */
+  notRecorded: number;
+  /** Installed but not online: `offline + notRecorded`. */
+  notAvailable: number;
+  /** Installed share of `totalUnits`, 0–100, rounded. */
+  installedPercent: number;
+};
+
+export function showroomCctvSummary(
+  rows: readonly Showroom[],
+  totalUnits: number,
+): ShowroomCctvSummary {
+  let installed = 0;
+  let online = 0;
+  let offline = 0;
+  let notRecorded = 0;
+
+  for (const row of rows) {
+    // "Not installed" and "Not recorded" installs are outside the ratio: the
+    // card answers "of the units we own, how many are out in showrooms".
+    if (row.cctv_installed !== "active") continue;
+    installed += 1;
+    if (row.cctv_connection === "online") online += 1;
+    else if (row.cctv_connection === "offline") offline += 1;
+    else notRecorded += 1;
+  }
+
+  return {
+    totalUnits,
+    installed,
+    available: Math.max(totalUnits - installed, 0),
+    offline,
+    notRecorded,
+    notAvailable: installed - online,
+    installedPercent:
+      totalUnits === 0 ? 0 : Math.min(100, Math.round((installed / totalUnits) * 100)),
+  };
 }
 
 /* ----------------------------------------------------------------- link - */

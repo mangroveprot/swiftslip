@@ -33,6 +33,7 @@ import {
 import { formatDate, relativeTime } from "@swiftslip/shared/time";
 
 import { AdminClock } from "../AdminClock";
+import { AdminRetentionSkeleton } from "../AdminSkeletons";
 import {
   lastCleanupRunQueryOptions,
   retentionCountsQueryOptions,
@@ -182,7 +183,7 @@ export function DataRetention() {
     },
   });
 
-  if (!settings || !draft) return <RetentionSkeleton />;
+  if (!settings || !draft) return <AdminRetentionSkeleton />;
 
   const toggleType = (type: RetentionFormType, on: boolean) =>
     setDraft((current) =>
@@ -367,7 +368,7 @@ export function DataRetention() {
                   </span>
                   {counting ? (
                     <span
-                      className="ml-auto block h-3 w-24 animate-pulse rounded bg-muted"
+                      className="ml-auto block h-3 w-24 animate-pulse rounded bg-foreground/20"
                       aria-hidden="true"
                     />
                   ) : (
@@ -469,8 +470,8 @@ export function DataRetention() {
       <SettingRow title="Last cleanup run" description="The most recent cleanup.">
         {lastRunPending ? (
           <div className="space-y-2.5" aria-busy="true" aria-label="Loading the last run">
-            <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-3/4 animate-pulse rounded bg-foreground/20" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-foreground/20" />
           </div>
         ) : lastRun ? (
           <>
@@ -545,53 +546,6 @@ function SettingRow({
         <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{description}</p>
       </div>
       <div className="min-w-0">{children}</div>
-    </section>
-  );
-}
-
-/**
- * First paint, before the saved rule arrives: the same sheet in grey, so the
- * page never flashes an empty shell or shifts when the numbers land.
- */
-function RetentionSkeleton() {
-  return (
-    <section
-      className="mx-auto w-full max-w-6xl rounded-2xl border bg-card p-6 shadow-sm sm:p-10"
-      aria-busy="true"
-      aria-label="Loading retention settings"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-6 border-b pb-6">
-        <div className="min-w-0 flex-1">
-          <div className="h-8 w-44 animate-pulse rounded-md bg-muted" />
-          <div className="mt-3 h-4 w-full max-w-sm animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-4 w-2/3 max-w-xs animate-pulse rounded bg-muted" />
-        </div>
-        <div className="shrink-0 space-y-2">
-          <div className="ml-auto h-7 w-20 animate-pulse rounded bg-muted" />
-          <div className="ml-auto h-4 w-24 animate-pulse rounded bg-muted" />
-        </div>
-      </div>
-
-      {[0, 1, 2, 3].map((row) => (
-        <div
-          key={row}
-          className="grid gap-x-10 gap-y-4 border-b py-7 last:border-b-0 last:pb-0 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]"
-        >
-          <div>
-            <div className="h-4 w-28 max-w-full animate-pulse rounded bg-muted" />
-            <div className="mt-2 h-3 w-40 max-w-full animate-pulse rounded bg-muted" />
-          </div>
-          <div className="space-y-3">
-            <div className="h-4 w-56 max-w-full animate-pulse rounded bg-muted" />
-            <div className="h-3 w-64 max-w-full animate-pulse rounded bg-muted" />
-            <div className="flex items-center gap-2">
-              <div className="h-9 w-32 animate-pulse rounded-md bg-muted" />
-              <div className="h-4 w-40 max-w-full animate-pulse rounded bg-muted" />
-            </div>
-            <div className="h-8 w-32 animate-pulse rounded-md bg-muted" />
-          </div>
-        </div>
-      ))}
     </section>
   );
 }

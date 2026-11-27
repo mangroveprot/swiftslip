@@ -5,12 +5,12 @@ import { useEffect, useId, useMemo, useState } from "react";
 
 import { ErrorStateFromError } from "@/components/common/ErrorStateFromError";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useUrlState } from "@/lib/use-url-state";
 import { cn } from "@/lib/utils";
 import { obReturnState, type ObHrStatus } from "@swiftslip/shared/hr";
 import type { HrObSummary } from "@swiftslip/shared/api-types";
 import { hrQueueQueryOptions } from "../queries";
+import { QueueSkeleton } from "./HrSkeletons";
 import { QueueTable } from "./HrQueueTable";
 
 type HrView = "queue" | "completed" | "rejected";
@@ -641,28 +641,6 @@ function QueuePagination({
           </div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-/** Table-shaped placeholder rows, one per column of the real list. */
-function QueueSkeleton() {
-  return (
-    <div className="mt-6 overflow-hidden rounded-xl border bg-card" aria-label="Loading queue">
-      {Array.from({ length: 6 }).map((_, index) => (
-        <div key={index} className="flex items-center gap-4 border-b px-4 py-4 last:border-b-0">
-          <Skeleton className="h-5 w-28 shrink-0" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-3.5 w-40" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-          <div className="hidden min-w-0 flex-1 space-y-2 sm:block">
-            <Skeleton className="h-3.5 w-32" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-          <Skeleton className="hidden h-8 w-32 shrink-0 sm:block" />
-        </div>
-      ))}
     </div>
   );
 }

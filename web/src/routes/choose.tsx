@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { AppChooser } from "@/features/auth/components/AppChooser";
+import { AppChooserSkeleton } from "@/features/auth/components/AppChooserSkeleton";
 import { sessionQueryOptions } from "@/features/auth/queries";
 import { loadProfileForGate, needsOnboarding } from "@/features/profile/onboarding";
 import { pageTitle, seo } from "@/lib/seo";
@@ -40,4 +41,7 @@ export const Route = createFileRoute("/choose")({
         "Pick where to go: SwiftSlip, the Admin Panel, RGC Asset Inventory, Showroom Updates or the Regasco Ticketing System.",
     }),
   component: AppChooser,
+  // The router's fallback is a neutral spinner; this screen can do better and
+  // show the picker's own shape while the route and gates resolve.
+  pendingComponent: AppChooserSkeleton,
 });

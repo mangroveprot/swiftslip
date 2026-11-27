@@ -25,7 +25,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Skeleton } from "@/components/ui/skeleton";
 import { APP } from "@/config/app";
 import { printSheet } from "@/lib/print";
 import { pdfFileName, savePdfFrom } from "@/lib/save-pdf";
@@ -49,6 +48,7 @@ import {
   obReturnRowIndex,
 } from "@/features/official-business/lib/time-of-display";
 import { EmployeeIdentity } from "./EmployeeProfileCard";
+import { DetailSkeleton } from "./HrSkeletons";
 import { hrObAttachmentUrlQueryOptions, hrObQueryOptions, useHrActions } from "../queries";
 
 const STEPS = [
@@ -1128,21 +1128,5 @@ function StepMarker({ done, current }: { done: boolean; current: boolean }) {
         <span className="size-2 rounded-full bg-dashboard-rule" />
       ) : null}
     </span>
-  );
-}
-
-function DetailSkeleton() {
-  return (
-    <main className="flex min-h-full w-full flex-col px-4 py-6 md:px-6 md:py-8">
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="mt-6 h-12 w-80 max-w-full" />
-      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
-        <Skeleton className="h-[40rem] w-full rounded-xl" />
-        <div className="space-y-4">
-          <Skeleton className="h-52 w-full rounded-xl" />
-          <Skeleton className="h-72 w-full rounded-xl" />
-        </div>
-      </div>
-    </main>
   );
 }

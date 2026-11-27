@@ -28,6 +28,7 @@ import {
 import { formatDateTime } from "@swiftslip/shared/time";
 
 import { AdminClock } from "../AdminClock";
+import { AdminBackupSkeleton } from "../AdminSkeletons";
 import type { AdminSearch } from "../../lib/admin-search";
 import { backupOverviewQueryOptions } from "../../queries";
 
@@ -207,7 +208,7 @@ export function Backup() {
     );
   }
 
-  if (!data || !draft) return <BackupSkeleton />;
+  if (!data || !draft) return <AdminBackupSkeleton />;
 
   const { settings, drive, pgDump, cronToken, ready, migrationApplied, targetColumnReady } = data;
   const keepNumber = Number(draft.keep);
@@ -815,44 +816,5 @@ function RunRow({ run, peek = false }: { run: BackupRun; peek?: boolean }) {
         </tr>
       ) : null}
     </>
-  );
-}
-
-/** First paint: the same sheet in grey, so nothing jumps when the data lands. */
-function BackupSkeleton() {
-  return (
-    <section
-      className="mx-auto w-full max-w-6xl rounded-2xl border bg-card p-6 shadow-sm sm:p-10"
-      aria-busy="true"
-      aria-label="Loading backup settings"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-6 border-b pb-6">
-        <div className="min-w-0 flex-1">
-          <div className="h-9 w-32 max-w-full animate-pulse rounded-md bg-muted" />
-          <div className="mt-3 h-4 w-full max-w-lg animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-4 w-full max-w-md animate-pulse rounded bg-muted" />
-        </div>
-        <div className="shrink-0 space-y-2">
-          <div className="ml-auto h-5 w-20 animate-pulse rounded bg-muted" />
-          <div className="ml-auto h-3.5 w-24 animate-pulse rounded bg-muted" />
-        </div>
-      </div>
-
-      {[0, 1, 2, 3].map((block) => (
-        <div
-          key={block}
-          className="grid gap-x-10 gap-y-5 border-b py-8 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]"
-        >
-          <div>
-            <div className="h-5 w-36 animate-pulse rounded bg-muted" />
-            <div className="mt-2.5 h-4 w-full max-w-[13rem] animate-pulse rounded bg-muted" />
-          </div>
-          <div className="space-y-3">
-            <div className="h-5 w-48 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-full max-w-sm animate-pulse rounded bg-muted" />
-          </div>
-        </div>
-      ))}
-    </section>
   );
 }

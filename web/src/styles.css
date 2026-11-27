@@ -1599,10 +1599,11 @@
   }
 
   /* --- Shared error state (components/common/ErrorState.tsx) --------------
-     One block for every "this could not load": neutral tile, one sentence,
-     one filled action, technical facts kept to the footer. Themes retint the
-     action through --error-state-accent (the inventory points it at its
-     contrast-safe orange), so the same block works on the blue app too. */
+     One block for every "this could not load": the same glum-machine
+     illustration, one sentence, one filled action, technical facts kept to the
+     footer. Themes retint the action through --error-state-accent (the
+     inventory points it at its contrast-safe orange), so the same block works
+     on the blue app too. */
   .error-state {
     @apply flex flex-col items-center px-6 py-10 text-center;
   }
@@ -1616,9 +1617,13 @@
     min-height: 100dvh;
   }
 
+  /* The illustration is the icon: no tile, border or background behind it. */
   .error-state__icon {
-    @apply flex size-11 shrink-0 items-center justify-center rounded-[0.875rem] bg-muted
-           text-muted-foreground;
+    @apply flex shrink-0 items-center justify-center text-muted-foreground;
+  }
+
+  .error-state__art {
+    @apply h-[4.5rem] w-auto;
   }
 
   .error-state__title {
@@ -1786,6 +1791,8 @@
 
   /* Keyboard focus, one idiom for every custom control in the inventory */
   .stat-tab:focus-visible,
+  .showroom-stats__stat:focus-visible,
+  .showroom-stats__action:focus-visible,
   .row-action:focus-visible,
   .row-menu__trigger:focus-visible,
   .showroom-download:focus-visible,
@@ -2122,34 +2129,85 @@
      The failure block itself is the shared `ErrorState`; here it only has to
      fill the space the rows would have used. */
   .asset-skeleton {
-    @apply block animate-pulse rounded bg-muted;
+    @apply block animate-pulse rounded bg-foreground/20;
   }
 
   .asset-table__error {
     @apply flex-1 justify-center;
   }
 
-  /* --- Showrooms page header ----------------------------------------------
-     Quiet on purpose: title, subtitle and the clock sit on the page, and the
-     board below carries the colour and the numbers. */
-  .showroom-page-header__title {
-    @apply text-2xl font-semibold tracking-tight text-foreground sm:text-3xl;
+  /* --- Showrooms banner stats --------------------------------------------
+     The three numbers in the navy header. Installed / Not available are
+     filters too, so the stat itself is the button; the stock number opens its
+     one-field editor. */
+  .showroom-stats {
+    @apply flex shrink-0 flex-col gap-1 sm:items-end;
   }
 
-  .showroom-page-header__subtitle {
-    @apply mt-1 text-sm text-muted-foreground md:text-base;
+  .showroom-stats__row {
+    @apply flex items-stretch gap-2 sm:gap-4;
   }
 
-  .showroom-page-header__clock {
-    @apply hidden shrink-0 flex-col items-end leading-tight sm:flex;
+  .showroom-stats__stat {
+    @apply flex min-w-0 flex-1 cursor-pointer flex-col items-start rounded-lg px-2 py-1 text-left
+           text-white transition-colors hover:bg-white/10 sm:flex-none sm:items-end sm:px-3;
   }
 
-  .showroom-page-header__date {
-    @apply text-xs text-muted-foreground;
+  .showroom-stats__stat--active {
+    @apply bg-white/10;
+    box-shadow: inset 0 -2px 0 var(--inv-orange);
   }
 
-  .showroom-page-header__time {
-    @apply mt-0.5 text-sm font-semibold tabular-nums text-foreground;
+  .showroom-stats__value {
+    @apply flex items-center gap-1.5 text-2xl font-bold leading-none tabular-nums md:text-3xl;
+  }
+
+  .showroom-stats__pencil {
+    @apply size-3.5 shrink-0 text-white/60;
+  }
+
+  .showroom-stats__label {
+    @apply mt-1 text-[0.7rem] font-medium leading-tight text-white/85 md:text-xs;
+  }
+
+  .showroom-stats__caption {
+    @apply text-[0.7rem] text-white/70 sm:text-right;
+  }
+
+  /* Editing the total replaces the caption line, so the banner height holds. */
+  .showroom-stats__editor {
+    @apply flex flex-wrap items-center gap-x-2 gap-y-1.5 sm:justify-end;
+  }
+
+  .showroom-stats__field {
+    @apply inline-flex items-center gap-1.5;
+  }
+
+  .showroom-stats__field-label {
+    @apply text-[0.7rem] text-white/80;
+  }
+
+  .showroom-stats__input {
+    @apply w-16 rounded-md border border-white/30 bg-white/10 px-1.5 py-0.5 text-sm font-semibold
+           tabular-nums text-white;
+  }
+
+  .showroom-stats__input:focus {
+    @apply border-white/70 outline-none;
+  }
+
+  .showroom-stats__field-hint {
+    @apply text-[0.65rem] text-white/60;
+  }
+
+  .showroom-stats__action {
+    @apply cursor-pointer rounded-md px-1.5 py-0.5 text-xs font-medium text-white/85
+           transition-colors hover:bg-white/10 hover:text-white
+           disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent;
+  }
+
+  .showroom-stats__action--save {
+    @apply font-semibold text-white;
   }
 
   /* --- Showrooms board -----------------------------------------------------
@@ -2832,7 +2890,20 @@
   }
 
   /* Showrooms: the board stops stretching and the four tabs split it evenly
-     (label over count). */
+     (label over count). The header stats stack under the title on a phone. */
+  .showroom-stats {
+    align-items: stretch;
+  }
+
+  .showroom-stats__stat {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+
+  .showroom-stats__label {
+    font-size: 0.65rem;
+  }
+
   .showroom-board {
     flex: none;
   }
@@ -3885,5 +3956,45 @@
   .status-ring-pulse::after {
     animation: none;
     opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   App chooser garland (ChristmasLights.tsx).
+   The bulb glass steps through the six supplied colours, 0.6 s each; every bulb
+   starts at a different point in the cycle, so the string shimmers instead of
+   blinking in unison. Reduced motion keeps the static colours from the SVG.
+   --------------------------------------------------------------------------- */
+@keyframes xmas-bulb-cycle {
+  0% {
+    fill: #febb2c;
+  }
+  16.667% {
+    fill: #09bbd2;
+  }
+  33.333% {
+    fill: #da1f23;
+  }
+  50% {
+    fill: #6bbe44;
+  }
+  66.667% {
+    fill: #f0509c;
+  }
+  83.333% {
+    fill: #204584;
+  }
+  100% {
+    fill: #febb2c;
+  }
+}
+
+.xmas-bulb {
+  animation: xmas-bulb-cycle 3.6s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmas-bulb {
+    animation: none;
   }
 }

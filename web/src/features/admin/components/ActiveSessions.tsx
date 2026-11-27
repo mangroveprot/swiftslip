@@ -15,6 +15,7 @@ import type { ActiveSession } from "@swiftslip/shared/api-types";
 import { formatDateTime, relativeTime } from "@swiftslip/shared/time";
 import { describeDevice } from "../lib/device";
 import { activeSessionsQueryOptions } from "../queries";
+import { AdminSessionsSkeleton } from "./AdminSkeletons";
 
 /**
  * Active sessions: one row per device that is signed in right now.
@@ -109,17 +110,7 @@ export function ActiveSessions() {
       <div className="mt-3 border-t" />
 
       {isLoading ? (
-        <div aria-label="Loading active sessions">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-3 border-b py-5 last:border-b-0">
-              <div className="size-9 shrink-0 animate-pulse rounded-full bg-muted" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="h-3.5 w-40 animate-pulse rounded bg-muted" />
-                <div className="h-3 w-56 animate-pulse rounded bg-muted/70" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <AdminSessionsSkeleton />
       ) : isError ? (
         <ErrorStateFromError error={error} onRetry={() => void refetch()} retrying={isFetching} />
       ) : rows.length === 0 ? (

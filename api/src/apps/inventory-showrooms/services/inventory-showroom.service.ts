@@ -7,6 +7,8 @@ import type {
   ShowroomPhotoUploadRequest,
   ShowroomPhotoUrls,
   ShowroomSaveRequest,
+  ShowroomStock,
+  ShowroomStockRequest,
 } from '@swiftslip/shared/showrooms';
 import {
   cctvConnectionLabel,
@@ -664,6 +666,57 @@ class InventoryShowroomService {
         });
       }
       return { success: true, document: { deleted } };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  /** The one editable number in the header card: total CCTV units. */
+  async getStock(): Promise<ServiceResponse<ShowroomStock>> {
+    try {
+      const cctvTotalUnits = await this.repository.getCctvTotalUnits();
+      return { success: true, document: { cctvTotalUnits } };
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof ErrorResponse
+            ? error
+            : new ErrorResponse(
+                'INTERNAL_SERVER_ERROR',
+                (error as Error).message,
+              ),
+      };
+    }
+  }
+
+  async saveStock(
+    actor: SessionUser,
+    input: ShowroomStockRequest,
+  ): Promise<ServiceResponse<ShowroomStock>> {
+    try {
+      const before = await this.repository.getCctvTotalUnits();
+      const cctvTotalUnits = await this.repository.setCctvTotalUnits(
+        input.cctvTotalUnits,
+      );
+      await ActivityLogService.logBy(actor, {
+        action: 'showroom.stock_updated',
+        target: 'CCTV units',
+        detail:
+          before === cctvTotalUnits
+            ? `Stayed at ${cctvTotalUnits} units`
+            : `${before} → ${cctvTotalUnits} units`,
+      });
+      return { success: true, document: { cctvTotalUnits } };
     } catch (error) {
       return {
         success: false,

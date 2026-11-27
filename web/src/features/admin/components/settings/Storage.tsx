@@ -18,6 +18,7 @@ import type {
 import { formatDate } from "@swiftslip/shared/time";
 
 import { AdminClock } from "../AdminClock";
+import { AdminStorageSkeleton } from "../AdminSkeletons";
 import { storageOverviewQueryOptions } from "../../queries";
 import { BrandIcon, BrandMark } from "./BrandMark";
 import { StorageOrphanCleanupDialog } from "./StorageOrphanCleanupDialog";
@@ -131,7 +132,7 @@ export function Storage() {
     onError,
   });
 
-  if (!overview || !draft) return <StorageSkeleton />;
+  if (!overview || !draft) return <AdminStorageSkeleton />;
 
   const { settings, nextBackend, totals, supabase, b2 } = overview;
   /** Where Supabase hands over to B2, in percent full; null while invalid. */
@@ -676,93 +677,5 @@ function CapacityBar({
         )}
       </ul>
     </div>
-  );
-}
-
-/**
- * First paint, before the overview arrives: the same page in grey, so it
- * never flashes an empty shell or shifts when the numbers land.
- */
-function StorageSkeleton() {
-  return (
-    <section
-      className="rounded-xl border bg-card p-4 sm:p-6"
-      aria-busy="true"
-      aria-label="Loading storage usage"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="h-8 w-32 max-w-full animate-pulse rounded-md bg-muted" />
-          <div className="mt-3 h-4 w-full max-w-xl animate-pulse rounded bg-muted" />
-        </div>
-        <div className="shrink-0 space-y-2">
-          <div className="ml-auto h-7 w-24 animate-pulse rounded bg-muted" />
-          <div className="ml-auto h-4 w-20 animate-pulse rounded bg-muted" />
-        </div>
-      </div>
-
-      <div className="mt-5 border-t" />
-
-      <div className="grid grid-cols-1 divide-y border-b sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:divide-border">
-        {[0, 1, 2].map((column) => (
-          <div key={column} className="py-6 sm:px-6 sm:first:pl-0 sm:last:pr-0">
-            <div className="h-4 w-28 max-w-full animate-pulse rounded bg-muted" />
-            <div className="mt-2 h-9 w-28 animate-pulse rounded bg-muted" />
-            <div className="mt-3 h-4 w-44 max-w-full animate-pulse rounded bg-muted" />
-            <div className="mt-3 h-4 w-28 animate-pulse rounded bg-muted" />
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-6 pt-8 lg:grid-cols-2">
-        {[0, 1].map((card) => (
-          <div key={card} className="rounded-xl border bg-card p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="h-6 w-40 animate-pulse rounded bg-muted" />
-              <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-            </div>
-            <div className="mt-2 h-3 w-56 max-w-full animate-pulse rounded bg-muted" />
-            <div className="mt-4 flex items-center gap-5">
-              <div className="size-[108px] shrink-0 animate-pulse rounded-full bg-muted" />
-              <div className="min-w-0 flex-1 space-y-2.5">
-                {[0, 1, 2, 3].map((row) => (
-                  <div
-                    key={row}
-                    className="h-4 w-full max-w-[14rem] animate-pulse rounded bg-muted"
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3.5">
-              <div className="h-3.5 w-40 animate-pulse rounded bg-muted" />
-              <div className="h-8 w-32 animate-pulse rounded-md bg-muted" />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-10 grid gap-x-10 gap-y-8 border-t pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-        <div>
-          <div className="h-5 w-56 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-4 w-72 max-w-full animate-pulse rounded bg-muted" />
-        </div>
-        <div className="space-y-3">
-          <div className="h-9 w-full max-w-sm animate-pulse rounded-full bg-muted" />
-          <div className="h-4 w-full max-w-lg animate-pulse rounded bg-muted" />
-          <div className="h-4 w-full max-w-xs animate-pulse rounded bg-muted" />
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <div className="h-4 w-16 animate-pulse rounded bg-muted" />
-            <div className="h-7 w-16 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-12 animate-pulse rounded bg-muted" />
-          </div>
-          <div className="h-3.5 w-full animate-pulse rounded-full bg-muted" />
-          <div className="h-3 w-64 animate-pulse rounded bg-muted" />
-          <div className="flex items-center justify-between gap-3 border-t pt-4">
-            <div className="h-4 w-56 animate-pulse rounded bg-muted" />
-            <div className="h-8 w-24 animate-pulse rounded-md bg-muted" />
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }

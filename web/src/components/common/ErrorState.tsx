@@ -1,10 +1,10 @@
 /**
  * One quiet block for "this part of the app could not load", used the same way
- * everywhere: a neutral icon tile, one sentence of plain language, one filled
- * action, and the technical facts kept out of the way — a tiny
+ * everywhere: the shared neutral illustration, one sentence of plain language,
+ * one filled action, and the technical facts kept out of the way — a tiny
  * `Error 503 · Nov 16, 2026, 09:02 AM` line plus `Copy error details`.
  *
- * Same layout for every cause; only the icon, the words and the action change:
+ * Same layout for every cause; only the words and the action change:
  *
  *   <ErrorState
  *     title="Something went wrong"
@@ -16,19 +16,20 @@
  *     meta="Error 503 · Nov 16, 2026, 09:02 AM"
  *   />
  *
- *   <ErrorState icon={Lock} title="You've been signed out"
+ *   <ErrorState title="You've been signed out"
  *     description="For your security, sign in again to keep working."
  *     primaryAction={{ label: "Sign in", onClick: signIn }} />
  *
- *   <ErrorState icon={SearchX} title="We can't find that asset"
+ *   <ErrorState title="We can't find that asset"
  *     description="It may have been deleted, or the link is out of date."
  *     secondaryAction={{ label: "Back to Assets", onClick: goBack }}
  *     details={details} />
  *
- * Rules that keep it calm: the icon tile is always neutral (never a red
- * alarm), the description stays one or two lines, there is at most one filled
- * action, and the API's raw message never appears here — it belongs in
- * `details`, which is what Copy error details puts on the clipboard.
+ * Rules that keep it calm: one neutral illustration for every cause (never a
+ * red alarm or a status-specific glyph), the description stays one or two
+ * lines, there is at most one filled action, and the API's raw message never
+ * appears here — it belongs in `details`, which is what Copy error details puts
+ * on the clipboard.
  *
  * `density` only decides where the block sits, never how it looks:
  * `section` (the default) fills the space the content would have used;
@@ -45,9 +46,10 @@
  */
 import { useEffect, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { CircleAlert, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { ErrorStateArt } from "./ErrorStateArt";
 
 export type ErrorStateAction = {
   label: string;
@@ -62,8 +64,6 @@ export type ErrorStateAction = {
 export type ErrorStateDensity = "section" | "page";
 
 export type ErrorStateProps = {
-  /** Line icon in the tile. Defaults to `CircleAlert`. */
-  icon?: LucideIcon;
   title: string;
   description?: string;
   /** Where the block sits. Defaults to `section`. */
@@ -91,7 +91,6 @@ export type ErrorStateProps = {
 };
 
 export function ErrorState({
-  icon: Icon = CircleAlert,
   title,
   description,
   density = "section",
@@ -143,7 +142,7 @@ export function ErrorState({
       role={announce ? "alert" : undefined}
     >
       <span className="error-state__icon" aria-hidden="true">
-        <Icon className="size-5" strokeWidth={1.5} />
+        <ErrorStateArt className="error-state__art" />
       </span>
 
       <h2 className="error-state__title">{title}</h2>

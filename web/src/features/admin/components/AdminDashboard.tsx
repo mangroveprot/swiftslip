@@ -28,6 +28,7 @@ import {
 } from "../dashboard-data";
 import { activityFeedQueryOptions, adminStatsQueryOptions } from "../queries";
 import { AdminClock } from "./AdminClock";
+import { ChartSkeleton, FeedSkeleton } from "./AdminSkeletons";
 
 const chartConfig = {
   count: { label: "Forms", color: "var(--color-dashboard-accent)" },
@@ -189,7 +190,7 @@ function SummaryColumn({
     <div className="py-6 sm:px-6 sm:first:pl-0 sm:last:pr-0">
       <p className="text-sm text-muted-foreground">{label}</p>
       {loading ? (
-        <div className="mt-1 h-10 w-16 animate-pulse rounded-md bg-muted" />
+        <div className="mt-1 h-10 w-20 animate-pulse rounded-md bg-foreground/20" />
       ) : (
         <p className={`mt-1 text-4xl font-bold tracking-tight tabular-nums ${valueClassName}`}>
           {value ?? 0}
@@ -312,7 +313,7 @@ function FormsFiledPanel({ events, loading }: { events: FormEvent[]; loading: bo
       </div>
 
       {loading ? (
-        <div className="mt-5 h-[280px] animate-pulse rounded-lg bg-muted" />
+        <ChartSkeleton />
       ) : (
         <>
           <ChartContainer config={chartConfig} className="mt-4 h-[280px] w-full min-w-0">
@@ -393,17 +394,19 @@ function ByFormTypePanel({
       </div>
 
       {loading ? (
-        <div className="mt-4 space-y-3" aria-label="Loading form types">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="space-y-2 py-1">
-              <div className="flex items-center justify-between gap-3">
-                <div className="h-3.5 w-32 animate-pulse rounded bg-muted" />
-                <div className="h-3.5 w-10 animate-pulse rounded bg-muted" />
+        <ul className="mt-4 animate-pulse" aria-label="Loading form types">
+          {FORM_TYPES.map((type) => (
+            <li key={type.key} className="py-3.5">
+              <div className="grid min-h-5 grid-cols-[minmax(0,1fr)_1.75rem_3.75rem] items-center gap-x-2.5 sm:grid-cols-[minmax(7rem,1.8fr)_minmax(3.5rem,1fr)_1.75rem_3.75rem]">
+                <div className="h-3.5 w-32 max-w-full rounded bg-foreground/20" />
+                <div className="hidden h-2 w-full rounded-full bg-foreground/10 sm:block" />
+                <div className="ml-auto h-3.5 w-6 rounded bg-foreground/20" />
+                <div className="ml-auto h-3 w-10 rounded bg-foreground/15" />
               </div>
-              <div className="h-2 w-full animate-pulse rounded-full bg-muted" />
-            </div>
+              <div className="mt-2 h-2 w-full rounded-full bg-foreground/10 sm:hidden" />
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
         <ul className="mt-4">
           {rows.map((row) => (
@@ -449,19 +452,6 @@ function TypeBar({
         style={{ width: `${width}%` }}
       />
     </span>
-  );
-}
-
-function FeedSkeleton() {
-  return (
-    <ul className="mt-2 space-y-3" aria-label="Loading activity">
-      {[0, 1, 2, 3].map((i) => (
-        <li key={i} className="space-y-2 py-2">
-          <div className="h-3.5 w-2/3 animate-pulse rounded bg-muted" />
-          <div className="h-3 w-1/3 animate-pulse rounded bg-muted/70" />
-        </li>
-      ))}
-    </ul>
   );
 }
 

@@ -13,6 +13,8 @@ import type {
   ShowroomPhotoUploadResult,
   ShowroomPhotos,
   showroomSaveInput,
+  ShowroomStock,
+  ShowroomStockRequest,
 } from "@swiftslip/shared/showrooms";
 
 export const getShowrooms = async () =>
@@ -24,6 +26,13 @@ export const getShowrooms = async () =>
  */
 export const getShowroomLinkOptions = async () =>
   documentsOf(await api.get<ShowroomLinkOption>("/inventory/showrooms/link-options"));
+
+/** The owner's total CCTV units, shown as "available" on the summary card. */
+export const getShowroomStock = async () =>
+  documentOf(await api.get<ShowroomStock>("/inventory/showrooms/stock"));
+
+export const saveShowroomStock = async ({ cctvTotalUnits }: ShowroomStockRequest) =>
+  documentOf(await api.put<ShowroomStock>("/inventory/showrooms/stock", { cctvTotalUnits }));
 
 /** Create (`showroomId` null) or edit one showroom. */
 export const saveShowroom = async ({

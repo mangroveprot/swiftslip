@@ -30,11 +30,13 @@ export function RecordsListSkeleton({ count = 6 }: { count?: number }) {
             <Skeleton className="mt-1.5 h-3 w-2/5" />
           </div>
 
-          {/* The mini DTR sheet: a title bar and six ruled lines. */}
+          {/* The mini DTR sheet: a title bar and six ruled lines. The lines are
+              fixed dark-on-paper, not theme-aware: `--paper` stays white in
+              dark mode, where a foreground bar would vanish. */}
           <div className="h-[6.25rem] w-[4.75rem] shrink-0 space-y-1 rounded-sm border bg-paper p-1.5 shadow-sm">
-            <Skeleton className="h-1.5 w-full" />
+            <div className="h-1.5 w-full animate-pulse rounded bg-black/15" />
             {Array.from({ length: 6 }).map((_, j) => (
-              <Skeleton key={j} className="h-0.5 w-full rounded-full" />
+              <div key={j} className="h-0.5 w-full animate-pulse rounded-full bg-black/10" />
             ))}
           </div>
         </div>

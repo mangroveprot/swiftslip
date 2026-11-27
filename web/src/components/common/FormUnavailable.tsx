@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { FileQuestion } from "lucide-react";
 
 import { ErrorState } from "./ErrorState";
 import { ErrorStateFromError } from "./ErrorStateFromError";
@@ -61,7 +60,6 @@ export function FormUnavailable({
   return (
     <ErrorState
       className="min-h-full justify-center"
-      icon={FileQuestion}
       title="This form is no longer available"
       description="It may have been deleted, or the link may be out of date. Anything you had already saved is not affected."
       primaryAction={{ label: `Back to ${label}`, onClick: () => void navigate({ to: backTo }) }}
