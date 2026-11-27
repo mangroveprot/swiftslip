@@ -3998,3 +3998,31 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The sleigh (SleighRide.tsx) rides the same garland.
+   Fixed-size drawing inside the clipped band: a plain left-to-right glide, off
+   one edge and in from the other, so the loop has no visible jump. The gallop,
+   bob and rein sway are SMIL inside the drawing. Reduced motion parks it in the
+   middle of the string instead of hiding it.
+   --------------------------------------------------------------------------- */
+@keyframes xmas-sleigh-ride {
+  from {
+    transform: translate3d(-110%, 0, 0);
+  }
+  to {
+    transform: translate3d(100vw, 0, 0);
+  }
+}
+
+.xmas-sleigh {
+  animation: xmas-sleigh-ride 26s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmas-sleigh {
+    left: 50%;
+    animation: none;
+    transform: translateX(-50%);
+  }
+}

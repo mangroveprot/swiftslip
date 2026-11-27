@@ -290,6 +290,12 @@ auto-fixed at the start of Phase 5). Still not exercised against the real RGC da
       middle on phones and stretched from 1100 px up; the wire uses `currentColor` so it survives
       dark mode. `AppChooserSkeleton` mounts the same strip, so the pending screen does not pop.
       See `ACTIVITY_LOG.md`.
+- [x] **Changed 2026-11-27:** the garland carries the owner's reindeer sleigh. The supplied drawing
+      (`SleighArtwork.tsx`; original SMIL bob, gallop and rein morph kept) slides left to right
+      across the strip in `SleighRide.tsx` (`.xmas-sleigh`, 26 s loop, behind the wire and bulbs;
+      the band grows 52 → 64 px), parked mid-string with the gallop paused under reduced motion.
+      The mascot's pupils follow the pointer through the reusable `lib/use-pointer-gaze.ts` hook
+      (`getScreenCTM` mapping, rAF, settles when idle). See `ACTIVITY_LOG.md`.
 - [x] **Changed 2026-11-27:** the Admin Panel card in the chooser shows a navy shield badge on
       the logo tile's corner instead of the "Admin" word pill, matching the owner's reference.
       The card title already names the app, so the corner only carries the role mark. See

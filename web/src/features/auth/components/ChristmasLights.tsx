@@ -17,11 +17,16 @@
  * original dark sage would disappear into the page. The bulbs keep their own
  * colours, including the navy band, like the printed sheets' fixed ink.
  *
+ * The band is a little taller than the wire so the owner's sleigh (`SleighRide`)
+ * can cross it without being cropped; the header's content starts where the band
+ * ends.
+ *
  * Kept to the chooser only: the login page is the first impression and the app
  * shells are working surfaces, while the chooser is the one screen whose whole
  * job is "pick where to go" and can carry the greeting.
  */
 import { cn } from "@/lib/utils";
+import { SleighRide } from "./SleighRide";
 
 /** One bulb: group position in the 1358×52 source space, its tilt, cycle start. */
 type Bulb = { x: number; y: number; angle: number; delay: string; color: string };
@@ -63,10 +68,13 @@ export function ChristmasLights({ className }: { className?: string }) {
         // Clipped, centred and never narrower than the artwork on phones: the
         // string runs off both edges the way a real garland does, instead of
         // shrinking its bulbs into specks. From 1100px up it stretches to fill.
-        "pointer-events-none absolute inset-x-0 top-0 flex h-[52px] justify-center overflow-hidden select-none",
+        "pointer-events-none absolute inset-x-0 top-0 flex h-[64px] justify-center overflow-hidden select-none",
         className,
       )}
     >
+      {/* Behind the wire and bulbs: the sleigh passes under the string. */}
+      <SleighRide />
+
       <svg
         viewBox="0 0 1358 52"
         preserveAspectRatio="none"
